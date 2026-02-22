@@ -1,0 +1,387 @@
+{
+  "appName": "Winsentials",
+  "sidebar": {
+    "categories": {
+      "home": "Home",
+      "system": "System",
+      "appearance": "Appearance",
+      "privacy": "Privacy",
+      "network": "Network",
+      "input": "Input",
+      "security": "Security",
+      "hardware": "Hardware",
+      "memory": "Memory"
+    },
+    "settings": "Settings"
+  },
+  "categoryDescriptions": {
+    "system": "Optimize your system performance",
+    "appearance": "Customize your Windows appearance",
+    "privacy": "Control your privacy settings and data collection",
+    "network": "Optimize network settings for lower latency. Ethernet recommended for best results.",
+    "input": "Configure mouse and keyboard input settings",
+    "security": "Disable security mitigations for maximum performance. High risk - use with caution.",
+    "hardware": "Configure hardware interrupt settings for reduced latency",
+    "memory": "Optimize memory management and paging settings"
+  },
+  "tweaks": {
+    "win32PrioritySeparation": {
+      "name": "Win32 Priority Separation",
+      "description": "Configure CPU time slice allocation for foreground applications",
+      "details": "Adjusts how Windows distributes CPU time between foreground and background processes. Gaming mode prioritizes foreground apps for better game performance. May cause background tasks to run slower.",
+      "options": {
+        "default": "Default",
+        "gaming": "Gaming",
+        "responsive": "Maximum Responsiveness",
+        "lowlatency": "Low Latency",
+        "balanced": "Balanced",
+        "services": "Background Priority"
+      }
+    },
+    "disablePagingExecutive": {
+      "name": "Disable Paging Executive",
+      "description": "Keep kernel drivers in RAM instead of paging to disk for better performance",
+      "details": "Prevents Windows from moving kernel components to the page file. Improves system responsiveness but requires more RAM. Recommended for systems with 16GB+ RAM."
+    },
+    "clearPageFileShutdown": {
+      "name": "Clear Page File at Shutdown",
+      "description": "Clear virtual memory page file during shutdown (increases shutdown time)",
+      "details": "Writes zeros to the page file during shutdown for security. Significantly increases shutdown time on systems with large page files or slow storage."
+    },
+    "largeSystemCache": {
+      "name": "Large System Cache",
+      "description": "Prioritize system cache over application working set",
+      "details": "Increases the system cache size, beneficial for file servers and workstations with heavy file I/O. May reduce performance for gaming or applications that need more RAM."
+    },
+    "bootOptimizeFunction": {
+      "name": "Boot Optimize Function",
+      "description": "Enable boot optimization for faster startup times",
+      "details": "Optimizes file placement on disk for faster boot. Requires periodic idle time to optimize. Works best with HDDs; minimal impact on SSDs."
+    },
+    "prefetcher": {
+      "name": "Prefetcher",
+      "description": "Configure prefetch behavior for application and boot optimization",
+      "details": "Caches application and boot data for faster loading. Disabling may help with SSD wear but slows down application launch times.",
+      "options": {
+        "disabled": "Disabled",
+        "appOnly": "Applications Only",
+        "bootOnly": "Boot Only",
+        "both": "Both"
+      }
+    },
+    "classicContextMenu": {
+      "name": "Classic Context Menu",
+      "description": "Restore the classic Windows 10-style right-click context menu in Windows 11",
+      "details": "Replaces the Windows 11 simplified context menu with the full classic menu. Removes the need to click 'Show more options' to access all context menu items."
+    },
+    "disableTelemetry": {
+      "name": "Disable Telemetry",
+      "description": "Stop Windows from collecting and sending diagnostic data to Microsoft",
+      "details": "Disables Windows telemetry services and data collection. Prevents Microsoft from collecting usage data, system information, and error reports. May affect Windows Update delivery optimization and some diagnostic features."
+    },
+    "disableCEIP": {
+      "name": "Disable Customer Experience Improvement Program",
+      "description": "Disable participation in Microsoft's telemetry programs",
+      "details": "Opts out of Microsoft's Customer Experience Improvement Program for both Windows and .NET Framework. Stops sending usage statistics and feedback to Microsoft."
+    },
+    "disableWER": {
+      "name": "Disable Windows Error Reporting",
+      "description": "Stop Windows from sending error reports to Microsoft",
+      "details": "Prevents Windows from sending error reports when applications crash. Error reports help Microsoft fix bugs, but disabling improves privacy. Local error logs are still generated."
+    },
+    "disableAppCompat": {
+      "name": "Disable Application Compatibility Telemetry",
+      "description": "Disable collection of application compatibility data",
+      "details": "Disables the Program Compatibility Assistant and application compatibility data collection. Some older applications may have reduced compatibility assistance."
+    },
+    "disableAdvertising": {
+      "name": "Disable Advertising ID",
+      "description": "Disable the advertising identifier used for personalized ads",
+      "details": "Disables the unique advertising ID that apps use for personalized advertising. Apps will still show ads, but they will be less targeted to your interests."
+    },
+    "disableSilentApps": {
+      "name": "Disable Silent App Installation",
+      "description": "Prevent Windows from automatically installing suggested apps",
+      "details": "Prevents Windows from automatically downloading and installing promoted apps like Candy Crush, Twitter, or other sponsored content without your consent."
+    },
+    "disableSuggestions": {
+      "name": "Disable Suggestions and Tips",
+      "description": "Disable Windows suggestions, tips, and tutorials",
+      "details": "Removes tips, tricks, and suggestions that appear in Start menu, Settings, and throughout Windows. Also disables the 'Welcome' experience after updates."
+    },
+    "disableCortana": {
+      "name": "Disable Cortana and Web Search",
+      "description": "Disable Cortana voice assistant and web search in Start menu",
+      "details": "Disables Cortana and removes web search results from Start menu searches. Search will only show local files and applications. Voice activation features will be unavailable."
+    },
+    "disableLocation": {
+      "name": "Disable Location Services",
+      "description": "Disable Windows location services and sensors",
+      "details": "Disables location services system-wide. Maps, weather apps, and other location-aware applications will not function correctly. Can be overridden per-app in Settings."
+    },
+    "disableSettingSync": {
+      "name": "Disable Settings Sync",
+      "description": "Prevent Windows from syncing settings to the cloud",
+      "details": "Prevents Windows from syncing your settings, passwords, and preferences to Microsoft servers. Settings won't sync across your devices. OneDrive settings sync may also be affected."
+    },
+    "disableActivityFeed": {
+      "name": "Disable Activity History",
+      "description": "Disable Windows activity history and timeline features",
+      "details": "Disables the Timeline feature and activity history collection. Your activity on this PC won't be tracked or synced. Timeline view in Task View will be empty."
+    },
+    "disableOnlineSpeech": {
+      "name": "Disable Online Speech Recognition",
+      "description": "Disable cloud-based speech recognition services",
+      "details": "Disables Microsoft's cloud-based speech recognition. Dictation features will use local recognition only, which may be less accurate. Cortana voice features are unaffected (use Disable Cortana)."
+    },
+    "disableCloudSearch": {
+      "name": "Disable Cloud Search",
+      "description": "Disable cloud-assisted search in Windows",
+      "details": "Prevents Windows Search from using Microsoft's cloud services to provide enhanced search results. Search will be limited to local and OneDrive content."
+    },
+    "denyCameraAccess": {
+      "name": "Deny Camera Access",
+      "description": "Prevent all applications from accessing the camera",
+      "details": "Blocks all applications from using the camera. Video calling apps like Zoom, Teams, and Skype will not be able to access your camera. Can be overridden in individual app settings."
+    },
+    "denyMicrophoneAccess": {
+      "name": "Deny Microphone Access",
+      "description": "Prevent all applications from accessing the microphone",
+      "details": "Blocks all applications from using the microphone. Voice calls, dictation, and voice assistants won't work. Can be overridden in individual app settings."
+    },
+    "denyLocationAppAccess": {
+      "name": "Deny Location Access",
+      "description": "Prevent all applications from accessing location",
+      "details": "Prevents all apps from accessing your device location. Maps, ride-sharing, and location-based apps will not work correctly. System location services are controlled separately."
+    },
+    "denyContactsAccess": {
+      "name": "Deny Contacts Access",
+      "description": "Prevent all applications from accessing contacts",
+      "details": "Blocks apps from reading your contact list. Email clients, messaging apps, and social media may lose contact sync functionality."
+    },
+    "denyCalendarAccess": {
+      "name": "Deny Calendar Access",
+      "description": "Prevent all applications from accessing calendar",
+      "details": "Prevents apps from reading or writing to your calendar. Calendar apps and scheduling tools will not sync events. Does not affect Outlook desktop if using Exchange directly."
+    },
+    "denyEmailAccess": {
+      "name": "Deny Email Access",
+      "description": "Prevent all applications from accessing email",
+      "details": "Blocks apps from accessing your email accounts. Mail apps will not sync messages. May affect calendar invitations sent via email."
+    },
+    "denyMessagingAccess": {
+      "name": "Deny Messaging Access",
+      "description": "Prevent all applications from accessing messages",
+      "details": "Prevents apps from reading or sending SMS/MMS messages. Messaging apps may lose sync functionality."
+    },
+    "denyPhoneAccess": {
+      "name": "Deny Phone Access",
+      "description": "Prevent all applications from accessing phone",
+      "details": "Blocks apps from making phone calls or accessing call functionality. Primarily affects devices with cellular capability."
+    },
+    "denyCallHistoryAccess": {
+      "name": "Deny Call History Access",
+      "description": "Prevent all applications from accessing call history",
+      "details": "Prevents apps from reading your call log. Caller ID apps and dialer replacements will not show call history."
+    },
+    "denyTasksAccess": {
+      "name": "Deny Tasks Access",
+      "description": "Prevent all applications from accessing tasks",
+      "details": "Blocks apps from accessing your task and to-do lists. Microsoft To Do and similar apps may lose sync functionality."
+    },
+    "denyTrustedDevicesAccess": {
+      "name": "Deny Trusted Devices Access",
+      "description": "Prevent all applications from accessing trusted devices",
+      "details": "Prevents apps from accessing information about trusted Bluetooth devices and paired hardware."
+    },
+    "denyRadiosAccess": {
+      "name": "Deny Radios Access",
+      "description": "Prevent all applications from accessing radio controls",
+      "details": "Blocks apps from controlling Bluetooth, Wi-Fi, and cellular radios. Apps cannot turn these on or off programmatically."
+    },
+    "denyAccountInfoAccess": {
+      "name": "Deny Account Info Access",
+      "description": "Prevent all applications from accessing account information",
+      "details": "Prevents apps from reading your Microsoft account information like username, profile picture, and account type."
+    },
+    "denyMotionAccess": {
+      "name": "Deny Motion Data Access",
+      "description": "Prevent all applications from accessing motion sensors",
+      "details": "Blocks access to accelerometer, gyroscope, and compass data. Fitness apps and motion-based games will not work."
+    },
+    "denyUserDataAccess": {
+      "name": "Deny User Data Access",
+      "description": "Prevent all applications from accessing user data",
+      "details": "Prevents apps from accessing generic user data folders. Some apps may lose the ability to save or load files."
+    },
+    "denyVoiceActivationAccess": {
+      "name": "Deny Voice Activation Access",
+      "description": "Prevent all applications from using voice activation",
+      "details": "Disables 'Hey Cortana' and similar always-listening voice activation features for all apps. Manual voice commands still work if microphone access is allowed."
+    },
+    "denyGraphicsCaptureAccess": {
+      "name": "Deny Screen Capture Access",
+      "description": "Prevent all applications from capturing screen content",
+      "details": "Prevents apps from taking screenshots or recording your screen. Screen recording tools, streaming apps, and screenshot utilities will be blocked."
+    },
+    "denyNotificationsAccess": {
+      "name": "Deny Notifications Access",
+      "description": "Prevent all applications from accessing notifications",
+      "details": "Blocks apps from reading your notification history or posting new notifications. May affect notification center functionality."
+    },
+    "cssrssPriority": {
+      "name": "CSRSS High Priority",
+      "description": "Set CSRSS process to high priority for improved input latency",
+      "details": "CSRSS handles mouse and keyboard input. Setting it to high priority can reduce input lag and improve mouse responsiveness."
+    },
+    "gameMode": {
+      "name": "Game Mode",
+      "description": "Enable Windows Game Mode for optimized gaming performance",
+      "details": "Game Mode prioritizes games by suspending background processes and allocating more system resources to gaming. May cause some background apps to respond slowly while gaming."
+    },
+    "disableFso": {
+      "name": "Disable Fullscreen Optimizations",
+      "description": "Disable Windows fullscreen optimizations for games",
+      "details": "Disables Windows fullscreen optimizations that can cause stuttering and input lag in games. Games will run in exclusive fullscreen mode for best performance."
+    },
+    "disableGpuEnergyDrv": {
+      "name": "Disable GPU Energy Driver",
+      "description": "Disable GPU power management for maximum performance",
+      "details": "Disables the GPU energy driver service. Prevents GPU from entering power-saving states. Increases power consumption and heat. Not recommended for laptops."
+    },
+    "disableHibernation": {
+      "name": "Disable Hibernation",
+      "description": "Disable hibernation and fast startup to free disk space",
+      "details": "Disables hibernation and fast startup features. Frees up disk space equal to your RAM size (hiberfil.sys). Fast startup will no longer be available, but shutdown times remain similar."
+    },
+    "shutdownTimeouts": {
+      "name": "Fast Shutdown Timeouts",
+      "description": "Reduce wait time for apps to close during shutdown",
+      "details": "Reduces the timeout for apps and services to close during shutdown from 20 seconds to 1 second. May cause unsaved work to be lost if apps don't close quickly."
+    },
+    "mouseAccelerationFix": {
+      "name": "Disable Mouse Acceleration",
+      "description": "Remove mouse acceleration for consistent aiming",
+      "details": "Disables Windows mouse acceleration (Enhance pointer precision). Provides 1:1 mouse movement for consistent cross-game sensitivity. Popular among FPS gamers."
+    },
+    "coreIsolation": {
+      "name": "Disable Core Isolation",
+      "description": "Disable memory integrity for maximum performance",
+      "details": "Disables Core Isolation/Memory Integrity (HVCI). This security feature can impact gaming performance by 5-15%. Disabling reduces protection against certain memory-based attacks."
+    },
+    "spectreMeltdown": {
+      "name": "Disable Spectre/Meltdown Mitigations",
+      "description": "Disable CPU vulnerability mitigations for performance",
+      "details": "Disables mitigations for Spectre and Meltdown CPU vulnerabilities. Can improve performance by 5-20% on older CPUs. Significantly reduces security against certain attacks. High risk."
+    },
+    "sehop": {
+      "name": "Disable SEHOP",
+      "description": "Disable Structured Exception Handler Overwrite Protection",
+      "details": "Disables SEHOP security feature. May improve performance slightly but reduces protection against certain exploitation techniques."
+    },
+    "tcpNoDelay": {
+      "name": "TCP No Delay",
+      "description": "Disable Nagle's algorithm for lower network latency",
+      "details": "Disables Nagle's algorithm for TCP connections. Reduces network latency for real-time applications like gaming. May increase bandwidth usage for small packets."
+    },
+    "dnsCache": {
+      "name": "Disable Negative DNS Cache",
+      "description": "Disable caching of failed DNS lookups",
+      "details": "Disables caching of negative DNS responses (failed lookups). Useful when troubleshooting DNS issues or when DNS records change frequently. Minimal performance impact."
+    },
+    "networkThrottling": {
+      "name": "Disable Network Throttling",
+      "description": "Disable Windows network throttling for better network performance",
+      "details": "Disables Windows multimedia-based network throttling. Can improve network performance during media playback. Primarily beneficial for Ethernet connections."
+    },
+    "msiMode": {
+      "name": "MSI Mode",
+      "description": "Enable MSI mode for GPU and network adapters",
+      "details": "Enables Message Signaled Interrupts for better interrupt handling. Can reduce latency and improve performance. Requires reboot to take effect."
+    },
+    "deviceAffinity": {
+      "name": "Device Affinity",
+      "description": "Spread device interrupts across CPU cores",
+      "details": "Distributes interrupt handling for GPU, network adapters, and USB controllers across different CPU cores. Can reduce DPC latency and improve system responsiveness. Requires reboot."
+    },
+    "disableFth": {
+      "name": "Disable Fault Tolerant Heap",
+      "description": "Disable FTH to prevent memory-related workarounds",
+      "details": "Disables the Fault Tolerant Heap feature which can cause memory allocation delays. FTH is designed to mitigate memory-related crashes but can impact performance in some applications."
+    },
+    "disableBackgroundApps": {
+      "name": "Disable Background Apps",
+      "description": "Prevent apps from running in the background",
+      "details": "Disables background app execution for all applications. Saves system resources and improves performance. Some apps like mail and calendar may not sync automatically."
+    },
+    "heapDecommit": {
+      "name": "Heap DeCommit Threshold",
+      "description": "Optimize heap memory release for better RAM management",
+      "details": "Sets a threshold for releasing unused heap memory back to the system. Can help maintain more available RAM on systems with heavy memory usage."
+    },
+    "disablePageCombining": {
+      "name": "Disable Page Combining",
+      "description": "Disable memory page combining for more consistent performance",
+      "details": "Disables Windows memory page combining feature. Can reduce memory-related latency spikes but may increase overall memory usage."
+    },
+    "svchostSplitThreshold": {
+      "name": "SvcHost Split Threshold",
+      "description": "Optimize service host memory allocation based on RAM",
+      "details": "Adjusts the threshold for splitting svchost.exe instances based on your total RAM. Can reduce service host memory usage and improve system responsiveness on systems with more RAM."
+    },
+    "disableSuperfetch": {
+      "name": "Disable Superfetch",
+      "description": "Disable Superfetch service for SSD optimization",
+      "details": "Disables Superfetch (SysMain) which preloads frequently used applications. Not needed on SSDs and can reduce unnecessary disk activity. May slow down application launch on HDDs."
+    }
+  },
+  "tweak": {
+    "onlyForVersion": "Only for {{version}}",
+    "riskLevel": {
+      "medium": "Medium risk — may affect system stability",
+      "high": "High risk — may cause system instability"
+    }
+  },
+  "common": {
+    "apply": "Apply",
+    "revert": "Revert",
+    "applied": "Applied",
+    "notApplied": "Not Applied",
+    "recommended": "Recommended",
+    "default": "Default",
+    "requiresReboot": "Requires reboot"
+  },
+  "settings": {
+    "description": "Customize application preferences",
+    "language": "Language",
+    "languageDescription": "Select interface language",
+    "theme": "Theme",
+    "themeDescription": "Select color theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System"
+  },
+  "home": {
+    "title": "System Overview",
+    "description": "Real-time system information",
+    "loading": "Loading system information...",
+    "os": "Operating System",
+    "cpu": "Processor",
+    "gpu": "Graphics",
+    "ram": "Memory",
+    "disk": "Storage",
+    "disks": "{{count}} drives",
+    "build": "Build",
+    "arch": "Architecture",
+    "cores": "Cores",
+    "frequency": "Frequency",
+    "vramTotal": "VRAM Total",
+    "vramUsed": "VRAM Used",
+    "free": "free",
+    "slots": "Slots",
+    "speed": "Speed",
+    "displayVersion": "Version",
+    "hostname": "Hostname",
+    "username": "User"
+  }
+}
