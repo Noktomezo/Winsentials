@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./assets/thumbnail.png" alt="thumbnail">
+  <img src="https://github.com/user-attachments/assets/2b8251a0-5d12-4429-88fe-c6cdf0a80805" alt="thumbnail">
 </div>
 
 ## ⚠️ Disclaimer
