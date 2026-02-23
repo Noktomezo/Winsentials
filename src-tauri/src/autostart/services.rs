@@ -21,6 +21,7 @@ const IGNORED_SERVICES: [&str; 10] = [
 struct ServiceConfig {
   start_type: String,
   is_delayed: bool,
+  command: Option<String>,
   exe_path: Option<String>,
 }
 
@@ -31,6 +32,7 @@ fn query_service_config(name: &str) -> Option<ServiceConfig> {
 
   let mut start_type = String::new();
   let mut is_delayed = false;
+  let mut command = None;
   let mut exe_path = None;
 
   for line in stdout.lines() {
@@ -42,14 +44,24 @@ fn query_service_config(name: &str) -> Option<ServiceConfig> {
         is_delayed = trimmed.to_lowercase().contains("(delayed)");
       }
     } else if line.starts_with("BINARY_PATH_NAME") {
-      let path = line.split_once(':').map(|x| x.1).unwrap_or("").trim();
-      let path = path.trim_matches('"');
+      let raw = line.split_once(':').map(|x| x.1).unwrap_or("").trim();
+      let raw = raw.trim_matches('"');
+      command = Some(raw.to_string());
 
-      let lower_path = path.to_lowercase();
-      if let Some(exe_idx) = lower_path.find(".exe") {
-        exe_path = Some(path[..exe_idx + 4].to_string());
+      let lower_raw = raw.to_ascii_lowercase();
+      if let Some(exe_end) = lower_raw.rfind(".exe") {
+        let boundary_idx = exe_end + 4;
+        if boundary_idx >= raw.len()
+          || raw.as_bytes()[boundary_idx].is_ascii_whitespace()
+          || raw.as_bytes()[boundary_idx] == b'"'
+          || raw.as_bytes()[boundary_idx] == b'\''
+        {
+          exe_path = Some(raw[..boundary_idx].trim().to_string());
+        } else {
+          exe_path = Some(raw.to_string());
+        }
       } else {
-        exe_path = Some(path.to_string());
+        exe_path = Some(raw.to_string());
       }
     }
   }
@@ -57,6 +69,7 @@ fn query_service_config(name: &str) -> Option<ServiceConfig> {
   Some(ServiceConfig {
     start_type,
     is_delayed,
+    command,
     exe_path,
   })
 }
@@ -130,11 +143,11 @@ pub fn get_service_autostart_items() -> Vec<AutostartItem> {
     }
 
     let exe_path = config.exe_path;
+    let command = config.command.clone().unwrap_or_default();
     let icon_base64 = exe_path.as_ref().and_then(|p| get_icon(p));
 
     let is_enabled = is_auto;
 
-    let command = exe_path.clone().unwrap_or_default();
     let critical_level = get_critical_level(&name, &command);
 
     let publisher = exe_path
@@ -153,7 +166,7 @@ pub fn get_service_autostart_items() -> Vec<AutostartItem> {
         display_name.clone()
       },
       publisher,
-      command: exe_path.clone().unwrap_or_default(),
+      command,
       location: format!("Service: {}", name),
       source: AutostartSource::Service,
       is_enabled,
@@ -191,8 +204,14 @@ pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {
       .map_err(|e| format!("Failed to execute sc: {}", e))?;
 
     if !output.status.success() {
+      let stderr = String::from_utf8_lossy(&output.stderr);
       let stdout = String::from_utf8_lossy(&output.stdout);
-      return Err(format!("Failed to enable service: {}", stdout.trim()));
+      let msg = if !stderr.trim().is_empty() {
+        stderr.trim()
+      } else {
+        stdout.trim()
+      };
+      return Err(format!("Failed to enable service: {}", msg));
     }
 
     let _ = Command::new("sc").args(["start", service_name]).output();
@@ -205,8 +224,14 @@ pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {
       .map_err(|e| format!("Failed to execute sc: {}", e))?;
 
     if !output.status.success() {
+      let stderr = String::from_utf8_lossy(&output.stderr);
       let stdout = String::from_utf8_lossy(&output.stdout);
-      return Err(format!("Failed to disable service: {}", stdout.trim()));
+      let msg = if !stderr.trim().is_empty() {
+        stderr.trim()
+      } else {
+        stdout.trim()
+      };
+      return Err(format!("Failed to disable service: {}", msg));
     }
   }
 
@@ -227,8 +252,14 @@ pub fn delete_service_item(id: &str) -> Result<(), String> {
     .map_err(|e| format!("Failed to execute sc: {}", e))?;
 
   if !output.status.success() {
+    let stderr = String::from_utf8_lossy(&output.stderr);
     let stdout = String::from_utf8_lossy(&output.stdout);
-    return Err(format!("Failed to delete service: {}", stdout.trim()));
+    let msg = if !stderr.trim().is_empty() {
+      stderr.trim()
+    } else {
+      stdout.trim()
+    };
+    return Err(format!("Failed to delete service: {}", msg));
   }
 
   Ok(())

@@ -236,9 +236,6 @@ pub fn toggle_folder_item(id: &str, enable: bool) -> Result<(), String> {
   let disabled_folder = get_disabled_folder(location)
     .ok_or("Cannot determine disabled folder path")?;
 
-  fs::create_dir_all(&disabled_folder)
-    .map_err(|e| format!("Failed to create disabled folder: {}", e))?;
-
   let source_file = source_path.join(filename);
   let disabled_file = disabled_folder.join(filename);
 
@@ -247,9 +244,13 @@ pub fn toggle_folder_item(id: &str, enable: bool) -> Result<(), String> {
       fs::rename(&disabled_file, &source_file)
         .map_err(|e| format!("Failed to restore file: {}", e))?;
     }
-  } else if source_file.exists() {
-    fs::rename(&source_file, &disabled_file)
-      .map_err(|e| format!("Failed to disable file: {}", e))?;
+  } else {
+    fs::create_dir_all(&disabled_folder)
+      .map_err(|e| format!("Failed to create disabled folder: {}", e))?;
+    if source_file.exists() {
+      fs::rename(&source_file, &disabled_file)
+        .map_err(|e| format!("Failed to disable file: {}", e))?;
+    }
   }
 
   Ok(())
