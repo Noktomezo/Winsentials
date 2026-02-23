@@ -5,7 +5,7 @@ use crate::tweaks::{
 use winreg::enums::*;
 
 const ADVERTISING_PATH: &str =
-  r"SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo";
+  r"Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo";
 const ENABLED: &str = "Enabled";
 
 pub struct DisableAdvertisingTweak {
@@ -24,7 +24,7 @@ impl DisableAdvertisingTweak {
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,
-        risk_level: RiskLevel::Low,
+        risk_level: RiskLevel::Medium,
         min_windows_build: None,
       },
     }
@@ -38,7 +38,7 @@ impl Tweak for DisableAdvertisingTweak {
 
   fn check(&self) -> Result<TweakState, String> {
     let value =
-      registry::read_reg_u32(HKEY_LOCAL_MACHINE, ADVERTISING_PATH, ENABLED);
+      registry::read_reg_u32(HKEY_CURRENT_USER, ADVERTISING_PATH, ENABLED);
     let is_applied = value.map(|v| v == 0).unwrap_or(false);
     Ok(TweakState {
       id: self.meta.id.clone(),
@@ -48,12 +48,12 @@ impl Tweak for DisableAdvertisingTweak {
   }
 
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
-    registry::write_reg_u32(HKEY_LOCAL_MACHINE, ADVERTISING_PATH, ENABLED, 0)
+    registry::write_reg_u32(HKEY_CURRENT_USER, ADVERTISING_PATH, ENABLED, 0)
       .map_err(|e| e.to_string())
   }
 
   fn revert(&self) -> Result<(), String> {
-    registry::write_reg_u32(HKEY_LOCAL_MACHINE, ADVERTISING_PATH, ENABLED, 1)
+    registry::write_reg_u32(HKEY_CURRENT_USER, ADVERTISING_PATH, ENABLED, 1)
       .map_err(|e| e.to_string())
   }
 }

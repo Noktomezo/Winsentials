@@ -1,16 +1,11 @@
 [package]
 name = "winsentials"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+version = "0.0.0"
+description = "✨ Optimize Windows 10/11 performance, privacy, and appearance with a sleek native desktop app."
+authors = ["Noktomezo <noktomezo@duck.com>"]
+edition = "2024"
 
 [lib]
-# The `_lib` suffix may seem redundant but it is necessary
-# to make the lib name unique and wouldn't conflict with the bin name.
-# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
 name = "winsentials_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
@@ -31,4 +26,17 @@ gfxinfo = { version = "0.1", features = ["nvidia", "amd", "intel", "gpu_info"] }
 wmi = "0.18"
 paste = "1"
 parking_lot = "0.12"
-
+lnk = "0.5"
+base64 = "0.22"
+dirs = "5"
+windows = { version = "0.58", features = [
+  "Win32_Foundation",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_Storage_FileSystem",
+  "Win32_Graphics_Gdi",
+] }
+chrono = "0.4"
+png = "0.17"
+lazy_static = "1"
+pelite = "0.10"

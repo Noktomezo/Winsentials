@@ -2,12 +2,41 @@ use crate::tweaks::registry;
 use crate::tweaks::{
   RiskLevel, Tweak, TweakCategory, TweakMeta, TweakState, TweakUiType,
 };
+use std::process::Command;
 use winreg::enums::*;
 
-const SQMCLIENT_PATH: &str = r"SOFTWARE\Policies\Microsoft\SQMClient\Windows";
-const DOTNET_PATH: &str =
-  r"SOFTWARE\Policies\Microsoft\.NETFramework\v4.0.30319";
+const SQMCLIENT_PATH: &str = r"SOFTWARE\Microsoft\SQMClient\Windows";
 const CEIP_ENABLE: &str = "CEIPEnable";
+
+fn disable_ceip_tasks() -> Result<(), String> {
+  let tasks = [
+    r"\Microsoft\Windows\Customer Experience Improvement Program\Consolidator",
+    r"\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip",
+    r"\Microsoft\Windows\Customer Experience Improvement Program\KernelCeipLive",
+    r"\Microsoft\Windows\Customer Experience Improvement Program\BthSQM",
+  ];
+  for task in &tasks {
+    let _ = Command::new("schtasks")
+      .args(["/change", "/tn", task, "/disable"])
+      .status();
+  }
+  Ok(())
+}
+
+fn enable_ceip_tasks() -> Result<(), String> {
+  let tasks = [
+    r"\Microsoft\Windows\Customer Experience Improvement Program\Consolidator",
+    r"\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip",
+    r"\Microsoft\Windows\Customer Experience Improvement Program\KernelCeipLive",
+    r"\Microsoft\Windows\Customer Experience Improvement Program\BthSQM",
+  ];
+  for task in &tasks {
+    let _ = Command::new("schtasks")
+      .args(["/change", "/tn", task, "/enable"])
+      .status();
+  }
+  Ok(())
+}
 
 pub struct DisableCEIPTweak {
   meta: TweakMeta,
@@ -38,12 +67,9 @@ impl Tweak for DisableCEIPTweak {
   }
 
   fn check(&self) -> Result<TweakState, String> {
-    let sqm_value =
+    let value =
       registry::read_reg_u32(HKEY_LOCAL_MACHINE, SQMCLIENT_PATH, CEIP_ENABLE);
-    let dotnet_value =
-      registry::read_reg_u32(HKEY_LOCAL_MACHINE, DOTNET_PATH, CEIP_ENABLE);
-    let is_applied = sqm_value.map(|v| v == 0).unwrap_or(false)
-      && dotnet_value.map(|v| v == 0).unwrap_or(false);
+    let is_applied = value.map(|v| v == 0).unwrap_or(false);
     Ok(TweakState {
       id: self.meta.id.clone(),
       current_value: Some(if is_applied { "1" } else { "0" }.to_string()),
@@ -54,14 +80,14 @@ impl Tweak for DisableCEIPTweak {
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
     registry::write_reg_u32(HKEY_LOCAL_MACHINE, SQMCLIENT_PATH, CEIP_ENABLE, 0)
       .map_err(|e| e.to_string())?;
-    registry::write_reg_u32(HKEY_LOCAL_MACHINE, DOTNET_PATH, CEIP_ENABLE, 0)
-      .map_err(|e| e.to_string())
+    disable_ceip_tasks()?;
+    Ok(())
   }
 
   fn revert(&self) -> Result<(), String> {
     registry::write_reg_u32(HKEY_LOCAL_MACHINE, SQMCLIENT_PATH, CEIP_ENABLE, 1)
       .map_err(|e| e.to_string())?;
-    registry::write_reg_u32(HKEY_LOCAL_MACHINE, DOTNET_PATH, CEIP_ENABLE, 1)
-      .map_err(|e| e.to_string())
+    enable_ceip_tasks()?;
+    Ok(())
   }
 }

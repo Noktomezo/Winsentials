@@ -38,7 +38,7 @@ export function TweakCard({ tweak }: TweakCardProps) {
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-lg bg-background/80 backdrop-blur-sm">
           <AlertCircle className="h-5 w-5 text-muted-foreground" />
           <span className="text-sm font-medium text-muted-foreground">
-            {t('tweak.onlyForVersion', { version: tweak.windows_version_required })}
+            {t('tweak.unsupportedVersion')}
           </span>
         </div>
       )}

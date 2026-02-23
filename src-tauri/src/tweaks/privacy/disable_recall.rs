@@ -4,45 +4,43 @@ use crate::tweaks::{
 };
 use winreg::enums::*;
 
-const LOCATION_SENSORS_PATH: &str =
-  r"SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors";
-const DISABLE_LOCATION: &str = "DisableLocation";
+const WINDOWS_AI_PATH: &str = r"SOFTWARE\Policies\Microsoft\Windows\WindowsAI";
+const ALLOW_RECALL: &str = "AllowRecallEnablement";
+const WIN11_24H2_BUILD: u32 = 26100;
 
-pub struct DisableLocationTweak {
+pub struct DisableRecallTweak {
   meta: TweakMeta,
 }
 
-impl DisableLocationTweak {
+impl DisableRecallTweak {
   pub fn new() -> Self {
     Self {
       meta: TweakMeta {
-        id: "disable_location".to_string(),
+        id: "disable_recall".to_string(),
         category: TweakCategory::Privacy,
-        name_key: "tweaks.disableLocation.name".to_string(),
-        description_key: "tweaks.disableLocation.description".to_string(),
-        details_key: "tweaks.disableLocation.details".to_string(),
+        name_key: "tweaks.disableRecall.name".to_string(),
+        description_key: "tweaks.disableRecall.description".to_string(),
+        details_key: "tweaks.disableRecall.details".to_string(),
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,
         risk_level: RiskLevel::Low,
-        min_windows_build: None,
+        min_windows_build: Some(WIN11_24H2_BUILD),
       },
     }
   }
 }
 
-impl Tweak for DisableLocationTweak {
+impl Tweak for DisableRecallTweak {
   fn meta(&self) -> &TweakMeta {
     &self.meta
   }
 
   fn check(&self) -> Result<TweakState, String> {
-    let location = registry::read_reg_u32(
-      HKEY_LOCAL_MACHINE,
-      LOCATION_SENSORS_PATH,
-      DISABLE_LOCATION,
-    );
-    let is_applied = location.map(|v| v == 1).unwrap_or(false);
+    let value =
+      registry::read_reg_u32(HKEY_LOCAL_MACHINE, WINDOWS_AI_PATH, ALLOW_RECALL);
+    let is_applied = value.map(|v| v == 0).unwrap_or(false);
+
     Ok(TweakState {
       id: self.meta.id.clone(),
       current_value: Some(if is_applied { "1" } else { "0" }.to_string()),
@@ -53,9 +51,9 @@ impl Tweak for DisableLocationTweak {
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
     registry::write_reg_u32(
       HKEY_LOCAL_MACHINE,
-      LOCATION_SENSORS_PATH,
-      DISABLE_LOCATION,
-      1,
+      WINDOWS_AI_PATH,
+      ALLOW_RECALL,
+      0,
     )
     .map_err(|e| e.to_string())
   }
@@ -63,9 +61,9 @@ impl Tweak for DisableLocationTweak {
   fn revert(&self) -> Result<(), String> {
     registry::write_reg_u32(
       HKEY_LOCAL_MACHINE,
-      LOCATION_SENSORS_PATH,
-      DISABLE_LOCATION,
-      0,
+      WINDOWS_AI_PATH,
+      ALLOW_RECALL,
+      1,
     )
     .map_err(|e| e.to_string())
   }

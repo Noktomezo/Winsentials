@@ -4,23 +4,23 @@ use crate::tweaks::{
 };
 use winreg::enums::*;
 
-const LOCATION_SENSORS_PATH: &str =
-  r"SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors";
-const DISABLE_LOCATION: &str = "DisableLocation";
+const DNS_CLIENT_PATH: &str =
+  r"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient";
+const ENABLE_MULTICAST: &str = "EnableMulticast";
 
-pub struct DisableLocationTweak {
+pub struct DisableLlmnrTweak {
   meta: TweakMeta,
 }
 
-impl DisableLocationTweak {
+impl DisableLlmnrTweak {
   pub fn new() -> Self {
     Self {
       meta: TweakMeta {
-        id: "disable_location".to_string(),
-        category: TweakCategory::Privacy,
-        name_key: "tweaks.disableLocation.name".to_string(),
-        description_key: "tweaks.disableLocation.description".to_string(),
-        details_key: "tweaks.disableLocation.details".to_string(),
+        id: "disable_llmnr".to_string(),
+        category: TweakCategory::Network,
+        name_key: "tweaks.disableLlmnr.name".to_string(),
+        description_key: "tweaks.disableLlmnr.description".to_string(),
+        details_key: "tweaks.disableLlmnr.details".to_string(),
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,
@@ -31,18 +31,19 @@ impl DisableLocationTweak {
   }
 }
 
-impl Tweak for DisableLocationTweak {
+impl Tweak for DisableLlmnrTweak {
   fn meta(&self) -> &TweakMeta {
     &self.meta
   }
 
   fn check(&self) -> Result<TweakState, String> {
-    let location = registry::read_reg_u32(
+    let value = registry::read_reg_u32(
       HKEY_LOCAL_MACHINE,
-      LOCATION_SENSORS_PATH,
-      DISABLE_LOCATION,
+      DNS_CLIENT_PATH,
+      ENABLE_MULTICAST,
     );
-    let is_applied = location.map(|v| v == 1).unwrap_or(false);
+    let is_applied = value.map(|v| v == 0).unwrap_or(false);
+
     Ok(TweakState {
       id: self.meta.id.clone(),
       current_value: Some(if is_applied { "1" } else { "0" }.to_string()),
@@ -53,9 +54,9 @@ impl Tweak for DisableLocationTweak {
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
     registry::write_reg_u32(
       HKEY_LOCAL_MACHINE,
-      LOCATION_SENSORS_PATH,
-      DISABLE_LOCATION,
-      1,
+      DNS_CLIENT_PATH,
+      ENABLE_MULTICAST,
+      0,
     )
     .map_err(|e| e.to_string())
   }
@@ -63,9 +64,9 @@ impl Tweak for DisableLocationTweak {
   fn revert(&self) -> Result<(), String> {
     registry::write_reg_u32(
       HKEY_LOCAL_MACHINE,
-      LOCATION_SENSORS_PATH,
-      DISABLE_LOCATION,
-      0,
+      DNS_CLIENT_PATH,
+      ENABLE_MULTICAST,
+      1,
     )
     .map_err(|e| e.to_string())
   }

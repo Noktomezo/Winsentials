@@ -4,23 +4,24 @@ use crate::tweaks::{
 };
 use winreg::enums::*;
 
-const LOCATION_SENSORS_PATH: &str =
-  r"SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors";
-const DISABLE_LOCATION: &str = "DisableLocation";
+const PRIVACY_PATH: &str = r"Software\Microsoft\Windows\CurrentVersion\Privacy";
+const TAILORED_EXPERIENCES: &str =
+  "TailoredExperiencesWithDiagnosticDataEnabled";
 
-pub struct DisableLocationTweak {
+pub struct DisableTailoredExperiencesTweak {
   meta: TweakMeta,
 }
 
-impl DisableLocationTweak {
+impl DisableTailoredExperiencesTweak {
   pub fn new() -> Self {
     Self {
       meta: TweakMeta {
-        id: "disable_location".to_string(),
+        id: "disable_tailored_experiences".to_string(),
         category: TweakCategory::Privacy,
-        name_key: "tweaks.disableLocation.name".to_string(),
-        description_key: "tweaks.disableLocation.description".to_string(),
-        details_key: "tweaks.disableLocation.details".to_string(),
+        name_key: "tweaks.disableTailoredExperiences.name".to_string(),
+        description_key: "tweaks.disableTailoredExperiences.description"
+          .to_string(),
+        details_key: "tweaks.disableTailoredExperiences.details".to_string(),
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,
@@ -31,18 +32,19 @@ impl DisableLocationTweak {
   }
 }
 
-impl Tweak for DisableLocationTweak {
+impl Tweak for DisableTailoredExperiencesTweak {
   fn meta(&self) -> &TweakMeta {
     &self.meta
   }
 
   fn check(&self) -> Result<TweakState, String> {
-    let location = registry::read_reg_u32(
-      HKEY_LOCAL_MACHINE,
-      LOCATION_SENSORS_PATH,
-      DISABLE_LOCATION,
+    let value = registry::read_reg_u32(
+      HKEY_CURRENT_USER,
+      PRIVACY_PATH,
+      TAILORED_EXPERIENCES,
     );
-    let is_applied = location.map(|v| v == 1).unwrap_or(false);
+    let is_applied = value.map(|v| v == 0).unwrap_or(false);
+
     Ok(TweakState {
       id: self.meta.id.clone(),
       current_value: Some(if is_applied { "1" } else { "0" }.to_string()),
@@ -52,20 +54,20 @@ impl Tweak for DisableLocationTweak {
 
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
     registry::write_reg_u32(
-      HKEY_LOCAL_MACHINE,
-      LOCATION_SENSORS_PATH,
-      DISABLE_LOCATION,
-      1,
+      HKEY_CURRENT_USER,
+      PRIVACY_PATH,
+      TAILORED_EXPERIENCES,
+      0,
     )
     .map_err(|e| e.to_string())
   }
 
   fn revert(&self) -> Result<(), String> {
     registry::write_reg_u32(
-      HKEY_LOCAL_MACHINE,
-      LOCATION_SENSORS_PATH,
-      DISABLE_LOCATION,
-      0,
+      HKEY_CURRENT_USER,
+      PRIVACY_PATH,
+      TAILORED_EXPERIENCES,
+      1,
     )
     .map_err(|e| e.to_string())
   }

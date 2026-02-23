@@ -1,0 +1,232 @@
+use winreg::enums::*;
+use winreg::{RegKey, RegValue, HKEY};
+
+use crate::autostart::critical::get_critical_level;
+use crate::autostart::file_info::get_file_version_info;
+use crate::autostart::icons::get_icon;
+use crate::autostart::types::{AutostartItem, AutostartSource};
+
+const REGISTRY_KEYS: &[(&str, HKEY, &str)] = &[
+  (
+    "HKCU\\Run",
+    HKEY_CURRENT_USER,
+    r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+  ),
+  (
+    "HKLM\\Run",
+    HKEY_LOCAL_MACHINE,
+    r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+  ),
+  (
+    "HKLM\\Run (WOW64)",
+    HKEY_LOCAL_MACHINE,
+    r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run",
+  ),
+];
+
+fn is_disabled_in_startup_approved(
+  name: &str,
+  hk_root: HKEY,
+  base_path: &str,
+) -> bool {
+  let root = RegKey::predef(hk_root);
+
+  let approved_path = base_path.replace(
+    r"\CurrentVersion\Run",
+    r"\CurrentVersion\Explorer\StartupApproved\Run",
+  );
+
+  if let Ok(key) = root.open_subkey(approved_path) {
+    if let Ok(value) = key.get_raw_value(name) {
+      if value.bytes.len() >= 2 {
+        let first_byte = value.bytes[0];
+        if first_byte == 0x03 || first_byte == 0x01 {
+          return true;
+        }
+      }
+    }
+  }
+
+  false
+}
+
+fn get_target_path(command: &str) -> Option<String> {
+  let cmd = command.trim();
+
+  if cmd.starts_with('"') {
+    if let Some(end_quote) = cmd[1..].find('"') {
+      return Some(cmd[1..end_quote + 1].to_string());
+    }
+  }
+
+  let parts: Vec<&str> = cmd.split_whitespace().collect();
+  if !parts.is_empty() {
+    let exe = parts[0];
+    if exe.to_lowercase().ends_with(".exe") {
+      return Some(exe.to_string());
+    }
+  }
+
+  None
+}
+
+pub fn get_registry_autostart_items() -> Vec<AutostartItem> {
+  let mut items = Vec::new();
+
+  for (location_name, hk_root, path) in REGISTRY_KEYS {
+    let root = RegKey::predef(*hk_root);
+
+    if let Ok(key) = root.open_subkey(*path) {
+      for (name, value) in key.enum_values().filter_map(|r| r.ok()) {
+        let command: String = match value.vtype {
+          RegType::REG_SZ | RegType::REG_EXPAND_SZ => {
+            String::from_utf8_lossy(&value.bytes)
+              .trim_end_matches('\0')
+              .to_string()
+          }
+          _ => continue,
+        };
+
+        let is_disabled =
+          is_disabled_in_startup_approved(&name, *hk_root, *path);
+
+        let target_path = get_target_path(&command);
+        let icon_base64 = target_path.as_ref().and_then(|p| get_icon(p));
+
+        let critical_level = get_critical_level(&name, &command);
+
+        let publisher = target_path
+          .as_ref()
+          .and_then(|p| get_file_version_info(p).ok())
+          .and_then(|v| v.company_name)
+          .unwrap_or_default();
+
+        let id =
+          format!("registry|{}|{}", location_name.replace('\\', "/"), name);
+
+        items.push(AutostartItem {
+          id,
+          name: name.clone(),
+          publisher,
+          command: command.clone(),
+          location: location_name.to_string(),
+          source: AutostartSource::Registry,
+          is_enabled: !is_disabled,
+          is_delayed: false,
+          icon_base64,
+          critical_level,
+          file_path: target_path,
+        });
+      }
+    }
+  }
+
+  items
+}
+
+pub fn toggle_registry_item(id: &str, enable: bool) -> Result<(), String> {
+  let parts: Vec<&str> = id.split('|').collect();
+  if parts.len() != 3 || parts[0] != "registry" {
+    return Err("Invalid registry item ID".to_string());
+  }
+
+  let location = parts[1];
+  let name = parts[2];
+
+  let (hk_root, _base_path, approved_path) = match location {
+    "HKCU/Run" => (
+      HKEY_CURRENT_USER,
+      r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+      r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+    ),
+    "HKLM/Run" => (
+      HKEY_LOCAL_MACHINE,
+      r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+      r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+    ),
+    "HKLM/Run (WOW64)" => (
+      HKEY_LOCAL_MACHINE,
+      r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run",
+      r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+    ),
+    _ => return Err("Unknown registry location".to_string()),
+  };
+
+  let root = RegKey::predef(hk_root);
+
+  if enable {
+    let approved_key = root
+      .create_subkey(approved_path)
+      .map(|(k, _)| k)
+      .map_err(|e| format!("Failed to open StartupApproved: {}", e))?;
+
+    let _ = approved_key.delete_value(name);
+  } else {
+    let approved_key = root
+      .create_subkey(approved_path)
+      .map(|(k, _)| k)
+      .map_err(|e| format!("Failed to open StartupApproved: {}", e))?;
+
+    let data: Vec<u8> = vec![
+      0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ];
+    approved_key
+      .set_raw_value(
+        name,
+        &RegValue {
+          vtype: RegType::REG_BINARY,
+          bytes: data,
+        },
+      )
+      .map_err(|e| format!("Failed to disable item: {}", e))?;
+  }
+
+  Ok(())
+}
+
+pub fn delete_registry_item(id: &str) -> Result<(), String> {
+  let parts: Vec<&str> = id.split('|').collect();
+  if parts.len() != 3 || parts[0] != "registry" {
+    return Err("Invalid registry item ID".to_string());
+  }
+
+  let location = parts[1];
+  let name = parts[2];
+
+  let (hk_root, base_path, approved_path) = match location {
+    "HKCU/Run" => (
+      HKEY_CURRENT_USER,
+      r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+      r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+    ),
+    "HKLM/Run" => (
+      HKEY_LOCAL_MACHINE,
+      r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+      r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+    ),
+    "HKLM/Run (WOW64)" => (
+      HKEY_LOCAL_MACHINE,
+      r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run",
+      r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run",
+    ),
+    _ => return Err("Unknown registry location".to_string()),
+  };
+
+  let root = RegKey::predef(hk_root);
+
+  let key = root
+    .open_subkey_with_flags(base_path, KEY_WRITE | KEY_READ)
+    .map_err(|e| format!("Failed to open registry key: {}", e))?;
+
+  key
+    .delete_value(name)
+    .map_err(|e| format!("Failed to delete registry value: {}", e))?;
+
+  if let Ok(approved_key) =
+    root.open_subkey_with_flags(approved_path, KEY_WRITE)
+  {
+    let _ = approved_key.delete_value(name);
+  }
+
+  Ok(())
+}

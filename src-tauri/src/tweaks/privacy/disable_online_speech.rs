@@ -4,9 +4,8 @@ use crate::tweaks::{
 };
 use winreg::enums::*;
 
-const WIN11_BUILD: u32 = 22000;
 const SPEECH_PATH: &str =
-  r"SOFTWARE\Policies\Microsoft\Speech\OnlineSpeechPrivacy";
+  r"Software\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy";
 const HAS_ACCEPTED: &str = "HasAccepted";
 
 pub struct DisableOnlineSpeechTweak {
@@ -26,7 +25,7 @@ impl DisableOnlineSpeechTweak {
         options: vec![],
         requires_reboot: false,
         risk_level: RiskLevel::Low,
-        min_windows_build: Some(WIN11_BUILD),
+        min_windows_build: None,
       },
     }
   }
@@ -39,7 +38,7 @@ impl Tweak for DisableOnlineSpeechTweak {
 
   fn check(&self) -> Result<TweakState, String> {
     let value =
-      registry::read_reg_u32(HKEY_LOCAL_MACHINE, SPEECH_PATH, HAS_ACCEPTED);
+      registry::read_reg_u32(HKEY_CURRENT_USER, SPEECH_PATH, HAS_ACCEPTED);
     let is_applied = value.map(|v| v == 0).unwrap_or(false);
     Ok(TweakState {
       id: self.meta.id.clone(),
@@ -49,12 +48,12 @@ impl Tweak for DisableOnlineSpeechTweak {
   }
 
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
-    registry::write_reg_u32(HKEY_LOCAL_MACHINE, SPEECH_PATH, HAS_ACCEPTED, 0)
+    registry::write_reg_u32(HKEY_CURRENT_USER, SPEECH_PATH, HAS_ACCEPTED, 0)
       .map_err(|e| e.to_string())
   }
 
   fn revert(&self) -> Result<(), String> {
-    registry::write_reg_u32(HKEY_LOCAL_MACHINE, SPEECH_PATH, HAS_ACCEPTED, 1)
+    registry::write_reg_u32(HKEY_CURRENT_USER, SPEECH_PATH, HAS_ACCEPTED, 1)
       .map_err(|e| e.to_string())
   }
 }

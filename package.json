@@ -10,7 +10,8 @@
     "tauri": "tauri",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "format": "eslint --fix ."
+    "format": "eslint --fix .",
+    "release": "bunx --bun bumpp"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.0",

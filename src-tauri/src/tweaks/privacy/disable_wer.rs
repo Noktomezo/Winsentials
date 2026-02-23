@@ -4,10 +4,8 @@ use crate::tweaks::{
 };
 use winreg::enums::*;
 
-const WER_PATH: &str =
-  r"SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting";
+const WER_PATH: &str = r"SOFTWARE\Microsoft\Windows\Windows Error Reporting";
 const DISABLED: &str = "Disabled";
-const DO_NOT_SHOW_UI: &str = "DoNotShowUI";
 
 pub struct DisableWERTweak {
   meta: TweakMeta,
@@ -49,15 +47,11 @@ impl Tweak for DisableWERTweak {
 
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
     registry::write_reg_u32(HKEY_LOCAL_MACHINE, WER_PATH, DISABLED, 1)
-      .map_err(|e| e.to_string())?;
-    registry::write_reg_u32(HKEY_LOCAL_MACHINE, WER_PATH, DO_NOT_SHOW_UI, 1)
       .map_err(|e| e.to_string())
   }
 
   fn revert(&self) -> Result<(), String> {
     registry::write_reg_u32(HKEY_LOCAL_MACHINE, WER_PATH, DISABLED, 0)
-      .map_err(|e| e.to_string())?;
-    registry::write_reg_u32(HKEY_LOCAL_MACHINE, WER_PATH, DO_NOT_SHOW_UI, 0)
       .map_err(|e| e.to_string())
   }
 }

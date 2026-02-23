@@ -6,22 +6,24 @@ use winreg::enums::*;
 
 const WINDOWS_SEARCH_PATH: &str =
   r"SOFTWARE\Policies\Microsoft\Windows\Windows Search";
-const DISABLE_WEB_SEARCH: &str = "DisableWebSearch";
-const CONNECTED_SEARCH_USE_WEB: &str = "ConnectedSearchUseWeb";
+const ALLOW_CORTANA: &str = "AllowCortana";
+const SPEECH_PATH: &str = r"Software\Microsoft\Speech_OneCore\Preferences";
+const VOICE_ACTIVATION_ON: &str = "VoiceActivationOn";
 
-pub struct DisableCortanaTweak {
+pub struct DisableVoiceActivationTweak {
   meta: TweakMeta,
 }
 
-impl DisableCortanaTweak {
+impl DisableVoiceActivationTweak {
   pub fn new() -> Self {
     Self {
       meta: TweakMeta {
-        id: "disable_cortana".to_string(),
+        id: "disable_voice_activation".to_string(),
         category: TweakCategory::Privacy,
-        name_key: "tweaks.disableCortana.name".to_string(),
-        description_key: "tweaks.disableCortana.description".to_string(),
-        details_key: "tweaks.disableCortana.details".to_string(),
+        name_key: "tweaks.disableVoiceActivation.name".to_string(),
+        description_key: "tweaks.disableVoiceActivation.description"
+          .to_string(),
+        details_key: "tweaks.disableVoiceActivation.details".to_string(),
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,
@@ -32,18 +34,25 @@ impl DisableCortanaTweak {
   }
 }
 
-impl Tweak for DisableCortanaTweak {
+impl Tweak for DisableVoiceActivationTweak {
   fn meta(&self) -> &TweakMeta {
     &self.meta
   }
 
   fn check(&self) -> Result<TweakState, String> {
-    let web_search = registry::read_reg_u32(
+    let cortana = registry::read_reg_u32(
       HKEY_LOCAL_MACHINE,
       WINDOWS_SEARCH_PATH,
-      DISABLE_WEB_SEARCH,
+      ALLOW_CORTANA,
     );
-    let is_applied = web_search.map(|v| v == 1).unwrap_or(false);
+    let voice = registry::read_reg_u32(
+      HKEY_CURRENT_USER,
+      SPEECH_PATH,
+      VOICE_ACTIVATION_ON,
+    );
+    let is_applied = cortana.map(|v| v == 0).unwrap_or(false)
+      && voice.map(|v| v == 0).unwrap_or(false);
+
     Ok(TweakState {
       id: self.meta.id.clone(),
       current_value: Some(if is_applied { "1" } else { "0" }.to_string()),
@@ -55,33 +64,35 @@ impl Tweak for DisableCortanaTweak {
     registry::write_reg_u32(
       HKEY_LOCAL_MACHINE,
       WINDOWS_SEARCH_PATH,
-      DISABLE_WEB_SEARCH,
-      1,
+      ALLOW_CORTANA,
+      0,
     )
     .map_err(|e| e.to_string())?;
     registry::write_reg_u32(
-      HKEY_LOCAL_MACHINE,
-      WINDOWS_SEARCH_PATH,
-      CONNECTED_SEARCH_USE_WEB,
+      HKEY_CURRENT_USER,
+      SPEECH_PATH,
+      VOICE_ACTIVATION_ON,
       0,
     )
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+    Ok(())
   }
 
   fn revert(&self) -> Result<(), String> {
     registry::write_reg_u32(
       HKEY_LOCAL_MACHINE,
       WINDOWS_SEARCH_PATH,
-      DISABLE_WEB_SEARCH,
-      0,
+      ALLOW_CORTANA,
+      1,
     )
     .map_err(|e| e.to_string())?;
     registry::write_reg_u32(
-      HKEY_LOCAL_MACHINE,
-      WINDOWS_SEARCH_PATH,
-      CONNECTED_SEARCH_USE_WEB,
+      HKEY_CURRENT_USER,
+      SPEECH_PATH,
+      VOICE_ACTIVATION_ON,
       1,
     )
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+    Ok(())
   }
 }
