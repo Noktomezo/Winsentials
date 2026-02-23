@@ -6,6 +6,10 @@ use wmi::WMIConnection;
 
 pub trait HasPnpDeviceId {
   fn pnp_device_id(&self) -> &Option<String>;
+
+  fn pnp_device_id_str(&self) -> Option<&str> {
+    self.pnp_device_id().as_deref()
+  }
 }
 
 #[derive(Deserialize, Debug)]

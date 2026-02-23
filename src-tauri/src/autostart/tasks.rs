@@ -9,7 +9,6 @@ use crate::autostart::icons::get_icon;
 use crate::autostart::types::{AutostartItem, AutostartSource};
 
 const STARTUP_TRIGGERS: &[&str] = &["LogonTrigger", "BootTrigger"];
-const STARTUP_TRIGGERS_BYTES: &[&[u8]] = &[b"LogonTrigger", b"BootTrigger"];
 
 struct TaskInfo {
   name: String,
@@ -33,7 +32,6 @@ fn parse_task_xml(xml: &str) -> Option<TaskInfo> {
   let mut in_uri = false;
   let mut in_exec = false;
   let mut in_command = false;
-  let mut in_state = false;
   let mut in_triggers = false;
   let mut in_settings = false;
   let mut in_enabled_setting = false;
@@ -50,13 +48,16 @@ fn parse_task_xml(xml: &str) -> Option<TaskInfo> {
           b"URI" if in_registration_info => in_uri = true,
           b"Exec" => in_exec = true,
           b"Command" if in_exec => in_command = true,
-          b"State" => in_state = true,
+
           b"Triggers" => in_triggers = true,
           b"Settings" => in_settings = true,
           b"Enabled" if in_settings => in_enabled_setting = true,
           b"Delay" => in_delay = true,
           trigger_name if in_triggers => {
-            if STARTUP_TRIGGERS_BYTES.contains(&trigger_name) {
+            if STARTUP_TRIGGERS
+              .iter()
+              .any(|t| t.as_bytes() == trigger_name)
+            {
               current_trigger_is_startup = true;
               let trigger_name_str =
                 String::from_utf8_lossy(trigger_name).to_string();
@@ -71,15 +72,11 @@ fn parse_task_xml(xml: &str) -> Option<TaskInfo> {
         b"URI" => in_uri = false,
         b"Exec" => in_exec = false,
         b"Command" => in_command = false,
-        b"State" => in_state = false,
         b"Triggers" => in_triggers = false,
         b"Settings" => in_settings = false,
         b"Enabled" => in_enabled_setting = false,
         b"Delay" => {
           in_delay = false;
-          if current_trigger_is_startup {
-            current_trigger_is_startup = false;
-          }
         }
         b"LogonTrigger" | b"BootTrigger" => {
           current_trigger_is_startup = false;
@@ -93,9 +90,6 @@ fn parse_task_xml(xml: &str) -> Option<TaskInfo> {
         }
         if in_command {
           command = text.to_string();
-        }
-        if in_state {
-          state = text.to_string();
         }
         if in_enabled_setting && text.to_lowercase() == "false" {
           state = "Disabled".to_string();
@@ -143,7 +137,7 @@ fn get_tasks_xml() -> Option<String> {
       .chunks_exact(2)
       .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
       .collect();
-    String::from_utf16(&utf16_chars).ok()
+    Some(String::from_utf16_lossy(&utf16_chars))
   } else {
     Some(String::from_utf8_lossy(stdout).to_string())
   }
@@ -302,9 +296,16 @@ fn extract_exe_from_command(command: &str) -> Option<String> {
   }
 
   let lower_cmd = cmd.to_lowercase();
-  if let Some(exe_end) = lower_cmd.find(".exe") {
-    let exe_path = cmd[..exe_end + 4].trim();
-    return Some(exe_path.to_string());
+  if let Some(exe_end) = lower_cmd.rfind(".exe") {
+    let boundary_idx = exe_end + 4;
+    if boundary_idx >= cmd.len()
+      || cmd.as_bytes()[boundary_idx].is_ascii_whitespace()
+      || cmd.as_bytes()[boundary_idx] == b'"'
+      || cmd.as_bytes()[boundary_idx] == b'\''
+    {
+      let exe_path = cmd[..boundary_idx].trim();
+      return Some(exe_path.to_string());
+    }
   }
 
   None

@@ -101,10 +101,14 @@ fn collect_lnk_items(
         .map(|e| e.to_string_lossy().to_lowercase() == "lnk")
         .unwrap_or(false)
       {
-        let filename = path
-          .file_name()
-          .map(|n| n.to_string_lossy().to_string())
-          .unwrap_or_default();
+        let filename = match path.file_name() {
+          Some(n) => n.to_string_lossy().to_string(),
+          None => continue,
+        };
+
+        if filename.is_empty() {
+          continue;
+        }
 
         if seen_files.contains(&filename) {
           continue;
@@ -162,11 +166,7 @@ pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
       continue;
     }
 
-    let disabled_folder = match get_disabled_folder(&location_name) {
-      Some(p) => p,
-      None => continue,
-    };
-
+    let disabled_folder = get_disabled_folder(&location_name);
     let mut seen_files: HashSet<String> = HashSet::new();
 
     collect_lnk_items(
@@ -177,14 +177,16 @@ pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
       &mut items,
     );
 
-    if disabled_folder.exists() {
-      collect_lnk_items(
-        &disabled_folder,
-        &location_name,
-        false,
-        &mut seen_files,
-        &mut items,
-      );
+    if let Some(disabled_path) = &disabled_folder {
+      if disabled_path.exists() {
+        collect_lnk_items(
+          disabled_path,
+          &location_name,
+          false,
+          &mut seen_files,
+          &mut items,
+        );
+      }
     }
   }
 

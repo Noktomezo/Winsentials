@@ -38,7 +38,10 @@ fn query_service_config(name: &str) -> Option<ServiceConfig> {
     if line.starts_with("START_TYPE") {
       if let Some((_, value)) = line.split_once(':') {
         start_type = value.trim().to_string();
-        is_delayed = line.to_lowercase().contains("delay");
+      }
+    } else if line.starts_with("DELAYED_AUTO_START") {
+      if let Some((_, value)) = line.split_once(':') {
+        is_delayed = value.trim().to_lowercase() == "true";
       }
     } else if line.starts_with("BINARY_PATH_NAME") {
       let path = line.split_once(':').map(|x| x.1).unwrap_or("").trim();
