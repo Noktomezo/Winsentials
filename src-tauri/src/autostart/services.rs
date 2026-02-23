@@ -1,5 +1,8 @@
 use std::process::Command;
 
+use winreg::RegKey;
+use winreg::enums::*;
+
 use crate::autostart::critical::get_critical_level;
 use crate::autostart::file_info::get_file_version_info;
 use crate::autostart::icons::get_icon;
@@ -18,9 +21,32 @@ const IGNORED_SERVICES: [&str; 10] = [
   "Schedule",
 ];
 
-struct ServiceConfig {
-  start_type: String,
+fn is_ignored_service(name: &str) -> bool {
+  IGNORED_SERVICES
+    .iter()
+    .any(|s| s.eq_ignore_ascii_case(name))
+}
+
+struct ServiceStartInfo {
+  start: u32,
   is_delayed: bool,
+}
+
+fn read_service_start_info(name: &str) -> Option<ServiceStartInfo> {
+  let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+  let path = format!(r"SYSTEM\CurrentControlSet\Services\{}", name);
+  let key = hklm.open_subkey(path).ok()?;
+
+  let start: u32 = key.get_value("Start").ok()?;
+  let is_delayed: u32 = key.get_value("DelayedAutoStart").unwrap_or(0);
+
+  Some(ServiceStartInfo {
+    start,
+    is_delayed: is_delayed == 1,
+  })
+}
+
+struct ServiceConfig {
   command: Option<String>,
   exe_path: Option<String>,
 }
@@ -30,20 +56,12 @@ fn query_service_config(name: &str) -> Option<ServiceConfig> {
 
   let stdout = String::from_utf8_lossy(&output.stdout);
 
-  let mut start_type = String::new();
-  let mut is_delayed = false;
   let mut command = None;
   let mut exe_path = None;
 
   for line in stdout.lines() {
     let line = line.trim();
-    if line.starts_with("START_TYPE") {
-      if let Some((_, value)) = line.split_once(':') {
-        let trimmed = value.trim();
-        start_type = trimmed.to_string();
-        is_delayed = trimmed.to_lowercase().contains("(delayed)");
-      }
-    } else if line.starts_with("BINARY_PATH_NAME") {
+    if line.starts_with("BINARY_PATH_NAME") {
       let raw = line.split_once(':').map(|x| x.1).unwrap_or("").trim();
       let raw = raw.trim_matches('"');
       command = Some(raw.to_string());
@@ -66,12 +84,7 @@ fn query_service_config(name: &str) -> Option<ServiceConfig> {
     }
   }
 
-  Some(ServiceConfig {
-    start_type,
-    is_delayed,
-    command,
-    exe_path,
-  })
+  Some(ServiceConfig { command, exe_path })
 }
 
 fn parse_sc_output(output: &str) -> Vec<(String, String, String)> {
@@ -127,7 +140,18 @@ pub fn get_service_autostart_items() -> Vec<AutostartItem> {
   let services = parse_sc_output(&stdout);
 
   for (name, display_name, _state) in services {
-    if IGNORED_SERVICES.contains(&name.as_str()) {
+    if is_ignored_service(&name) {
+      continue;
+    }
+
+    let start_info = match read_service_start_info(&name) {
+      Some(info) => info,
+      None => continue,
+    };
+
+    let is_auto = start_info.start == 2;
+    let is_disabled = start_info.start == 4;
+    if !is_auto && !is_disabled {
       continue;
     }
 
@@ -135,12 +159,6 @@ pub fn get_service_autostart_items() -> Vec<AutostartItem> {
       Some(c) => c,
       None => continue,
     };
-
-    let is_auto = config.start_type.to_lowercase().contains("auto");
-    let is_disabled = config.start_type.to_lowercase().contains("disabled");
-    if !is_auto && !is_disabled {
-      continue;
-    }
 
     let exe_path = config.exe_path;
     let command = config.command.clone().unwrap_or_default();
@@ -170,7 +188,7 @@ pub fn get_service_autostart_items() -> Vec<AutostartItem> {
       location: format!("Service: {}", name),
       source: AutostartSource::Service,
       is_enabled,
-      is_delayed: config.is_delayed,
+      is_delayed: start_info.is_delayed,
       icon_base64,
       critical_level,
       file_path: exe_path,
@@ -189,10 +207,12 @@ pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {
   let service_name = parts[1];
 
   if enable {
-    let config = query_service_config(service_name)
-      .ok_or_else(|| "Failed to query service config".to_string())?;
+    let start_info =
+      read_service_start_info(service_name).ok_or_else(|| {
+        "Failed to read service config from registry".to_string()
+      })?;
 
-    let start_value = if config.is_delayed {
+    let start_value = if start_info.is_delayed {
       "delayed-auto"
     } else {
       "auto"
