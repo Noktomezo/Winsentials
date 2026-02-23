@@ -147,9 +147,10 @@ fn get_service_path(name: &str) -> Option<String> {
       let path = path.trim_matches('"');
 
       if path.to_lowercase().ends_with(".exe")
-        && let Some(space_idx) = path.find(".exe") {
-          return Some(path[..space_idx + 4].to_string());
-        }
+        && let Some(space_idx) = path.find(".exe")
+      {
+        return Some(path[..space_idx + 4].to_string());
+      }
       return Some(path.to_string());
     }
   }

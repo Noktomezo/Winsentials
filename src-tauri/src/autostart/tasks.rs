@@ -1,7 +1,7 @@
 use std::process::Command;
 
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 
 use crate::autostart::critical::get_critical_level;
 use crate::autostart::file_info::get_file_version_info;
@@ -173,9 +173,10 @@ pub fn get_task_autostart_items() -> Vec<AutostartItem> {
 
             if let Some(task_info) = parse_task_xml(&task_xml)
               && should_include_task(&task_info)
-                && let Some(item) = create_autostart_item(task_info) {
-                  items.push(item);
-                }
+              && let Some(item) = create_autostart_item(task_info)
+            {
+              items.push(item);
+            }
           } else {
             task_xml.push_str(&format!(
               "</{}>",
@@ -202,8 +203,6 @@ fn should_include_task(task: &TaskInfo) -> bool {
   if task.name.starts_with("\\Microsoft") {
     return false;
   }
-
-  
 
   task
     .triggers
@@ -261,9 +260,10 @@ fn extract_exe_from_command(command: &str) -> Option<String> {
   }
 
   if cmd.starts_with('"')
-    && let Some(end) = cmd[1..].find('"') {
-      return Some(cmd[1..end + 1].to_string());
-    }
+    && let Some(end) = cmd[1..].find('"')
+  {
+    return Some(cmd[1..end + 1].to_string());
+  }
 
   let parts: Vec<&str> = cmd.split_whitespace().collect();
   if !parts.is_empty() {

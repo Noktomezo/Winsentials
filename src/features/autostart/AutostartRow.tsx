@@ -1,7 +1,8 @@
 import type { AutostartItem } from '@/shared/types/autostart'
+import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { Clock, Copy, FolderOpen, Info, MoreVertical, Power, PowerOff, Trash2 } from 'lucide-react'
-import { useState } from 'react'
 
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { useAutostartStore } from '@/shared/store/autostart'
@@ -24,9 +25,16 @@ export function AutostartRow({ item }: AutostartRowProps) {
     item.critical_level === 'Warning' && 'bg-orange-500/5 border-l-2 border-l-orange-500',
   )
 
-  const handleCopyCommand = () => {
-    navigator.clipboard.writeText(item.command)
-    setShowMenu(false)
+  const handleCopyCommand = async () => {
+    try {
+      await writeText(item.command)
+    }
+    catch (error) {
+      console.error('Failed to copy:', error)
+    }
+    finally {
+      setShowMenu(false)
+    }
   }
 
   const handleOpenLocation = async () => {
@@ -206,9 +214,14 @@ export function AutostartRow({ item }: AutostartRowProps) {
       )}
 
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="deleteDialogTitle"
+        >
           <div className="w-full max-w-md rounded-lg border border-border bg-card p-4">
-            <h3 className="text-lg font-semibold">
+            <h3 id="deleteDialogTitle" className="text-lg font-semibold">
               {item.critical_level === 'Critical'
                 ? t('autostart.confirmDeleteCritical', { name: item.name })
                 : t('autostart.confirmDelete', { name: item.name })}

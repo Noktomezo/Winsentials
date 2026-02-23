@@ -12,18 +12,19 @@ const TCP_NO_DELAY: &str = "TCPNoDelay";
 const TCP_ACK_FREQUENCY: &str = "TcpAckFrequency";
 const TCP_DEL_ACK_TICKS: &str = "TcpDelAckTicks";
 
-fn get_interface_guids() -> Vec<String> {
+fn get_interface_guids() -> Result<Vec<String>, String> {
   let root = RegKey::predef(HKEY_LOCAL_MACHINE);
-  let interfaces = match root.open_subkey(TCPIP_INTERFACES_PATH) {
-    Ok(key) => key,
-    Err(_) => return vec![],
-  };
+  let interfaces = root
+    .open_subkey(TCPIP_INTERFACES_PATH)
+    .map_err(|e| format!("Failed to open interfaces key: {}", e))?;
 
-  interfaces
-    .enum_keys()
-    .filter_map(|k| k.ok())
-    .filter(|k| k.starts_with('{') && k.ends_with('}'))
-    .collect()
+  Ok(
+    interfaces
+      .enum_keys()
+      .filter_map(|k| k.ok())
+      .filter(|k| k.starts_with('{') && k.ends_with('}'))
+      .collect(),
+  )
 }
 
 fn check_msmq() -> bool {
@@ -32,11 +33,8 @@ fn check_msmq() -> bool {
     .unwrap_or(false)
 }
 
-fn check_interfaces() -> bool {
-  let guids = get_interface_guids();
-  if guids.is_empty() {
-    return true;
-  }
+fn check_interfaces() -> Result<bool, String> {
+  let guids = get_interface_guids()?;
 
   for guid in &guids {
     let path = format!(r"{}\{}", TCPIP_INTERFACES_PATH, guid);
@@ -49,11 +47,11 @@ fn check_interfaces() -> bool {
     let del_ok = del.map(|v| v == 0).unwrap_or(false);
 
     if !(ack_ok && del_ok) {
-      return false;
+      return Ok(false);
     }
   }
 
-  true
+  Ok(true)
 }
 
 pub struct DisableNagleTweak {
@@ -86,7 +84,7 @@ impl Tweak for DisableNagleTweak {
 
   fn check(&self) -> Result<TweakState, String> {
     let msmq_ok = check_msmq();
-    let interfaces_ok = check_interfaces();
+    let interfaces_ok = check_interfaces()?;
     let is_applied = msmq_ok && interfaces_ok;
 
     Ok(TweakState {
@@ -105,21 +103,13 @@ impl Tweak for DisableNagleTweak {
     )
     .map_err(|e| e.to_string())?;
 
-    let guids = get_interface_guids();
+    let guids = get_interface_guids()?;
     for guid in &guids {
       let path = format!(r"{}\{}", TCPIP_INTERFACES_PATH, guid);
-      let _ = registry::write_reg_u32(
-        HKEY_LOCAL_MACHINE,
-        &path,
-        TCP_ACK_FREQUENCY,
-        1,
-      );
-      let _ = registry::write_reg_u32(
-        HKEY_LOCAL_MACHINE,
-        &path,
-        TCP_DEL_ACK_TICKS,
-        0,
-      );
+      registry::write_reg_u32(HKEY_LOCAL_MACHINE, &path, TCP_ACK_FREQUENCY, 1)
+        .map_err(|e| e.to_string())?;
+      registry::write_reg_u32(HKEY_LOCAL_MACHINE, &path, TCP_DEL_ACK_TICKS, 0)
+        .map_err(|e| e.to_string())?;
     }
 
     Ok(())
@@ -133,21 +123,13 @@ impl Tweak for DisableNagleTweak {
     )
     .ok();
 
-    let guids = get_interface_guids();
+    let guids = get_interface_guids()?;
     for guid in &guids {
       let path = format!(r"{}\{}", TCPIP_INTERFACES_PATH, guid);
-      let _ = registry::write_reg_u32(
-        HKEY_LOCAL_MACHINE,
-        &path,
-        TCP_ACK_FREQUENCY,
-        2,
-      );
-      let _ = registry::write_reg_u32(
-        HKEY_LOCAL_MACHINE,
-        &path,
-        TCP_DEL_ACK_TICKS,
-        2,
-      );
+      registry::delete_reg_value(HKEY_LOCAL_MACHINE, &path, TCP_ACK_FREQUENCY)
+        .ok();
+      registry::delete_reg_value(HKEY_LOCAL_MACHINE, &path, TCP_DEL_ACK_TICKS)
+        .ok();
     }
 
     Ok(())

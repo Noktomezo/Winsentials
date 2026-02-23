@@ -56,9 +56,7 @@ fn parse_lnk_file(path: &std::path::Path) -> Option<(String, String)> {
     path.to_string_lossy().to_string()
   };
 
-  let args: String = link
-    .arguments().clone()
-    .unwrap_or_default();
+  let args: String = link.arguments().clone().unwrap_or_default();
 
   let command = if args.is_empty() {
     target.clone()

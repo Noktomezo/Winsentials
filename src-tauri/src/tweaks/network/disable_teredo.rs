@@ -24,7 +24,7 @@ impl DisableTeredoTweak {
         details_key: "tweaks.disableTeredo.details".to_string(),
         ui_type: TweakUiType::Toggle,
         options: vec![],
-        requires_reboot: false,
+        requires_reboot: true,
         risk_level: RiskLevel::Low,
         min_windows_build: None,
       },
@@ -72,14 +72,18 @@ impl Tweak for DisableTeredoTweak {
   }
 
   fn revert(&self) -> Result<(), String> {
-    let current = registry::read_reg_u32(
+    let current_opt = registry::read_reg_u32(
       HKEY_LOCAL_MACHINE,
       TCPIP6_PARAMS_PATH,
       DISABLED_COMPONENTS,
-    )
-    .unwrap_or(0);
+    );
 
+    let current = current_opt.unwrap_or(0);
     let new_value = current & !TEREDO_DISABLED;
+
+    if current_opt.is_none() && new_value == 0 {
+      return Ok(());
+    }
 
     registry::write_reg_u32(
       HKEY_LOCAL_MACHINE,

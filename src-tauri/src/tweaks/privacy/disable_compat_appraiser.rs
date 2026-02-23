@@ -5,6 +5,14 @@ use std::process::Command;
 
 const TASK_NAME: &str = r"\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser";
 
+fn task_exists(task: &str) -> bool {
+  Command::new("schtasks")
+    .args(["/query", "/tn", task])
+    .output()
+    .map(|o| o.status.success())
+    .unwrap_or(false)
+}
+
 fn check_task() -> Result<bool, String> {
   let output = Command::new("schtasks")
     .args(["/query", "/tn", TASK_NAME, "/xml"])
@@ -12,17 +20,11 @@ fn check_task() -> Result<bool, String> {
     .map_err(|e| format!("Failed to query task: {}", e))?;
 
   if !output.status.success() {
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    if stderr.contains("cannot find") || stderr.contains("does not exist") {
-      return Ok(true);
-    }
-    return Err(format!("Failed to query task: {}", stderr.trim()));
+    return Ok(true);
   }
 
   let stdout = String::from_utf8_lossy(&output.stdout);
-
-  let is_disabled = stdout.contains("<State>Disabled</State>")
-    || stdout.contains("<Enabled>false</Enabled>");
+  let is_disabled = stdout.contains("<Enabled>false</Enabled>");
 
   Ok(is_disabled)
 }
@@ -67,21 +69,8 @@ impl Tweak for DisableCompatAppraiserTweak {
   }
 
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
-    let output = Command::new("schtasks")
-      .args(["/query", "/tn", TASK_NAME, "/xml"])
-      .output();
-
-    match output {
-      Ok(o) => {
-        if !o.status.success() {
-          let stderr = String::from_utf8_lossy(&o.stderr);
-          if stderr.contains("cannot find") || stderr.contains("does not exist")
-          {
-            return Ok(());
-          }
-        }
-      }
-      Err(e) => return Err(format!("Failed to query task: {}", e)),
+    if !task_exists(TASK_NAME) {
+      return Ok(());
     }
 
     let output = Command::new("schtasks")
@@ -98,21 +87,8 @@ impl Tweak for DisableCompatAppraiserTweak {
   }
 
   fn revert(&self) -> Result<(), String> {
-    let output = Command::new("schtasks")
-      .args(["/query", "/tn", TASK_NAME, "/xml"])
-      .output();
-
-    match output {
-      Ok(o) => {
-        if !o.status.success() {
-          let stderr = String::from_utf8_lossy(&o.stderr);
-          if stderr.contains("cannot find") || stderr.contains("does not exist")
-          {
-            return Ok(());
-          }
-        }
-      }
-      Err(e) => return Err(format!("Failed to query task: {}", e)),
+    if !task_exists(TASK_NAME) {
+      return Ok(());
     }
 
     let output = Command::new("schtasks")

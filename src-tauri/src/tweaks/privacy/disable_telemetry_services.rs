@@ -3,7 +3,7 @@ use crate::tweaks::{
 };
 use std::process::Command;
 
-const DIAG_TRACKVC: &str = "DiagTrack";
+const DIAG_TRACK: &str = "DiagTrack";
 const DMWAPPUSH_SERVICE: &str = "dmwappushservice";
 
 fn check_service(service: &str) -> Result<bool, String> {
@@ -13,9 +13,8 @@ fn check_service(service: &str) -> Result<bool, String> {
     .map_err(|e| format!("Failed to query service: {}", e))?;
 
   let stdout = String::from_utf8_lossy(&output.stdout);
-  let stderr = String::from_utf8_lossy(&output.stderr);
 
-  if stderr.contains("1060") || stdout.contains("does not exist") {
+  if stdout.contains("1060") || stdout.contains("does not exist") {
     return Ok(true);
   }
 
@@ -25,9 +24,8 @@ fn check_service(service: &str) -> Result<bool, String> {
     .map_err(|e| format!("Failed to query service config: {}", e))?;
 
   let qc_stdout = String::from_utf8_lossy(&qc_output.stdout);
-  let qc_stderr = String::from_utf8_lossy(&qc_output.stderr);
 
-  if qc_stderr.contains("1060") || qc_stdout.contains("does not exist") {
+  if qc_stdout.contains("1060") || qc_stdout.contains("does not exist") {
     return Ok(true);
   }
 
@@ -42,9 +40,10 @@ fn parse_start_type(qc_stdout: &str) -> Option<u32> {
     if line.starts_with("START_TYPE") {
       let parts: Vec<&str> = line.split_whitespace().collect();
       if parts.len() >= 3
-        && let Ok(start_type) = parts[2].parse::<u32>() {
-          return Some(start_type);
-        }
+        && let Ok(start_type) = parts[2].parse::<u32>()
+      {
+        return Some(start_type);
+      }
     }
   }
   None
@@ -57,9 +56,8 @@ fn set_service_disabled(service: &str) -> Result<(), String> {
     .map_err(|e| format!("Failed to query service: {}", e))?;
 
   let stdout = String::from_utf8_lossy(&output.stdout);
-  let stderr = String::from_utf8_lossy(&output.stderr);
 
-  if stderr.contains("1060") || stdout.contains("does not exist") {
+  if stdout.contains("1060") || stdout.contains("does not exist") {
     return Ok(());
   }
 
@@ -85,9 +83,8 @@ fn set_service_auto(service: &str) -> Result<(), String> {
     .map_err(|e| format!("Failed to query service: {}", e))?;
 
   let stdout = String::from_utf8_lossy(&output.stdout);
-  let stderr = String::from_utf8_lossy(&output.stderr);
 
-  if stderr.contains("1060") || stdout.contains("does not exist") {
+  if stdout.contains("1060") || stdout.contains("does not exist") {
     return Ok(());
   }
 
@@ -136,7 +133,7 @@ impl Tweak for DisableTelemetryServicesTweak {
   }
 
   fn check(&self) -> Result<TweakState, String> {
-    let diag_disabled = check_service(DIAG_TRACKVC)?;
+    let diag_disabled = check_service(DIAG_TRACK)?;
     let dmw_disabled = check_service(DMWAPPUSH_SERVICE)?;
     let is_applied = diag_disabled && dmw_disabled;
 
@@ -148,13 +145,13 @@ impl Tweak for DisableTelemetryServicesTweak {
   }
 
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
-    set_service_disabled(DIAG_TRACKVC)?;
+    set_service_disabled(DIAG_TRACK)?;
     set_service_disabled(DMWAPPUSH_SERVICE)?;
     Ok(())
   }
 
   fn revert(&self) -> Result<(), String> {
-    set_service_auto(DIAG_TRACKVC)?;
+    set_service_auto(DIAG_TRACK)?;
     set_service_auto(DMWAPPUSH_SERVICE)?;
     Ok(())
   }

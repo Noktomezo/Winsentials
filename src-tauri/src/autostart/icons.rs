@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::io::{Cursor, Read, Write};
 use std::path::PathBuf;
+use std::sync::LazyLock;
 
 use base64::Engine;
 use parking_lot::RwLock;
@@ -12,17 +13,15 @@ use windows::Win32::Graphics::Gdi::{
 };
 use windows::Win32::Storage::FileSystem::FILE_ATTRIBUTE_NORMAL;
 use windows::Win32::UI::Shell::{
-  SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON, SHGFI_USEFILEATTRIBUTES,
-  SHGetFileInfoW,
+  SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON, SHGetFileInfoW,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
   DestroyIcon, GetIconInfo, HICON, ICONINFO,
 };
 use windows::core::PCWSTR;
 
-lazy_static::lazy_static! {
-  static ref ICON_CACHE: RwLock<HashMap<String, String>> = RwLock::new(HashMap::new());
-}
+static ICON_CACHE: LazyLock<RwLock<HashMap<String, String>>> =
+  LazyLock::new(|| RwLock::new(HashMap::new()));
 
 fn get_cache_dir() -> PathBuf {
   let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
@@ -85,7 +84,7 @@ fn extract_icon_base64(path: &str) -> Option<String> {
       FILE_ATTRIBUTE_NORMAL,
       Some(&mut shfi),
       shfi_size,
-      SHGFI_ICON | SHGFI_LARGEICON | SHGFI_USEFILEATTRIBUTES,
+      SHGFI_ICON | SHGFI_LARGEICON,
     )
   };
 
@@ -170,6 +169,14 @@ unsafe fn icon_to_base64(icon: HICON) -> Option<String> {
   };
 
   let hdc = unsafe { GetDC(HWND::default()) };
+  if hdc.is_invalid() {
+    unsafe {
+      let _ = DeleteObject(icon_info.hbmColor);
+      let _ = DeleteObject(icon_info.hbmMask);
+    };
+    return None;
+  }
+
   let dib_result = unsafe {
     GetDIBits(
       hdc,

@@ -38,12 +38,13 @@ fn is_disabled_in_startup_approved(
 
   if let Ok(key) = root.open_subkey(approved_path)
     && let Ok(value) = key.get_raw_value(name)
-      && value.bytes.len() >= 2 {
-        let first_byte = value.bytes[0];
-        if first_byte == 0x03 || first_byte == 0x01 {
-          return true;
-        }
-      }
+    && value.bytes.len() >= 2
+  {
+    let first_byte = value.bytes[0];
+    if first_byte == 0x03 || first_byte == 0x01 {
+      return true;
+    }
+  }
 
   false
 }
@@ -52,9 +53,10 @@ fn get_target_path(command: &str) -> Option<String> {
   let cmd = command.trim();
 
   if cmd.starts_with('"')
-    && let Some(end_quote) = cmd[1..].find('"') {
-      return Some(cmd[1..end_quote + 1].to_string());
-    }
+    && let Some(end_quote) = cmd[1..].find('"')
+  {
+    return Some(cmd[1..end_quote + 1].to_string());
+  }
 
   let parts: Vec<&str> = cmd.split_whitespace().collect();
   if !parts.is_empty() {
