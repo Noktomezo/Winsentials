@@ -30,22 +30,43 @@ export function AutostartRow({ item }: AutostartRowProps) {
   }
 
   const handleOpenLocation = async () => {
-    if (item.file_path) {
-      const { openLocation } = await import('@/shared/api/autostart')
-      await openLocation(item.file_path)
+    try {
+      if (item.file_path) {
+        const { openLocation } = await import('@/shared/api/autostart')
+        await openLocation(item.file_path)
+      }
     }
-    setShowMenu(false)
+    catch (error) {
+      console.error('Failed to open location:', error)
+    }
+    finally {
+      setShowMenu(false)
+    }
   }
 
   const handleToggle = async () => {
-    await toggle(item.id, !item.is_enabled)
-    setShowMenu(false)
+    try {
+      await toggle(item.id, !item.is_enabled)
+    }
+    catch (error) {
+      console.error('Failed to toggle:', error)
+    }
+    finally {
+      setShowMenu(false)
+    }
   }
 
   const handleDelete = async () => {
-    await deleteItem(item.id)
-    setShowDeleteConfirm(false)
-    setShowMenu(false)
+    try {
+      await deleteItem(item.id)
+    }
+    catch (error) {
+      console.error('Failed to delete:', error)
+    }
+    finally {
+      setShowDeleteConfirm(false)
+      setShowMenu(false)
+    }
   }
 
   return (

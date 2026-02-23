@@ -96,18 +96,18 @@ pub fn get_file_properties(path: &str) -> Result<FileProperties, String> {
   let created = metadata
     .created()
     .ok()
-    .and_then(|t| {
+    .map(|t| {
       let datetime: DateTime<Utc> = t.into();
-      Some(format_datetime(datetime))
+      format_datetime(datetime)
     })
     .unwrap_or_else(|| "Unknown".to_string());
 
   let modified = metadata
     .modified()
     .ok()
-    .and_then(|t| {
+    .map(|t| {
       let datetime: DateTime<Utc> = t.into();
-      Some(format_datetime(datetime))
+      format_datetime(datetime)
     })
     .unwrap_or_else(|| "Unknown".to_string());
 

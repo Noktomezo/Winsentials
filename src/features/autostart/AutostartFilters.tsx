@@ -1,4 +1,5 @@
 import { Download, RefreshCw, Search } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/utils'
@@ -9,17 +10,29 @@ const filters = ['all', 'enabled', 'disabled'] as const
 export function AutostartFilters() {
   const { t } = useTranslation()
   const { filter, setFilter, search, setSearch, load, loading } = useAutostartStore()
+  const [exporting, setExporting] = useState(false)
 
   const handleExport = async () => {
-    const { exportAutostart } = await import('@/shared/api/autostart')
-    const csv = await exportAutostart()
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'autostart.csv'
-    a.click()
-    URL.revokeObjectURL(url)
+    if (exporting)
+      return
+    setExporting(true)
+    try {
+      const { exportAutostart } = await import('@/shared/api/autostart')
+      const csv = await exportAutostart()
+      const blob = new Blob([csv], { type: 'text/csv' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'autostart.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+    }
+    catch (error) {
+      console.error('Failed to export:', error)
+    }
+    finally {
+      setExporting(false)
+    }
   }
 
   return (
@@ -66,7 +79,8 @@ export function AutostartFilters() {
       <button
         type="button"
         onClick={handleExport}
-        className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm hover:bg-accent"
+        disabled={exporting}
+        className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
       >
         <Download className="h-4 w-4" />
         {t('autostart.exportCsv')}

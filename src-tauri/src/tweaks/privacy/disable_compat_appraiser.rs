@@ -7,22 +7,24 @@ const TASK_NAME: &str = r"\Microsoft\Windows\Application Experience\Microsoft Co
 
 fn check_task() -> Result<bool, String> {
   let output = Command::new("schtasks")
-    .args(["/query", "/tn", TASK_NAME])
-    .output();
+    .args(["/query", "/tn", TASK_NAME, "/xml"])
+    .output()
+    .map_err(|e| format!("Failed to query task: {}", e))?;
 
-  match output {
-    Ok(o) => {
-      let stdout = String::from_utf8_lossy(&o.stdout);
-      if stdout.contains("Disabled") {
-        return Ok(true);
-      }
-      if stdout.contains("Ready") || stdout.contains("Running") {
-        return Ok(false);
-      }
-      Ok(true)
+  if !output.status.success() {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if stderr.contains("cannot find") || stderr.contains("does not exist") {
+      return Ok(true);
     }
-    Err(_) => Ok(true),
+    return Err(format!("Failed to query task: {}", stderr.trim()));
   }
+
+  let stdout = String::from_utf8_lossy(&output.stdout);
+
+  let is_disabled = stdout.contains("<State>Disabled</State>")
+    || stdout.contains("<Enabled>false</Enabled>");
+
+  Ok(is_disabled)
 }
 
 pub struct DisableCompatAppraiserTweak {
@@ -66,45 +68,63 @@ impl Tweak for DisableCompatAppraiserTweak {
 
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
     let output = Command::new("schtasks")
-      .args(["/query", "/tn", TASK_NAME])
+      .args(["/query", "/tn", TASK_NAME, "/xml"])
       .output();
 
     match output {
       Ok(o) => {
-        let stdout = String::from_utf8_lossy(&o.stdout);
-        if stdout.contains("does not exist") {
-          return Ok(());
+        if !o.status.success() {
+          let stderr = String::from_utf8_lossy(&o.stderr);
+          if stderr.contains("cannot find") || stderr.contains("does not exist")
+          {
+            return Ok(());
+          }
         }
       }
-      Err(_) => return Ok(()),
+      Err(e) => return Err(format!("Failed to query task: {}", e)),
     }
 
-    Command::new("schtasks")
+    let output = Command::new("schtasks")
       .args(["/change", "/tn", TASK_NAME, "/disable"])
-      .status()
+      .output()
       .map_err(|e| format!("Failed to disable task: {}", e))?;
+
+    if !output.status.success() {
+      let stderr = String::from_utf8_lossy(&output.stderr);
+      return Err(format!("Failed to disable task: {}", stderr.trim()));
+    }
+
     Ok(())
   }
 
   fn revert(&self) -> Result<(), String> {
     let output = Command::new("schtasks")
-      .args(["/query", "/tn", TASK_NAME])
+      .args(["/query", "/tn", TASK_NAME, "/xml"])
       .output();
 
     match output {
       Ok(o) => {
-        let stdout = String::from_utf8_lossy(&o.stdout);
-        if stdout.contains("does not exist") {
-          return Ok(());
+        if !o.status.success() {
+          let stderr = String::from_utf8_lossy(&o.stderr);
+          if stderr.contains("cannot find") || stderr.contains("does not exist")
+          {
+            return Ok(());
+          }
         }
       }
-      Err(_) => return Ok(()),
+      Err(e) => return Err(format!("Failed to query task: {}", e)),
     }
 
-    Command::new("schtasks")
+    let output = Command::new("schtasks")
       .args(["/change", "/tn", TASK_NAME, "/enable"])
-      .status()
+      .output()
       .map_err(|e| format!("Failed to enable task: {}", e))?;
+
+    if !output.status.success() {
+      let stderr = String::from_utf8_lossy(&output.stderr);
+      return Err(format!("Failed to enable task: {}", stderr.trim()));
+    }
+
     Ok(())
   }
 }

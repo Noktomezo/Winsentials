@@ -16,9 +16,21 @@ fn disable_ceip_tasks() -> Result<(), String> {
     r"\Microsoft\Windows\Customer Experience Improvement Program\BthSQM",
   ];
   for task in &tasks {
-    let _ = Command::new("schtasks")
+    let output = Command::new("schtasks")
       .args(["/change", "/tn", task, "/disable"])
-      .status();
+      .output()
+      .map_err(|e| format!("Failed to spawn schtasks: {}", e))?;
+
+    if !output.status.success() {
+      let stderr = String::from_utf8_lossy(&output.stderr);
+      if !stderr.contains("does not exist") && !stderr.contains("cannot find") {
+        return Err(format!(
+          "Failed to disable task '{}': {}",
+          task,
+          stderr.trim()
+        ));
+      }
+    }
   }
   Ok(())
 }
@@ -31,9 +43,21 @@ fn enable_ceip_tasks() -> Result<(), String> {
     r"\Microsoft\Windows\Customer Experience Improvement Program\BthSQM",
   ];
   for task in &tasks {
-    let _ = Command::new("schtasks")
+    let output = Command::new("schtasks")
       .args(["/change", "/tn", task, "/enable"])
-      .status();
+      .output()
+      .map_err(|e| format!("Failed to spawn schtasks: {}", e))?;
+
+    if !output.status.success() {
+      let stderr = String::from_utf8_lossy(&output.stderr);
+      if !stderr.contains("does not exist") && !stderr.contains("cannot find") {
+        return Err(format!(
+          "Failed to enable task '{}': {}",
+          task,
+          stderr.trim()
+        ));
+      }
+    }
   }
   Ok(())
 }

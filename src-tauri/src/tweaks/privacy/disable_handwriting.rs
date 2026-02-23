@@ -61,17 +61,17 @@ impl Tweak for DisableHandwritingTweak {
 
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
     registry::write_reg_u32(
-      HKEY_CURRENT_USER,
-      PERSONALIZATION_PATH,
-      ACCEPTED_PRIVACY_POLICY,
-      0,
-    )
-    .map_err(|e| e.to_string())?;
-    registry::write_reg_u32(
       HKEY_LOCAL_MACHINE,
       TABLETPC_PATH,
       PREVENT_HANDWRITING_SHARING,
       1,
+    )
+    .map_err(|e| e.to_string())?;
+    registry::write_reg_u32(
+      HKEY_CURRENT_USER,
+      PERSONALIZATION_PATH,
+      ACCEPTED_PRIVACY_POLICY,
+      0,
     )
     .map_err(|e| e.to_string())?;
     Ok(())
@@ -79,17 +79,17 @@ impl Tweak for DisableHandwritingTweak {
 
   fn revert(&self) -> Result<(), String> {
     registry::write_reg_u32(
-      HKEY_CURRENT_USER,
-      PERSONALIZATION_PATH,
-      ACCEPTED_PRIVACY_POLICY,
-      1,
-    )
-    .map_err(|e| e.to_string())?;
-    registry::write_reg_u32(
       HKEY_LOCAL_MACHINE,
       TABLETPC_PATH,
       PREVENT_HANDWRITING_SHARING,
       0,
+    )
+    .map_err(|e| e.to_string())?;
+    registry::write_reg_u32(
+      HKEY_CURRENT_USER,
+      PERSONALIZATION_PATH,
+      ACCEPTED_PRIVACY_POLICY,
+      1,
     )
     .map_err(|e| e.to_string())?;
     Ok(())

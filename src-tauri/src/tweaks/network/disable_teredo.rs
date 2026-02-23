@@ -7,7 +7,7 @@ use winreg::enums::*;
 const TCPIP6_PARAMS_PATH: &str =
   r"SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters";
 const DISABLED_COMPONENTS: &str = "DisabledComponents";
-const TEREDO_DISABLED: u32 = 4;
+const TEREDO_DISABLED: u32 = 8;
 
 pub struct DisableTeredoTweak {
   meta: TweakMeta,

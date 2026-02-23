@@ -4,16 +4,16 @@ mod tweaks;
 mod wmi_queries;
 
 use autostart::{
-  delete_autostart_item, export_autostart_csv, get_all_autostart_items,
-  get_file_properties, open_file_location, toggle_autostart_item, AutostartItem,
-  FileProperties,
+  AutostartItem, FileProperties, delete_autostart_item, export_autostart_csv,
+  get_all_autostart_items, get_file_properties, open_file_location,
+  toggle_autostart_item,
 };
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
 use system_info::{
   get_dynamic_system_info, get_static_system_info, get_system_info,
 };
-use tweaks::{get_all_tweaks, get_tweak_by_id, TweakMeta, TweakState};
+use tweaks::{TweakMeta, TweakState, get_all_tweaks, get_tweak_by_id};
 
 const WIN11_BUILD: u32 = 22000;
 

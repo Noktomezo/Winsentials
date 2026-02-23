@@ -11,15 +11,26 @@ const START_TRACK_PROGS: &str = "Start_TrackProgs";
 const TASK_NAME: &str =
   r"\Microsoft\Windows\Application Experience\ProgramDataUpdater";
 
-fn is_task_disabled() -> bool {
-  Command::new("schtasks")
-    .args(["/query", "/tn", TASK_NAME])
+fn is_task_disabled() -> Result<bool, String> {
+  let output = Command::new("schtasks")
+    .args(["/query", "/tn", TASK_NAME, "/xml"])
     .output()
-    .map(|o| {
-      let output = String::from_utf8_lossy(&o.stdout);
-      output.contains("Disabled")
-    })
-    .unwrap_or(false)
+    .map_err(|e| format!("Failed to query task: {}", e))?;
+
+  if !output.status.success() {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if stderr.contains("cannot find") || stderr.contains("does not exist") {
+      return Ok(true);
+    }
+    return Err(format!("Failed to query task: {}", stderr.trim()));
+  }
+
+  let stdout = String::from_utf8_lossy(&output.stdout);
+
+  let is_disabled = stdout.contains("<State>Disabled</State>")
+    || stdout.contains("<Enabled>false</Enabled>");
+
+  Ok(is_disabled)
 }
 
 pub struct DisableUsageTrackingTweak {
@@ -56,7 +67,7 @@ impl Tweak for DisableUsageTrackingTweak {
       EXPLORER_ADVANCED_PATH,
       START_TRACK_PROGS,
     );
-    let task_disabled = is_task_disabled();
+    let task_disabled = is_task_disabled()?;
     let is_applied =
       track_progs.map(|v| v == 0).unwrap_or(false) && task_disabled;
 
@@ -76,9 +87,17 @@ impl Tweak for DisableUsageTrackingTweak {
     )
     .map_err(|e| e.to_string())?;
 
-    let _ = Command::new("schtasks")
+    let output = Command::new("schtasks")
       .args(["/change", "/tn", TASK_NAME, "/disable"])
-      .status();
+      .output()
+      .map_err(|e| format!("Failed to disable task: {}", e))?;
+
+    if !output.status.success() {
+      let stderr = String::from_utf8_lossy(&output.stderr);
+      if !stderr.contains("cannot find") && !stderr.contains("does not exist") {
+        return Err(format!("Failed to disable task: {}", stderr.trim()));
+      }
+    }
 
     Ok(())
   }
@@ -92,9 +111,17 @@ impl Tweak for DisableUsageTrackingTweak {
     )
     .map_err(|e| e.to_string())?;
 
-    let _ = Command::new("schtasks")
+    let output = Command::new("schtasks")
       .args(["/change", "/tn", TASK_NAME, "/enable"])
-      .status();
+      .output()
+      .map_err(|e| format!("Failed to enable task: {}", e))?;
+
+    if !output.status.success() {
+      let stderr = String::from_utf8_lossy(&output.stderr);
+      if !stderr.contains("cannot find") && !stderr.contains("does not exist") {
+        return Err(format!("Failed to enable task: {}", stderr.trim()));
+      }
+    }
 
     Ok(())
   }

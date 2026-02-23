@@ -1,139 +1,253 @@
 use std::process::Command;
 
+use quick_xml::events::Event;
+use quick_xml::Reader;
+
 use crate::autostart::critical::get_critical_level;
 use crate::autostart::file_info::get_file_version_info;
 use crate::autostart::icons::get_icon;
 use crate::autostart::types::{AutostartItem, AutostartSource};
 
-const STARTUP_TRIGGERS: [&str; 4] =
-  ["AtLogon", "AtStartup", "At system startup", "At logon"];
+const STARTUP_TRIGGERS: &[&str] =
+  &["LogonTrigger", "BootTrigger", "RegistrationTrigger"];
 
-fn parse_csv_line(line: &str) -> Vec<String> {
-  let mut fields = Vec::new();
-  let mut current = String::new();
-  let mut in_quotes = false;
+struct TaskInfo {
+  name: String,
+  command: String,
+  state: String,
+  triggers: Vec<String>,
+}
 
-  for ch in line.chars() {
-    match ch {
-      '"' => {
-        in_quotes = !in_quotes;
+fn parse_task_xml(xml: &str) -> Option<TaskInfo> {
+  let mut reader = Reader::from_str(xml);
+  reader.config_mut().trim_text(true);
+
+  let mut name = String::new();
+  let mut command = String::new();
+  let mut state = String::new();
+  let mut triggers = Vec::new();
+
+  let mut in_registration_info = false;
+  let mut in_uri = false;
+  let mut in_exec = false;
+  let mut in_command = false;
+  let mut in_state = false;
+  let mut in_triggers = false;
+  let mut in_settings = false;
+  let mut in_enabled_setting = false;
+
+  let mut buf = Vec::new();
+
+  loop {
+    match reader.read_event_into(&mut buf) {
+      Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
+        match e.local_name().as_ref() {
+          b"RegistrationInfo" => in_registration_info = true,
+          b"URI" if in_registration_info => in_uri = true,
+          b"Exec" => in_exec = true,
+          b"Command" if in_exec => in_command = true,
+          b"State" => in_state = true,
+          b"Triggers" => in_triggers = true,
+          b"LogonTrigger" | b"BootTrigger" | b"RegistrationTrigger"
+            if in_triggers =>
+          {
+            let trigger_name =
+              String::from_utf8_lossy(e.local_name().as_ref()).to_string();
+            triggers.push(trigger_name);
+          }
+          b"Settings" => in_settings = true,
+          b"Enabled" if in_settings => in_enabled_setting = true,
+          _ => {}
+        }
       }
-      ',' if !in_quotes => {
-        fields.push(current.trim().trim_matches('"').to_string());
-        current = String::new();
+      Ok(Event::End(ref e)) => match e.local_name().as_ref() {
+        b"RegistrationInfo" => in_registration_info = false,
+        b"URI" => in_uri = false,
+        b"Exec" => in_exec = false,
+        b"Command" => in_command = false,
+        b"State" => in_state = false,
+        b"Triggers" => in_triggers = false,
+        b"Settings" => in_settings = false,
+        b"Enabled" => in_enabled_setting = false,
+        _ => {}
+      },
+      Ok(Event::Text(ref e)) => {
+        let text = e.unescape().unwrap_or_default();
+        if in_uri && name.is_empty() {
+          name = text.to_string();
+        }
+        if in_command {
+          command = text.to_string();
+        }
+        if in_state {
+          state = text.to_string();
+        }
+        if in_enabled_setting && text.to_lowercase() == "false" {
+          state = "Disabled".to_string();
+        }
       }
-      _ => {
-        current.push(ch);
-      }
+      Ok(Event::Eof) => break,
+      Err(_) => break,
+      _ => {}
     }
+    buf.clear();
   }
-  fields.push(current.trim().trim_matches('"').to_string());
-  fields
+
+  if name.is_empty() {
+    return None;
+  }
+
+  Some(TaskInfo {
+    name,
+    command,
+    state,
+    triggers,
+  })
+}
+
+fn get_tasks_xml() -> Option<String> {
+  let output = Command::new("schtasks")
+    .args(["/query", "/xml", "/v"])
+    .output()
+    .ok()?;
+
+  if !output.status.success() {
+    return None;
+  }
+
+  Some(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
 pub fn get_task_autostart_items() -> Vec<AutostartItem> {
   let mut items = Vec::new();
 
-  let output = match Command::new("schtasks")
-    .args(["/query", "/fo", "CSV", "/v"])
-    .output()
-  {
-    Ok(o) => o,
-    Err(_) => return items,
+  let xml = match get_tasks_xml() {
+    Some(x) => x,
+    None => return items,
   };
 
-  let stdout = String::from_utf8_lossy(&output.stdout);
-  let lines: Vec<&str> = stdout.lines().collect();
+  let mut reader = Reader::from_str(&xml);
+  reader.config_mut().trim_text(true);
 
-  if lines.is_empty() {
-    return items;
-  }
+  let mut buf = Vec::new();
+  let mut task_xml = String::new();
+  let mut in_task = false;
+  let mut depth = 0;
 
-  let headers = parse_csv_line(lines[0]);
-  let name_idx = headers
-    .iter()
-    .position(|h| h.to_lowercase().contains("taskname"));
-  let trigger_idx = headers.iter().position(|h| {
-    h.to_lowercase().contains("next run")
-      || h.to_lowercase().contains("trigger")
-  });
-  let command_idx = headers.iter().position(|h| {
-    h.to_lowercase().contains("task to run")
-      || h.to_lowercase().contains("command")
-  });
-  let status_idx = headers
-    .iter()
-    .position(|h| h.to_lowercase().contains("status"));
+  loop {
+    match reader.read_event_into(&mut buf) {
+      Ok(Event::Start(ref e)) => {
+        if e.local_name().as_ref() == b"Task" && !in_task {
+          in_task = true;
+          task_xml = String::from("<?xml version=\"1.0\"?>\n<Task>");
+          depth = 1;
+        } else if in_task {
+          depth += 1;
+          task_xml.push_str(&format!(
+            "<{}>",
+            String::from_utf8_lossy(e.local_name().as_ref())
+          ));
+        }
+      }
+      Ok(Event::Empty(ref e)) => {
+        if in_task {
+          task_xml.push_str(&format!(
+            "<{}/>",
+            String::from_utf8_lossy(e.local_name().as_ref())
+          ));
+        }
+      }
+      Ok(Event::Text(ref e)) => {
+        if in_task {
+          let text = e.unescape().unwrap_or_default();
+          let escaped = quick_xml::escape::escape(text.as_ref());
+          task_xml.push_str(&escaped);
+        }
+      }
+      Ok(Event::End(ref e)) => {
+        if in_task {
+          depth -= 1;
+          if depth == 0 {
+            task_xml.push_str("</Task>");
+            in_task = false;
 
-  for line in lines.iter().skip(1) {
-    let fields = parse_csv_line(line);
-
-    if fields.is_empty() {
-      continue;
+            if let Some(task_info) = parse_task_xml(&task_xml)
+              && should_include_task(&task_info)
+                && let Some(item) = create_autostart_item(task_info) {
+                  items.push(item);
+                }
+          } else {
+            task_xml.push_str(&format!(
+              "</{}>",
+              String::from_utf8_lossy(e.local_name().as_ref())
+            ));
+          }
+        }
+      }
+      Ok(Event::Eof) => break,
+      Err(_) => break,
+      _ => {}
     }
-
-    let name = name_idx
-      .and_then(|i| fields.get(i))
-      .map(|s| s.trim_start_matches('\\').to_string())
-      .unwrap_or_default();
-
-    if name.is_empty() || name.starts_with("Microsoft") {
-      continue;
-    }
-
-    let trigger = trigger_idx
-      .and_then(|i| fields.get(i))
-      .map(|s| s.to_string())
-      .unwrap_or_default();
-
-    let is_startup = STARTUP_TRIGGERS.iter().any(|t| trigger.contains(t));
-
-    if !is_startup {
-      continue;
-    }
-
-    let command = command_idx
-      .and_then(|i| fields.get(i))
-      .map(|s| s.to_string())
-      .unwrap_or_default();
-
-    let status = status_idx
-      .and_then(|i| fields.get(i))
-      .map(|s| s.to_lowercase())
-      .unwrap_or_default();
-
-    let is_enabled = !status.contains("disabled");
-    let is_delayed = trigger.to_lowercase().contains("delay");
-
-    let target_path = extract_exe_from_command(&command);
-    let icon_base64 = target_path.as_ref().and_then(|p| get_icon(p));
-
-    let publisher = target_path
-      .as_ref()
-      .and_then(|p| get_file_version_info(p).ok())
-      .and_then(|v| v.company_name)
-      .unwrap_or_default();
-
-    let critical_level = get_critical_level(&name, &command);
-
-    let id = format!("task|{}", name.replace('\\', "/"));
-
-    items.push(AutostartItem {
-      id,
-      name: name.split('\\').last().unwrap_or(&name).to_string(),
-      publisher,
-      command,
-      location: format!("Task: {}", name),
-      source: AutostartSource::Task,
-      is_enabled,
-      is_delayed,
-      icon_base64,
-      critical_level,
-      file_path: target_path,
-    });
+    buf.clear();
   }
 
   items
+}
+
+fn should_include_task(task: &TaskInfo) -> bool {
+  if task.name.is_empty() {
+    return false;
+  }
+
+  if task.name.starts_with("\\Microsoft") {
+    return false;
+  }
+
+  
+
+  task
+    .triggers
+    .iter()
+    .any(|t| STARTUP_TRIGGERS.contains(&t.as_str()))
+}
+
+fn create_autostart_item(task: TaskInfo) -> Option<AutostartItem> {
+  let is_enabled = task.state != "Disabled";
+  let is_delayed = false;
+
+  let target_path = extract_exe_from_command(&task.command);
+  let icon_base64 = target_path.as_ref().and_then(|p| get_icon(p));
+
+  let publisher = target_path
+    .as_ref()
+    .and_then(|p| get_file_version_info(p).ok())
+    .and_then(|v| v.company_name)
+    .unwrap_or_default();
+
+  let critical_level = get_critical_level(&task.name, &task.command);
+
+  let display_name = task
+    .name
+    .split('\\')
+    .next_back()
+    .unwrap_or(&task.name)
+    .to_string();
+
+  let id = format!("task|{}", task.name.replace('\\', "/"));
+
+  Some(AutostartItem {
+    id,
+    name: display_name,
+    publisher,
+    command: task.command,
+    location: format!("Task: {}", task.name),
+    source: AutostartSource::Task,
+    is_enabled,
+    is_delayed,
+    icon_base64,
+    critical_level,
+    file_path: target_path,
+  })
 }
 
 fn extract_exe_from_command(command: &str) -> Option<String> {
@@ -146,11 +260,10 @@ fn extract_exe_from_command(command: &str) -> Option<String> {
     return None;
   }
 
-  if cmd.starts_with('"') {
-    if let Some(end) = cmd[1..].find('"') {
+  if cmd.starts_with('"')
+    && let Some(end) = cmd[1..].find('"') {
       return Some(cmd[1..end + 1].to_string());
     }
-  }
 
   let parts: Vec<&str> = cmd.split_whitespace().collect();
   if !parts.is_empty() {

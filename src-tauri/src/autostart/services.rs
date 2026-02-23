@@ -32,8 +32,7 @@ fn parse_sc_output(
 
     if line.starts_with("SERVICE_NAME:") {
       if !current_name.is_empty() {
-        let is_auto = current_start_type.to_lowercase().contains("auto")
-          || current_start_type.to_lowercase().contains("demand");
+        let is_auto = current_start_type.to_lowercase().contains("auto");
         if is_auto {
           let is_delayed = current_start_type.to_lowercase().contains("delay");
           services.push((
@@ -62,8 +61,7 @@ fn parse_sc_output(
   }
 
   if !current_name.is_empty() {
-    let is_auto = current_start_type.to_lowercase().contains("auto")
-      || current_start_type.to_lowercase().contains("demand");
+    let is_auto = current_start_type.to_lowercase().contains("auto");
     if is_auto {
       let is_delayed = current_start_type.to_lowercase().contains("delay");
       services.push((
@@ -104,7 +102,8 @@ pub fn get_service_autostart_items() -> Vec<AutostartItem> {
     let is_enabled = state.to_lowercase().contains("running")
       || start_type.to_lowercase().contains("auto");
 
-    let critical_level = get_critical_level(&name, &display_name);
+    let command = exe_path.clone().unwrap_or_default();
+    let critical_level = get_critical_level(&name, &command);
 
     let publisher = exe_path
       .as_ref()
@@ -144,14 +143,13 @@ fn get_service_path(name: &str) -> Option<String> {
   for line in stdout.lines() {
     let line = line.trim();
     if line.starts_with("BINARY_PATH_NAME") {
-      let path = line.split(':').nth(1).unwrap_or("").trim();
+      let path = line.split_once(':').map(|x| x.1).unwrap_or("").trim();
       let path = path.trim_matches('"');
 
-      if path.to_lowercase().ends_with(".exe") {
-        if let Some(space_idx) = path.find(".exe") {
+      if path.to_lowercase().ends_with(".exe")
+        && let Some(space_idx) = path.find(".exe") {
           return Some(path[..space_idx + 4].to_string());
         }
-      }
       return Some(path.to_string());
     }
   }

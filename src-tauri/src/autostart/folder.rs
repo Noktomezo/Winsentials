@@ -34,22 +34,30 @@ fn get_startup_folders() -> Vec<(String, PathBuf)> {
 fn parse_lnk_file(path: &std::path::Path) -> Option<(String, String)> {
   let link = ShellLink::open(path).ok()?;
 
-  let target = if let Some(rel) = link.relative_path() {
-    rel.to_string()
-  } else if let Some(info) = link.link_info() {
+  let target = if let Some(info) = link.link_info() {
     if let Some(local) = info.local_base_path() {
       local.clone()
+    } else if let Some(rel) = link.relative_path() {
+      if let Some(parent) = path.parent() {
+        parent.join(rel).to_string_lossy().to_string()
+      } else {
+        rel.to_string()
+      }
     } else {
       path.to_string_lossy().to_string()
+    }
+  } else if let Some(rel) = link.relative_path() {
+    if let Some(parent) = path.parent() {
+      parent.join(rel).to_string_lossy().to_string()
+    } else {
+      rel.to_string()
     }
   } else {
     path.to_string_lossy().to_string()
   };
 
   let args: String = link
-    .arguments()
-    .as_ref()
-    .map(|s| s.clone())
+    .arguments().clone()
     .unwrap_or_default();
 
   let command = if args.is_empty() {
@@ -163,11 +171,9 @@ pub fn toggle_folder_item(id: &str, enable: bool) -> Result<(), String> {
       fs::rename(&disabled_file, &source_file)
         .map_err(|e| format!("Failed to restore file: {}", e))?;
     }
-  } else {
-    if source_file.exists() {
-      fs::rename(&source_file, &disabled_file)
-        .map_err(|e| format!("Failed to disable file: {}", e))?;
-    }
+  } else if source_file.exists() {
+    fs::rename(&source_file, &disabled_file)
+      .map_err(|e| format!("Failed to disable file: {}", e))?;
   }
 
   Ok(())

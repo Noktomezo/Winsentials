@@ -1,5 +1,5 @@
 use winreg::enums::*;
-use winreg::{RegKey, RegValue, HKEY};
+use winreg::{HKEY, RegKey, RegValue};
 
 use crate::autostart::critical::get_critical_level;
 use crate::autostart::file_info::get_file_version_info;
@@ -36,16 +36,14 @@ fn is_disabled_in_startup_approved(
     r"\CurrentVersion\Explorer\StartupApproved\Run",
   );
 
-  if let Ok(key) = root.open_subkey(approved_path) {
-    if let Ok(value) = key.get_raw_value(name) {
-      if value.bytes.len() >= 2 {
+  if let Ok(key) = root.open_subkey(approved_path)
+    && let Ok(value) = key.get_raw_value(name)
+      && value.bytes.len() >= 2 {
         let first_byte = value.bytes[0];
         if first_byte == 0x03 || first_byte == 0x01 {
           return true;
         }
       }
-    }
-  }
 
   false
 }
@@ -53,11 +51,10 @@ fn is_disabled_in_startup_approved(
 fn get_target_path(command: &str) -> Option<String> {
   let cmd = command.trim();
 
-  if cmd.starts_with('"') {
-    if let Some(end_quote) = cmd[1..].find('"') {
+  if cmd.starts_with('"')
+    && let Some(end_quote) = cmd[1..].find('"') {
       return Some(cmd[1..end_quote + 1].to_string());
     }
-  }
 
   let parts: Vec<&str> = cmd.split_whitespace().collect();
   if !parts.is_empty() {
@@ -80,15 +77,26 @@ pub fn get_registry_autostart_items() -> Vec<AutostartItem> {
       for (name, value) in key.enum_values().filter_map(|r| r.ok()) {
         let command: String = match value.vtype {
           RegType::REG_SZ | RegType::REG_EXPAND_SZ => {
-            String::from_utf8_lossy(&value.bytes)
-              .trim_end_matches('\0')
-              .to_string()
+            if value.bytes.len() >= 2 && value.bytes.len() % 2 == 0 {
+              let u16_slice: Vec<u16> = value
+                .bytes
+                .chunks_exact(2)
+                .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+                .collect();
+              String::from_utf16_lossy(&u16_slice)
+                .trim_end_matches('\0')
+                .to_string()
+            } else {
+              String::from_utf8_lossy(&value.bytes)
+                .trim_end_matches('\0')
+                .to_string()
+            }
           }
           _ => continue,
         };
 
         let is_disabled =
-          is_disabled_in_startup_approved(&name, *hk_root, *path);
+          is_disabled_in_startup_approved(&name, *hk_root, path);
 
         let target_path = get_target_path(&command);
         let icon_base64 = target_path.as_ref().and_then(|p| get_icon(p));

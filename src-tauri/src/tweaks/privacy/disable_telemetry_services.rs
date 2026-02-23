@@ -31,10 +31,23 @@ fn check_service(service: &str) -> Result<bool, String> {
     return Ok(true);
   }
 
-  let is_disabled = qc_stdout.contains("4_DEMAND_START") == false
-    && (qc_stdout.contains("4") || stdout.contains("STOPPED"));
+  let is_disabled = parse_start_type(&qc_stdout) == Some(4);
 
   Ok(is_disabled)
+}
+
+fn parse_start_type(qc_stdout: &str) -> Option<u32> {
+  for line in qc_stdout.lines() {
+    let line = line.trim();
+    if line.starts_with("START_TYPE") {
+      let parts: Vec<&str> = line.split_whitespace().collect();
+      if parts.len() >= 3
+        && let Ok(start_type) = parts[2].parse::<u32>() {
+          return Some(start_type);
+        }
+    }
+  }
+  None
 }
 
 fn set_service_disabled(service: &str) -> Result<(), String> {
@@ -50,12 +63,17 @@ fn set_service_disabled(service: &str) -> Result<(), String> {
     return Ok(());
   }
 
-  Command::new("sc")
+  let output = Command::new("sc")
     .args(["config", service, "start=", "disabled"])
-    .status()
+    .output()
     .map_err(|e| format!("Failed to disable {}: {}", service, e))?;
 
-  let _ = Command::new("sc").args(["stop", service]).status();
+  if !output.status.success() {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    return Err(format!("Failed to disable {}: {}", service, stderr.trim()));
+  }
+
+  let _ = Command::new("sc").args(["stop", service]).output();
 
   Ok(())
 }
@@ -73,12 +91,17 @@ fn set_service_auto(service: &str) -> Result<(), String> {
     return Ok(());
   }
 
-  Command::new("sc")
+  let output = Command::new("sc")
     .args(["config", service, "start=", "auto"])
-    .status()
+    .output()
     .map_err(|e| format!("Failed to enable {}: {}", service, e))?;
 
-  let _ = Command::new("sc").args(["start", service]).status();
+  if !output.status.success() {
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    return Err(format!("Failed to enable {}: {}", service, stderr.trim()));
+  }
+
+  let _ = Command::new("sc").args(["start", service]).output();
 
   Ok(())
 }

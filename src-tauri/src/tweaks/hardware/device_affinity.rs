@@ -3,8 +3,8 @@ use crate::tweaks::{
   RiskLevel, Tweak, TweakCategory, TweakMeta, TweakState, TweakUiType,
 };
 use crate::wmi_queries::{
-  get_wmi_connection, Win32_NetworkAdapter, Win32_USBController,
-  Win32_VideoController,
+  Win32_NetworkAdapter, Win32_USBController, Win32_VideoController,
+  get_wmi_connection,
 };
 use winreg::enums::*;
 
@@ -51,8 +51,8 @@ impl Tweak for DeviceAffinityTweak {
 
     let mut any_applied = false;
     for gpu in gpus {
-      if let Some(pnp_id) = gpu.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
+      if let Some(pnp_id) = gpu.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_") {
           let path = format!(
             r"SYSTEM\CurrentControlSet\Enum\{}\{}",
             pnp_id, AFFINITY_SUFFIX
@@ -64,7 +64,6 @@ impl Tweak for DeviceAffinityTweak {
             break;
           }
         }
-      }
     }
 
     Ok(TweakState {
@@ -87,8 +86,8 @@ impl Tweak for DeviceAffinityTweak {
       wmi.query().map_err(|e| e.to_string())?;
 
     for gpu in &gpus {
-      if let Some(pnp_id) = &gpu.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
+      if let Some(pnp_id) = &gpu.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_") {
           let path = format!(
             r"SYSTEM\CurrentControlSet\Enum\{}\{}",
             pnp_id, AFFINITY_SUFFIX
@@ -103,12 +102,11 @@ impl Tweak for DeviceAffinityTweak {
           )
           .ok();
         }
-      }
     }
 
     for nic in &nics {
-      if let Some(pnp_id) = &nic.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
+      if let Some(pnp_id) = &nic.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_") {
           let path = format!(
             r"SYSTEM\CurrentControlSet\Enum\{}\{}",
             pnp_id, AFFINITY_SUFFIX
@@ -123,12 +121,11 @@ impl Tweak for DeviceAffinityTweak {
           )
           .ok();
         }
-      }
     }
 
     for usb in &usbs {
-      if let Some(pnp_id) = &usb.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
+      if let Some(pnp_id) = &usb.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_") {
           let path = format!(
             r"SYSTEM\CurrentControlSet\Enum\{}\{}",
             pnp_id, AFFINITY_SUFFIX
@@ -143,7 +140,6 @@ impl Tweak for DeviceAffinityTweak {
           )
           .ok();
         }
-      }
     }
 
     Ok(())
@@ -162,8 +158,8 @@ impl Tweak for DeviceAffinityTweak {
       wmi.query().map_err(|e| e.to_string())?;
 
     for gpu in &gpus {
-      if let Some(pnp_id) = &gpu.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
+      if let Some(pnp_id) = &gpu.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_") {
           let path = format!(
             r"SYSTEM\CurrentControlSet\Enum\{}\{}",
             pnp_id, AFFINITY_SUFFIX
@@ -177,12 +173,11 @@ impl Tweak for DeviceAffinityTweak {
           )
           .ok();
         }
-      }
     }
 
     for nic in &nics {
-      if let Some(pnp_id) = &nic.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
+      if let Some(pnp_id) = &nic.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_") {
           let path = format!(
             r"SYSTEM\CurrentControlSet\Enum\{}\{}",
             pnp_id, AFFINITY_SUFFIX
@@ -196,12 +191,11 @@ impl Tweak for DeviceAffinityTweak {
           )
           .ok();
         }
-      }
     }
 
     for usb in &usbs {
-      if let Some(pnp_id) = &usb.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
+      if let Some(pnp_id) = &usb.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_") {
           let path = format!(
             r"SYSTEM\CurrentControlSet\Enum\{}\{}",
             pnp_id, AFFINITY_SUFFIX
@@ -215,7 +209,6 @@ impl Tweak for DeviceAffinityTweak {
           )
           .ok();
         }
-      }
     }
 
     Ok(())

@@ -5,20 +5,20 @@ use std::path::PathBuf;
 
 use base64::Engine;
 use parking_lot::RwLock;
-use windows::core::PCWSTR;
 use windows::Win32::Foundation::HWND;
 use windows::Win32::Graphics::Gdi::{
-  DeleteObject, GetDC, GetDIBits, GetObjectW, ReleaseDC, BITMAP, BITMAPINFO,
-  BITMAPINFOHEADER, DIB_RGB_COLORS,
+  BITMAP, BITMAPINFO, BITMAPINFOHEADER, DIB_RGB_COLORS, DeleteObject, GetDC,
+  GetDIBits, GetObjectW, ReleaseDC,
 };
 use windows::Win32::Storage::FileSystem::FILE_ATTRIBUTE_NORMAL;
 use windows::Win32::UI::Shell::{
-  SHGetFileInfoW, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON,
-  SHGFI_USEFILEATTRIBUTES,
+  SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON, SHGFI_USEFILEATTRIBUTES,
+  SHGetFileInfoW,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
   DestroyIcon, GetIconInfo, HICON, ICONINFO,
 };
+use windows::core::PCWSTR;
 
 lazy_static::lazy_static! {
   static ref ICON_CACHE: RwLock<HashMap<String, String>> = RwLock::new(HashMap::new());
@@ -125,7 +125,35 @@ unsafe fn icon_to_base64(icon: HICON) -> Option<String> {
 
   let width = bitmap.bmWidth;
   let height = bitmap.bmHeight;
-  let size = (width * height * 4) as usize;
+
+  if width <= 0 || height <= 0 {
+    unsafe {
+      let _ = DeleteObject(icon_info.hbmColor);
+      let _ = DeleteObject(icon_info.hbmMask);
+    };
+    return None;
+  }
+
+  let size = match (width as usize).checked_mul(height as usize) {
+    Some(s) => match s.checked_mul(4) {
+      Some(s) => s,
+      None => {
+        unsafe {
+          let _ = DeleteObject(icon_info.hbmColor);
+          let _ = DeleteObject(icon_info.hbmMask);
+        };
+        return None;
+      }
+    },
+    None => {
+      unsafe {
+        let _ = DeleteObject(icon_info.hbmColor);
+        let _ = DeleteObject(icon_info.hbmMask);
+      };
+      return None;
+    }
+  };
+
   let mut pixels = vec![0u8; size];
 
   let mut bmi = BITMAPINFO {
@@ -142,7 +170,7 @@ unsafe fn icon_to_base64(icon: HICON) -> Option<String> {
   };
 
   let hdc = unsafe { GetDC(HWND::default()) };
-  unsafe {
+  let dib_result = unsafe {
     GetDIBits(
       hdc,
       icon_info.hbmColor,
@@ -151,9 +179,17 @@ unsafe fn icon_to_base64(icon: HICON) -> Option<String> {
       Some(pixels.as_mut_ptr() as *mut _),
       &mut bmi,
       DIB_RGB_COLORS,
-    );
-  }
+    )
+  };
   unsafe { ReleaseDC(HWND::default(), hdc) };
+
+  if dib_result == 0 {
+    unsafe {
+      let _ = DeleteObject(icon_info.hbmColor);
+      let _ = DeleteObject(icon_info.hbmMask);
+    };
+    return None;
+  }
 
   unsafe {
     let _ = DeleteObject(icon_info.hbmColor);
