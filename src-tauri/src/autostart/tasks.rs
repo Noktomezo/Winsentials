@@ -295,7 +295,7 @@ fn extract_exe_from_command(command: &str) -> Option<String> {
     return Some(cmd[1..end + 1].to_string());
   }
 
-  let lower_cmd = cmd.to_lowercase();
+  let lower_cmd = cmd.to_ascii_lowercase();
   if let Some(exe_end) = lower_cmd.rfind(".exe") {
     let boundary_idx = exe_end + 4;
     if boundary_idx >= cmd.len()

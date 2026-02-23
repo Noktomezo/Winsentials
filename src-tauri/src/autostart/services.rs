@@ -37,11 +37,9 @@ fn query_service_config(name: &str) -> Option<ServiceConfig> {
     let line = line.trim();
     if line.starts_with("START_TYPE") {
       if let Some((_, value)) = line.split_once(':') {
-        start_type = value.trim().to_string();
-      }
-    } else if line.starts_with("DELAYED_AUTO_START") {
-      if let Some((_, value)) = line.split_once(':') {
-        is_delayed = value.trim().to_lowercase() == "true";
+        let trimmed = value.trim();
+        start_type = trimmed.to_string();
+        is_delayed = trimmed.to_lowercase().contains("(delayed)");
       }
     } else if line.starts_with("BINARY_PATH_NAME") {
       let path = line.split_once(':').map(|x| x.1).unwrap_or("").trim();
@@ -178,8 +176,17 @@ pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {
   let service_name = parts[1];
 
   if enable {
+    let config = query_service_config(service_name)
+      .ok_or_else(|| "Failed to query service config".to_string())?;
+
+    let start_value = if config.is_delayed {
+      "delayed-auto"
+    } else {
+      "auto"
+    };
+
     let output = Command::new("sc")
-      .args(["config", service_name, "start=", "auto"])
+      .args(["config", service_name, "start=", start_value])
       .output()
       .map_err(|e| format!("Failed to execute sc: {}", e))?;
 

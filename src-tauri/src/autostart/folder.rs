@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use lnk::ShellLink;
 
@@ -9,6 +9,28 @@ use crate::autostart::critical::get_critical_level;
 use crate::autostart::file_info::get_file_version_info;
 use crate::autostart::icons::get_icon;
 use crate::autostart::types::{AutostartItem, AutostartSource};
+
+fn validate_filename(filename: &str) -> Result<(), String> {
+  if filename.is_empty() {
+    return Err("Filename is empty".to_string());
+  }
+
+  let path = Path::new(filename);
+
+  if path.is_absolute() {
+    return Err("Filename must not be absolute".to_string());
+  }
+
+  let components: Vec<_> = path.components().collect();
+  if components.len() != 1 {
+    return Err("Filename must contain exactly one path component".to_string());
+  }
+
+  match &components[0] {
+    Component::Normal(_) => Ok(()),
+    _ => Err("Filename contains invalid path components".to_string()),
+  }
+}
 
 fn get_startup_folders() -> Vec<(String, PathBuf)> {
   let mut folders = Vec::new();
@@ -202,6 +224,8 @@ pub fn toggle_folder_item(id: &str, enable: bool) -> Result<(), String> {
   let location = parts[1];
   let filename = parts[2];
 
+  validate_filename(filename)?;
+
   let source_folders: Vec<(String, PathBuf)> = get_startup_folders();
   let source_path = source_folders
     .iter()
@@ -239,6 +263,8 @@ pub fn delete_folder_item(id: &str) -> Result<(), String> {
 
   let location = parts[1];
   let filename = parts[2];
+
+  validate_filename(filename)?;
 
   let source_folders: Vec<(String, PathBuf)> = get_startup_folders();
   let source_path = source_folders
