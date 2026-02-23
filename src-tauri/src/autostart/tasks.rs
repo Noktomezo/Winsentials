@@ -301,19 +301,17 @@ fn extract_exe_from_command(command: &str) -> Option<String> {
     return Some(cmd[1..end + 1].to_string());
   }
 
-  let parts: Vec<&str> = cmd.split_whitespace().collect();
-  if !parts.is_empty() {
-    let exe = parts[0];
-    if exe.to_lowercase().ends_with(".exe") {
-      return Some(exe.to_string());
-    }
+  let lower_cmd = cmd.to_lowercase();
+  if let Some(exe_end) = lower_cmd.find(".exe") {
+    let exe_path = cmd[..exe_end + 4].trim();
+    return Some(exe_path.to_string());
   }
 
   None
 }
 
 pub fn toggle_task_item(id: &str, enable: bool) -> Result<(), String> {
-  let parts: Vec<&str> = id.split('|').collect();
+  let parts: Vec<&str> = id.splitn(2, '|').collect();
   if parts.len() != 2 || parts[0] != "task" {
     return Err("Invalid task item ID".to_string());
   }
@@ -336,7 +334,7 @@ pub fn toggle_task_item(id: &str, enable: bool) -> Result<(), String> {
 }
 
 pub fn delete_task_item(id: &str) -> Result<(), String> {
-  let parts: Vec<&str> = id.split('|').collect();
+  let parts: Vec<&str> = id.splitn(2, '|').collect();
   if parts.len() != 2 || parts[0] != "task" {
     return Err("Invalid task item ID".to_string());
   }

@@ -18,26 +18,46 @@ const IGNORED_SERVICES: [&str; 10] = [
   "Schedule",
 ];
 
-fn get_service_start_type(name: &str) -> Option<(String, bool)> {
+struct ServiceConfig {
+  start_type: String,
+  is_delayed: bool,
+  exe_path: Option<String>,
+}
+
+fn query_service_config(name: &str) -> Option<ServiceConfig> {
   let output = Command::new("sc").args(["qc", name]).output().ok()?;
 
   let stdout = String::from_utf8_lossy(&output.stdout);
 
   let mut start_type = String::new();
   let mut is_delayed = false;
+  let mut exe_path = None;
 
   for line in stdout.lines() {
     let line = line.trim();
     if line.starts_with("START_TYPE") {
       if let Some((_, value)) = line.split_once(':') {
-        let value = value.trim();
-        start_type = value.to_string();
+        start_type = value.trim().to_string();
         is_delayed = line.to_lowercase().contains("delay");
+      }
+    } else if line.starts_with("BINARY_PATH_NAME") {
+      let path = line.split_once(':').map(|x| x.1).unwrap_or("").trim();
+      let path = path.trim_matches('"');
+
+      let lower_path = path.to_lowercase();
+      if let Some(exe_idx) = lower_path.find(".exe") {
+        exe_path = Some(path[..exe_idx + 4].to_string());
+      } else {
+        exe_path = Some(path.to_string());
       }
     }
   }
 
-  Some((start_type, is_delayed))
+  Some(ServiceConfig {
+    start_type,
+    is_delayed,
+    exe_path,
+  })
 }
 
 fn parse_sc_output(output: &str) -> Vec<(String, String, String)> {
@@ -92,25 +112,26 @@ pub fn get_service_autostart_items() -> Vec<AutostartItem> {
   let stdout = String::from_utf8_lossy(&output.stdout);
   let services = parse_sc_output(&stdout);
 
-  for (name, display_name, state) in services {
+  for (name, display_name, _state) in services {
     if IGNORED_SERVICES.contains(&name.as_str()) {
       continue;
     }
 
-    let (start_type, is_delayed) = match get_service_start_type(&name) {
-      Some(info) => info,
+    let config = match query_service_config(&name) {
+      Some(c) => c,
       None => continue,
     };
 
-    let is_auto = start_type.to_lowercase().contains("auto");
-    if !is_auto {
+    let is_auto = config.start_type.to_lowercase().contains("auto");
+    let is_disabled = config.start_type.to_lowercase().contains("disabled");
+    if !is_auto && !is_disabled {
       continue;
     }
 
-    let exe_path = get_service_path(&name);
+    let exe_path = config.exe_path;
     let icon_base64 = exe_path.as_ref().and_then(|p| get_icon(p));
 
-    let is_enabled = state.to_lowercase().contains("running");
+    let is_enabled = is_auto;
 
     let command = exe_path.clone().unwrap_or_default();
     let critical_level = get_critical_level(&name, &command);
@@ -135,7 +156,7 @@ pub fn get_service_autostart_items() -> Vec<AutostartItem> {
       location: format!("Service: {}", name),
       source: AutostartSource::Service,
       is_enabled,
-      is_delayed,
+      is_delayed: config.is_delayed,
       icon_base64,
       critical_level,
       file_path: exe_path,
@@ -143,28 +164,6 @@ pub fn get_service_autostart_items() -> Vec<AutostartItem> {
   }
 
   items
-}
-
-fn get_service_path(name: &str) -> Option<String> {
-  let output = Command::new("sc").args(["qc", name]).output().ok()?;
-
-  let stdout = String::from_utf8_lossy(&output.stdout);
-
-  for line in stdout.lines() {
-    let line = line.trim();
-    if line.starts_with("BINARY_PATH_NAME") {
-      let path = line.split_once(':').map(|x| x.1).unwrap_or("").trim();
-      let path = path.trim_matches('"');
-
-      let lower_path = path.to_lowercase();
-      if let Some(exe_idx) = lower_path.find(".exe") {
-        return Some(path[..exe_idx + 4].to_string());
-      }
-      return Some(path.to_string());
-    }
-  }
-
-  None
 }
 
 pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {

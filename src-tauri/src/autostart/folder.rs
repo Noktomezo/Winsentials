@@ -1,6 +1,7 @@
+use std::collections::HashSet;
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use lnk::ShellLink;
 
@@ -84,10 +85,77 @@ fn get_disabled_folder(location: &str) -> Option<PathBuf> {
   )
 }
 
+fn collect_lnk_items(
+  dir: &Path,
+  location_name: &str,
+  is_enabled: bool,
+  seen_files: &mut HashSet<String>,
+  items: &mut Vec<AutostartItem>,
+) {
+  if let Ok(entries) = fs::read_dir(dir) {
+    for entry in entries.filter_map(|e| e.ok()) {
+      let path = entry.path();
+
+      if path
+        .extension()
+        .map(|e| e.to_string_lossy().to_lowercase() == "lnk")
+        .unwrap_or(false)
+      {
+        let filename = path
+          .file_name()
+          .map(|n| n.to_string_lossy().to_string())
+          .unwrap_or_default();
+
+        if seen_files.contains(&filename) {
+          continue;
+        }
+        seen_files.insert(filename.clone());
+
+        let name = path
+          .file_stem()
+          .map(|s| s.to_string_lossy().to_string())
+          .unwrap_or_else(|| "Unknown".to_string());
+
+        let (target_path, command) =
+          parse_lnk_file(&path).unwrap_or_else(|| {
+            (
+              path.to_string_lossy().to_string(),
+              path.to_string_lossy().to_string(),
+            )
+          });
+
+        let icon_base64 = get_icon(&target_path);
+
+        let critical_level = get_critical_level(&name, &command);
+
+        let publisher = get_file_version_info(&target_path)
+          .ok()
+          .and_then(|v| v.company_name)
+          .unwrap_or_default();
+
+        let id =
+          format!("folder|{}|{}", location_name.replace(' ', "_"), filename);
+
+        items.push(AutostartItem {
+          id,
+          name,
+          publisher,
+          command,
+          location: location_name.to_string(),
+          source: AutostartSource::Folder,
+          is_enabled,
+          is_delayed: false,
+          icon_base64,
+          critical_level,
+          file_path: Some(target_path),
+        });
+      }
+    }
+  }
+}
+
 pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
   let mut items = Vec::new();
-  let mut seen_files: std::collections::HashSet<String> =
-    std::collections::HashSet::new();
 
   for (location_name, folder_path) in get_startup_folders() {
     if !folder_path.exists() {
@@ -99,133 +167,24 @@ pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
       None => continue,
     };
 
-    if let Ok(entries) = fs::read_dir(&folder_path) {
-      for entry in entries.filter_map(|e| e.ok()) {
-        let path = entry.path();
+    let mut seen_files: HashSet<String> = HashSet::new();
 
-        if path
-          .extension()
-          .map(|e| e.to_string_lossy().to_lowercase() == "lnk")
-          .unwrap_or(false)
-        {
-          let filename = path
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_default();
-
-          if seen_files.contains(&filename) {
-            continue;
-          }
-          seen_files.insert(filename.clone());
-
-          let name = path
-            .file_stem()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_else(|| "Unknown".to_string());
-
-          let (target_path, command) =
-            parse_lnk_file(&path).unwrap_or_else(|| {
-              (
-                path.to_string_lossy().to_string(),
-                path.to_string_lossy().to_string(),
-              )
-            });
-
-          let is_disabled = disabled_folder.join(&filename).exists();
-
-          let icon_base64 = get_icon(&target_path);
-
-          let critical_level = get_critical_level(&name, &command);
-
-          let publisher = get_file_version_info(&target_path)
-            .ok()
-            .and_then(|v| v.company_name)
-            .unwrap_or_default();
-
-          let id =
-            format!("folder|{}|{}", location_name.replace(' ', "_"), filename);
-
-          items.push(AutostartItem {
-            id,
-            name,
-            publisher,
-            command,
-            location: location_name.clone(),
-            source: AutostartSource::Folder,
-            is_enabled: !is_disabled,
-            is_delayed: false,
-            icon_base64,
-            critical_level,
-            file_path: Some(target_path),
-          });
-        }
-      }
-    }
+    collect_lnk_items(
+      &folder_path,
+      &location_name,
+      true,
+      &mut seen_files,
+      &mut items,
+    );
 
     if disabled_folder.exists() {
-      if let Ok(entries) = fs::read_dir(&disabled_folder) {
-        for entry in entries.filter_map(|e| e.ok()) {
-          let path = entry.path();
-
-          if path
-            .extension()
-            .map(|e| e.to_string_lossy().to_lowercase() == "lnk")
-            .unwrap_or(false)
-          {
-            let filename = path
-              .file_name()
-              .map(|n| n.to_string_lossy().to_string())
-              .unwrap_or_default();
-
-            if seen_files.contains(&filename) {
-              continue;
-            }
-            seen_files.insert(filename.clone());
-
-            let name = path
-              .file_stem()
-              .map(|s| s.to_string_lossy().to_string())
-              .unwrap_or_else(|| "Unknown".to_string());
-
-            let (target_path, command) =
-              parse_lnk_file(&path).unwrap_or_else(|| {
-                (
-                  path.to_string_lossy().to_string(),
-                  path.to_string_lossy().to_string(),
-                )
-              });
-
-            let icon_base64 = get_icon(&target_path);
-
-            let critical_level = get_critical_level(&name, &command);
-
-            let publisher = get_file_version_info(&target_path)
-              .ok()
-              .and_then(|v| v.company_name)
-              .unwrap_or_default();
-
-            let id = format!(
-              "folder|{}|{}",
-              location_name.replace(' ', "_"),
-              filename
-            );
-
-            items.push(AutostartItem {
-              id,
-              name,
-              publisher,
-              command,
-              location: location_name.clone(),
-              source: AutostartSource::Folder,
-              is_enabled: false,
-              is_delayed: false,
-              icon_base64,
-              critical_level,
-              file_path: Some(target_path),
-            });
-          }
-        }
-      }
+      collect_lnk_items(
+        &disabled_folder,
+        &location_name,
+        false,
+        &mut seen_files,
+        &mut items,
+      );
     }
   }
 

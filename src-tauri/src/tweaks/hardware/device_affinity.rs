@@ -3,8 +3,8 @@ use crate::tweaks::{
   RiskLevel, Tweak, TweakCategory, TweakMeta, TweakState, TweakUiType,
 };
 use crate::wmi_queries::{
-  Win32_NetworkAdapter, Win32_USBController, Win32_VideoController,
-  get_wmi_connection,
+  HasPnpDeviceId, Win32_NetworkAdapter, Win32_USBController,
+  Win32_VideoController, get_wmi_connection,
 };
 use winreg::enums::*;
 
@@ -59,6 +59,25 @@ fn check_device_affinity(
   Some(policy_ok && assignment_ok)
 }
 
+fn check_devices(
+  devices: &[impl HasPnpDeviceId],
+  mask: &[u8],
+  any_device: &mut bool,
+  all_applied: &mut bool,
+) {
+  for device in devices {
+    if let Some(pnp_id) = &device.pnp_device_id() {
+      if pnp_id.starts_with("PCI\\VEN_") {
+        *any_device = true;
+        match check_device_affinity(pnp_id, mask) {
+          Some(true) => {}
+          Some(false) | None => *all_applied = false,
+        }
+      }
+    }
+  }
+}
+
 impl Tweak for DeviceAffinityTweak {
   fn meta(&self) -> &TweakMeta {
     &self.meta
@@ -79,44 +98,9 @@ impl Tweak for DeviceAffinityTweak {
     let mut any_device = false;
     let mut all_applied = true;
 
-    for gpu in &gpus {
-      if let Some(pnp_id) = &gpu.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          any_device = true;
-          match check_device_affinity(pnp_id, &[0x02]) {
-            Some(true) => {}
-            Some(false) => all_applied = false,
-            None => all_applied = false,
-          }
-        }
-      }
-    }
-
-    for nic in &nics {
-      if let Some(pnp_id) = &nic.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          any_device = true;
-          match check_device_affinity(pnp_id, &[0x04]) {
-            Some(true) => {}
-            Some(false) => all_applied = false,
-            None => all_applied = false,
-          }
-        }
-      }
-    }
-
-    for usb in &usbs {
-      if let Some(pnp_id) = &usb.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          any_device = true;
-          match check_device_affinity(pnp_id, &[0x08]) {
-            Some(true) => {}
-            Some(false) => all_applied = false,
-            None => all_applied = false,
-          }
-        }
-      }
-    }
+    check_devices(&gpus, &[0x02], &mut any_device, &mut all_applied);
+    check_devices(&nics, &[0x04], &mut any_device, &mut all_applied);
+    check_devices(&usbs, &[0x08], &mut any_device, &mut all_applied);
 
     let is_applied = any_device && all_applied;
     Ok(TweakState {

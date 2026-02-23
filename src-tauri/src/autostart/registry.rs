@@ -89,16 +89,21 @@ fn expand_env_vars(s: &str) -> String {
   let wide: Vec<u16> = s.encode_utf16().chain(std::iter::once(0)).collect();
   let input = windows::core::PCWSTR(wide.as_ptr());
 
-  let mut buffer = [0u16; 1024];
   unsafe {
-    let len = ExpandEnvironmentStringsW(input, Some(&mut buffer));
-    if len > 0 {
-      let result: OsString =
-        OsStringExt::from_wide(&buffer[..(len as usize).saturating_sub(1)]);
-      result.to_string_lossy().to_string()
-    } else {
-      s.to_string()
+    let required_len = ExpandEnvironmentStringsW(input, None);
+    if required_len == 0 {
+      return s.to_string();
     }
+
+    let mut buffer = vec![0u16; required_len as usize];
+    let len = ExpandEnvironmentStringsW(input, Some(&mut buffer));
+    if len == 0 {
+      return s.to_string();
+    }
+
+    let result: OsString =
+      OsStringExt::from_wide(&buffer[..(len as usize).saturating_sub(1)]);
+    result.to_string_lossy().to_string()
   }
 }
 

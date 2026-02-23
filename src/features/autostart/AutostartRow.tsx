@@ -20,6 +20,8 @@ export function AutostartRow({ item }: AutostartRowProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const cancelBtnRef = useRef<HTMLButtonElement>(null)
 
+  const menuItemClass = 'flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent'
+
   useEffect(() => {
     if (showDeleteConfirm) {
       cancelBtnRef.current?.focus()
@@ -156,7 +158,7 @@ export function AutostartRow({ item }: AutostartRowProps) {
                   <button
                     type="button"
                     onClick={handleToggle}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent"
+                    className={menuItemClass}
                   >
                     {item.is_enabled
                       ? (
@@ -178,7 +180,7 @@ export function AutostartRow({ item }: AutostartRowProps) {
                       <button
                         type="button"
                         onClick={handleOpenLocation}
-                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent"
+                        className={menuItemClass}
                       >
                         <FolderOpen className="h-4 w-4" />
                         {t('autostart.openLocation')}
@@ -190,7 +192,7 @@ export function AutostartRow({ item }: AutostartRowProps) {
                           setShowProperties(true)
                           setShowMenu(false)
                         }}
-                        className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent"
+                        className={menuItemClass}
                       >
                         <Info className="h-4 w-4" />
                         {t('autostart.properties')}
@@ -201,7 +203,7 @@ export function AutostartRow({ item }: AutostartRowProps) {
                   <button
                     type="button"
                     onClick={handleCopyCommand}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent"
+                    className={menuItemClass}
                   >
                     <Copy className="h-4 w-4" />
                     {t('autostart.copyCommand')}
@@ -211,7 +213,10 @@ export function AutostartRow({ item }: AutostartRowProps) {
 
                   <button
                     type="button"
-                    onClick={() => setShowDeleteConfirm(true)}
+                    onClick={() => {
+                      setShowMenu(false)
+                      setShowDeleteConfirm(true)
+                    }}
                     className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10"
                   >
                     <Trash2 className="h-4 w-4" />
