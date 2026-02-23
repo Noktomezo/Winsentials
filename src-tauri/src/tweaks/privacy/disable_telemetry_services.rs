@@ -14,7 +14,7 @@ fn check_service(service: &str) -> Result<bool, String> {
 
   let stdout = String::from_utf8_lossy(&output.stdout);
 
-  if stdout.contains("1060") || stdout.contains("does not exist") {
+  if stdout.contains("1060") {
     return Ok(true);
   }
 
@@ -25,7 +25,7 @@ fn check_service(service: &str) -> Result<bool, String> {
 
   let qc_stdout = String::from_utf8_lossy(&qc_output.stdout);
 
-  if qc_stdout.contains("1060") || qc_stdout.contains("does not exist") {
+  if qc_stdout.contains("1060") {
     return Ok(true);
   }
 
@@ -57,7 +57,7 @@ fn set_service_disabled(service: &str) -> Result<(), String> {
 
   let stdout = String::from_utf8_lossy(&output.stdout);
 
-  if stdout.contains("1060") || stdout.contains("does not exist") {
+  if stdout.contains("1060") {
     return Ok(());
   }
 
@@ -67,8 +67,8 @@ fn set_service_disabled(service: &str) -> Result<(), String> {
     .map_err(|e| format!("Failed to disable {}: {}", service, e))?;
 
   if !output.status.success() {
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    return Err(format!("Failed to disable {}: {}", service, stderr.trim()));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    return Err(format!("Failed to disable {}: {}", service, stdout.trim()));
   }
 
   let _ = Command::new("sc").args(["stop", service]).output();
@@ -84,7 +84,7 @@ fn set_service_auto(service: &str) -> Result<(), String> {
 
   let stdout = String::from_utf8_lossy(&output.stdout);
 
-  if stdout.contains("1060") || stdout.contains("does not exist") {
+  if stdout.contains("1060") {
     return Ok(());
   }
 
@@ -94,8 +94,8 @@ fn set_service_auto(service: &str) -> Result<(), String> {
     .map_err(|e| format!("Failed to enable {}: {}", service, e))?;
 
   if !output.status.success() {
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    return Err(format!("Failed to enable {}: {}", service, stderr.trim()));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    return Err(format!("Failed to enable {}: {}", service, stdout.trim()));
   }
 
   let _ = Command::new("sc").args(["start", service]).output();

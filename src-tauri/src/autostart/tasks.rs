@@ -8,8 +8,7 @@ use crate::autostart::file_info::get_file_version_info;
 use crate::autostart::icons::get_icon;
 use crate::autostart::types::{AutostartItem, AutostartSource};
 
-const STARTUP_TRIGGERS: &[&str] =
-  &["LogonTrigger", "BootTrigger", "RegistrationTrigger"];
+const STARTUP_TRIGGERS: &[&str] = &["LogonTrigger", "BootTrigger"];
 
 struct TaskInfo {
   name: String,
@@ -48,9 +47,7 @@ fn parse_task_xml(xml: &str) -> Option<TaskInfo> {
           b"Command" if in_exec => in_command = true,
           b"State" => in_state = true,
           b"Triggers" => in_triggers = true,
-          b"LogonTrigger" | b"BootTrigger" | b"RegistrationTrigger"
-            if in_triggers =>
-          {
+          b"LogonTrigger" | b"BootTrigger" if in_triggers => {
             let trigger_name =
               String::from_utf8_lossy(e.local_name().as_ref()).to_string();
             triggers.push(trigger_name);
@@ -115,7 +112,16 @@ fn get_tasks_xml() -> Option<String> {
     return None;
   }
 
-  Some(String::from_utf8_lossy(&output.stdout).to_string())
+  let stdout = &output.stdout;
+  if stdout.len() >= 2 && stdout[0] == 0xFF && stdout[1] == 0xFE {
+    let utf16_chars: Vec<u16> = stdout[2..]
+      .chunks_exact(2)
+      .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+      .collect();
+    String::from_utf16(&utf16_chars).ok()
+  } else {
+    Some(String::from_utf8_lossy(stdout).to_string())
+  }
 }
 
 pub fn get_task_autostart_items() -> Vec<AutostartItem> {

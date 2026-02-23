@@ -124,6 +124,7 @@ export function AutostartRow({ item }: AutostartRowProps) {
               type="button"
               onClick={() => setShowMenu(!showMenu)}
               className="rounded p-1 hover:bg-accent"
+              aria-label={showMenu ? t('autostart.closeMenu') : t('autostart.openMenu')}
             >
               <MoreVertical className="h-4 w-4" />
             </button>
@@ -218,10 +219,10 @@ export function AutostartRow({ item }: AutostartRowProps) {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="deleteDialogTitle"
+          aria-labelledby={`deleteDialogTitle-${item.id}`}
         >
           <div className="w-full max-w-md rounded-lg border border-border bg-card p-4">
-            <h3 id="deleteDialogTitle" className="text-lg font-semibold">
+            <h3 id={`deleteDialogTitle-${item.id}`} className="text-lg font-semibold">
               {item.critical_level === 'Critical'
                 ? t('autostart.confirmDeleteCritical', { name: item.name })
                 : t('autostart.confirmDelete', { name: item.name })}

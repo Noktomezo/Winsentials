@@ -7,7 +7,7 @@ use winreg::enums::*;
 const TCPIP6_PARAMS_PATH: &str =
   r"SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters";
 const DISABLED_COMPONENTS: &str = "DisabledComponents";
-const TEREDO_DISABLED: u32 = 8;
+const TEREDO_DISABLED: u32 = 8; // 0x08 - Teredo tunnel bit in DisabledComponents
 
 pub struct DisableTeredoTweak {
   meta: TweakMeta,
@@ -78,12 +78,11 @@ impl Tweak for DisableTeredoTweak {
       DISABLED_COMPONENTS,
     );
 
-    let current = current_opt.unwrap_or(0);
-    let new_value = current & !TEREDO_DISABLED;
-
-    if current_opt.is_none() && new_value == 0 {
+    if current_opt.is_none() {
       return Ok(());
     }
+
+    let new_value = current_opt.unwrap() & !TEREDO_DISABLED;
 
     registry::write_reg_u32(
       HKEY_LOCAL_MACHINE,

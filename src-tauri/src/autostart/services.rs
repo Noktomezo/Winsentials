@@ -18,60 +18,56 @@ const IGNORED_SERVICES: [&str; 10] = [
   "Schedule",
 ];
 
-fn parse_sc_output(
-  output: &str,
-) -> Vec<(String, String, String, String, bool)> {
+fn get_service_start_type(name: &str) -> Option<(String, bool)> {
+  let output = Command::new("sc").args(["qc", name]).output().ok()?;
+
+  let stdout = String::from_utf8_lossy(&output.stdout);
+
+  let mut start_type = String::new();
+  let mut is_delayed = false;
+
+  for line in stdout.lines() {
+    let line = line.trim();
+    if line.starts_with("START_TYPE") {
+      start_type = line.split_whitespace().nth(2).unwrap_or("").to_string();
+      is_delayed = line.to_lowercase().contains("delay");
+    }
+  }
+
+  Some((start_type, is_delayed))
+}
+
+fn parse_sc_output(output: &str) -> Vec<(String, String, String)> {
   let mut services = Vec::new();
   let mut current_name = String::new();
   let mut current_display = String::new();
   let mut current_state = String::new();
-  let mut current_start_type = String::new();
 
   for line in output.lines() {
     let line = line.trim();
 
     if line.starts_with("SERVICE_NAME:") {
       if !current_name.is_empty() {
-        let is_auto = current_start_type.to_lowercase().contains("auto");
-        if is_auto {
-          let is_delayed = current_start_type.to_lowercase().contains("delay");
-          services.push((
-            current_name.clone(),
-            current_display.clone(),
-            current_state.clone(),
-            current_start_type.clone(),
-            is_delayed,
-          ));
-        }
+        services.push((
+          current_name.clone(),
+          current_display.clone(),
+          current_state.clone(),
+        ));
       }
       current_name =
         line.trim_start_matches("SERVICE_NAME:").trim().to_string();
       current_display = String::new();
       current_state = String::new();
-      current_start_type = String::new();
     } else if line.starts_with("DISPLAY_NAME:") {
       current_display =
         line.trim_start_matches("DISPLAY_NAME:").trim().to_string();
     } else if line.starts_with("STATE") {
       current_state = line.split_whitespace().nth(2).unwrap_or("").to_string();
-    } else if line.starts_with("START_TYPE") {
-      current_start_type =
-        line.split_whitespace().nth(2).unwrap_or("").to_string();
     }
   }
 
   if !current_name.is_empty() {
-    let is_auto = current_start_type.to_lowercase().contains("auto");
-    if is_auto {
-      let is_delayed = current_start_type.to_lowercase().contains("delay");
-      services.push((
-        current_name,
-        current_display,
-        current_state,
-        current_start_type,
-        is_delayed,
-      ));
-    }
+    services.push((current_name, current_display, current_state));
   }
 
   services
@@ -91,8 +87,18 @@ pub fn get_service_autostart_items() -> Vec<AutostartItem> {
   let stdout = String::from_utf8_lossy(&output.stdout);
   let services = parse_sc_output(&stdout);
 
-  for (name, display_name, state, start_type, is_delayed) in services {
+  for (name, display_name, state) in services {
     if IGNORED_SERVICES.contains(&name.as_str()) {
+      continue;
+    }
+
+    let (start_type, is_delayed) = match get_service_start_type(&name) {
+      Some(info) => info,
+      None => continue,
+    };
+
+    let is_auto = start_type.to_lowercase().contains("auto");
+    if !is_auto {
       continue;
     }
 
@@ -146,10 +152,9 @@ fn get_service_path(name: &str) -> Option<String> {
       let path = line.split_once(':').map(|x| x.1).unwrap_or("").trim();
       let path = path.trim_matches('"');
 
-      if path.to_lowercase().ends_with(".exe")
-        && let Some(space_idx) = path.find(".exe")
-      {
-        return Some(path[..space_idx + 4].to_string());
+      let lower_path = path.to_lowercase();
+      if let Some(exe_idx) = lower_path.find(".exe") {
+        return Some(path[..exe_idx + 4].to_string());
       }
       return Some(path.to_string());
     }
@@ -159,7 +164,7 @@ fn get_service_path(name: &str) -> Option<String> {
 }
 
 pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {
-  let parts: Vec<&str> = id.split('|').collect();
+  let parts: Vec<&str> = id.splitn(2, '|').collect();
   if parts.len() != 2 || parts[0] != "service" {
     return Err("Invalid service item ID".to_string());
   }
@@ -173,8 +178,8 @@ pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {
       .map_err(|e| format!("Failed to execute sc: {}", e))?;
 
     if !output.status.success() {
-      let stderr = String::from_utf8_lossy(&output.stderr);
-      return Err(format!("Failed to enable service: {}", stderr));
+      let stdout = String::from_utf8_lossy(&output.stdout);
+      return Err(format!("Failed to enable service: {}", stdout.trim()));
     }
 
     let _ = Command::new("sc").args(["start", service_name]).output();
@@ -187,8 +192,8 @@ pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {
       .map_err(|e| format!("Failed to execute sc: {}", e))?;
 
     if !output.status.success() {
-      let stderr = String::from_utf8_lossy(&output.stderr);
-      return Err(format!("Failed to disable service: {}", stderr));
+      let stdout = String::from_utf8_lossy(&output.stdout);
+      return Err(format!("Failed to disable service: {}", stdout.trim()));
     }
   }
 
@@ -196,7 +201,7 @@ pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {
 }
 
 pub fn delete_service_item(id: &str) -> Result<(), String> {
-  let parts: Vec<&str> = id.split('|').collect();
+  let parts: Vec<&str> = id.splitn(2, '|').collect();
   if parts.len() != 2 || parts[0] != "service" {
     return Err("Invalid service item ID".to_string());
   }
@@ -209,8 +214,8 @@ pub fn delete_service_item(id: &str) -> Result<(), String> {
     .map_err(|e| format!("Failed to execute sc: {}", e))?;
 
   if !output.status.success() {
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    return Err(format!("Failed to delete service: {}", stderr));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    return Err(format!("Failed to delete service: {}", stdout.trim()));
   }
 
   Ok(())

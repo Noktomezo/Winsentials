@@ -103,8 +103,10 @@ pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
               )
             });
 
-          let is_disabled =
-            disabled_folder.join(path.file_name().unwrap()).exists();
+          let is_disabled = path
+            .file_name()
+            .map(|name| disabled_folder.join(name).exists())
+            .unwrap_or(false);
 
           let icon_base64 = get_icon(&target_path);
 
@@ -118,7 +120,10 @@ pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
           let id = format!(
             "folder|{}|{}",
             location_name.replace(' ', "_"),
-            path.file_name().unwrap().to_string_lossy()
+            path
+              .file_name()
+              .map(|n| n.to_string_lossy().to_string())
+              .unwrap_or_default()
           );
 
           items.push(AutostartItem {

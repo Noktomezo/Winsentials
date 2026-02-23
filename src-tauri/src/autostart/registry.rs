@@ -135,7 +135,7 @@ pub fn get_registry_autostart_items() -> Vec<AutostartItem> {
 }
 
 pub fn toggle_registry_item(id: &str, enable: bool) -> Result<(), String> {
-  let parts: Vec<&str> = id.split('|').collect();
+  let parts: Vec<&str> = id.splitn(3, '|').collect();
   if parts.len() != 3 || parts[0] != "registry" {
     return Err("Invalid registry item ID".to_string());
   }
@@ -195,7 +195,7 @@ pub fn toggle_registry_item(id: &str, enable: bool) -> Result<(), String> {
 }
 
 pub fn delete_registry_item(id: &str) -> Result<(), String> {
-  let parts: Vec<&str> = id.split('|').collect();
+  let parts: Vec<&str> = id.splitn(3, '|').collect();
   if parts.len() != 3 || parts[0] != "registry" {
     return Err("Invalid registry item ID".to_string());
   }

@@ -1,9 +1,10 @@
 [package]
 name = "winsentials"
-version = "0.0.0"
+version = "0.1.0"
 description = "✨ Optimize Windows 10/11 performance, privacy, and appearance with a sleek native desktop app."
 authors = ["Noktomezo <noktomezo@duck.com>"]
 edition = "2024"
+rust-version = "1.85"
 
 [lib]
 name = "winsentials_lib"
