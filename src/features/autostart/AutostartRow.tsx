@@ -2,7 +2,7 @@ import type { AutostartItem } from '@/shared/types/autostart'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { Clock, Copy, FolderOpen, Info, MoreVertical, Power, PowerOff, Trash2 } from 'lucide-react'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { useAutostartStore } from '@/shared/store/autostart'
@@ -18,6 +18,21 @@ export function AutostartRow({ item }: AutostartRowProps) {
   const [showMenu, setShowMenu] = useState(false)
   const [showProperties, setShowProperties] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const cancelBtnRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (showDeleteConfirm) {
+      cancelBtnRef.current?.focus()
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setShowDeleteConfirm(false)
+        }
+      }
+      window.addEventListener('keydown', handleKeyDown)
+      return () => window.removeEventListener('keydown', handleKeyDown)
+    }
+    return undefined
+  }, [showDeleteConfirm])
 
   const rowClass = cn(
     'flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors hover:bg-accent/50',
@@ -125,6 +140,8 @@ export function AutostartRow({ item }: AutostartRowProps) {
               onClick={() => setShowMenu(!showMenu)}
               className="rounded p-1 hover:bg-accent"
               aria-label={showMenu ? t('autostart.closeMenu') : t('autostart.openMenu')}
+              aria-expanded={showMenu}
+              aria-haspopup="menu"
             >
               <MoreVertical className="h-4 w-4" />
             </button>
@@ -239,6 +256,7 @@ export function AutostartRow({ item }: AutostartRowProps) {
             )}
             <div className="mt-4 flex justify-end gap-2">
               <button
+                ref={cancelBtnRef}
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
                 className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent"

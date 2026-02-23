@@ -1,3 +1,4 @@
+use std::env;
 use std::fs;
 use std::path::PathBuf;
 
@@ -21,9 +22,15 @@ fn get_startup_folders() -> Vec<(String, PathBuf)> {
     folders.push(("User Startup".to_string(), user_startup));
   }
 
-  let common_startup = PathBuf::from(
-    r"C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup",
-  );
+  let program_data = env::var_os("PROGRAMDATA")
+    .map(PathBuf::from)
+    .unwrap_or_else(|| PathBuf::from("C:\\ProgramData"));
+  let common_startup = program_data
+    .join("Microsoft")
+    .join("Windows")
+    .join("Start Menu")
+    .join("Programs")
+    .join("Startup");
   if common_startup.exists() {
     folders.push(("Common Startup".to_string(), common_startup));
   }
@@ -67,19 +74,30 @@ fn parse_lnk_file(path: &std::path::Path) -> Option<(String, String)> {
   Some((target, command))
 }
 
-fn get_disabled_folder() -> PathBuf {
-  let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-  home.join(".winsentials").join("startup_disabled")
+fn get_disabled_folder(location: &str) -> Option<PathBuf> {
+  let home = dirs::home_dir()?;
+  Some(
+    home
+      .join(".winsentials")
+      .join("startup_disabled")
+      .join(location.replace(' ', "_")),
+  )
 }
 
 pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
   let mut items = Vec::new();
-  let disabled_folder = get_disabled_folder();
+  let mut seen_files: std::collections::HashSet<String> =
+    std::collections::HashSet::new();
 
   for (location_name, folder_path) in get_startup_folders() {
     if !folder_path.exists() {
       continue;
     }
+
+    let disabled_folder = match get_disabled_folder(&location_name) {
+      Some(p) => p,
+      None => continue,
+    };
 
     if let Ok(entries) = fs::read_dir(&folder_path) {
       for entry in entries.filter_map(|e| e.ok()) {
@@ -90,6 +108,16 @@ pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
           .map(|e| e.to_string_lossy().to_lowercase() == "lnk")
           .unwrap_or(false)
         {
+          let filename = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+
+          if seen_files.contains(&filename) {
+            continue;
+          }
+          seen_files.insert(filename.clone());
+
           let name = path
             .file_stem()
             .map(|s| s.to_string_lossy().to_string())
@@ -103,10 +131,7 @@ pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
               )
             });
 
-          let is_disabled = path
-            .file_name()
-            .map(|name| disabled_folder.join(name).exists())
-            .unwrap_or(false);
+          let is_disabled = disabled_folder.join(&filename).exists();
 
           let icon_base64 = get_icon(&target_path);
 
@@ -117,14 +142,8 @@ pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
             .and_then(|v| v.company_name)
             .unwrap_or_default();
 
-          let id = format!(
-            "folder|{}|{}",
-            location_name.replace(' ', "_"),
-            path
-              .file_name()
-              .map(|n| n.to_string_lossy().to_string())
-              .unwrap_or_default()
-          );
+          let id =
+            format!("folder|{}|{}", location_name.replace(' ', "_"), filename);
 
           items.push(AutostartItem {
             id,
@@ -139,6 +158,72 @@ pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
             critical_level,
             file_path: Some(target_path),
           });
+        }
+      }
+    }
+
+    if disabled_folder.exists() {
+      if let Ok(entries) = fs::read_dir(&disabled_folder) {
+        for entry in entries.filter_map(|e| e.ok()) {
+          let path = entry.path();
+
+          if path
+            .extension()
+            .map(|e| e.to_string_lossy().to_lowercase() == "lnk")
+            .unwrap_or(false)
+          {
+            let filename = path
+              .file_name()
+              .map(|n| n.to_string_lossy().to_string())
+              .unwrap_or_default();
+
+            if seen_files.contains(&filename) {
+              continue;
+            }
+            seen_files.insert(filename.clone());
+
+            let name = path
+              .file_stem()
+              .map(|s| s.to_string_lossy().to_string())
+              .unwrap_or_else(|| "Unknown".to_string());
+
+            let (target_path, command) =
+              parse_lnk_file(&path).unwrap_or_else(|| {
+                (
+                  path.to_string_lossy().to_string(),
+                  path.to_string_lossy().to_string(),
+                )
+              });
+
+            let icon_base64 = get_icon(&target_path);
+
+            let critical_level = get_critical_level(&name, &command);
+
+            let publisher = get_file_version_info(&target_path)
+              .ok()
+              .and_then(|v| v.company_name)
+              .unwrap_or_default();
+
+            let id = format!(
+              "folder|{}|{}",
+              location_name.replace(' ', "_"),
+              filename
+            );
+
+            items.push(AutostartItem {
+              id,
+              name,
+              publisher,
+              command,
+              location: location_name.clone(),
+              source: AutostartSource::Folder,
+              is_enabled: false,
+              is_delayed: false,
+              icon_base64,
+              critical_level,
+              file_path: Some(target_path),
+            });
+          }
         }
       }
     }
@@ -163,8 +248,11 @@ pub fn toggle_folder_item(id: &str, enable: bool) -> Result<(), String> {
     .map(|(_, p)| p.clone())
     .ok_or("Source folder not found")?;
 
-  let disabled_folder = get_disabled_folder();
-  let _ = fs::create_dir_all(&disabled_folder);
+  let disabled_folder = get_disabled_folder(location)
+    .ok_or("Cannot determine disabled folder path")?;
+
+  fs::create_dir_all(&disabled_folder)
+    .map_err(|e| format!("Failed to create disabled folder: {}", e))?;
 
   let source_file = source_path.join(filename);
   let disabled_file = disabled_folder.join(filename);
@@ -198,7 +286,8 @@ pub fn delete_folder_item(id: &str) -> Result<(), String> {
     .map(|(_, p)| p.clone())
     .ok_or("Source folder not found")?;
 
-  let disabled_folder = get_disabled_folder();
+  let disabled_folder = get_disabled_folder(location)
+    .ok_or("Cannot determine disabled folder path")?;
 
   let source_file = source_path.join(filename);
   let disabled_file = disabled_folder.join(filename);

@@ -78,18 +78,17 @@ impl Tweak for DisableTeredoTweak {
       DISABLED_COMPONENTS,
     );
 
-    if current_opt.is_none() {
-      return Ok(());
+    if let Some(current) = current_opt {
+      let new_value = current & !TEREDO_DISABLED;
+      registry::write_reg_u32(
+        HKEY_LOCAL_MACHINE,
+        TCPIP6_PARAMS_PATH,
+        DISABLED_COMPONENTS,
+        new_value,
+      )
+      .map_err(|e| e.to_string())?;
     }
 
-    let new_value = current_opt.unwrap() & !TEREDO_DISABLED;
-
-    registry::write_reg_u32(
-      HKEY_LOCAL_MACHINE,
-      TCPIP6_PARAMS_PATH,
-      DISABLED_COMPONENTS,
-      new_value,
-    )
-    .map_err(|e| e.to_string())
+    Ok(())
   }
 }

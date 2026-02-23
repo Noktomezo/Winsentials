@@ -1,3 +1,7 @@
+use std::ffi::OsString;
+use std::os::windows::ffi::OsStringExt;
+
+use windows::Win32::System::Environment::ExpandEnvironmentStringsW;
 use winreg::enums::*;
 use winreg::{HKEY, RegKey, RegValue};
 
@@ -41,7 +45,8 @@ fn is_disabled_in_startup_approved(
     && value.bytes.len() >= 2
   {
     let first_byte = value.bytes[0];
-    if first_byte == 0x03 || first_byte == 0x01 {
+    // 0x01, 0x03, and 0x09 indicate disabled state in StartupApproved
+    if first_byte == 0x03 || first_byte == 0x01 || first_byte == 0x09 {
       return true;
     }
   }
@@ -52,21 +57,49 @@ fn is_disabled_in_startup_approved(
 fn get_target_path(command: &str) -> Option<String> {
   let cmd = command.trim();
 
-  if cmd.starts_with('"')
-    && let Some(end_quote) = cmd[1..].find('"')
-  {
-    return Some(cmd[1..end_quote + 1].to_string());
+  if cmd.is_empty() {
+    return None;
   }
 
-  let parts: Vec<&str> = cmd.split_whitespace().collect();
-  if !parts.is_empty() {
-    let exe = parts[0];
-    if exe.to_lowercase().ends_with(".exe") {
-      return Some(exe.to_string());
+  // Handle quoted paths
+  if cmd.starts_with('"') {
+    if let Some(end_quote) = cmd[1..].find('"') {
+      return Some(cmd[1..end_quote + 1].to_string());
     }
   }
 
+  // For unquoted paths, find the executable by looking for .exe
+  let lower_cmd = cmd.to_lowercase();
+  if let Some(exe_end) = lower_cmd.find(".exe") {
+    let exe_path = cmd[..exe_end + 4].trim();
+    // Handle paths with spaces - take the longest valid path ending with .exe
+    return Some(exe_path.to_string());
+  }
+
+  // Fallback: take first token
+  let parts: Vec<&str> = cmd.split_whitespace().collect();
+  if !parts.is_empty() {
+    return Some(parts[0].to_string());
+  }
+
   None
+}
+
+fn expand_env_vars(s: &str) -> String {
+  let wide: Vec<u16> = s.encode_utf16().chain(std::iter::once(0)).collect();
+  let input = windows::core::PCWSTR(wide.as_ptr());
+
+  let mut buffer = [0u16; 1024];
+  unsafe {
+    let len = ExpandEnvironmentStringsW(input, Some(&mut buffer));
+    if len > 0 {
+      let result: OsString =
+        OsStringExt::from_wide(&buffer[..(len as usize).saturating_sub(1)]);
+      result.to_string_lossy().to_string()
+    } else {
+      s.to_string()
+    }
+  }
 }
 
 pub fn get_registry_autostart_items() -> Vec<AutostartItem> {
@@ -78,7 +111,7 @@ pub fn get_registry_autostart_items() -> Vec<AutostartItem> {
     if let Ok(key) = root.open_subkey(*path) {
       for (name, value) in key.enum_values().filter_map(|r| r.ok()) {
         let command: String = match value.vtype {
-          RegType::REG_SZ | RegType::REG_EXPAND_SZ => {
+          RegType::REG_SZ => {
             if value.bytes.len() >= 2 && value.bytes.len() % 2 == 0 {
               let u16_slice: Vec<u16> = value
                 .bytes
@@ -93,6 +126,23 @@ pub fn get_registry_autostart_items() -> Vec<AutostartItem> {
                 .trim_end_matches('\0')
                 .to_string()
             }
+          }
+          RegType::REG_EXPAND_SZ => {
+            let raw = if value.bytes.len() >= 2 && value.bytes.len() % 2 == 0 {
+              let u16_slice: Vec<u16> = value
+                .bytes
+                .chunks_exact(2)
+                .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+                .collect();
+              String::from_utf16_lossy(&u16_slice)
+                .trim_end_matches('\0')
+                .to_string()
+            } else {
+              String::from_utf8_lossy(&value.bytes)
+                .trim_end_matches('\0')
+                .to_string()
+            };
+            expand_env_vars(&raw)
           }
           _ => continue,
         };

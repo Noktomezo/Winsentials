@@ -9,12 +9,14 @@ use crate::autostart::icons::get_icon;
 use crate::autostart::types::{AutostartItem, AutostartSource};
 
 const STARTUP_TRIGGERS: &[&str] = &["LogonTrigger", "BootTrigger"];
+const STARTUP_TRIGGERS_BYTES: &[&[u8]] = &[b"LogonTrigger", b"BootTrigger"];
 
 struct TaskInfo {
   name: String,
   command: String,
   state: String,
   triggers: Vec<String>,
+  is_delayed: bool,
 }
 
 fn parse_task_xml(xml: &str) -> Option<TaskInfo> {
@@ -25,6 +27,7 @@ fn parse_task_xml(xml: &str) -> Option<TaskInfo> {
   let mut command = String::new();
   let mut state = String::new();
   let mut triggers = Vec::new();
+  let mut is_delayed = false;
 
   let mut in_registration_info = false;
   let mut in_uri = false;
@@ -34,6 +37,8 @@ fn parse_task_xml(xml: &str) -> Option<TaskInfo> {
   let mut in_triggers = false;
   let mut in_settings = false;
   let mut in_enabled_setting = false;
+  let mut in_delay = false;
+  let mut current_trigger_is_startup = false;
 
   let mut buf = Vec::new();
 
@@ -47,13 +52,17 @@ fn parse_task_xml(xml: &str) -> Option<TaskInfo> {
           b"Command" if in_exec => in_command = true,
           b"State" => in_state = true,
           b"Triggers" => in_triggers = true,
-          b"LogonTrigger" | b"BootTrigger" if in_triggers => {
-            let trigger_name =
-              String::from_utf8_lossy(e.local_name().as_ref()).to_string();
-            triggers.push(trigger_name);
-          }
           b"Settings" => in_settings = true,
           b"Enabled" if in_settings => in_enabled_setting = true,
+          b"Delay" => in_delay = true,
+          trigger_name if in_triggers => {
+            if STARTUP_TRIGGERS_BYTES.contains(&trigger_name) {
+              current_trigger_is_startup = true;
+              let trigger_name_str =
+                String::from_utf8_lossy(trigger_name).to_string();
+              triggers.push(trigger_name_str);
+            }
+          }
           _ => {}
         }
       }
@@ -66,6 +75,15 @@ fn parse_task_xml(xml: &str) -> Option<TaskInfo> {
         b"Triggers" => in_triggers = false,
         b"Settings" => in_settings = false,
         b"Enabled" => in_enabled_setting = false,
+        b"Delay" => {
+          in_delay = false;
+          if current_trigger_is_startup {
+            current_trigger_is_startup = false;
+          }
+        }
+        b"LogonTrigger" | b"BootTrigger" => {
+          current_trigger_is_startup = false;
+        }
         _ => {}
       },
       Ok(Event::Text(ref e)) => {
@@ -82,9 +100,15 @@ fn parse_task_xml(xml: &str) -> Option<TaskInfo> {
         if in_enabled_setting && text.to_lowercase() == "false" {
           state = "Disabled".to_string();
         }
+        if in_delay && current_trigger_is_startup && !text.is_empty() {
+          is_delayed = true;
+        }
       }
       Ok(Event::Eof) => break,
-      Err(_) => break,
+      Err(e) => {
+        eprintln!("XML parsing error: {:?}", e);
+        break;
+      }
       _ => {}
     }
     buf.clear();
@@ -99,12 +123,13 @@ fn parse_task_xml(xml: &str) -> Option<TaskInfo> {
     command,
     state,
     triggers,
+    is_delayed,
   })
 }
 
 fn get_tasks_xml() -> Option<String> {
   let output = Command::new("schtasks")
-    .args(["/query", "/xml", "/v"])
+    .args(["/query", "/xml"])
     .output()
     .ok()?;
 
@@ -177,11 +202,12 @@ pub fn get_task_autostart_items() -> Vec<AutostartItem> {
             task_xml.push_str("</Task>");
             in_task = false;
 
-            if let Some(task_info) = parse_task_xml(&task_xml)
-              && should_include_task(&task_info)
-              && let Some(item) = create_autostart_item(task_info)
-            {
-              items.push(item);
+            if let Some(task_info) = parse_task_xml(&task_xml) {
+              if should_include_task(&task_info) {
+                if let Some(item) = create_autostart_item(task_info) {
+                  items.push(item);
+                }
+              }
             }
           } else {
             task_xml.push_str(&format!(
@@ -192,7 +218,11 @@ pub fn get_task_autostart_items() -> Vec<AutostartItem> {
         }
       }
       Ok(Event::Eof) => break,
-      Err(_) => break,
+      Err(e) => {
+        eprintln!("Task XML parsing error: {:?}", e);
+        in_task = false;
+        depth = 0;
+      }
       _ => {}
     }
     buf.clear();
@@ -218,7 +248,7 @@ fn should_include_task(task: &TaskInfo) -> bool {
 
 fn create_autostart_item(task: TaskInfo) -> Option<AutostartItem> {
   let is_enabled = task.state != "Disabled";
-  let is_delayed = false;
+  let is_delayed = task.is_delayed;
 
   let target_path = extract_exe_from_command(&task.command);
   let icon_base64 = target_path.as_ref().and_then(|p| get_icon(p));

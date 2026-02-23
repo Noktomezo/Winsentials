@@ -98,7 +98,17 @@ fn set_service_auto(service: &str) -> Result<(), String> {
     return Err(format!("Failed to enable {}: {}", service, stdout.trim()));
   }
 
-  let _ = Command::new("sc").args(["start", service]).output();
+  let start_result = Command::new("sc").args(["start", service]).output();
+  if let Ok(result) = start_result {
+    if !result.status.success() {
+      let stdout = String::from_utf8_lossy(&result.stdout);
+      eprintln!(
+        "Warning: Failed to start service '{}': {}",
+        service,
+        stdout.trim()
+      );
+    }
+  }
 
   Ok(())
 }

@@ -36,6 +36,29 @@ impl DeviceAffinityTweak {
   }
 }
 
+fn check_device_affinity(
+  pnp_id: &str,
+  expected_assignment: &[u8],
+) -> Option<bool> {
+  let path = format!(
+    r"SYSTEM\CurrentControlSet\Enum\{}\{}",
+    pnp_id, AFFINITY_SUFFIX
+  );
+
+  let device_policy =
+    registry::read_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)?;
+  let assignment = registry::read_reg_binary(
+    HKEY_LOCAL_MACHINE,
+    &path,
+    ASSIGNMENT_SET_OVERRIDE,
+  )?;
+
+  let policy_ok = device_policy == 4;
+  let assignment_ok = assignment == expected_assignment;
+
+  Some(policy_ok && assignment_ok)
+}
+
 impl Tweak for DeviceAffinityTweak {
   fn meta(&self) -> &TweakMeta {
     &self.meta
@@ -60,14 +83,10 @@ impl Tweak for DeviceAffinityTweak {
       if let Some(pnp_id) = &gpu.PNPDeviceID {
         if pnp_id.starts_with("PCI\\VEN_") {
           any_device = true;
-          let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, AFFINITY_SUFFIX
-          );
-          if registry::read_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)
-            .is_none()
-          {
-            all_applied = false;
+          match check_device_affinity(pnp_id, &[0x02]) {
+            Some(true) => {}
+            Some(false) => all_applied = false,
+            None => all_applied = false,
           }
         }
       }
@@ -77,14 +96,10 @@ impl Tweak for DeviceAffinityTweak {
       if let Some(pnp_id) = &nic.PNPDeviceID {
         if pnp_id.starts_with("PCI\\VEN_") {
           any_device = true;
-          let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, AFFINITY_SUFFIX
-          );
-          if registry::read_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)
-            .is_none()
-          {
-            all_applied = false;
+          match check_device_affinity(pnp_id, &[0x04]) {
+            Some(true) => {}
+            Some(false) => all_applied = false,
+            None => all_applied = false,
           }
         }
       }
@@ -94,14 +109,10 @@ impl Tweak for DeviceAffinityTweak {
       if let Some(pnp_id) = &usb.PNPDeviceID {
         if pnp_id.starts_with("PCI\\VEN_") {
           any_device = true;
-          let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, AFFINITY_SUFFIX
-          );
-          if registry::read_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)
-            .is_none()
-          {
-            all_applied = false;
+          match check_device_affinity(pnp_id, &[0x08]) {
+            Some(true) => {}
+            Some(false) => all_applied = false,
+            None => all_applied = false,
           }
         }
       }

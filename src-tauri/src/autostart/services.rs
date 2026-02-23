@@ -29,8 +29,11 @@ fn get_service_start_type(name: &str) -> Option<(String, bool)> {
   for line in stdout.lines() {
     let line = line.trim();
     if line.starts_with("START_TYPE") {
-      start_type = line.split_whitespace().nth(2).unwrap_or("").to_string();
-      is_delayed = line.to_lowercase().contains("delay");
+      if let Some((_, value)) = line.split_once(':') {
+        let value = value.trim();
+        start_type = value.to_string();
+        is_delayed = line.to_lowercase().contains("delay");
+      }
     }
   }
 
@@ -62,7 +65,9 @@ fn parse_sc_output(output: &str) -> Vec<(String, String, String)> {
       current_display =
         line.trim_start_matches("DISPLAY_NAME:").trim().to_string();
     } else if line.starts_with("STATE") {
-      current_state = line.split_whitespace().nth(2).unwrap_or("").to_string();
+      if let Some((_, value)) = line.split_once(':') {
+        current_state = value.trim().to_string();
+      }
     }
   }
 
@@ -105,8 +110,7 @@ pub fn get_service_autostart_items() -> Vec<AutostartItem> {
     let exe_path = get_service_path(&name);
     let icon_base64 = exe_path.as_ref().and_then(|p| get_icon(p));
 
-    let is_enabled = state.to_lowercase().contains("running")
-      || start_type.to_lowercase().contains("auto");
+    let is_enabled = state.to_lowercase().contains("running");
 
     let command = exe_path.clone().unwrap_or_default();
     let critical_level = get_critical_level(&name, &command);
