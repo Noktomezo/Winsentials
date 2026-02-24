@@ -91,39 +91,29 @@ fn query_service_config(name: &str) -> Option<ServiceConfig> {
   Some(ServiceConfig { command, exe_path })
 }
 
-fn parse_sc_output(output: &str) -> Vec<(String, String, String)> {
+fn parse_sc_output(output: &str) -> Vec<(String, String)> {
   let mut services = Vec::new();
   let mut current_name = String::new();
   let mut current_display = String::new();
-  let mut current_state = String::new();
 
   for line in output.lines() {
     let line = line.trim();
 
     if line.starts_with("SERVICE_NAME:") {
       if !current_name.is_empty() {
-        services.push((
-          current_name.clone(),
-          current_display.clone(),
-          current_state.clone(),
-        ));
+        services.push((current_name.clone(), current_display.clone()));
       }
       current_name =
         line.trim_start_matches("SERVICE_NAME:").trim().to_string();
       current_display = String::new();
-      current_state = String::new();
     } else if line.starts_with("DISPLAY_NAME:") {
       current_display =
         line.trim_start_matches("DISPLAY_NAME:").trim().to_string();
-    } else if line.starts_with("STATE") {
-      if let Some((_, value)) = line.split_once(':') {
-        current_state = value.trim().to_string();
-      }
     }
   }
 
   if !current_name.is_empty() {
-    services.push((current_name, current_display, current_state));
+    services.push((current_name, current_display));
   }
 
   services
@@ -143,7 +133,7 @@ pub fn get_service_autostart_items() -> Vec<AutostartItem> {
   let stdout = String::from_utf8_lossy(&output.stdout);
   let services = parse_sc_output(&stdout);
 
-  for (name, display_name, _state) in services {
+  for (name, display_name) in services {
     if is_ignored_service(&name) {
       continue;
     }
@@ -170,7 +160,11 @@ pub fn get_service_autostart_items() -> Vec<AutostartItem> {
 
     let is_enabled = is_auto;
 
-    let critical_level = get_critical_level(&name, &command);
+    let exe_name = exe_path
+      .as_ref()
+      .and_then(|p| p.rsplit(|c| c == '\\' || c == '/').next())
+      .unwrap_or(&name);
+    let critical_level = get_critical_level(exe_name, &command);
 
     let publisher = exe_path
       .as_ref()
@@ -269,6 +263,26 @@ pub fn delete_service_item(id: &str) -> Result<(), String> {
   }
 
   let service_name = parts[1];
+
+  let stop_output = Command::new("sc")
+    .args(["stop", service_name])
+    .output()
+    .map_err(|e| format!("Failed to execute sc: {}", e))?;
+
+  if !stop_output.status.success() {
+    let stdout = String::from_utf8_lossy(&stop_output.stdout);
+    if !stdout.contains("not been started")
+      && !stdout.contains("is not started")
+    {
+      let stderr = String::from_utf8_lossy(&stop_output.stderr);
+      let msg = if !stderr.trim().is_empty() {
+        stderr.trim()
+      } else {
+        stdout.trim()
+      };
+      return Err(format!("Failed to stop service: {}", msg));
+    }
+  }
 
   let output = Command::new("sc")
     .args(["delete", service_name])
