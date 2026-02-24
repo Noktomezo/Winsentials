@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
+import { openLocation } from '@/shared/api/autostart'
 import { useAutostartStore } from '@/shared/store/autostart'
 import { FilePropertiesDialog } from './FilePropertiesDialog'
 
@@ -60,7 +61,6 @@ export function AutostartRow({ item }: AutostartRowProps) {
   const handleOpenLocation = async () => {
     try {
       if (item.file_path) {
-        const { openLocation } = await import('@/shared/api/autostart')
         await openLocation(item.file_path)
       }
     }

@@ -1,4 +1,4 @@
-use std::process::Command;
+use crate::utils::command::hidden_command;
 
 use quick_xml::events::Event;
 use quick_xml::Reader;
@@ -130,7 +130,7 @@ fn parse_task_xml(xml: &str) -> Option<TaskInfo> {
 }
 
 fn get_tasks_xml() -> Option<String> {
-  let output = Command::new("schtasks")
+  let output = hidden_command("schtasks")
     .args(["/query", "/xml"])
     .output()
     .ok()?;
@@ -396,7 +396,7 @@ pub fn toggle_task_item(id: &str, enable: bool) -> Result<(), String> {
 
   let status = if enable { "enable" } else { "disable" };
 
-  let output = Command::new("schtasks")
+  let output = hidden_command("schtasks")
     .args(["/change", "/tn", &task_name, &format!("/{}", status)])
     .output()
     .map_err(|e| format!("Failed to execute schtasks: {}", e))?;
@@ -417,7 +417,7 @@ pub fn delete_task_item(id: &str) -> Result<(), String> {
 
   let task_name = parts[1].replace('/', "\\");
 
-  let output = Command::new("schtasks")
+  let output = hidden_command("schtasks")
     .args(["/delete", "/tn", &task_name, "/f"])
     .output()
     .map_err(|e| format!("Failed to execute schtasks: {}", e))?;

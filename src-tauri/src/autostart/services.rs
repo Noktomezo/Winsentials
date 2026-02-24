@@ -1,6 +1,6 @@
 use std::os::windows::ffi::OsStringExt;
-use std::process::Command;
 
+use crate::utils::command::hidden_command;
 use rayon::prelude::*;
 use windows::Win32::Globalization::{
   MultiByteToWideChar, CP_OEMCP, MB_PRECOMPOSED,
@@ -82,7 +82,7 @@ struct ServiceConfig {
 }
 
 fn query_service_config(name: &str) -> Option<ServiceConfig> {
-  let output = Command::new("sc").args(["qc", name]).output().ok()?;
+  let output = hidden_command("sc").args(["qc", name]).output().ok()?;
 
   if !output.status.success() {
     return None;
@@ -263,7 +263,7 @@ pub fn enrich_service_items(items: &[AutostartItem]) -> Vec<EnrichmentData> {
 fn collect_raw_service_items() -> Vec<RawServiceItem> {
   let mut items = Vec::new();
 
-  let output = match Command::new("sc")
+  let output = match hidden_command("sc")
     .args(["query", "type=", "service", "state=", "all"])
     .output()
   {
@@ -328,7 +328,7 @@ pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {
       "auto"
     };
 
-    let output = Command::new("sc")
+    let output = hidden_command("sc")
       .args(["config", service_name, "start=", start_value])
       .output()
       .map_err(|e| format!("Failed to execute sc: {}", e))?;
@@ -344,11 +344,11 @@ pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {
       return Err(format!("Failed to enable service: {}", msg));
     }
 
-    let _ = Command::new("sc").args(["start", service_name]).output();
+    let _ = hidden_command("sc").args(["start", service_name]).output();
   } else {
-    let _ = Command::new("sc").args(["stop", service_name]).output();
+    let _ = hidden_command("sc").args(["stop", service_name]).output();
 
-    let output = Command::new("sc")
+    let output = hidden_command("sc")
       .args(["config", service_name, "start=", "disabled"])
       .output()
       .map_err(|e| format!("Failed to execute sc: {}", e))?;
@@ -376,7 +376,7 @@ pub fn delete_service_item(id: &str) -> Result<(), String> {
 
   let service_name = parts[1];
 
-  let stop_output = Command::new("sc")
+  let stop_output = hidden_command("sc")
     .args(["stop", service_name])
     .output()
     .map_err(|e| format!("Failed to execute sc: {}", e))?;
@@ -396,7 +396,7 @@ pub fn delete_service_item(id: &str) -> Result<(), String> {
     }
   }
 
-  let output = Command::new("sc")
+  let output = hidden_command("sc")
     .args(["delete", service_name])
     .output()
     .map_err(|e| format!("Failed to execute sc: {}", e))?;

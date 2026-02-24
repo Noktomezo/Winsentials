@@ -170,7 +170,7 @@ pub fn open_file_location(path: &str) -> Result<(), String> {
   let abs_path = dunce::canonicalize(&file_path)
     .map_err(|e| format!("Failed to resolve path: {}", e))?;
 
-  std::process::Command::new("explorer")
+  crate::utils::command::hidden_command("explorer")
     .arg(format!("/select,{}", abs_path.display()))
     .spawn()
     .map_err(|e| format!("Failed to open explorer: {}", e))?;

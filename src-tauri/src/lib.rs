@@ -1,6 +1,7 @@
 mod autostart;
 mod system_info;
 mod tweaks;
+mod utils;
 mod wmi_queries;
 
 use autostart::{
