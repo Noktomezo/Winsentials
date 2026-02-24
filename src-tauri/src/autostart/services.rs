@@ -1,12 +1,42 @@
+use std::os::windows::ffi::OsStringExt;
 use std::process::Command;
 
-use winreg::RegKey;
+use rayon::prelude::*;
+use windows::Win32::Globalization::{
+  MultiByteToWideChar, CP_OEMCP, MB_PRECOMPOSED,
+};
 use winreg::enums::*;
+use winreg::RegKey;
 
 use crate::autostart::critical::get_critical_level;
 use crate::autostart::file_info::get_file_version_info;
 use crate::autostart::icons::get_icon;
-use crate::autostart::types::{AutostartItem, AutostartSource};
+use crate::autostart::types::{AutostartItem, AutostartSource, EnrichmentData};
+
+fn oem_to_utf8(bytes: &[u8]) -> String {
+  if bytes.is_empty() {
+    return String::new();
+  }
+
+  unsafe {
+    let required_len =
+      MultiByteToWideChar(CP_OEMCP, MB_PRECOMPOSED, bytes, None);
+    if required_len <= 0 {
+      return String::from_utf8_lossy(bytes).to_string();
+    }
+
+    let mut buffer = vec![0u16; required_len as usize];
+    let len =
+      MultiByteToWideChar(CP_OEMCP, MB_PRECOMPOSED, bytes, Some(&mut buffer));
+    if len <= 0 {
+      return String::from_utf8_lossy(bytes).to_string();
+    }
+
+    std::ffi::OsString::from_wide(&buffer[..len as usize])
+      .to_string_lossy()
+      .to_string()
+  }
+}
 
 const IGNORED_SERVICES: [&str; 10] = [
   "WinDefend",
@@ -58,7 +88,7 @@ fn query_service_config(name: &str) -> Option<ServiceConfig> {
     return None;
   }
 
-  let stdout = String::from_utf8_lossy(&output.stdout);
+  let stdout = oem_to_utf8(&output.stdout);
 
   let mut command = None;
   let mut exe_path = None;
@@ -119,7 +149,120 @@ fn parse_sc_output(output: &str) -> Vec<(String, String)> {
   services
 }
 
+struct RawServiceItem {
+  name: String,
+  display_name: String,
+  exe_path: Option<String>,
+  command: String,
+  is_enabled: bool,
+  is_delayed: bool,
+}
+
+fn enrich_service_item(raw: RawServiceItem) -> AutostartItem {
+  let icon_base64 = raw.exe_path.as_ref().and_then(|p| get_icon(p));
+
+  let exe_name = raw
+    .exe_path
+    .as_ref()
+    .and_then(|p| p.rsplit(|c| c == '\\' || c == '/').next())
+    .unwrap_or(&raw.name);
+  let critical_level = get_critical_level(exe_name, &raw.command);
+
+  let publisher = raw
+    .exe_path
+    .as_ref()
+    .and_then(|p| get_file_version_info(p).ok())
+    .and_then(|v| v.company_name)
+    .unwrap_or_default();
+
+  let id = format!("service|{}", raw.name);
+
+  AutostartItem {
+    id,
+    name: if raw.display_name.is_empty() {
+      raw.name.clone()
+    } else {
+      raw.display_name.clone()
+    },
+    publisher,
+    command: raw.command,
+    location: format!("Service: {}", raw.name),
+    source: AutostartSource::Service,
+    is_enabled: raw.is_enabled,
+    is_delayed: raw.is_delayed,
+    icon_base64,
+    critical_level,
+    file_path: raw.exe_path,
+  }
+}
+
 pub fn get_service_autostart_items() -> Vec<AutostartItem> {
+  let raw_items = collect_raw_service_items();
+
+  raw_items.into_par_iter().map(enrich_service_item).collect()
+}
+
+pub fn get_service_items_fast() -> Vec<AutostartItem> {
+  let raw_items = collect_raw_service_items();
+
+  raw_items
+    .into_iter()
+    .map(|raw| {
+      let exe_name = raw
+        .exe_path
+        .as_ref()
+        .and_then(|p| p.rsplit(|c| c == '\\' || c == '/').next())
+        .unwrap_or(&raw.name);
+      let critical_level = get_critical_level(exe_name, &raw.command);
+
+      let id = format!("service|{}", raw.name);
+
+      AutostartItem {
+        id,
+        name: if raw.display_name.is_empty() {
+          raw.name.clone()
+        } else {
+          raw.display_name.clone()
+        },
+        publisher: String::new(),
+        command: raw.command,
+        location: format!("Service: {}", raw.name),
+        source: AutostartSource::Service,
+        is_enabled: raw.is_enabled,
+        is_delayed: raw.is_delayed,
+        icon_base64: None,
+        critical_level,
+        file_path: raw.exe_path,
+      }
+    })
+    .collect()
+}
+
+pub fn enrich_service_items(
+  items: &mut [AutostartItem],
+) -> Vec<EnrichmentData> {
+  items
+    .iter()
+    .filter(|item| item.source == AutostartSource::Service)
+    .map(|item| {
+      let icon_base64 = item.file_path.as_ref().and_then(|p| get_icon(p));
+      let publisher = item
+        .file_path
+        .as_ref()
+        .and_then(|p| get_file_version_info(p).ok())
+        .and_then(|v| v.company_name)
+        .unwrap_or_default();
+
+      EnrichmentData {
+        id: item.id.clone(),
+        icon_base64,
+        publisher,
+      }
+    })
+    .collect()
+}
+
+fn collect_raw_service_items() -> Vec<RawServiceItem> {
   let mut items = Vec::new();
 
   let output = match Command::new("sc")
@@ -130,7 +273,7 @@ pub fn get_service_autostart_items() -> Vec<AutostartItem> {
     Err(_) => return items,
   };
 
-  let stdout = String::from_utf8_lossy(&output.stdout);
+  let stdout = oem_to_utf8(&output.stdout);
   let services = parse_sc_output(&stdout);
 
   for (name, display_name) in services {
@@ -154,42 +297,13 @@ pub fn get_service_autostart_items() -> Vec<AutostartItem> {
       None => continue,
     };
 
-    let exe_path = config.exe_path;
-    let command = config.command.clone().unwrap_or_default();
-    let icon_base64 = exe_path.as_ref().and_then(|p| get_icon(p));
-
-    let is_enabled = is_auto;
-
-    let exe_name = exe_path
-      .as_ref()
-      .and_then(|p| p.rsplit(|c| c == '\\' || c == '/').next())
-      .unwrap_or(&name);
-    let critical_level = get_critical_level(exe_name, &command);
-
-    let publisher = exe_path
-      .as_ref()
-      .and_then(|p| get_file_version_info(p).ok())
-      .and_then(|v| v.company_name)
-      .unwrap_or_default();
-
-    let id = format!("service|{}", name);
-
-    items.push(AutostartItem {
-      id,
-      name: if display_name.is_empty() {
-        name.clone()
-      } else {
-        display_name.clone()
-      },
-      publisher,
-      command,
-      location: format!("Service: {}", name),
-      source: AutostartSource::Service,
-      is_enabled,
+    items.push(RawServiceItem {
+      name,
+      display_name,
+      exe_path: config.exe_path,
+      command: config.command.unwrap_or_default(),
+      is_enabled: is_auto,
       is_delayed: start_info.is_delayed,
-      icon_base64,
-      critical_level,
-      file_path: exe_path,
     });
   }
 
@@ -222,8 +336,8 @@ pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {
       .map_err(|e| format!("Failed to execute sc: {}", e))?;
 
     if !output.status.success() {
-      let stderr = String::from_utf8_lossy(&output.stderr);
-      let stdout = String::from_utf8_lossy(&output.stdout);
+      let stderr = oem_to_utf8(&output.stderr);
+      let stdout = oem_to_utf8(&output.stdout);
       let msg = if !stderr.trim().is_empty() {
         stderr.trim()
       } else {
@@ -242,8 +356,8 @@ pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {
       .map_err(|e| format!("Failed to execute sc: {}", e))?;
 
     if !output.status.success() {
-      let stderr = String::from_utf8_lossy(&output.stderr);
-      let stdout = String::from_utf8_lossy(&output.stdout);
+      let stderr = oem_to_utf8(&output.stderr);
+      let stdout = oem_to_utf8(&output.stdout);
       let msg = if !stderr.trim().is_empty() {
         stderr.trim()
       } else {
@@ -270,11 +384,11 @@ pub fn delete_service_item(id: &str) -> Result<(), String> {
     .map_err(|e| format!("Failed to execute sc: {}", e))?;
 
   if !stop_output.status.success() {
-    let stdout = String::from_utf8_lossy(&stop_output.stdout);
+    let stdout = oem_to_utf8(&stop_output.stdout);
     if !stdout.contains("not been started")
       && !stdout.contains("is not started")
     {
-      let stderr = String::from_utf8_lossy(&stop_output.stderr);
+      let stderr = oem_to_utf8(&stop_output.stderr);
       let msg = if !stderr.trim().is_empty() {
         stderr.trim()
       } else {
@@ -290,8 +404,8 @@ pub fn delete_service_item(id: &str) -> Result<(), String> {
     .map_err(|e| format!("Failed to execute sc: {}", e))?;
 
   if !output.status.success() {
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = oem_to_utf8(&output.stderr);
+    let stdout = oem_to_utf8(&output.stdout);
     let msg = if !stderr.trim().is_empty() {
       stderr.trim()
     } else {

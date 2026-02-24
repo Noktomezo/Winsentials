@@ -2,8 +2,8 @@ use crate::tweaks::registry;
 use crate::tweaks::{
   RiskLevel, Tweak, TweakCategory, TweakMeta, TweakState, TweakUiType,
 };
-use winreg::RegKey;
 use winreg::enums::*;
+use winreg::RegKey;
 
 const MSMQ_PARAMS_PATH: &str = r"SOFTWARE\Microsoft\MSMQ\Parameters";
 const TCPIP_INTERFACES_PATH: &str =

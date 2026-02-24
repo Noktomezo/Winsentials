@@ -31,6 +31,13 @@ pub struct AutostartItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EnrichmentData {
+  pub id: String,
+  pub icon_base64: Option<String>,
+  pub publisher: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileProperties {
   pub name: String,
   pub path: String,

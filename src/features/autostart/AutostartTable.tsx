@@ -77,7 +77,7 @@ export function AutostartTable() {
             <button
               type="button"
               onClick={() => toggleGroup(source)}
-              className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/50"
+              className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/50 cursor-pointer"
             >
               {isExpanded
                 ? (

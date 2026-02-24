@@ -1,7 +1,7 @@
 use std::io;
 use std::process::Command;
 use winreg::enums::*;
-use winreg::{HKEY, RegKey, RegValue};
+use winreg::{RegKey, RegValue, HKEY};
 
 pub fn read_reg_string(hive: HKEY, path: &str, name: &str) -> Option<String> {
   let root = RegKey::predef(hive);

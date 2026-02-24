@@ -4,16 +4,17 @@ mod tweaks;
 mod wmi_queries;
 
 use autostart::{
-  AutostartItem, FileProperties, delete_autostart_item, export_autostart_csv,
-  get_all_autostart_items, get_file_properties, open_file_location,
-  toggle_autostart_item,
+  delete_autostart_item, enrich_autostart_items, get_all_autostart_items,
+  get_autostart_items_fast as get_fast_items, get_file_properties,
+  open_file_location, toggle_autostart_item, AutostartItem, EnrichmentData,
+  FileProperties,
 };
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
 use system_info::{
   get_dynamic_system_info, get_static_system_info, get_system_info,
 };
-use tweaks::{TweakMeta, TweakState, get_all_tweaks, get_tweak_by_id};
+use tweaks::{get_all_tweaks, get_tweak_by_id, TweakMeta, TweakState};
 
 const WIN11_BUILD: u32 = 22000;
 
@@ -162,6 +163,16 @@ fn get_autostart_items() -> Vec<AutostartItem> {
 }
 
 #[tauri::command]
+fn get_autostart_items_fast() -> Vec<AutostartItem> {
+  get_fast_items()
+}
+
+#[tauri::command]
+fn enrich_autostart(ids: Vec<String>) -> Vec<EnrichmentData> {
+  enrich_autostart_items(ids)
+}
+
+#[tauri::command]
 fn toggle_autostart(id: String, enable: bool) -> Result<(), String> {
   toggle_autostart_item(&id, enable)
 }
@@ -179,12 +190,6 @@ fn open_location(path: String) -> Result<(), String> {
 #[tauri::command]
 fn get_properties(path: String) -> Result<FileProperties, String> {
   get_file_properties(&path)
-}
-
-#[tauri::command]
-fn export_autostart() -> Result<String, String> {
-  let items = get_all_autostart_items();
-  Ok(export_autostart_csv(&items))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -206,11 +211,12 @@ pub fn run() {
       get_dynamic_system_info,
       get_windows_build,
       get_autostart_items,
+      get_autostart_items_fast,
+      enrich_autostart,
       toggle_autostart,
       delete_autostart,
       open_location,
-      get_properties,
-      export_autostart
+      get_properties
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

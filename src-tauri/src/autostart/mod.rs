@@ -7,19 +7,75 @@ mod services;
 mod tasks;
 mod types;
 
-pub use types::{AutostartItem, AutostartSource, FileProperties};
+use rayon::prelude::*;
+
+pub use types::{AutostartItem, EnrichmentData, FileProperties};
 
 pub fn get_all_autostart_items() -> Vec<AutostartItem> {
+  let ((registry, folder), (tasks, services)) = rayon::join(
+    || {
+      rayon::join(
+        || registry::get_registry_autostart_items(),
+        || folder::get_folder_autostart_items(),
+      )
+    },
+    || {
+      rayon::join(
+        || tasks::get_task_autostart_items(),
+        || services::get_service_autostart_items(),
+      )
+    },
+  );
+
   let mut items = Vec::new();
+  items.extend(registry);
+  items.extend(folder);
+  items.extend(tasks);
+  items.extend(services);
 
-  items.extend(registry::get_registry_autostart_items());
-  items.extend(folder::get_folder_autostart_items());
-  items.extend(tasks::get_task_autostart_items());
-  items.extend(services::get_service_autostart_items());
-
-  items.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+  items.par_sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
 
   items
+}
+
+pub fn get_autostart_items_fast() -> Vec<AutostartItem> {
+  let ((registry, folder), (tasks, services)) = rayon::join(
+    || {
+      rayon::join(
+        || registry::get_registry_items_fast(),
+        || folder::get_folder_items_fast(),
+      )
+    },
+    || {
+      rayon::join(
+        || tasks::get_task_items_fast(),
+        || services::get_service_items_fast(),
+      )
+    },
+  );
+
+  let mut items = Vec::new();
+  items.extend(registry);
+  items.extend(folder);
+  items.extend(tasks);
+  items.extend(services);
+
+  items.par_sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+
+  items
+}
+
+pub fn enrich_autostart_items(ids: Vec<String>) -> Vec<EnrichmentData> {
+  let mut items = get_autostart_items_fast();
+  items.retain(|item| ids.contains(&item.id));
+
+  let mut enrichments = Vec::new();
+  enrichments.extend(registry::enrich_registry_items(&mut items));
+  enrichments.extend(folder::enrich_folder_items(&mut items));
+  enrichments.extend(tasks::enrich_task_items(&mut items));
+  enrichments.extend(services::enrich_service_items(&mut items));
+
+  enrichments
 }
 
 pub fn toggle_autostart_item(id: &str, enable: bool) -> Result<(), String> {
@@ -60,45 +116,4 @@ pub fn get_file_properties(path: &str) -> Result<FileProperties, String> {
 
 pub fn open_file_location(path: &str) -> Result<(), String> {
   file_info::open_file_location(path)
-}
-
-pub fn export_autostart_csv(items: &[AutostartItem]) -> String {
-  let mut csv = String::new();
-
-  csv.push_str("Name,Publisher,Location,Command,Status,Delayed,Source\n");
-
-  for item in items {
-    let status = if item.is_enabled {
-      "Enabled"
-    } else {
-      "Disabled"
-    };
-    let delayed = if item.is_delayed { "Yes" } else { "No" };
-    let source = match item.source {
-      AutostartSource::Registry => "Registry",
-      AutostartSource::Folder => "Folder",
-      AutostartSource::Task => "Task Scheduler",
-      AutostartSource::Service => "Service",
-    };
-
-    let name = escape_csv(&item.name);
-    let publisher = escape_csv(&item.publisher);
-    let location = escape_csv(&item.location);
-    let command = escape_csv(&item.command);
-
-    csv.push_str(&format!(
-      "{},{},{},{},{},{},{}\n",
-      name, publisher, location, command, status, delayed, source
-    ));
-  }
-
-  csv
-}
-
-fn escape_csv(s: &str) -> String {
-  if s.contains(',') || s.contains('"') || s.contains('\n') {
-    format!("\"{}\"", s.replace('"', "\"\""))
-  } else {
-    s.to_string()
-  }
 }

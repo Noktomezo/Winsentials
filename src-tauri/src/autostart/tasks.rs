@@ -1,12 +1,13 @@
 use std::process::Command;
 
-use quick_xml::Reader;
 use quick_xml::events::Event;
+use quick_xml::Reader;
+use rayon::prelude::*;
 
 use crate::autostart::critical::get_critical_level;
 use crate::autostart::file_info::get_file_version_info;
 use crate::autostart::icons::get_icon;
-use crate::autostart::types::{AutostartItem, AutostartSource};
+use crate::autostart::types::{AutostartItem, AutostartSource, EnrichmentData};
 
 const STARTUP_TRIGGERS: &[&str] = &["LogonTrigger", "BootTrigger"];
 
@@ -15,6 +16,13 @@ struct TaskInfo {
   command: String,
   state: String,
   triggers: Vec<String>,
+  is_delayed: bool,
+}
+
+struct RawTaskItem {
+  name: String,
+  command: String,
+  state: String,
   is_delayed: bool,
 }
 
@@ -144,6 +152,70 @@ fn get_tasks_xml() -> Option<String> {
 }
 
 pub fn get_task_autostart_items() -> Vec<AutostartItem> {
+  let raw_items = collect_raw_task_items();
+
+  raw_items.into_par_iter().map(enrich_task_item).collect()
+}
+
+pub fn get_task_items_fast() -> Vec<AutostartItem> {
+  let raw_items = collect_raw_task_items();
+
+  raw_items
+    .into_iter()
+    .map(|raw| {
+      let is_enabled = raw.state != "Disabled";
+      let target_path = extract_exe_from_command(&raw.command);
+      let critical_level = get_critical_level(&raw.name, &raw.command);
+
+      let display_name = raw
+        .name
+        .split('\\')
+        .next_back()
+        .unwrap_or(&raw.name)
+        .to_string();
+
+      let id = format!("task|{}", raw.name.replace('\\', "/"));
+
+      AutostartItem {
+        id,
+        name: display_name,
+        publisher: String::new(),
+        command: raw.command,
+        location: format!("Task: {}", raw.name),
+        source: AutostartSource::Task,
+        is_enabled,
+        is_delayed: raw.is_delayed,
+        icon_base64: None,
+        critical_level,
+        file_path: target_path,
+      }
+    })
+    .collect()
+}
+
+pub fn enrich_task_items(items: &mut [AutostartItem]) -> Vec<EnrichmentData> {
+  items
+    .iter()
+    .filter(|item| item.source == AutostartSource::Task)
+    .map(|item| {
+      let icon_base64 = item.file_path.as_ref().and_then(|p| get_icon(p));
+      let publisher = item
+        .file_path
+        .as_ref()
+        .and_then(|p| get_file_version_info(p).ok())
+        .and_then(|v| v.company_name)
+        .unwrap_or_default();
+
+      EnrichmentData {
+        id: item.id.clone(),
+        icon_base64,
+        publisher,
+      }
+    })
+    .collect()
+}
+
+fn collect_raw_task_items() -> Vec<RawTaskItem> {
   let mut items = Vec::new();
 
   let xml = match get_tasks_xml() {
@@ -198,9 +270,12 @@ pub fn get_task_autostart_items() -> Vec<AutostartItem> {
 
             if let Some(task_info) = parse_task_xml(&task_xml) {
               if should_include_task(&task_info) {
-                if let Some(item) = create_autostart_item(task_info) {
-                  items.push(item);
-                }
+                items.push(RawTaskItem {
+                  name: task_info.name,
+                  command: task_info.command,
+                  state: task_info.state,
+                  is_delayed: task_info.is_delayed,
+                });
               }
             }
           } else {
@@ -225,6 +300,45 @@ pub fn get_task_autostart_items() -> Vec<AutostartItem> {
   items
 }
 
+fn enrich_task_item(raw: RawTaskItem) -> AutostartItem {
+  let is_enabled = raw.state != "Disabled";
+  let is_delayed = raw.is_delayed;
+
+  let target_path = extract_exe_from_command(&raw.command);
+  let icon_base64 = target_path.as_ref().and_then(|p| get_icon(p));
+
+  let publisher = target_path
+    .as_ref()
+    .and_then(|p| get_file_version_info(p).ok())
+    .and_then(|v| v.company_name)
+    .unwrap_or_default();
+
+  let critical_level = get_critical_level(&raw.name, &raw.command);
+
+  let display_name = raw
+    .name
+    .split('\\')
+    .next_back()
+    .unwrap_or(&raw.name)
+    .to_string();
+
+  let id = format!("task|{}", raw.name.replace('\\', "/"));
+
+  AutostartItem {
+    id,
+    name: display_name,
+    publisher,
+    command: raw.command,
+    location: format!("Task: {}", raw.name),
+    source: AutostartSource::Task,
+    is_enabled,
+    is_delayed,
+    icon_base64,
+    critical_level,
+    file_path: target_path,
+  }
+}
+
 fn should_include_task(task: &TaskInfo) -> bool {
   if task.name.is_empty() {
     return false;
@@ -238,45 +352,6 @@ fn should_include_task(task: &TaskInfo) -> bool {
     .triggers
     .iter()
     .any(|t| STARTUP_TRIGGERS.contains(&t.as_str()))
-}
-
-fn create_autostart_item(task: TaskInfo) -> Option<AutostartItem> {
-  let is_enabled = task.state != "Disabled";
-  let is_delayed = task.is_delayed;
-
-  let target_path = extract_exe_from_command(&task.command);
-  let icon_base64 = target_path.as_ref().and_then(|p| get_icon(p));
-
-  let publisher = target_path
-    .as_ref()
-    .and_then(|p| get_file_version_info(p).ok())
-    .and_then(|v| v.company_name)
-    .unwrap_or_default();
-
-  let critical_level = get_critical_level(&task.name, &task.command);
-
-  let display_name = task
-    .name
-    .split('\\')
-    .next_back()
-    .unwrap_or(&task.name)
-    .to_string();
-
-  let id = format!("task|{}", task.name.replace('\\', "/"));
-
-  Some(AutostartItem {
-    id,
-    name: display_name,
-    publisher,
-    command: task.command,
-    location: format!("Task: {}", task.name),
-    source: AutostartSource::Task,
-    is_enabled,
-    is_delayed,
-    icon_base64,
-    critical_level,
-    file_path: target_path,
-  })
 }
 
 fn extract_exe_from_command(command: &str) -> Option<String> {

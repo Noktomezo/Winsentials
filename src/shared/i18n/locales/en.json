@@ -31,7 +31,7 @@
     "enable": "Enable",
     "disable": "Disable",
     "delete": "Delete",
-    "openLocation": "Open file location",
+    "openLocation": "Location",
     "properties": "Properties",
     "copyCommand": "Copy command",
     "unknownPublisher": "Unknown publisher",

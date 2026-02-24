@@ -1,9 +1,11 @@
 import type { AutostartItem } from '@/shared/types/autostart'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
-import { Clock, Copy, FolderOpen, Info, MoreVertical, Power, PowerOff, Trash2 } from 'lucide-react'
+import { Clock, Copy, FolderOpen, Info, MoreVertical, Trash2 } from 'lucide-react'
 
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { useAutostartStore } from '@/shared/store/autostart'
 import { FilePropertiesDialog } from './FilePropertiesDialog'
@@ -14,13 +16,14 @@ interface AutostartRowProps {
 
 export function AutostartRow({ item }: AutostartRowProps) {
   const { t } = useTranslation()
-  const { toggle, delete: deleteItem } = useAutostartStore()
+  const { toggle, delete: deleteItem, enriching } = useAutostartStore()
   const [showMenu, setShowMenu] = useState(false)
   const [showProperties, setShowProperties] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isToggling, setIsToggling] = useState(false)
   const cancelBtnRef = useRef<HTMLButtonElement>(null)
 
-  const menuItemClass = 'flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent'
+  const menuItemClass = 'flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent cursor-pointer'
 
   useEffect(() => {
     if (showDeleteConfirm) {
@@ -69,15 +72,16 @@ export function AutostartRow({ item }: AutostartRowProps) {
     }
   }
 
-  const handleToggle = async () => {
+  const handleToggle = async (checked: boolean) => {
+    setIsToggling(true)
     try {
-      await toggle(item.id, !item.is_enabled)
+      await toggle(item.id, checked)
     }
     catch (error) {
       console.error('Failed to toggle:', error)
     }
     finally {
-      setShowMenu(false)
+      setIsToggling(false)
     }
   }
 
@@ -98,13 +102,17 @@ export function AutostartRow({ item }: AutostartRowProps) {
     <>
       <div className={rowClass}>
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-muted">
-          {item.icon_base64
+          {enriching && !item.icon_base64
             ? (
-                <img src={item.icon_base64} alt="" className="h-6 w-6 object-contain" />
+                <Skeleton className="h-6 w-6 rounded" />
               )
-            : (
-                <div className="h-6 w-6 rounded bg-muted-foreground/20" />
-              )}
+            : item.icon_base64
+              ? (
+                  <img src={item.icon_base64} alt="" className="h-6 w-6 object-contain" />
+                )
+              : (
+                  <div className="h-6 w-6 rounded bg-muted-foreground/20" />
+                )}
         </div>
 
         <div className="flex-1 min-w-0">
@@ -125,22 +133,17 @@ export function AutostartRow({ item }: AutostartRowProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              'rounded-full px-2 py-0.5 text-xs',
-              item.is_enabled
-                ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-                : 'bg-muted text-muted-foreground',
-            )}
-          >
-            {item.is_enabled ? t('autostart.enabled') : t('autostart.disabled')}
-          </span>
+          <Switch
+            checked={item.is_enabled}
+            onCheckedChange={handleToggle}
+            disabled={isToggling}
+          />
 
           <div className="relative">
             <button
               type="button"
               onClick={() => setShowMenu(!showMenu)}
-              className="rounded p-1 hover:bg-accent"
+              className="rounded p-1 hover:bg-accent cursor-pointer"
               aria-label={showMenu ? t('autostart.closeMenu') : t('autostart.openMenu')}
               aria-expanded={showMenu}
               aria-haspopup="menu"
@@ -155,26 +158,6 @@ export function AutostartRow({ item }: AutostartRowProps) {
                   onClick={() => setShowMenu(false)}
                 />
                 <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-lg border border-border bg-card py-1 shadow-lg">
-                  <button
-                    type="button"
-                    onClick={handleToggle}
-                    className={menuItemClass}
-                  >
-                    {item.is_enabled
-                      ? (
-                          <>
-                            <PowerOff className="h-4 w-4" />
-                            {t('autostart.disable')}
-                          </>
-                        )
-                      : (
-                          <>
-                            <Power className="h-4 w-4" />
-                            {t('autostart.enable')}
-                          </>
-                        )}
-                  </button>
-
                   {item.file_path && (
                     <>
                       <button
@@ -217,7 +200,7 @@ export function AutostartRow({ item }: AutostartRowProps) {
                       setShowMenu(false)
                       setShowDeleteConfirm(true)
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10"
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10 cursor-pointer"
                   >
                     <Trash2 className="h-4 w-4" />
                     {t('autostart.delete')}

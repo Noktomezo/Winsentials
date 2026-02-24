@@ -1,11 +1,17 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::sync::LazyLock;
 
 use chrono::{DateTime, Utc};
+use parking_lot::RwLock;
 use pelite::pe::Pe;
 use pelite::pe::PeFile;
 
 use crate::autostart::types::FileProperties;
+
+static VERSION_CACHE: LazyLock<RwLock<HashMap<String, VersionInfoResult>>> =
+  LazyLock::new(|| RwLock::new(HashMap::new()));
 
 fn format_size(size: u64) -> String {
   const KB: u64 = 1024;
@@ -27,6 +33,7 @@ fn format_datetime(dt: DateTime<Utc>) -> String {
   dt.format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
+#[derive(Clone)]
 pub struct VersionInfoResult {
   pub file_version: Option<String>,
   pub company_name: Option<String>,
@@ -34,6 +41,13 @@ pub struct VersionInfoResult {
 }
 
 pub fn get_file_version_info(path: &str) -> Result<VersionInfoResult, String> {
+  {
+    let cache = VERSION_CACHE.read();
+    if let Some(cached) = cache.get(path) {
+      return Ok(cached.clone());
+    }
+  }
+
   let buffer = std::fs::read(path).map_err(|e| e.to_string())?;
 
   let pe_file = PeFile::from_bytes(&buffer)
@@ -69,11 +83,16 @@ pub fn get_file_version_info(path: &str) -> Result<VersionInfoResult, String> {
     .and_then(|lang| lang.get("FileDescription"))
     .map(|s| s.to_string());
 
-  Ok(VersionInfoResult {
+  let result = VersionInfoResult {
     file_version,
     company_name,
     file_description,
-  })
+  };
+
+  VERSION_CACHE
+    .write()
+    .insert(path.to_string(), result.clone());
+  Ok(result)
 }
 
 pub fn get_file_properties(path: &str) -> Result<FileProperties, String> {

@@ -7,8 +7,8 @@ use sysinfo::{CpuRefreshKind, Disks, MemoryRefreshKind, RefreshKind, System};
 use wmi::WMIConnection;
 
 use crate::wmi_queries::{
-  Win32_PhysicalMemory, Win32_PhysicalMemoryArray, Win32_VideoController,
-  get_wmi_connection,
+  get_wmi_connection, Win32_PhysicalMemory, Win32_PhysicalMemoryArray,
+  Win32_VideoController,
 };
 
 static STATIC_INFO: OnceLock<StaticSystemInfo> = OnceLock::new();
@@ -266,8 +266,8 @@ fn get_os_info() -> OsInfo {
 }
 
 fn get_display_version() -> Option<String> {
-  use winreg::RegKey;
   use winreg::enums::*;
+  use winreg::RegKey;
 
   let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
   let key = hklm

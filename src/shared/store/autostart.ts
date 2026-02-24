@@ -3,7 +3,8 @@ import type { AutostartItem } from '@/shared/types/autostart'
 import { create } from 'zustand'
 import {
   deleteAutostart,
-  getAutostartItems,
+  enrichAutostartItems,
+  getAutostartItemsFast,
   toggleAutostart,
 } from '@/shared/api/autostart'
 
@@ -12,9 +13,14 @@ type Filter = 'all' | 'enabled' | 'disabled'
 interface AutostartState {
   items: AutostartItem[]
   loading: boolean
+  enriching: boolean
   filter: Filter
   search: string
+  loaded: boolean
+
   load: () => Promise<void>
+  enrich: () => Promise<void>
+  forceReload: () => Promise<void>
   toggle: (id: string, enable: boolean) => Promise<void>
   delete: (id: string) => Promise<void>
   setFilter: (filter: Filter) => void
@@ -24,17 +30,63 @@ interface AutostartState {
 export const useAutostartStore = create<AutostartState>((set, get) => ({
   items: [],
   loading: false,
+  enriching: false,
   filter: 'all',
   search: '',
+  loaded: false,
 
   load: async () => {
+    if (get().loaded)
+      return
+
     set({ loading: true })
     try {
-      const items = await getAutostartItems()
-      set({ items, loading: false })
+      const items = await getAutostartItemsFast()
+      set({ items, loading: false, loaded: true })
+      get().enrich()
     }
     catch (error) {
       console.error('Failed to load autostart items:', error)
+      set({ loading: false })
+    }
+  },
+
+  enrich: async () => {
+    set({ enriching: true })
+    try {
+      const items = get().items
+      const ids = items.map(item => item.id)
+      const enrichments = await enrichAutostartItems(ids)
+
+      const enrichedItems = items.map((item) => {
+        const enrichment = enrichments.find(e => e.id === item.id)
+        if (enrichment) {
+          return {
+            ...item,
+            icon_base64: enrichment.icon_base64,
+            publisher: enrichment.publisher,
+          }
+        }
+        return item
+      })
+
+      set({ items: enrichedItems, enriching: false })
+    }
+    catch (error) {
+      console.error('Failed to enrich autostart items:', error)
+      set({ enriching: false })
+    }
+  },
+
+  forceReload: async () => {
+    set({ loaded: false, items: [], loading: true })
+    try {
+      const items = await getAutostartItemsFast()
+      set({ items, loading: false, loaded: true })
+      get().enrich()
+    }
+    catch (error) {
+      console.error('Failed to reload autostart items:', error)
       set({ loading: false })
     }
   },

@@ -3,8 +3,8 @@ use crate::tweaks::{
   RiskLevel, Tweak, TweakCategory, TweakMeta, TweakState, TweakUiType,
 };
 use crate::wmi_queries::{
-  HasPnpDeviceId, Win32_NetworkAdapter, Win32_USBController,
-  Win32_VideoController, get_wmi_connection,
+  get_wmi_connection, HasPnpDeviceId, Win32_NetworkAdapter,
+  Win32_USBController, Win32_VideoController,
 };
 use winreg::enums::*;
 

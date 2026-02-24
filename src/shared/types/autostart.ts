@@ -15,6 +15,12 @@ export interface AutostartItem {
   file_path: string | null
 }
 
+export interface EnrichmentData {
+  id: string
+  icon_base64: string | null
+  publisher: string
+}
+
 export interface FileProperties {
   name: string
   path: string

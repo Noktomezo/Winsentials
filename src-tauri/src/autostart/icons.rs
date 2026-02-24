@@ -5,23 +5,25 @@ use std::path::PathBuf;
 use std::sync::LazyLock;
 
 use base64::Engine;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
+use windows::core::PCWSTR;
 use windows::Win32::Foundation::HWND;
 use windows::Win32::Graphics::Gdi::{
-  BITMAP, BITMAPINFO, BITMAPINFOHEADER, DIB_RGB_COLORS, DeleteObject, GetDC,
-  GetDIBits, GetObjectW, ReleaseDC,
+  DeleteObject, GetDC, GetDIBits, GetObjectW, ReleaseDC, BITMAP, BITMAPINFO,
+  BITMAPINFOHEADER, DIB_RGB_COLORS,
 };
 use windows::Win32::Storage::FileSystem::FILE_ATTRIBUTE_NORMAL;
 use windows::Win32::UI::Shell::{
-  SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON, SHGetFileInfoW,
+  SHGetFileInfoW, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
   DestroyIcon, GetIconInfo, HICON, ICONINFO,
 };
-use windows::core::PCWSTR;
 
 static ICON_CACHE: LazyLock<RwLock<HashMap<String, String>>> =
   LazyLock::new(|| RwLock::new(HashMap::new()));
+
+static GDI_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
 fn get_cache_dir() -> PathBuf {
   let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
@@ -226,5 +228,6 @@ unsafe fn icon_to_base64(icon: HICON) -> Option<String> {
 }
 
 pub fn get_icon(path: &str) -> Option<String> {
+  let _guard = GDI_LOCK.lock();
   extract_icon_base64(path)
 }

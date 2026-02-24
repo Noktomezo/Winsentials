@@ -3,7 +3,7 @@ use crate::tweaks::{
   RiskLevel, Tweak, TweakCategory, TweakMeta, TweakState, TweakUiType,
 };
 use crate::wmi_queries::{
-  Win32_NetworkAdapter, Win32_VideoController, get_wmi_connection,
+  get_wmi_connection, Win32_NetworkAdapter, Win32_VideoController,
 };
 use winreg::enums::*;
 

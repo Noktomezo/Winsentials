@@ -1,8 +1,16 @@
-import type { AutostartItem, FileProperties } from '@/shared/types/autostart'
+import type { AutostartItem, EnrichmentData, FileProperties } from '@/shared/types/autostart'
 import { invoke } from '@tauri-apps/api/core'
 
 export async function getAutostartItems(): Promise<AutostartItem[]> {
   return invoke('get_autostart_items')
+}
+
+export async function getAutostartItemsFast(): Promise<AutostartItem[]> {
+  return invoke('get_autostart_items_fast')
+}
+
+export async function enrichAutostartItems(ids: string[]): Promise<EnrichmentData[]> {
+  return invoke('enrich_autostart', { ids })
 }
 
 export async function toggleAutostart(id: string, enable: boolean): Promise<void> {
@@ -19,8 +27,4 @@ export async function openLocation(path: string): Promise<void> {
 
 export async function getProperties(path: string): Promise<FileProperties> {
   return invoke('get_properties', { path })
-}
-
-export async function exportAutostart(): Promise<string> {
-  return invoke('export_autostart')
 }

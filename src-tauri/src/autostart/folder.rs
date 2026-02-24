@@ -4,11 +4,12 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 use lnk::ShellLink;
+use rayon::prelude::*;
 
 use crate::autostart::critical::get_critical_level;
 use crate::autostart::file_info::get_file_version_info;
 use crate::autostart::icons::get_icon;
-use crate::autostart::types::{AutostartItem, AutostartSource};
+use crate::autostart::types::{AutostartItem, AutostartSource, EnrichmentData};
 
 fn validate_filename(filename: &str) -> Result<(), String> {
   if filename.is_empty() {
@@ -107,12 +108,21 @@ fn get_disabled_folder(location: &str) -> Option<PathBuf> {
   )
 }
 
-fn collect_lnk_items(
+struct RawFolderItem {
+  name: String,
+  target_path: String,
+  command: String,
+  location_name: String,
+  filename: String,
+  is_enabled: bool,
+}
+
+fn collect_raw_lnk_items(
   dir: &Path,
   location_name: &str,
   is_enabled: bool,
   seen_files: &mut HashSet<String>,
-  items: &mut Vec<AutostartItem>,
+  items: &mut Vec<RawFolderItem>,
 ) {
   if let Ok(entries) = fs::read_dir(dir) {
     for entry in entries.filter_map(|e| e.ok()) {
@@ -150,38 +160,52 @@ fn collect_lnk_items(
             )
           });
 
-        let icon_base64 = get_icon(&target_path);
-
-        let critical_level = get_critical_level(&name, &command);
-
-        let publisher = get_file_version_info(&target_path)
-          .ok()
-          .and_then(|v| v.company_name)
-          .unwrap_or_default();
-
-        let id =
-          format!("folder|{}|{}", location_name.replace(' ', "_"), filename);
-
-        items.push(AutostartItem {
-          id,
+        items.push(RawFolderItem {
           name,
-          publisher,
+          target_path,
           command,
-          location: location_name.to_string(),
-          source: AutostartSource::Folder,
+          location_name: location_name.to_string(),
+          filename,
           is_enabled,
-          is_delayed: false,
-          icon_base64,
-          critical_level,
-          file_path: Some(target_path),
         });
       }
     }
   }
 }
 
+fn enrich_folder_item(raw: RawFolderItem) -> AutostartItem {
+  let icon_base64 = get_icon(&raw.target_path);
+
+  let critical_level = get_critical_level(&raw.name, &raw.command);
+
+  let publisher = get_file_version_info(&raw.target_path)
+    .ok()
+    .and_then(|v| v.company_name)
+    .unwrap_or_default();
+
+  let id = format!(
+    "folder|{}|{}",
+    raw.location_name.replace(' ', "_"),
+    raw.filename
+  );
+
+  AutostartItem {
+    id,
+    name: raw.name,
+    publisher,
+    command: raw.command,
+    location: raw.location_name,
+    source: AutostartSource::Folder,
+    is_enabled: raw.is_enabled,
+    is_delayed: false,
+    icon_base64,
+    critical_level,
+    file_path: Some(raw.target_path),
+  }
+}
+
 pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
-  let mut items = Vec::new();
+  let mut raw_items = Vec::new();
 
   for (location_name, folder_path) in get_startup_folders() {
     if !folder_path.exists() {
@@ -191,28 +215,110 @@ pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
     let disabled_folder = get_disabled_folder(&location_name);
     let mut seen_files: HashSet<String> = HashSet::new();
 
-    collect_lnk_items(
+    collect_raw_lnk_items(
       &folder_path,
       &location_name,
       true,
       &mut seen_files,
-      &mut items,
+      &mut raw_items,
     );
 
     if let Some(disabled_path) = &disabled_folder {
       if disabled_path.exists() {
-        collect_lnk_items(
+        collect_raw_lnk_items(
           disabled_path,
           &location_name,
           false,
           &mut seen_files,
-          &mut items,
+          &mut raw_items,
         );
       }
     }
   }
 
+  raw_items.into_par_iter().map(enrich_folder_item).collect()
+}
+
+pub fn get_folder_items_fast() -> Vec<AutostartItem> {
+  let mut raw_items = Vec::new();
+
+  for (location_name, folder_path) in get_startup_folders() {
+    if !folder_path.exists() {
+      continue;
+    }
+
+    let disabled_folder = get_disabled_folder(&location_name);
+    let mut seen_files: HashSet<String> = HashSet::new();
+
+    collect_raw_lnk_items(
+      &folder_path,
+      &location_name,
+      true,
+      &mut seen_files,
+      &mut raw_items,
+    );
+
+    if let Some(disabled_path) = &disabled_folder {
+      if disabled_path.exists() {
+        collect_raw_lnk_items(
+          disabled_path,
+          &location_name,
+          false,
+          &mut seen_files,
+          &mut raw_items,
+        );
+      }
+    }
+  }
+
+  raw_items
+    .into_iter()
+    .map(|raw| {
+      let critical_level = get_critical_level(&raw.name, &raw.command);
+
+      let id = format!(
+        "folder|{}|{}",
+        raw.location_name.replace(' ', "_"),
+        raw.filename
+      );
+
+      AutostartItem {
+        id,
+        name: raw.name,
+        publisher: String::new(),
+        command: raw.command,
+        location: raw.location_name,
+        source: AutostartSource::Folder,
+        is_enabled: raw.is_enabled,
+        is_delayed: false,
+        icon_base64: None,
+        critical_level,
+        file_path: Some(raw.target_path),
+      }
+    })
+    .collect()
+}
+
+pub fn enrich_folder_items(items: &mut [AutostartItem]) -> Vec<EnrichmentData> {
   items
+    .iter()
+    .filter(|item| item.source == AutostartSource::Folder)
+    .map(|item| {
+      let icon_base64 = item.file_path.as_ref().and_then(|p| get_icon(p));
+      let publisher = item
+        .file_path
+        .as_ref()
+        .and_then(|p| get_file_version_info(p).ok())
+        .and_then(|v| v.company_name)
+        .unwrap_or_default();
+
+      EnrichmentData {
+        id: item.id.clone(),
+        icon_base64,
+        publisher,
+      }
+    })
+    .collect()
 }
 
 pub fn toggle_folder_item(id: &str, enable: bool) -> Result<(), String> {
