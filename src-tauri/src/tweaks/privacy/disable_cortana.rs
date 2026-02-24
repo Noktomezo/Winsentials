@@ -6,7 +6,6 @@ use winreg::enums::*;
 
 const WINDOWS_SEARCH_PATH: &str =
   r"SOFTWARE\Policies\Microsoft\Windows\Windows Search";
-const ALLOW_CORTANA: &str = "AllowCortana";
 const DISABLE_WEB_SEARCH: &str = "DisableWebSearch";
 const CONNECTED_SEARCH_USE_WEB: &str = "ConnectedSearchUseWeb";
 
@@ -39,18 +38,12 @@ impl Tweak for DisableCortanaTweak {
   }
 
   fn check(&self) -> Result<TweakState, String> {
-    let cortana = registry::read_reg_u32(
-      HKEY_LOCAL_MACHINE,
-      WINDOWS_SEARCH_PATH,
-      ALLOW_CORTANA,
-    );
     let web_search = registry::read_reg_u32(
       HKEY_LOCAL_MACHINE,
       WINDOWS_SEARCH_PATH,
       DISABLE_WEB_SEARCH,
     );
-    let is_applied = cortana.map(|v| v == 0).unwrap_or(false)
-      && web_search.map(|v| v == 1).unwrap_or(false);
+    let is_applied = web_search.map(|v| v == 1).unwrap_or(false);
     Ok(TweakState {
       id: self.meta.id.clone(),
       current_value: Some(if is_applied { "1" } else { "0" }.to_string()),
@@ -59,13 +52,6 @@ impl Tweak for DisableCortanaTweak {
   }
 
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
-    registry::write_reg_u32(
-      HKEY_LOCAL_MACHINE,
-      WINDOWS_SEARCH_PATH,
-      ALLOW_CORTANA,
-      0,
-    )
-    .map_err(|e| e.to_string())?;
     registry::write_reg_u32(
       HKEY_LOCAL_MACHINE,
       WINDOWS_SEARCH_PATH,
@@ -83,13 +69,6 @@ impl Tweak for DisableCortanaTweak {
   }
 
   fn revert(&self) -> Result<(), String> {
-    registry::write_reg_u32(
-      HKEY_LOCAL_MACHINE,
-      WINDOWS_SEARCH_PATH,
-      ALLOW_CORTANA,
-      1,
-    )
-    .map_err(|e| e.to_string())?;
     registry::write_reg_u32(
       HKEY_LOCAL_MACHINE,
       WINDOWS_SEARCH_PATH,

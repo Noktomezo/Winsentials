@@ -12,7 +12,50 @@
       "hardware": "Hardware",
       "memory": "Memory"
     },
-    "settings": "Settings"
+    "settings": "Settings",
+    "autostart": "Autostart"
+  },
+  "autostart": {
+    "title": "Autostart Manager",
+    "description": "Manage programs that run at startup",
+    "search": "Search programs...",
+    "refresh": "Refresh",
+    "exportCsv": "Export CSV",
+    "sourceFolder": "Startup Folder",
+    "sourceRegistry": "Registry",
+    "sourceTask": "Task Scheduler",
+    "sourceService": "Services",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "delayed": "Delayed",
+    "enable": "Enable",
+    "disable": "Disable",
+    "delete": "Delete",
+    "openLocation": "Open file location",
+    "properties": "Properties",
+    "copyCommand": "Copy command",
+    "unknownPublisher": "Unknown publisher",
+    "noItems": "No autostart items found",
+    "loading": "Scanning autostart entries...",
+    "confirmDelete": "Delete \"{name}\"?",
+    "confirmDeleteWarning": "This program runs from a temporary folder. Deleting may affect its functionality.",
+    "confirmDeleteCritical": "\"{name}\" is a critical system component. Disabling it may cause system instability. Continue?",
+    "criticalWarning": "Critical system component",
+    "filter": {
+      "all": "All",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "propertiesDialog": {
+      "fileName": "File name",
+      "path": "Location",
+      "size": "Size",
+      "created": "Created",
+      "modified": "Modified",
+      "version": "Version",
+      "publisher": "Publisher",
+      "description": "Description"
+    }
   },
   "categoryDescriptions": {
     "system": "Optimize your system performance",
@@ -74,30 +117,55 @@
       "description": "Restore the classic Windows 10-style right-click context menu in Windows 11",
       "details": "Replaces the Windows 11 simplified context menu with the full classic menu. Removes the need to click 'Show more options' to access all context menu items."
     },
+    "disableTransparency": {
+      "name": "Disable Transparency Effects",
+      "description": "Make taskbar, Start menu, and windows fully opaque for a classic look",
+      "details": "Removes the Acrylic effect, reduces GPU load, and makes the interface sharper. Especially useful on low-end hardware or with dark themes. Changes apply immediately."
+    },
+    "hideExplorerHome": {
+      "name": "Hide Home Button in Explorer",
+      "description": "Completely remove the Home button from Explorer's left panel",
+      "details": "The Home section always appears at the top and shows quick access, recent files, and Microsoft suggestions. After applying, it disappears completely, making the panel cleaner and more compact."
+    },
+    "hideExplorerGallery": {
+      "name": "Hide Gallery Button in Explorer",
+      "description": "Completely remove the Gallery button from Explorer's left panel",
+      "details": "Gallery is a separate section with all photos and images on your PC. If you don't use it, this tweak removes it permanently. Explorer restart is required after applying."
+    },
     "disableTelemetry": {
-      "name": "Disable Telemetry",
-      "description": "Stop Windows from collecting and sending diagnostic data to Microsoft",
-      "details": "Disables Windows telemetry services and data collection. Prevents Microsoft from collecting usage data, system information, and error reports. May affect Windows Update delivery optimization and some diagnostic features."
+      "name": "Disable Global Telemetry",
+      "description": "Sets minimum diagnostic data level (blocks almost all telemetry)",
+      "details": "Disables Windows telemetry. Works on all editions (Home/Pro). Covers .NET, PowerShell, application impact, licensing, and diagnostics. After change, grayed out checkbox in Settings → Privacy → Diagnostics & Feedback."
+    },
+    "disableTelemetryServices": {
+      "name": "Disable Telemetry Services",
+      "description": "Completely disable the main telemetry collection service (DiagTrack)",
+      "details": "Connected User Experiences and Telemetry service sends data to Microsoft. After disabling, it won't start automatically."
     },
     "disableCEIP": {
-      "name": "Disable Customer Experience Improvement Program",
-      "description": "Disable participation in Microsoft's telemetry programs",
-      "details": "Opts out of Microsoft's Customer Experience Improvement Program for both Windows and .NET Framework. Stops sending usage statistics and feedback to Microsoft."
+      "name": "Disable CEIP Tasks",
+      "description": "Disable all Customer Experience Improvement Program (CEIP/SQM) tasks",
+      "details": "Removes usage data collection, reminders, and CEIP updates. The CEIPEnable key stops SQM (Software Quality Management)."
     },
     "disableWER": {
       "name": "Disable Windows Error Reporting",
-      "description": "Stop Windows from sending error reports to Microsoft",
-      "details": "Prevents Windows from sending error reports when applications crash. Error reports help Microsoft fix bugs, but disabling improves privacy. Local error logs are still generated."
+      "description": "Fully disable Windows Error Reporting (sending error dumps)",
+      "details": "Blocks 'Windows is reporting an error' popups and sending data to Microsoft. Alternative: disable WerSvc service."
     },
     "disableAppCompat": {
       "name": "Disable Application Compatibility Telemetry",
       "description": "Disable collection of application compatibility data",
       "details": "Disables the Program Compatibility Assistant and application compatibility data collection. Some older applications may have reduced compatibility assistance."
     },
+    "disableCompatAppraiser": {
+      "name": "Disable Compatibility Appraiser Task",
+      "description": "Disable CompatTelRunner.exe (compatibility assessment and app telemetry)",
+      "details": "Task runs when launching old programs and sends data. After disabling, no high disk/CPU load from CompatTelRunner.exe. Can additionally remove triggers in Task Scheduler."
+    },
     "disableAdvertising": {
-      "name": "Disable Advertising ID",
-      "description": "Disable the advertising identifier used for personalized ads",
-      "details": "Disables the unique advertising ID that apps use for personalized advertising. Apps will still show ads, but they will be less targeted to your interests."
+      "name": "Disable Targeted Advertising",
+      "description": "Disable personalized advertising and advertising ID",
+      "details": "Disables the unique advertising ID that apps use for personalized advertising. Apps will still show ads, but they will be less targeted. 'Your Phone' (Link to Windows) may not work."
     },
     "disableSilentApps": {
       "name": "Disable Silent App Installation",
@@ -109,15 +177,40 @@
       "description": "Disable Windows suggestions, tips, and tutorials",
       "details": "Removes tips, tricks, and suggestions that appear in Start menu, Settings, and throughout Windows. Also disables the 'Welcome' experience after updates."
     },
+    "disableTailoredExperiences": {
+      "name": "Disable Tailored Experiences",
+      "description": "Microsoft stops showing personalized tips and ads based on your data",
+      "details": "Removes intrusive suggestions in Settings, Start menu, and notifications. Works even if telemetry is already disabled."
+    },
+    "disableRecall": {
+      "name": "Disable Windows Recall (AI Screenshots)",
+      "description": "Completely disables Recall feature (continuous AI screenshots)",
+      "details": "Most important privacy tweak. Recall won't save screen history, won't run, and won't consume disk space. Alternative: Settings → Privacy → Recall & snapshots."
+    },
     "disableCortana": {
       "name": "Disable Cortana and Web Search",
       "description": "Disable Cortana voice assistant and web search in Start menu",
       "details": "Disables Cortana and removes web search results from Start menu searches. Search will only show local files and applications. Voice activation features will be unavailable."
     },
     "disableLocation": {
-      "name": "Disable Location Services",
-      "description": "Disable Windows location services and sensors",
-      "details": "Disables location services system-wide. Maps, weather apps, and other location-aware applications will not function correctly. Can be overridden per-app in Settings."
+      "name": "Disable Location Provider",
+      "description": "Deny access to location at system level",
+      "details": "Completely disables geolocation for all applications and services."
+    },
+    "disableSensorsWifi": {
+      "name": "Disable Sensors and Wi-Fi Sense",
+      "description": "Disable all sensors and Wi-Fi Sense (connecting to open networks)",
+      "details": "Disables all sensors. Wi-Fi Sense is deprecated in Windows 11."
+    },
+    "disableSearchLocation": {
+      "name": "Disable Search Data Collection",
+      "description": "Prevent Windows Search from using and sending location data",
+      "details": "Blocks Windows Search from accessing and transmitting location information."
+    },
+    "disableVoiceActivation": {
+      "name": "Disable Voice Activation",
+      "description": "Disable voice activation for apps and Cortana (including when locked)",
+      "details": "Removes microphone listening for keywords. Works on all editions."
     },
     "disableSettingSync": {
       "name": "Disable Settings Sync",
@@ -125,19 +218,39 @@
       "details": "Prevents Windows from syncing your settings, passwords, and preferences to Microsoft servers. Settings won't sync across your devices. OneDrive settings sync may also be affected."
     },
     "disableActivityFeed": {
-      "name": "Disable Activity History",
-      "description": "Disable Windows activity history and timeline features",
-      "details": "Disables the Timeline feature and activity history collection. Your activity on this PC won't be tracked or synced. Timeline view in Task View will be empty."
+      "name": "Disable Activity Recording",
+      "description": "Fully disable Timeline / user activity recording",
+      "details": "Disables the Timeline feature and activity history collection. Your activity on this PC won't be tracked or synced. In Win11 called Activity History."
     },
     "disableOnlineSpeech": {
-      "name": "Disable Online Speech Recognition",
-      "description": "Disable cloud-based speech recognition services",
-      "details": "Disables Microsoft's cloud-based speech recognition. Dictation features will use local recognition only, which may be less accurate. Cortana voice features are unaffected (use Disable Cortana)."
+      "name": "Disable Cloud Sync and Speech Recognition",
+      "description": "Disable cloud sync and speech recognition",
+      "details": "Disables Microsoft's cloud-based speech recognition. Dictation features will use local recognition only, which may be less accurate."
     },
     "disableCloudSearch": {
       "name": "Disable Cloud Search",
       "description": "Disable cloud-assisted search in Windows",
       "details": "Prevents Windows Search from using Microsoft's cloud services to provide enhanced search results. Search will be limited to local and OneDrive content."
+    },
+    "disableConsumerFeatures": {
+      "name": "Disable Windows Consumer Features",
+      "description": "Disable cloud sync and consumer features",
+      "details": "Disables Windows consumer features and cloud sync functionality."
+    },
+    "disableHandwriting": {
+      "name": "Disable Privacy Consent and Handwriting Collection",
+      "description": "Remove consent and disable handwriting/text input collection",
+      "details": "Disables Windows privacy consent and prevents sharing of handwriting and text input data."
+    },
+    "disableUsageTracking": {
+      "name": "Disable Most Used Apps and Inventory Collector",
+      "description": "Disable tracking of frequently used programs and inventory",
+      "details": "Removes tracking of most used programs and disables ProgramDataUpdater task."
+    },
+    "disableLanguageOptOut": {
+      "name": "Disable Language List Access",
+      "description": "Prevent websites from accessing the language list",
+      "details": "Blocks websites from receiving the list of installed languages."
     },
     "denyCameraAccess": {
       "name": "Deny Camera Access",
@@ -279,10 +392,35 @@
       "description": "Disable Structured Exception Handler Overwrite Protection",
       "details": "Disables SEHOP security feature. May improve performance slightly but reduces protection against certain exploitation techniques."
     },
-    "tcpNoDelay": {
-      "name": "TCP No Delay",
-      "description": "Disable Nagle's algorithm for lower network latency",
-      "details": "Disables Nagle's algorithm for TCP connections. Reduces network latency for real-time applications like gaming. May increase bandwidth usage for small packets."
+    "disableNagle": {
+      "name": "Disable Nagle's Algorithm",
+      "description": "Minimize network latency for real-time applications and gaming",
+      "details": "Nagle's algorithm combines small packets — good for regular internet, bad for online games. This tweak completely disables it via TCPNoDelay, TcpAckFrequency and TcpDelAckTicks on all network adapters. Reduces ping in games. Reboot required."
+    },
+    "disableTeredo": {
+      "name": "Disable Teredo IPv6 Tunneling",
+      "description": "Remove unnecessary IPv6 tunnel that often adds latency",
+      "details": "Teredo is used for IPv6 over IPv4, but on most home networks it only increases ping and creates extra traffic. Disables instantly, breaks nothing (if you need IPv6 — just re-enable). Ideal for gamers and IPv4-only users."
+    },
+    "disableLlmnr": {
+      "name": "Disable LLMNR (Multicast Name Resolution)",
+      "description": "Disable outdated and insecure local network name resolution protocol",
+      "details": "LLMNR is used for finding devices on the network, but is vulnerable to attacks and creates extra multicast traffic. Disabling improves security and slightly reduces background network load."
+    },
+    "disableQosReserve": {
+      "name": "Disable QoS Bandwidth Reserve",
+      "description": "Free up to 20% of bandwidth reserved by Windows for regular traffic",
+      "details": "Windows reserves 20% by default for 'important' traffic (QoS). In gaming and streaming this often just gets in the way. Completely removes the limit. Great with 'Disable Network Throttling'."
+    },
+    "increasePortRange": {
+      "name": "Increase Port Range and Speed Up Release",
+      "description": "Increase available ports and speed up their reuse",
+      "details": "Useful with many connections (games, torrents, browser with many tabs). Reduces probability of 'port busy' error. Fully safe, used in all modern gaming tweaks."
+    },
+    "disableNcsi": {
+      "name": "Disable Internet Connectivity Check (NCSI)",
+      "description": "Remove constant Windows requests to Microsoft servers to check internet",
+      "details": "Windows checks 'is there internet' every few seconds (requests to msftncsi.com). This is extra traffic and slight latency. After the tweak, the network icon stops 'thinking', and privacy improves."
     },
     "dnsCache": {
       "name": "Disable Negative DNS Cache",
@@ -336,7 +474,7 @@
     }
   },
   "tweak": {
-    "onlyForVersion": "Only for {{version}}",
+    "unsupportedVersion": "Unsupported Windows version",
     "riskLevel": {
       "medium": "Medium risk — may affect system stability",
       "high": "High risk — may cause system instability"
@@ -349,7 +487,11 @@
     "notApplied": "Not Applied",
     "recommended": "Recommended",
     "default": "Default",
-    "requiresReboot": "Requires reboot"
+    "requiresReboot": "Requires reboot",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "cancel": "Cancel",
+    "close": "Close"
   },
   "settings": {
     "description": "Customize application preferences",

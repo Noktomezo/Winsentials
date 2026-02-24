@@ -4,7 +4,6 @@ use crate::tweaks::{
 };
 use winreg::enums::*;
 
-const WIN11_BUILD: u32 = 22000;
 const WINDOWS_SEARCH_PATH: &str =
   r"SOFTWARE\Policies\Microsoft\Windows\Windows Search";
 const ALLOW_CLOUD_SEARCH: &str = "AllowCloudSearch";
@@ -26,7 +25,7 @@ impl DisableCloudSearchTweak {
         options: vec![],
         requires_reboot: false,
         risk_level: RiskLevel::Low,
-        min_windows_build: Some(WIN11_BUILD),
+        min_windows_build: None,
       },
     }
   }

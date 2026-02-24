@@ -8,6 +8,7 @@ import {
   Palette,
   PanelLeftClose,
   PanelLeftOpen,
+  Rocket,
   Settings,
   Shield,
   ShieldCheck,
@@ -62,7 +63,7 @@ export function Sidebar() {
         </button>
       </div>
 
-      <nav className="flex-1 py-4">
+      <nav className="flex-1 overflow-y-auto py-4">
         <ul className="space-y-1 px-2">
           {categories.map((cat) => {
             const Icon = cat.icon
@@ -89,6 +90,24 @@ export function Sidebar() {
           })}
         </ul>
       </nav>
+
+      <div className="border-t border-border">
+        <div className="p-2">
+          <Link
+            to="/autostart"
+            className={cn(
+              'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground',
+              collapsed && 'justify-center px-0',
+              currentPath === '/autostart' && 'bg-primary text-primary-foreground',
+            )}
+          >
+            <Rocket className="h-5 w-5 shrink-0" />
+            <span className={cn('truncate', collapsed && 'hidden')}>
+              {t('sidebar.autostart')}
+            </span>
+          </Link>
+        </div>
+      </div>
 
       <div className="border-t border-border p-2">
         <Link

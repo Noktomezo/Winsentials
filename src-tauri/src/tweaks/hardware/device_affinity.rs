@@ -3,8 +3,8 @@ use crate::tweaks::{
   RiskLevel, Tweak, TweakCategory, TweakMeta, TweakState, TweakUiType,
 };
 use crate::wmi_queries::{
-  get_wmi_connection, Win32_NetworkAdapter, Win32_USBController,
-  Win32_VideoController,
+  HasPnpDeviceId, Win32_NetworkAdapter, Win32_USBController,
+  Win32_VideoController, get_wmi_connection,
 };
 use winreg::enums::*;
 
@@ -36,6 +36,48 @@ impl DeviceAffinityTweak {
   }
 }
 
+fn check_device_affinity(
+  pnp_id: &str,
+  expected_assignment: &[u8],
+) -> Option<bool> {
+  let path = format!(
+    r"SYSTEM\CurrentControlSet\Enum\{}\{}",
+    pnp_id, AFFINITY_SUFFIX
+  );
+
+  let device_policy =
+    registry::read_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)?;
+  let assignment = registry::read_reg_binary(
+    HKEY_LOCAL_MACHINE,
+    &path,
+    ASSIGNMENT_SET_OVERRIDE,
+  )?;
+
+  let policy_ok = device_policy == 4;
+  let assignment_ok = assignment == expected_assignment;
+
+  Some(policy_ok && assignment_ok)
+}
+
+fn check_devices(
+  devices: &[impl HasPnpDeviceId],
+  mask: &[u8],
+  any_device: &mut bool,
+  all_applied: &mut bool,
+) {
+  for device in devices {
+    if let Some(pnp_id) = &device.pnp_device_id() {
+      if pnp_id.starts_with("PCI\\VEN_") {
+        *any_device = true;
+        match check_device_affinity(pnp_id, mask) {
+          Some(true) => {}
+          Some(false) | None => *all_applied = false,
+        }
+      }
+    }
+  }
+}
+
 impl Tweak for DeviceAffinityTweak {
   fn meta(&self) -> &TweakMeta {
     &self.meta
@@ -48,29 +90,23 @@ impl Tweak for DeviceAffinityTweak {
 
     let gpus: Vec<Win32_VideoController> =
       wmi.query().map_err(|e| e.to_string())?;
+    let nics: Vec<Win32_NetworkAdapter> =
+      wmi.query().map_err(|e| e.to_string())?;
+    let usbs: Vec<Win32_USBController> =
+      wmi.query().map_err(|e| e.to_string())?;
 
-    let mut any_applied = false;
-    for gpu in gpus {
-      if let Some(pnp_id) = gpu.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, AFFINITY_SUFFIX
-          );
-          if registry::read_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)
-            .is_some()
-          {
-            any_applied = true;
-            break;
-          }
-        }
-      }
-    }
+    let mut any_device = false;
+    let mut all_applied = true;
 
+    check_devices(&gpus, &[0x02], &mut any_device, &mut all_applied);
+    check_devices(&nics, &[0x04], &mut any_device, &mut all_applied);
+    check_devices(&usbs, &[0x08], &mut any_device, &mut all_applied);
+
+    let is_applied = any_device && all_applied;
     Ok(TweakState {
       id: self.meta.id.clone(),
-      current_value: Some(if any_applied { "1" } else { "0" }.to_string()),
-      is_applied: any_applied,
+      current_value: Some(if is_applied { "1" } else { "0" }.to_string()),
+      is_applied,
     })
   }
 

@@ -4,22 +4,22 @@ use crate::tweaks::{
 };
 use winreg::enums::*;
 
-const MSMQ_PARAMS_PATH: &str = r"SOFTWARE\Microsoft\MSMQ\Parameters";
-const TCP_NO_DELAY: &str = "TCPNoDelay";
+const USER_PROFILE_PATH: &str = r"Control Panel\International\User Profile";
+const HTTP_ACCEPT_LANGUAGE_OPT_OUT: &str = "HttpAcceptLanguageOptOut";
 
-pub struct TcpNoDelayTweak {
+pub struct DisableLanguageOptOutTweak {
   meta: TweakMeta,
 }
 
-impl TcpNoDelayTweak {
+impl DisableLanguageOptOutTweak {
   pub fn new() -> Self {
     Self {
       meta: TweakMeta {
-        id: "tcp_no_delay".to_string(),
-        category: TweakCategory::Network,
-        name_key: "tweaks.tcpNoDelay.name".to_string(),
-        description_key: "tweaks.tcpNoDelay.description".to_string(),
-        details_key: "tweaks.tcpNoDelay.details".to_string(),
+        id: "disable_language_opt_out".to_string(),
+        category: TweakCategory::Privacy,
+        name_key: "tweaks.disableLanguageOptOut.name".to_string(),
+        description_key: "tweaks.disableLanguageOptOut.description".to_string(),
+        details_key: "tweaks.disableLanguageOptOut.details".to_string(),
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,
@@ -30,18 +30,19 @@ impl TcpNoDelayTweak {
   }
 }
 
-impl Tweak for TcpNoDelayTweak {
+impl Tweak for DisableLanguageOptOutTweak {
   fn meta(&self) -> &TweakMeta {
     &self.meta
   }
 
   fn check(&self) -> Result<TweakState, String> {
     let value = registry::read_reg_u32(
-      HKEY_LOCAL_MACHINE,
-      MSMQ_PARAMS_PATH,
-      TCP_NO_DELAY,
+      HKEY_CURRENT_USER,
+      USER_PROFILE_PATH,
+      HTTP_ACCEPT_LANGUAGE_OPT_OUT,
     );
     let is_applied = value.map(|v| v == 1).unwrap_or(false);
+
     Ok(TweakState {
       id: self.meta.id.clone(),
       current_value: Some(if is_applied { "1" } else { "0" }.to_string()),
@@ -51,21 +52,21 @@ impl Tweak for TcpNoDelayTweak {
 
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
     registry::write_reg_u32(
-      HKEY_LOCAL_MACHINE,
-      MSMQ_PARAMS_PATH,
-      TCP_NO_DELAY,
+      HKEY_CURRENT_USER,
+      USER_PROFILE_PATH,
+      HTTP_ACCEPT_LANGUAGE_OPT_OUT,
       1,
     )
     .map_err(|e| e.to_string())
   }
 
   fn revert(&self) -> Result<(), String> {
-    registry::delete_reg_value(
-      HKEY_LOCAL_MACHINE,
-      MSMQ_PARAMS_PATH,
-      TCP_NO_DELAY,
+    registry::write_reg_u32(
+      HKEY_CURRENT_USER,
+      USER_PROFILE_PATH,
+      HTTP_ACCEPT_LANGUAGE_OPT_OUT,
+      0,
     )
-    .ok();
-    Ok(())
+    .map_err(|e| e.to_string())
   }
 }

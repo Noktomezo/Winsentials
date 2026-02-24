@@ -3,7 +3,7 @@ use crate::tweaks::{
   RiskLevel, Tweak, TweakCategory, TweakMeta, TweakState, TweakUiType,
 };
 use crate::wmi_queries::{
-  get_wmi_connection, Win32_NetworkAdapter, Win32_VideoController,
+  Win32_NetworkAdapter, Win32_VideoController, get_wmi_connection,
 };
 use winreg::enums::*;
 
@@ -56,35 +56,35 @@ impl Tweak for MsiModeTweak {
     let mut any_device = false;
 
     for gpu in gpus {
-      if let Some(pnp_id) = gpu.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          any_device = true;
-          let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, MSI_PROPS_SUFFIX
-          );
-          let msi_supported =
-            registry::read_reg_u32(HKEY_LOCAL_MACHINE, &path, MSI_SUPPORTED);
-          if msi_supported != Some(1) {
-            all_enabled = false;
-          }
+      if let Some(pnp_id) = gpu.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_")
+      {
+        any_device = true;
+        let path = format!(
+          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
+          pnp_id, MSI_PROPS_SUFFIX
+        );
+        let msi_supported =
+          registry::read_reg_u32(HKEY_LOCAL_MACHINE, &path, MSI_SUPPORTED);
+        if msi_supported != Some(1) {
+          all_enabled = false;
         }
       }
     }
 
     for nic in nics {
-      if let Some(pnp_id) = nic.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          any_device = true;
-          let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, MSI_PROPS_SUFFIX
-          );
-          let msi_supported =
-            registry::read_reg_u32(HKEY_LOCAL_MACHINE, &path, MSI_SUPPORTED);
-          if msi_supported != Some(1) {
-            all_enabled = false;
-          }
+      if let Some(pnp_id) = nic.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_")
+      {
+        any_device = true;
+        let path = format!(
+          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
+          pnp_id, MSI_PROPS_SUFFIX
+        );
+        let msi_supported =
+          registry::read_reg_u32(HKEY_LOCAL_MACHINE, &path, MSI_SUPPORTED);
+        if msi_supported != Some(1) {
+          all_enabled = false;
         }
       }
     }
@@ -108,60 +108,60 @@ impl Tweak for MsiModeTweak {
       wmi.query().map_err(|e| e.to_string())?;
 
     for gpu in gpus {
-      if let Some(pnp_id) = gpu.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          let msi_path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, MSI_PROPS_SUFFIX
-          );
-          registry::write_reg_u32(
-            HKEY_LOCAL_MACHINE,
-            &msi_path,
-            MSI_SUPPORTED,
-            1,
-          )
-          .map_err(|e| e.to_string())?;
+      if let Some(pnp_id) = gpu.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_")
+      {
+        let msi_path = format!(
+          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
+          pnp_id, MSI_PROPS_SUFFIX
+        );
+        registry::write_reg_u32(
+          HKEY_LOCAL_MACHINE,
+          &msi_path,
+          MSI_SUPPORTED,
+          1,
+        )
+        .map_err(|e| e.to_string())?;
 
-          let affinity_path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, AFFINITY_SUFFIX
-          );
-          registry::delete_reg_value(
-            HKEY_LOCAL_MACHINE,
-            &affinity_path,
-            DEVICE_PRIORITY,
-          )
-          .ok();
-        }
+        let affinity_path = format!(
+          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
+          pnp_id, AFFINITY_SUFFIX
+        );
+        registry::delete_reg_value(
+          HKEY_LOCAL_MACHINE,
+          &affinity_path,
+          DEVICE_PRIORITY,
+        )
+        .ok();
       }
     }
 
     for nic in nics {
-      if let Some(pnp_id) = nic.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          let msi_path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, MSI_PROPS_SUFFIX
-          );
-          registry::write_reg_u32(
-            HKEY_LOCAL_MACHINE,
-            &msi_path,
-            MSI_SUPPORTED,
-            1,
-          )
-          .map_err(|e| e.to_string())?;
+      if let Some(pnp_id) = nic.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_")
+      {
+        let msi_path = format!(
+          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
+          pnp_id, MSI_PROPS_SUFFIX
+        );
+        registry::write_reg_u32(
+          HKEY_LOCAL_MACHINE,
+          &msi_path,
+          MSI_SUPPORTED,
+          1,
+        )
+        .map_err(|e| e.to_string())?;
 
-          let affinity_path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, AFFINITY_SUFFIX
-          );
-          registry::delete_reg_value(
-            HKEY_LOCAL_MACHINE,
-            &affinity_path,
-            DEVICE_PRIORITY,
-          )
-          .ok();
-        }
+        let affinity_path = format!(
+          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
+          pnp_id, AFFINITY_SUFFIX
+        );
+        registry::delete_reg_value(
+          HKEY_LOCAL_MACHINE,
+          &affinity_path,
+          DEVICE_PRIORITY,
+        )
+        .ok();
       }
     }
 
@@ -179,58 +179,58 @@ impl Tweak for MsiModeTweak {
       wmi.query().map_err(|e| e.to_string())?;
 
     for gpu in gpus {
-      if let Some(pnp_id) = gpu.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          let msi_path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, MSI_PROPS_SUFFIX
-          );
-          registry::delete_reg_value(
-            HKEY_LOCAL_MACHINE,
-            &msi_path,
-            MSI_SUPPORTED,
-          )
-          .ok();
+      if let Some(pnp_id) = gpu.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_")
+      {
+        let msi_path = format!(
+          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
+          pnp_id, MSI_PROPS_SUFFIX
+        );
+        registry::delete_reg_value(
+          HKEY_LOCAL_MACHINE,
+          &msi_path,
+          MSI_SUPPORTED,
+        )
+        .ok();
 
-          let affinity_path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, AFFINITY_SUFFIX
-          );
-          registry::delete_reg_value(
-            HKEY_LOCAL_MACHINE,
-            &affinity_path,
-            DEVICE_PRIORITY,
-          )
-          .ok();
-        }
+        let affinity_path = format!(
+          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
+          pnp_id, AFFINITY_SUFFIX
+        );
+        registry::delete_reg_value(
+          HKEY_LOCAL_MACHINE,
+          &affinity_path,
+          DEVICE_PRIORITY,
+        )
+        .ok();
       }
     }
 
     for nic in nics {
-      if let Some(pnp_id) = nic.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          let msi_path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, MSI_PROPS_SUFFIX
-          );
-          registry::delete_reg_value(
-            HKEY_LOCAL_MACHINE,
-            &msi_path,
-            MSI_SUPPORTED,
-          )
-          .ok();
+      if let Some(pnp_id) = nic.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_")
+      {
+        let msi_path = format!(
+          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
+          pnp_id, MSI_PROPS_SUFFIX
+        );
+        registry::delete_reg_value(
+          HKEY_LOCAL_MACHINE,
+          &msi_path,
+          MSI_SUPPORTED,
+        )
+        .ok();
 
-          let affinity_path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, AFFINITY_SUFFIX
-          );
-          registry::delete_reg_value(
-            HKEY_LOCAL_MACHINE,
-            &affinity_path,
-            DEVICE_PRIORITY,
-          )
-          .ok();
-        }
+        let affinity_path = format!(
+          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
+          pnp_id, AFFINITY_SUFFIX
+        );
+        registry::delete_reg_value(
+          HKEY_LOCAL_MACHINE,
+          &affinity_path,
+          DEVICE_PRIORITY,
+        )
+        .ok();
       }
     }
 

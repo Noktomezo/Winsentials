@@ -24,7 +24,7 @@ impl DisableTelemetryTweak {
         details_key: "tweaks.disableTelemetry.details".to_string(),
         ui_type: TweakUiType::Toggle,
         options: vec![],
-        requires_reboot: false,
+        requires_reboot: true,
         risk_level: RiskLevel::Low,
         min_windows_build: None,
       },

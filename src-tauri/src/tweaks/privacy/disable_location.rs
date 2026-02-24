@@ -7,7 +7,6 @@ use winreg::enums::*;
 const LOCATION_SENSORS_PATH: &str =
   r"SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors";
 const DISABLE_LOCATION: &str = "DisableLocation";
-const DISABLE_SENSORS: &str = "DisableSensors";
 
 pub struct DisableLocationTweak {
   meta: TweakMeta,
@@ -43,13 +42,7 @@ impl Tweak for DisableLocationTweak {
       LOCATION_SENSORS_PATH,
       DISABLE_LOCATION,
     );
-    let sensors = registry::read_reg_u32(
-      HKEY_LOCAL_MACHINE,
-      LOCATION_SENSORS_PATH,
-      DISABLE_SENSORS,
-    );
-    let is_applied = location.map(|v| v == 1).unwrap_or(false)
-      && sensors.map(|v| v == 1).unwrap_or(false);
+    let is_applied = location.map(|v| v == 1).unwrap_or(false);
     Ok(TweakState {
       id: self.meta.id.clone(),
       current_value: Some(if is_applied { "1" } else { "0" }.to_string()),
@@ -64,13 +57,6 @@ impl Tweak for DisableLocationTweak {
       DISABLE_LOCATION,
       1,
     )
-    .map_err(|e| e.to_string())?;
-    registry::write_reg_u32(
-      HKEY_LOCAL_MACHINE,
-      LOCATION_SENSORS_PATH,
-      DISABLE_SENSORS,
-      1,
-    )
     .map_err(|e| e.to_string())
   }
 
@@ -79,13 +65,6 @@ impl Tweak for DisableLocationTweak {
       HKEY_LOCAL_MACHINE,
       LOCATION_SENSORS_PATH,
       DISABLE_LOCATION,
-      0,
-    )
-    .map_err(|e| e.to_string())?;
-    registry::write_reg_u32(
-      HKEY_LOCAL_MACHINE,
-      LOCATION_SENSORS_PATH,
-      DISABLE_SENSORS,
       0,
     )
     .map_err(|e| e.to_string())

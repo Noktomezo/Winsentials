@@ -4,6 +4,14 @@
 use serde::Deserialize;
 use wmi::WMIConnection;
 
+pub trait HasPnpDeviceId {
+  fn pnp_device_id(&self) -> &Option<String>;
+
+  fn pnp_device_id_str(&self) -> Option<&str> {
+    self.pnp_device_id().as_deref()
+  }
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(rename = "Win32_PhysicalMemory")]
 pub struct Win32_PhysicalMemory {
@@ -29,6 +37,12 @@ pub struct Win32_VideoController {
   pub PNPDeviceID: Option<String>,
 }
 
+impl HasPnpDeviceId for Win32_VideoController {
+  fn pnp_device_id(&self) -> &Option<String> {
+    &self.PNPDeviceID
+  }
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(rename = "Win32_NetworkAdapter")]
 pub struct Win32_NetworkAdapter {
@@ -38,6 +52,12 @@ pub struct Win32_NetworkAdapter {
   pub PNPDeviceID: Option<String>,
 }
 
+impl HasPnpDeviceId for Win32_NetworkAdapter {
+  fn pnp_device_id(&self) -> &Option<String> {
+    &self.PNPDeviceID
+  }
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(rename = "Win32_USBController")]
 pub struct Win32_USBController {
@@ -45,6 +65,12 @@ pub struct Win32_USBController {
   pub Name: String,
   #[allow(non_snake_case)]
   pub PNPDeviceID: Option<String>,
+}
+
+impl HasPnpDeviceId for Win32_USBController {
+  fn pnp_device_id(&self) -> &Option<String> {
+    &self.PNPDeviceID
+  }
 }
 
 pub fn get_wmi_connection() -> Option<WMIConnection> {

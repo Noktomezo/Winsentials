@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router'
 import { Layout } from '@/app/Layout'
 import { AppearancePage } from '@/pages/appearance'
+import { AutostartPage } from '@/pages/autostart'
 import { HardwarePage } from '@/pages/hardware'
 import { HomePage } from '@/pages/home'
 import { InputPage } from '@/pages/input'
@@ -69,6 +70,12 @@ const memoryRoute = createRoute({
   component: MemoryPage,
 })
 
+const autostartRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/autostart',
+  component: AutostartPage,
+})
+
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
@@ -85,6 +92,7 @@ const routeTree = rootRoute.addChildren([
   securityRoute,
   hardwareRoute,
   memoryRoute,
+  autostartRoute,
   settingsRoute,
 ])
 

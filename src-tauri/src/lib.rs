@@ -1,13 +1,19 @@
+mod autostart;
 mod system_info;
 mod tweaks;
 mod wmi_queries;
 
+use autostart::{
+  AutostartItem, FileProperties, delete_autostart_item, export_autostart_csv,
+  get_all_autostart_items, get_file_properties, open_file_location,
+  toggle_autostart_item,
+};
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
 use system_info::{
   get_dynamic_system_info, get_static_system_info, get_system_info,
 };
-use tweaks::{get_all_tweaks, get_tweak_by_id, TweakMeta, TweakState};
+use tweaks::{TweakMeta, TweakState, get_all_tweaks, get_tweak_by_id};
 
 const WIN11_BUILD: u32 = 22000;
 
@@ -150,12 +156,44 @@ fn get_all_tweaks_info() -> Vec<TweakInfo> {
     .collect()
 }
 
+#[tauri::command]
+fn get_autostart_items() -> Vec<AutostartItem> {
+  get_all_autostart_items()
+}
+
+#[tauri::command]
+fn toggle_autostart(id: String, enable: bool) -> Result<(), String> {
+  toggle_autostart_item(&id, enable)
+}
+
+#[tauri::command]
+fn delete_autostart(id: String) -> Result<(), String> {
+  delete_autostart_item(&id)
+}
+
+#[tauri::command]
+fn open_location(path: String) -> Result<(), String> {
+  open_file_location(&path)
+}
+
+#[tauri::command]
+fn get_properties(path: String) -> Result<FileProperties, String> {
+  get_file_properties(&path)
+}
+
+#[tauri::command]
+fn export_autostart() -> Result<String, String> {
+  let items = get_all_autostart_items();
+  Ok(export_autostart_csv(&items))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_shell::init())
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_opener::init())
+    .plugin(tauri_plugin_clipboard_manager::init())
     .invoke_handler(tauri::generate_handler![
       get_tweaks_by_category,
       get_tweak_info,
@@ -166,7 +204,13 @@ pub fn run() {
       get_system_info,
       get_static_system_info,
       get_dynamic_system_info,
-      get_windows_build
+      get_windows_build,
+      get_autostart_items,
+      toggle_autostart,
+      delete_autostart,
+      open_location,
+      get_properties,
+      export_autostart
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

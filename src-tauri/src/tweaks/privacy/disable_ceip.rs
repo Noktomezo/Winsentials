@@ -2,12 +2,89 @@ use crate::tweaks::registry;
 use crate::tweaks::{
   RiskLevel, Tweak, TweakCategory, TweakMeta, TweakState, TweakUiType,
 };
+use std::process::Command;
 use winreg::enums::*;
 
-const SQMCLIENT_PATH: &str = r"SOFTWARE\Policies\Microsoft\SQMClient\Windows";
-const DOTNET_PATH: &str =
-  r"SOFTWARE\Policies\Microsoft\.NETFramework\v4.0.30319";
+const SQMCLIENT_PATH: &str = r"SOFTWARE\Microsoft\SQMClient\Windows";
 const CEIP_ENABLE: &str = "CEIPEnable";
+
+const CEIP_TASKS: [&str; 4] = [
+  r"\Microsoft\Windows\Customer Experience Improvement Program\Consolidator",
+  r"\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip",
+  r"\Microsoft\Windows\Customer Experience Improvement Program\KernelCeipLive",
+  r"\Microsoft\Windows\Customer Experience Improvement Program\BthSQM",
+];
+
+fn task_exists(task: &str) -> bool {
+  Command::new("schtasks")
+    .args(["/query", "/tn", task])
+    .output()
+    .map(|o| o.status.success())
+    .unwrap_or(false)
+}
+
+fn check_task_disabled(task: &str) -> bool {
+  let output = match Command::new("schtasks")
+    .args(["/query", "/tn", task, "/xml"])
+    .output()
+  {
+    Ok(o) => o,
+    Err(_) => return true,
+  };
+
+  if !output.status.success() {
+    return true;
+  }
+
+  let stdout = String::from_utf8_lossy(&output.stdout);
+  stdout.contains("<Enabled>false</Enabled>")
+}
+
+fn disable_ceip_tasks() -> Result<(), String> {
+  for task in &CEIP_TASKS {
+    if !task_exists(task) {
+      continue;
+    }
+
+    let output = Command::new("schtasks")
+      .args(["/change", "/tn", task, "/disable"])
+      .output()
+      .map_err(|e| format!("Failed to spawn schtasks: {}", e))?;
+
+    if !output.status.success() {
+      let stderr = String::from_utf8_lossy(&output.stderr);
+      return Err(format!(
+        "Failed to disable task '{}': {}",
+        task,
+        stderr.trim()
+      ));
+    }
+  }
+  Ok(())
+}
+
+fn enable_ceip_tasks() -> Result<(), String> {
+  for task in &CEIP_TASKS {
+    if !task_exists(task) {
+      continue;
+    }
+
+    let output = Command::new("schtasks")
+      .args(["/change", "/tn", task, "/enable"])
+      .output()
+      .map_err(|e| format!("Failed to spawn schtasks: {}", e))?;
+
+    if !output.status.success() {
+      let stderr = String::from_utf8_lossy(&output.stderr);
+      return Err(format!(
+        "Failed to enable task '{}': {}",
+        task,
+        stderr.trim()
+      ));
+    }
+  }
+  Ok(())
+}
 
 pub struct DisableCEIPTweak {
   meta: TweakMeta,
@@ -38,12 +115,14 @@ impl Tweak for DisableCEIPTweak {
   }
 
   fn check(&self) -> Result<TweakState, String> {
-    let sqm_value =
+    let value =
       registry::read_reg_u32(HKEY_LOCAL_MACHINE, SQMCLIENT_PATH, CEIP_ENABLE);
-    let dotnet_value =
-      registry::read_reg_u32(HKEY_LOCAL_MACHINE, DOTNET_PATH, CEIP_ENABLE);
-    let is_applied = sqm_value.map(|v| v == 0).unwrap_or(false)
-      && dotnet_value.map(|v| v == 0).unwrap_or(false);
+    let registry_disabled = value.map(|v| v == 0).unwrap_or(false);
+
+    let tasks_disabled =
+      CEIP_TASKS.iter().all(|task| check_task_disabled(task));
+
+    let is_applied = registry_disabled && tasks_disabled;
     Ok(TweakState {
       id: self.meta.id.clone(),
       current_value: Some(if is_applied { "1" } else { "0" }.to_string()),
@@ -52,16 +131,16 @@ impl Tweak for DisableCEIPTweak {
   }
 
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
+    disable_ceip_tasks()?;
     registry::write_reg_u32(HKEY_LOCAL_MACHINE, SQMCLIENT_PATH, CEIP_ENABLE, 0)
       .map_err(|e| e.to_string())?;
-    registry::write_reg_u32(HKEY_LOCAL_MACHINE, DOTNET_PATH, CEIP_ENABLE, 0)
-      .map_err(|e| e.to_string())
+    Ok(())
   }
 
   fn revert(&self) -> Result<(), String> {
+    enable_ceip_tasks()?;
     registry::write_reg_u32(HKEY_LOCAL_MACHINE, SQMCLIENT_PATH, CEIP_ENABLE, 1)
       .map_err(|e| e.to_string())?;
-    registry::write_reg_u32(HKEY_LOCAL_MACHINE, DOTNET_PATH, CEIP_ENABLE, 1)
-      .map_err(|e| e.to_string())
+    Ok(())
   }
 }

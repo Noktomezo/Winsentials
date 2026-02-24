@@ -4,7 +4,6 @@ use crate::tweaks::{
 };
 use winreg::enums::*;
 
-const WIN11_BUILD: u32 = 22000;
 const SYSTEM_PATH: &str = r"SOFTWARE\Policies\Microsoft\Windows\System";
 const ENABLE_ACTIVITY_FEED: &str = "EnableActivityFeed";
 const PUBLISH_USER_ACTIVITIES: &str = "PublishUserActivities";
@@ -26,7 +25,7 @@ impl DisableActivityFeedTweak {
         options: vec![],
         requires_reboot: false,
         risk_level: RiskLevel::Low,
-        min_windows_build: Some(WIN11_BUILD),
+        min_windows_build: None,
       },
     }
   }
