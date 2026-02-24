@@ -54,23 +54,25 @@ export const useAutostartStore = create<AutostartState>((set, get) => ({
   enrich: async () => {
     set({ enriching: true })
     try {
-      const items = get().items
-      const ids = items.map(item => item.id)
+      const ids = get().items.map(item => item.id)
       const enrichments = await enrichAutostartItems(ids)
 
-      const enrichedItems = items.map((item) => {
-        const enrichment = enrichments.find(e => e.id === item.id)
-        if (enrichment) {
-          return {
-            ...item,
-            icon_base64: enrichment.icon_base64,
-            publisher: enrichment.publisher,
-          }
-        }
-        return item
-      })
+      const enrichmentMap = new Map(enrichments.map(e => [e.id, e]))
 
-      set({ items: enrichedItems, enriching: false })
+      set(state => ({
+        items: state.items.map((item) => {
+          const enrichment = enrichmentMap.get(item.id)
+          if (enrichment) {
+            return {
+              ...item,
+              icon_base64: enrichment.icon_base64,
+              publisher: enrichment.publisher,
+            }
+          }
+          return item
+        }),
+        enriching: false,
+      }))
     }
     catch (error) {
       console.error('Failed to enrich autostart items:', error)
@@ -79,7 +81,7 @@ export const useAutostartStore = create<AutostartState>((set, get) => ({
   },
 
   forceReload: async () => {
-    set({ loaded: false, items: [], loading: true })
+    set({ loaded: false, loading: true })
     try {
       const items = await getAutostartItemsFast()
       set({ items, loading: false, loaded: true })

@@ -299,7 +299,7 @@ pub fn get_folder_items_fast() -> Vec<AutostartItem> {
     .collect()
 }
 
-pub fn enrich_folder_items(items: &mut [AutostartItem]) -> Vec<EnrichmentData> {
+pub fn enrich_folder_items(items: &[AutostartItem]) -> Vec<EnrichmentData> {
   items
     .iter()
     .filter(|item| item.source == AutostartSource::Folder)

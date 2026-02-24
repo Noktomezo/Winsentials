@@ -193,7 +193,7 @@ pub fn get_task_items_fast() -> Vec<AutostartItem> {
     .collect()
 }
 
-pub fn enrich_task_items(items: &mut [AutostartItem]) -> Vec<EnrichmentData> {
+pub fn enrich_task_items(items: &[AutostartItem]) -> Vec<EnrichmentData> {
   items
     .iter()
     .filter(|item| item.source == AutostartSource::Task)

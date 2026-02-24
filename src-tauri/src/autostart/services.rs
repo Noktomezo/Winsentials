@@ -238,9 +238,7 @@ pub fn get_service_items_fast() -> Vec<AutostartItem> {
     .collect()
 }
 
-pub fn enrich_service_items(
-  items: &mut [AutostartItem],
-) -> Vec<EnrichmentData> {
+pub fn enrich_service_items(items: &[AutostartItem]) -> Vec<EnrichmentData> {
   items
     .iter()
     .filter(|item| item.source == AutostartSource::Service)

@@ -156,9 +156,7 @@ pub fn get_registry_items_fast() -> Vec<AutostartItem> {
     .collect()
 }
 
-pub fn enrich_registry_items(
-  items: &mut [AutostartItem],
-) -> Vec<EnrichmentData> {
+pub fn enrich_registry_items(items: &[AutostartItem]) -> Vec<EnrichmentData> {
   items
     .iter()
     .filter(|item| item.source == AutostartSource::Registry)

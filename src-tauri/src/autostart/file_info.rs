@@ -41,9 +41,11 @@ pub struct VersionInfoResult {
 }
 
 pub fn get_file_version_info(path: &str) -> Result<VersionInfoResult, String> {
+  let normalized_key = path.to_lowercase();
+
   {
     let cache = VERSION_CACHE.read();
-    if let Some(cached) = cache.get(path) {
+    if let Some(cached) = cache.get(&normalized_key) {
       return Ok(cached.clone());
     }
   }
@@ -89,9 +91,14 @@ pub fn get_file_version_info(path: &str) -> Result<VersionInfoResult, String> {
     file_description,
   };
 
-  VERSION_CACHE
-    .write()
-    .insert(path.to_string(), result.clone());
+  {
+    let mut cache = VERSION_CACHE.write();
+    if let Some(cached) = cache.get(&normalized_key) {
+      return Ok(cached.clone());
+    }
+    cache.insert(normalized_key, result.clone());
+  }
+
   Ok(result)
 }
 

@@ -70,10 +70,10 @@ pub fn enrich_autostart_items(ids: Vec<String>) -> Vec<EnrichmentData> {
   items.retain(|item| ids.contains(&item.id));
 
   let mut enrichments = Vec::new();
-  enrichments.extend(registry::enrich_registry_items(&mut items));
-  enrichments.extend(folder::enrich_folder_items(&mut items));
-  enrichments.extend(tasks::enrich_task_items(&mut items));
-  enrichments.extend(services::enrich_service_items(&mut items));
+  enrichments.extend(registry::enrich_registry_items(&items));
+  enrichments.extend(folder::enrich_folder_items(&items));
+  enrichments.extend(tasks::enrich_task_items(&items));
+  enrichments.extend(services::enrich_service_items(&items));
 
   enrichments
 }
