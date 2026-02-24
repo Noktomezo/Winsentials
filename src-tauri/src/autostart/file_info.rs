@@ -167,12 +167,12 @@ pub fn open_file_location(path: &str) -> Result<(), String> {
     return Err("File does not exist".to_string());
   }
 
-  let parent = file_path
-    .parent()
-    .ok_or("Cannot determine parent directory")?;
+  let abs_path = file_path
+    .canonicalize()
+    .map_err(|e| format!("Failed to resolve path: {}", e))?;
 
   std::process::Command::new("explorer")
-    .arg(parent)
+    .arg(format!("/select,{}", abs_path.display()))
     .spawn()
     .map_err(|e| format!("Failed to open explorer: {}", e))?;
 

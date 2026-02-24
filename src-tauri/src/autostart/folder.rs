@@ -204,42 +204,7 @@ fn enrich_folder_item(raw: RawFolderItem) -> AutostartItem {
   }
 }
 
-pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
-  let mut raw_items = Vec::new();
-
-  for (location_name, folder_path) in get_startup_folders() {
-    if !folder_path.exists() {
-      continue;
-    }
-
-    let disabled_folder = get_disabled_folder(&location_name);
-    let mut seen_files: HashSet<String> = HashSet::new();
-
-    collect_raw_lnk_items(
-      &folder_path,
-      &location_name,
-      true,
-      &mut seen_files,
-      &mut raw_items,
-    );
-
-    if let Some(disabled_path) = &disabled_folder {
-      if disabled_path.exists() {
-        collect_raw_lnk_items(
-          disabled_path,
-          &location_name,
-          false,
-          &mut seen_files,
-          &mut raw_items,
-        );
-      }
-    }
-  }
-
-  raw_items.into_par_iter().map(enrich_folder_item).collect()
-}
-
-pub fn get_folder_items_fast() -> Vec<AutostartItem> {
+fn collect_all_raw_folder_items() -> Vec<RawFolderItem> {
   let mut raw_items = Vec::new();
 
   for (location_name, folder_path) in get_startup_folders() {
@@ -272,6 +237,17 @@ pub fn get_folder_items_fast() -> Vec<AutostartItem> {
   }
 
   raw_items
+}
+
+pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
+  collect_all_raw_folder_items()
+    .into_par_iter()
+    .map(enrich_folder_item)
+    .collect()
+}
+
+pub fn get_folder_items_fast() -> Vec<AutostartItem> {
+  collect_all_raw_folder_items()
     .into_iter()
     .map(|raw| {
       let critical_level = get_critical_level(&raw.name, &raw.command);

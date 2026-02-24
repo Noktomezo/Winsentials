@@ -7,6 +7,8 @@ mod services;
 mod tasks;
 mod types;
 
+use std::collections::HashSet;
+
 use rayon::prelude::*;
 
 pub use types::{AutostartItem, EnrichmentData, FileProperties};
@@ -66,8 +68,9 @@ pub fn get_autostart_items_fast() -> Vec<AutostartItem> {
 }
 
 pub fn enrich_autostart_items(ids: Vec<String>) -> Vec<EnrichmentData> {
+  let id_set: HashSet<String> = ids.into_iter().collect();
   let mut items = get_autostart_items_fast();
-  items.retain(|item| ids.contains(&item.id));
+  items.retain(|item| id_set.contains(&item.id));
 
   let mut enrichments = Vec::new();
   enrichments.extend(registry::enrich_registry_items(&items));
