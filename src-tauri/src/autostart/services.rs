@@ -54,6 +54,10 @@ struct ServiceConfig {
 fn query_service_config(name: &str) -> Option<ServiceConfig> {
   let output = Command::new("sc").args(["qc", name]).output().ok()?;
 
+  if !output.status.success() {
+    return None;
+  }
+
   let stdout = String::from_utf8_lossy(&output.stdout);
 
   let mut command = None;
@@ -63,23 +67,23 @@ fn query_service_config(name: &str) -> Option<ServiceConfig> {
     let line = line.trim();
     if line.starts_with("BINARY_PATH_NAME") {
       let raw = line.split_once(':').map(|x| x.1).unwrap_or("").trim();
-      let raw = raw.trim_matches('"');
       command = Some(raw.to_string());
 
-      let lower_raw = raw.to_ascii_lowercase();
-      if let Some(exe_end) = lower_raw.rfind(".exe") {
+      let unquoted = raw.trim_matches('"');
+      let lower_unquoted = unquoted.to_ascii_lowercase();
+      if let Some(exe_end) = lower_unquoted.rfind(".exe") {
         let boundary_idx = exe_end + 4;
-        if boundary_idx >= raw.len()
-          || raw.as_bytes()[boundary_idx].is_ascii_whitespace()
-          || raw.as_bytes()[boundary_idx] == b'"'
-          || raw.as_bytes()[boundary_idx] == b'\''
+        if boundary_idx >= unquoted.len()
+          || unquoted.as_bytes()[boundary_idx].is_ascii_whitespace()
+          || unquoted.as_bytes()[boundary_idx] == b'"'
+          || unquoted.as_bytes()[boundary_idx] == b'\''
         {
-          exe_path = Some(raw[..boundary_idx].trim().to_string());
+          exe_path = Some(unquoted[..boundary_idx].trim().to_string());
         } else {
-          exe_path = Some(raw.to_string());
+          exe_path = Some(unquoted.to_string());
         }
       } else {
-        exe_path = Some(raw.to_string());
+        exe_path = Some(unquoted.to_string());
       }
     }
   }
