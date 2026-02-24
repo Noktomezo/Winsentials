@@ -167,8 +167,7 @@ pub fn open_file_location(path: &str) -> Result<(), String> {
     return Err("File does not exist".to_string());
   }
 
-  let abs_path = file_path
-    .canonicalize()
+  let abs_path = dunce::canonicalize(&file_path)
     .map_err(|e| format!("Failed to resolve path: {}", e))?;
 
   std::process::Command::new("explorer")

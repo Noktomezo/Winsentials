@@ -5942,6 +5942,7 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "dirs 5.0.1",
+ "dunce",
  "gfxinfo",
  "lnk",
  "parking_lot",

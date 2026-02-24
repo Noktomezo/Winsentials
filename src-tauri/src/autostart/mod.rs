@@ -68,6 +68,10 @@ pub fn get_autostart_items_fast() -> Vec<AutostartItem> {
 }
 
 pub fn enrich_autostart_items(ids: Vec<String>) -> Vec<EnrichmentData> {
+  if ids.is_empty() {
+    return Vec::new();
+  }
+
   let id_set: HashSet<String> = ids.into_iter().collect();
   let mut items = get_autostart_items_fast();
   items.retain(|item| id_set.contains(&item.id));
