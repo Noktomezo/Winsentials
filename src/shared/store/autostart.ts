@@ -1,4 +1,4 @@
-import type { AutostartItem } from '@/shared/types/autostart'
+import type { AutostartItem, EnrichRequest } from '@/shared/types/autostart'
 
 import { create } from 'zustand'
 import {
@@ -54,8 +54,11 @@ export const useAutostartStore = create<AutostartState>((set, get) => ({
   enrich: async () => {
     set({ enriching: true })
     try {
-      const ids = get().items.map(item => item.id)
-      const enrichments = await enrichAutostartItems(ids)
+      const requests: EnrichRequest[] = get().items.map(item => ({
+        id: item.id,
+        file_path: item.file_path,
+      }))
+      const enrichments = await enrichAutostartItems(requests)
 
       const enrichmentMap = new Map(enrichments.map(e => [e.id, e]))
 

@@ -10,7 +10,7 @@ fn check_service(service: &str) -> Result<bool, String> {
   let output = hidden_command("sc")
     .args(["query", service])
     .output()
-    .map_err(|e| format!("Failed to query service: {}", e))?;
+    .map_err(|e| format!("Failed to query service: {e}"))?;
 
   let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -21,7 +21,7 @@ fn check_service(service: &str) -> Result<bool, String> {
   let qc_output = hidden_command("sc")
     .args(["qc", service])
     .output()
-    .map_err(|e| format!("Failed to query service config: {}", e))?;
+    .map_err(|e| format!("Failed to query service config: {e}"))?;
 
   let qc_stdout = String::from_utf8_lossy(&qc_output.stdout);
 
@@ -53,7 +53,7 @@ fn set_service_disabled(service: &str) -> Result<(), String> {
   let output = hidden_command("sc")
     .args(["query", service])
     .output()
-    .map_err(|e| format!("Failed to query service: {}", e))?;
+    .map_err(|e| format!("Failed to query service: {e}"))?;
 
   let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -64,7 +64,7 @@ fn set_service_disabled(service: &str) -> Result<(), String> {
   let output = hidden_command("sc")
     .args(["config", service, "start=", "disabled"])
     .output()
-    .map_err(|e| format!("Failed to disable {}: {}", service, e))?;
+    .map_err(|e| format!("Failed to disable {service}: {e}"))?;
 
   if !output.status.success() {
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -80,7 +80,7 @@ fn set_service_auto(service: &str) -> Result<(), String> {
   let output = hidden_command("sc")
     .args(["query", service])
     .output()
-    .map_err(|e| format!("Failed to query service: {}", e))?;
+    .map_err(|e| format!("Failed to query service: {e}"))?;
 
   let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -91,7 +91,7 @@ fn set_service_auto(service: &str) -> Result<(), String> {
   let output = hidden_command("sc")
     .args(["config", service, "start=", "auto"])
     .output()
-    .map_err(|e| format!("Failed to enable {}: {}", service, e))?;
+    .map_err(|e| format!("Failed to enable {service}: {e}"))?;
 
   if !output.status.success() {
     let stdout = String::from_utf8_lossy(&output.stdout);

@@ -13,12 +13,18 @@ export interface AutostartItem {
   icon_base64: string | null
   critical_level: CriticalLevel
   file_path: string | null
+  start_type: string | null
 }
 
 export interface EnrichmentData {
   id: string
   icon_base64: string | null
   publisher: string
+}
+
+export interface EnrichRequest {
+  id: string
+  file_path: string | null
 }
 
 export interface FileProperties {

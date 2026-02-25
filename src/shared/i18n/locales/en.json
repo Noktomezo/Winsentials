@@ -41,6 +41,7 @@
     "confirmDeleteWarning": "This program runs from a temporary folder. Deleting may affect its functionality.",
     "confirmDeleteCritical": "\"{name}\" is a critical system component. Disabling it may cause system instability. Continue?",
     "criticalWarning": "Critical system component",
+    "toggleAria": "Toggle {{name}}",
     "filter": {
       "all": "All",
       "enabled": "Enabled",
@@ -55,6 +56,14 @@
       "version": "Version",
       "publisher": "Publisher",
       "description": "Description"
+    },
+    "startType": {
+      "Boot": "Boot",
+      "System": "System",
+      "Auto": "Auto",
+      "Delayed": "Delayed",
+      "Manual": "Manual",
+      "Disabled": "Disabled"
     }
   },
   "categoryDescriptions": {
@@ -346,6 +355,17 @@
       "name": "CSRSS High Priority",
       "description": "Set CSRSS process to high priority for improved input latency",
       "details": "CSRSS handles mouse and keyboard input. Setting it to high priority can reduce input lag and improve mouse responsiveness."
+    },
+    "filterKeys": {
+      "name": "Filter Keys",
+      "description": "Configure keyboard repeat delay",
+      "details": "Controls keyboard responsiveness. Lower values reduce delay before character repeat when holding a key.",
+      "options": {
+        "default": "Default (~500 ms)",
+        "fast": "Fast (~250 ms)",
+        "ultrafast": "Ultra Fast (~150 ms)",
+        "aggressive": "Aggressive (~100 ms)"
+      }
     },
     "gameMode": {
       "name": "Game Mode",

@@ -5,17 +5,17 @@ mod utils;
 mod wmi_queries;
 
 use autostart::{
+  AutostartItem, EnrichRequest, EnrichmentData, FileProperties,
   delete_autostart_item, enrich_autostart_items, get_all_autostart_items,
   get_autostart_items_fast as get_fast_items, get_file_properties,
-  open_file_location, toggle_autostart_item, AutostartItem, EnrichmentData,
-  FileProperties,
+  open_file_location, toggle_autostart_item,
 };
 use serde::{Deserialize, Serialize};
 use sysinfo::System;
 use system_info::{
   get_dynamic_system_info, get_static_system_info, get_system_info,
 };
-use tweaks::{get_all_tweaks, get_tweak_by_id, TweakMeta, TweakState};
+use tweaks::{TweakMeta, TweakState, get_all_tweaks, get_tweak_by_id};
 
 const WIN11_BUILD: u32 = 22000;
 
@@ -169,8 +169,8 @@ fn get_autostart_items_fast() -> Vec<AutostartItem> {
 }
 
 #[tauri::command]
-fn enrich_autostart(ids: Vec<String>) -> Vec<EnrichmentData> {
-  enrich_autostart_items(ids)
+fn enrich_autostart(requests: Vec<EnrichRequest>) -> Vec<EnrichmentData> {
+  enrich_autostart_items(requests)
 }
 
 #[tauri::command]

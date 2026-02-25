@@ -28,6 +28,7 @@ pub struct AutostartItem {
   pub icon_base64: Option<String>,
   pub critical_level: CriticalLevel,
   pub file_path: Option<String>,
+  pub start_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,6 +36,12 @@ pub struct EnrichmentData {
   pub id: String,
   pub icon_base64: Option<String>,
   pub publisher: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EnrichRequest {
+  pub id: String,
+  pub file_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -50,14 +50,14 @@ impl Tweak for DisableTransparencyTweak {
 
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
     registry::write_reg_u32(HKEY_CURRENT_USER, REG_PATH, REG_VALUE, 0)
-      .map_err(|e| format!("Failed to disable transparency: {}", e))?;
+      .map_err(|e| format!("Failed to disable transparency: {e}"))?;
 
     Ok(())
   }
 
   fn revert(&self) -> Result<(), String> {
     registry::write_reg_u32(HKEY_CURRENT_USER, REG_PATH, REG_VALUE, 1)
-      .map_err(|e| format!("Failed to enable transparency: {}", e))?;
+      .map_err(|e| format!("Failed to enable transparency: {e}"))?;
 
     Ok(())
   }

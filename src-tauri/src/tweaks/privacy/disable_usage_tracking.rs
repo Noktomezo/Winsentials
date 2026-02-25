@@ -15,7 +15,7 @@ fn is_task_disabled() -> Result<bool, String> {
   let output = hidden_command("schtasks")
     .args(["/query", "/tn", TASK_NAME, "/xml"])
     .output()
-    .map_err(|e| format!("Failed to query task: {}", e))?;
+    .map_err(|e| format!("Failed to query task: {e}"))?;
 
   if !output.status.success() {
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -90,7 +90,7 @@ impl Tweak for DisableUsageTrackingTweak {
     let output = hidden_command("schtasks")
       .args(["/change", "/tn", TASK_NAME, "/disable"])
       .output()
-      .map_err(|e| format!("Failed to disable task: {}", e))?;
+      .map_err(|e| format!("Failed to disable task: {e}"))?;
 
     if !output.status.success() {
       let stderr = String::from_utf8_lossy(&output.stderr);
@@ -114,7 +114,7 @@ impl Tweak for DisableUsageTrackingTweak {
     let output = hidden_command("schtasks")
       .args(["/change", "/tn", TASK_NAME, "/enable"])
       .output()
-      .map_err(|e| format!("Failed to enable task: {}", e))?;
+      .map_err(|e| format!("Failed to enable task: {e}"))?;
 
     if !output.status.success() {
       let stderr = String::from_utf8_lossy(&output.stderr);

@@ -1,7 +1,7 @@
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import { useEffect } from 'react'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import { useAutostartStore } from '@/shared/store/autostart'
+import { TooltipProvider } from '@/shared/ui/tooltip'
 import { Sidebar } from '@/widgets/sidebar'
 import { Titlebar } from '@/widgets/titlebar'
 

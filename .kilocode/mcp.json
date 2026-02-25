@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "memory": {
+      "command": "bunx",
+      "args": ["@modelcontextprotocol/server-memory"],
+      "disabled": false
+    },
+    "exa": {
+      "command": "bunx",
+      "args": ["mcp-remote", "https://mcp.exa.ai/mcp"],
+      "disabled": false
+    },
+    "context7": {
+      "command": "bunx",
+      "args": ["@upstash/context7-mcp", "--api-key", "ctx7sk-e4a522d8-9b43-4c51-bf7b-27049d658861"],
+      "disabled": false
+    },
+    "shadcn": {
+      "command": "bunx",
+      "args": ["shadcn", "mcp"],
+      "disabled": false
+    }
+  }
+}

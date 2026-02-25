@@ -25,7 +25,7 @@ fn format_size(size: u64) -> String {
   } else if size >= KB {
     format!("{:.2} KB", size as f64 / KB as f64)
   } else {
-    format!("{} B", size)
+    format!("{size} B")
   }
 }
 
@@ -53,7 +53,7 @@ pub fn get_file_version_info(path: &str) -> Result<VersionInfoResult, String> {
   let buffer = std::fs::read(path).map_err(|e| e.to_string())?;
 
   let pe_file = PeFile::from_bytes(&buffer)
-    .map_err(|e| format!("Failed to parse PE: {:?}", e))?;
+    .map_err(|e| format!("Failed to parse PE: {e:?}"))?;
 
   let resources = pe_file
     .resources()
@@ -66,7 +66,7 @@ pub fn get_file_version_info(path: &str) -> Result<VersionInfoResult, String> {
   let fixed_info = version_info.fixed();
   let file_version = fixed_info.map(|fi| {
     let v = fi.dwFileVersion;
-    format!("{}", v)
+    format!("{v}")
   });
 
   let strings = version_info.file_info();
@@ -115,7 +115,7 @@ pub fn get_file_properties(path: &str) -> Result<FileProperties, String> {
     .unwrap_or_else(|| path.to_string());
 
   let metadata = fs::metadata(file_path)
-    .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+    .map_err(|e| format!("Failed to read file metadata: {e}"))?;
 
   let size = format_size(metadata.len());
 
@@ -167,13 +167,16 @@ pub fn open_file_location(path: &str) -> Result<(), String> {
     return Err("File does not exist".to_string());
   }
 
-  let abs_path = dunce::canonicalize(&file_path)
-    .map_err(|e| format!("Failed to resolve path: {}", e))?;
+  let abs_path = dunce::canonicalize(file_path)
+    .map_err(|e| format!("Failed to resolve path: {e}"))?;
+
+  let path_str = abs_path.display().to_string();
+  let escaped_path = path_str.replace('"', "\\\"");
 
   crate::utils::command::hidden_command("explorer")
-    .arg(format!("/select,{}", abs_path.display()))
+    .arg(format!("/select,\"{escaped_path}\""))
     .spawn()
-    .map_err(|e| format!("Failed to open explorer: {}", e))?;
+    .map_err(|e| format!("Failed to open explorer: {e}"))?;
 
   Ok(())
 }

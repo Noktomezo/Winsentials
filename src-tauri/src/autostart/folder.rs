@@ -4,12 +4,13 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 use lnk::ShellLink;
+use lnk::encoding::WINDOWS_1252;
 use rayon::prelude::*;
 
 use crate::autostart::critical::get_critical_level;
 use crate::autostart::file_info::get_file_version_info;
 use crate::autostart::icons::get_icon;
-use crate::autostart::types::{AutostartItem, AutostartSource, EnrichmentData};
+use crate::autostart::types::{AutostartItem, AutostartSource};
 
 fn validate_filename(filename: &str) -> Result<(), String> {
   if filename.is_empty() {
@@ -63,36 +64,40 @@ fn get_startup_folders() -> Vec<(String, PathBuf)> {
 }
 
 fn parse_lnk_file(path: &std::path::Path) -> Option<(String, String)> {
-  let link = ShellLink::open(path).ok()?;
+  let link = ShellLink::open(path, WINDOWS_1252).ok()?;
 
   let target = if let Some(info) = link.link_info() {
     if let Some(local) = info.local_base_path() {
-      local.clone()
-    } else if let Some(rel) = link.relative_path() {
+      local.to_string()
+    } else if let Some(rel) = link.string_data().relative_path() {
       if let Some(parent) = path.parent() {
         parent.join(rel).to_string_lossy().to_string()
       } else {
-        rel.to_string()
+        rel.clone()
       }
     } else {
       path.to_string_lossy().to_string()
     }
-  } else if let Some(rel) = link.relative_path() {
+  } else if let Some(rel) = link.string_data().relative_path() {
     if let Some(parent) = path.parent() {
       parent.join(rel).to_string_lossy().to_string()
     } else {
-      rel.to_string()
+      rel.clone()
     }
   } else {
     path.to_string_lossy().to_string()
   };
 
-  let args: String = link.arguments().clone().unwrap_or_default();
+  let args: String = link
+    .string_data()
+    .command_line_arguments()
+    .clone()
+    .unwrap_or_default();
 
   let command = if args.is_empty() {
     target.clone()
   } else {
-    format!("{} {}", target, args)
+    format!("{target} {args}")
   };
 
   Some((target, command))
@@ -201,6 +206,7 @@ fn enrich_folder_item(raw: RawFolderItem) -> AutostartItem {
     icon_base64,
     critical_level,
     file_path: Some(raw.target_path),
+    start_type: None,
   }
 }
 
@@ -270,28 +276,7 @@ pub fn get_folder_items_fast() -> Vec<AutostartItem> {
         icon_base64: None,
         critical_level,
         file_path: Some(raw.target_path),
-      }
-    })
-    .collect()
-}
-
-pub fn enrich_folder_items(items: &[AutostartItem]) -> Vec<EnrichmentData> {
-  items
-    .iter()
-    .filter(|item| item.source == AutostartSource::Folder)
-    .map(|item| {
-      let icon_base64 = item.file_path.as_ref().and_then(|p| get_icon(p));
-      let publisher = item
-        .file_path
-        .as_ref()
-        .and_then(|p| get_file_version_info(p).ok())
-        .and_then(|v| v.company_name)
-        .unwrap_or_default();
-
-      EnrichmentData {
-        id: item.id.clone(),
-        icon_base64,
-        publisher,
+        start_type: None,
       }
     })
     .collect()
@@ -324,14 +309,14 @@ pub fn toggle_folder_item(id: &str, enable: bool) -> Result<(), String> {
   if enable {
     if disabled_file.exists() {
       fs::rename(&disabled_file, &source_file)
-        .map_err(|e| format!("Failed to restore file: {}", e))?;
+        .map_err(|e| format!("Failed to restore file: {e}"))?;
     }
   } else {
     fs::create_dir_all(&disabled_folder)
-      .map_err(|e| format!("Failed to create disabled folder: {}", e))?;
+      .map_err(|e| format!("Failed to create disabled folder: {e}"))?;
     if source_file.exists() {
       fs::rename(&source_file, &disabled_file)
-        .map_err(|e| format!("Failed to disable file: {}", e))?;
+        .map_err(|e| format!("Failed to disable file: {e}"))?;
     }
   }
 
@@ -364,12 +349,12 @@ pub fn delete_folder_item(id: &str) -> Result<(), String> {
 
   if source_file.exists() {
     fs::remove_file(&source_file)
-      .map_err(|e| format!("Failed to delete file: {}", e))?;
+      .map_err(|e| format!("Failed to delete file: {e}"))?;
   }
 
   if disabled_file.exists() {
     fs::remove_file(&disabled_file)
-      .map_err(|e| format!("Failed to delete disabled file: {}", e))?;
+      .map_err(|e| format!("Failed to delete disabled file: {e}"))?;
   }
 
   Ok(())

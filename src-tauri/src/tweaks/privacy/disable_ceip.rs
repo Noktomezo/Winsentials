@@ -49,7 +49,7 @@ fn disable_ceip_tasks() -> Result<(), String> {
     let output = hidden_command("schtasks")
       .args(["/change", "/tn", task, "/disable"])
       .output()
-      .map_err(|e| format!("Failed to spawn schtasks: {}", e))?;
+      .map_err(|e| format!("Failed to spawn schtasks: {e}"))?;
 
     if !output.status.success() {
       let stderr = String::from_utf8_lossy(&output.stderr);
@@ -72,7 +72,7 @@ fn enable_ceip_tasks() -> Result<(), String> {
     let output = hidden_command("schtasks")
       .args(["/change", "/tn", task, "/enable"])
       .output()
-      .map_err(|e| format!("Failed to spawn schtasks: {}", e))?;
+      .map_err(|e| format!("Failed to spawn schtasks: {e}"))?;
 
     if !output.status.success() {
       let stderr = String::from_utf8_lossy(&output.stderr);

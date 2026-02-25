@@ -4,12 +4,12 @@ use std::os::windows::ffi::OsStringExt;
 use rayon::prelude::*;
 use windows::Win32::System::Environment::ExpandEnvironmentStringsW;
 use winreg::enums::*;
-use winreg::{RegKey, RegValue, HKEY};
+use winreg::{HKEY, RegKey, RegValue};
 
 use crate::autostart::critical::get_critical_level;
 use crate::autostart::file_info::get_file_version_info;
 use crate::autostart::icons::get_icon;
-use crate::autostart::types::{AutostartItem, AutostartSource, EnrichmentData};
+use crate::autostart::types::{AutostartItem, AutostartSource};
 
 const REGISTRY_KEYS: &[(&str, HKEY, &str)] = &[
   (
@@ -70,9 +70,9 @@ fn get_target_path(command: &str) -> Option<String> {
   }
 
   // Handle quoted paths
-  if cmd.starts_with('"') {
-    if let Some(end_quote) = cmd[1..].find('"') {
-      return Some(cmd[1..end_quote + 1].to_string());
+  if let Some(stripped) = cmd.strip_prefix('"') {
+    if let Some(end_quote) = stripped.find('"') {
+      return Some(stripped[..end_quote].to_string());
     }
   }
 
@@ -120,7 +120,7 @@ pub fn get_registry_autostart_items() -> Vec<AutostartItem> {
 
   raw_items
     .into_par_iter()
-    .map(|raw| enrich_registry_item(raw))
+    .map(enrich_registry_item)
     .collect()
 }
 
@@ -151,28 +151,7 @@ pub fn get_registry_items_fast() -> Vec<AutostartItem> {
         icon_base64: None,
         critical_level,
         file_path: target_path,
-      }
-    })
-    .collect()
-}
-
-pub fn enrich_registry_items(items: &[AutostartItem]) -> Vec<EnrichmentData> {
-  items
-    .iter()
-    .filter(|item| item.source == AutostartSource::Registry)
-    .map(|item| {
-      let icon_base64 = item.file_path.as_ref().and_then(|p| get_icon(p));
-      let publisher = item
-        .file_path
-        .as_ref()
-        .and_then(|p| get_file_version_info(p).ok())
-        .and_then(|v| v.company_name)
-        .unwrap_or_default();
-
-      EnrichmentData {
-        id: item.id.clone(),
-        icon_base64,
-        publisher,
+        start_type: None,
       }
     })
     .collect()
@@ -269,6 +248,7 @@ fn enrich_registry_item(raw: RawRegistryItem) -> AutostartItem {
     icon_base64,
     critical_level,
     file_path: target_path,
+    start_type: None,
   }
 }
 
@@ -306,14 +286,14 @@ pub fn toggle_registry_item(id: &str, enable: bool) -> Result<(), String> {
     let approved_key = root
       .create_subkey(approved_path)
       .map(|(k, _)| k)
-      .map_err(|e| format!("Failed to open StartupApproved: {}", e))?;
+      .map_err(|e| format!("Failed to open StartupApproved: {e}"))?;
 
     let _ = approved_key.delete_value(name);
   } else {
     let approved_key = root
       .create_subkey(approved_path)
       .map(|(k, _)| k)
-      .map_err(|e| format!("Failed to open StartupApproved: {}", e))?;
+      .map_err(|e| format!("Failed to open StartupApproved: {e}"))?;
 
     let data: Vec<u8> = vec![
       0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -326,7 +306,7 @@ pub fn toggle_registry_item(id: &str, enable: bool) -> Result<(), String> {
           bytes: data,
         },
       )
-      .map_err(|e| format!("Failed to disable item: {}", e))?;
+      .map_err(|e| format!("Failed to disable item: {e}"))?;
   }
 
   Ok(())
@@ -364,11 +344,11 @@ pub fn delete_registry_item(id: &str) -> Result<(), String> {
 
   let key = root
     .open_subkey_with_flags(base_path, KEY_WRITE | KEY_READ)
-    .map_err(|e| format!("Failed to open registry key: {}", e))?;
+    .map_err(|e| format!("Failed to open registry key: {e}"))?;
 
   key
     .delete_value(name)
-    .map_err(|e| format!("Failed to delete registry value: {}", e))?;
+    .map_err(|e| format!("Failed to delete registry value: {e}"))?;
 
   if let Ok(approved_key) =
     root.open_subkey_with_flags(approved_path, KEY_WRITE)

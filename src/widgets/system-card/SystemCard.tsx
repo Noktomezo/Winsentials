@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { Progress } from '@/components/ui/progress'
+import { Progress } from '@/shared/ui/progress'
 
 interface SystemCardProps {
   icon: LucideIcon

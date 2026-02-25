@@ -4,11 +4,11 @@ import { Clock, Copy, FolderOpen, Info, MoreVertical, Trash2 } from 'lucide-reac
 
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Switch } from '@/components/ui/switch'
-import { cn } from '@/lib/utils'
 import { openLocation } from '@/shared/api/autostart'
+import { cn } from '@/shared/lib/utils'
 import { useAutostartStore } from '@/shared/store/autostart'
+import { Skeleton } from '@/shared/ui/skeleton'
+import { Switch } from '@/shared/ui/switch'
 import { FilePropertiesDialog } from './FilePropertiesDialog'
 
 interface AutostartRowProps {
@@ -118,7 +118,22 @@ export function AutostartRow({ item }: AutostartRowProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-medium truncate">{item.name}</span>
-            {item.is_delayed && (
+            {item.start_type && (
+              <span className={cn(
+                'flex items-center gap-1 rounded px-1.5 py-0.5 text-xs',
+                {
+                  'bg-purple-500/10 text-purple-600 dark:text-purple-400': item.start_type === 'Boot' || item.start_type === 'System',
+                  'bg-green-500/10 text-green-600 dark:text-green-400': item.start_type === 'Auto',
+                  'bg-blue-500/10 text-blue-600 dark:text-blue-400': item.start_type === 'Delayed',
+                  'bg-amber-500/10 text-amber-600 dark:text-amber-400': item.start_type === 'Manual',
+                  'bg-gray-500/10 text-gray-600 dark:text-gray-400': item.start_type === 'Disabled',
+                },
+              )}
+              >
+                {t(`autostart.startType.${item.start_type}`)}
+              </span>
+            )}
+            {item.is_delayed && !item.start_type && (
               <span className="flex items-center gap-1 rounded bg-blue-500/10 px-1.5 py-0.5 text-xs text-blue-600 dark:text-blue-400">
                 <Clock className="h-3 w-3" />
                 {t('autostart.delayed')}
@@ -137,6 +152,7 @@ export function AutostartRow({ item }: AutostartRowProps) {
             checked={item.is_enabled}
             onCheckedChange={handleToggle}
             disabled={isToggling}
+            aria-label={t('autostart.toggleAria', { name: item.name })}
           />
 
           <div className="relative">

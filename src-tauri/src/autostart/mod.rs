@@ -7,11 +7,9 @@ mod services;
 mod tasks;
 mod types;
 
-use std::collections::HashSet;
-
 use rayon::prelude::*;
 
-pub use types::{AutostartItem, EnrichmentData, FileProperties};
+pub use types::{AutostartItem, EnrichRequest, EnrichmentData, FileProperties};
 
 fn collect_items<F1, F2, F3, F4>(
   registry_fn: F1,
@@ -58,38 +56,34 @@ pub fn get_autostart_items_fast() -> Vec<AutostartItem> {
   )
 }
 
-pub fn enrich_autostart_items(ids: Vec<String>) -> Vec<EnrichmentData> {
-  if ids.is_empty() {
+pub fn enrich_autostart_items(
+  requests: Vec<EnrichRequest>,
+) -> Vec<EnrichmentData> {
+  if requests.is_empty() {
     return Vec::new();
   }
 
-  let id_set: HashSet<String> = ids.into_iter().collect();
-  let mut items = get_autostart_items_fast();
-  items.retain(|item| id_set.contains(&item.id));
+  use crate::autostart::file_info::get_file_version_info;
+  use crate::autostart::icons::get_icon;
 
-  let (registry_enrich, (folder_enrich, (tasks_enrich, services_enrich))) =
-    rayon::join(
-      || registry::enrich_registry_items(&items),
-      || {
-        rayon::join(
-          || folder::enrich_folder_items(&items),
-          || {
-            rayon::join(
-              || tasks::enrich_task_items(&items),
-              || services::enrich_service_items(&items),
-            )
-          },
-        )
-      },
-    );
+  requests
+    .par_iter()
+    .map(|req| {
+      let icon_base64 = req.file_path.as_ref().and_then(|p| get_icon(p));
+      let publisher = req
+        .file_path
+        .as_ref()
+        .and_then(|p| get_file_version_info(p).ok())
+        .and_then(|v| v.company_name)
+        .unwrap_or_default();
 
-  let mut enrichments = Vec::new();
-  enrichments.extend(registry_enrich);
-  enrichments.extend(folder_enrich);
-  enrichments.extend(tasks_enrich);
-  enrichments.extend(services_enrich);
-
-  enrichments
+      EnrichmentData {
+        id: req.id.clone(),
+        icon_base64,
+        publisher,
+      }
+    })
+    .collect()
 }
 
 pub fn toggle_autostart_item(id: &str, enable: bool) -> Result<(), String> {

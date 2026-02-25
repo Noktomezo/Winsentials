@@ -1,10 +1,10 @@
 import { Rocket } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { Skeleton } from '@/components/ui/skeleton'
 import { AutostartFilters } from '@/features/autostart/AutostartFilters'
 import { AutostartTable } from '@/features/autostart/AutostartTable'
 import { useAutostartStore } from '@/shared/store/autostart'
+import { Skeleton } from '@/shared/ui/skeleton'
 
 function AutostartSkeleton() {
   return (

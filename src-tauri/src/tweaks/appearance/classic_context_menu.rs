@@ -32,19 +32,19 @@ impl ClassicContextMenuTweak {
   }
 
   fn get_classic_menu_path() -> String {
-    format!(r"{}\{}\InprocServer32", CLSID_BASE_PATH, CLASSIC_MENU_CLSID)
+    format!(r"{CLSID_BASE_PATH}\{CLASSIC_MENU_CLSID}\InprocServer32")
   }
 
   fn get_command_bar_path() -> String {
-    format!(r"{}\{}\InprocServer32", CLSID_BASE_PATH, COMMAND_BAR_CLSID)
+    format!(r"{CLSID_BASE_PATH}\{COMMAND_BAR_CLSID}\InprocServer32")
   }
 
   fn get_classic_menu_key_path() -> String {
-    format!(r"{}\{}", CLSID_BASE_PATH, CLASSIC_MENU_CLSID)
+    format!(r"{CLSID_BASE_PATH}\{CLASSIC_MENU_CLSID}")
   }
 
   fn get_command_bar_key_path() -> String {
-    format!(r"{}\{}", CLSID_BASE_PATH, COMMAND_BAR_CLSID)
+    format!(r"{CLSID_BASE_PATH}\{COMMAND_BAR_CLSID}")
   }
 }
 
@@ -71,10 +71,10 @@ impl Tweak for ClassicContextMenuTweak {
     let command_bar_path = Self::get_command_bar_path();
 
     registry::write_reg_string(HKEY_CURRENT_USER, &classic_path, "", "")
-      .map_err(|e| format!("Failed to create classic menu key: {}", e))?;
+      .map_err(|e| format!("Failed to create classic menu key: {e}"))?;
 
     registry::write_reg_string(HKEY_CURRENT_USER, &command_bar_path, "", "")
-      .map_err(|e| format!("Failed to create command bar key: {}", e))?;
+      .map_err(|e| format!("Failed to create command bar key: {e}"))?;
 
     registry::restart_explorer();
 

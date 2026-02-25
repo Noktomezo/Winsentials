@@ -1,7 +1,7 @@
 import type { TweakInfo } from '@/shared/types/tweak'
 import { useTranslation } from 'react-i18next'
-import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectItemText, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/shared/ui/badge'
+import { Select, SelectContent, SelectItem, SelectItemText, SelectTrigger, SelectValue } from '@/shared/ui/select'
 
 interface RadioControlProps {
   tweak: TweakInfo
