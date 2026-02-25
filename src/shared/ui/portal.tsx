@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 interface PortalProps {
@@ -7,20 +7,20 @@ interface PortalProps {
 }
 
 export function Portal({ children }: PortalProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [container, setContainer] = useState<HTMLDivElement | null>(null)
 
   useLayoutEffect(() => {
-    const container = document.createElement('div')
-    containerRef.current = container
-    document.body.appendChild(container)
+    const div = document.createElement('div')
+    document.body.appendChild(div)
+    setContainer(div)
 
     return () => {
-      document.body.removeChild(container)
+      document.body.removeChild(div)
     }
   }, [])
 
-  if (!containerRef.current)
+  if (!container)
     return null
 
-  return createPortal(children, containerRef.current)
+  return createPortal(children, container)
 }

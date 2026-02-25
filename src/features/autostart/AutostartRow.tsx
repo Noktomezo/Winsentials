@@ -123,7 +123,7 @@ export function AutostartRow({ item }: AutostartRowProps) {
                   'bg-green-500/10 text-green-600 dark:text-green-400': item.start_type === 'Auto',
                   'bg-blue-500/10 text-blue-600 dark:text-blue-400': item.start_type === 'Delayed',
                   'bg-amber-500/10 text-amber-600 dark:text-amber-400': item.start_type === 'Manual',
-                  'bg-gray-500/10 text-gray-600 dark:text-gray-400': item.start_type === 'Disabled',
+                  'bg-gray-500/10 text-gray-600 dark:text-gray-400': item.start_type === 'Disabled' || item.start_type === 'Unknown',
                 },
               )}
               >
@@ -182,7 +182,7 @@ export function AutostartRow({ item }: AutostartRowProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => setShowDeleteConfirm(true)}
-                className="text-red-600 focus:text-red-600 focus:bg-red-500/10"
+                variant="destructive"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 {t('autostart.delete')}

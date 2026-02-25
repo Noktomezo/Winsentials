@@ -123,7 +123,7 @@ impl Tweak for FilterKeysTweak {
       "fast" => self.apply_fast(),
       "ultrafast" => self.apply_ultrafast(),
       "aggressive" => self.apply_aggressive(),
-      _ => self.apply_default(),
+      _ => Err(format!("Invalid filter keys preset: {preset}")),
     }
   }
 

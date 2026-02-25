@@ -12,7 +12,7 @@
     },
     "context7": {
       "command": "bunx",
-      "args": ["mcp-remote", "https://mcp.exa.ai/mcp"],
+      "args": ["@upstash/context7-mcp"],
       "disabled": false
     },
     "shadcn": {

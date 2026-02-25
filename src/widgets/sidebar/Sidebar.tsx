@@ -107,7 +107,7 @@ export function Sidebar() {
             type="button"
             onClick={() => setCollapsed(!collapsed)}
             className="rounded p-1.5 hover:bg-accent cursor-pointer"
-            aria-label={collapsed ? 'Open sidebar' : 'Close sidebar'}
+            aria-label={collapsed ? t('sidebar.open') : t('sidebar.close')}
             aria-expanded={!collapsed}
           >
             {collapsed
@@ -125,7 +125,7 @@ export function Sidebar() {
             {categories.map((cat) => {
               const isActive = cat.path === '/'
                 ? currentPath === '/'
-                : currentPath.startsWith(cat.path)
+                : currentPath === cat.path || currentPath.startsWith(`${cat.path}/`)
               return (
                 <li key={cat.id}>
                   <SidebarLink
@@ -147,14 +147,14 @@ export function Sidebar() {
             icon={Rocket}
             label={t('sidebar.autostart')}
             collapsed={collapsed}
-            isActive={currentPath.startsWith('/autostart')}
+            isActive={currentPath === '/autostart' || currentPath.startsWith('/autostart/')}
           />
           <SidebarLink
             to="/settings"
             icon={Settings}
             label={t('sidebar.settings')}
             collapsed={collapsed}
-            isActive={currentPath.startsWith('/settings')}
+            isActive={currentPath === '/settings' || currentPath.startsWith('/settings/')}
           />
         </div>
       </aside>

@@ -19,7 +19,7 @@ export function VirtualizedGroup({
 
   const rowHeight = 58
   const rowGap = 8
-  const maxHeight = (rowHeight + rowGap) * maxVisibleRows
+  const maxHeight = (rowHeight + rowGap) * maxVisibleRows - rowGap
 
   const [initialize, osInstance] = useOverlayScrollbars({
     defer: false,
@@ -51,7 +51,7 @@ export function VirtualizedGroup({
     overscan: 3,
   })
 
-  if (items.length <= maxVisibleRows) {
+  if (!isVirtualized) {
     return (
       <div className="space-y-2">
         {items.map(item => (

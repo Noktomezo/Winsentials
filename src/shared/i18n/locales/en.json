@@ -13,7 +13,9 @@
       "memory": "Memory"
     },
     "settings": "Settings",
-    "autostart": "Autostart"
+    "autostart": "Autostart",
+    "open": "Open sidebar",
+    "close": "Close sidebar"
   },
   "autostart": {
     "title": "Autostart Manager",

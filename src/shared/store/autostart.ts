@@ -19,6 +19,7 @@ interface AutostartState {
   loaded: boolean
 
   load: () => Promise<void>
+  fetchAndEnrich: () => Promise<void>
   enrich: () => Promise<void>
   forceReload: () => Promise<void>
   toggle: (id: string, enable: boolean) => Promise<void>
@@ -47,6 +48,18 @@ export const useAutostartStore = create<AutostartState>((set, get) => ({
     }
     catch (error) {
       console.error('Failed to load autostart items:', error)
+      set({ loading: false })
+    }
+  },
+
+  fetchAndEnrich: async () => {
+    try {
+      const items = await getAutostartItemsFast()
+      set({ items, loading: false, loaded: true })
+      get().enrich()
+    }
+    catch (error) {
+      console.error('Failed to fetch autostart items:', error)
       set({ loading: false })
     }
   },
@@ -91,15 +104,7 @@ export const useAutostartStore = create<AutostartState>((set, get) => ({
 
   forceReload: async () => {
     set({ loaded: false, loading: true })
-    try {
-      const items = await getAutostartItemsFast()
-      set({ items, loading: false, loaded: true })
-      get().enrich()
-    }
-    catch (error) {
-      console.error('Failed to reload autostart items:', error)
-      set({ loading: false })
-    }
+    await get().fetchAndEnrich()
   },
 
   toggle: async (id: string, enable: boolean) => {

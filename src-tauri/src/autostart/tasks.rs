@@ -335,21 +335,25 @@ fn extract_exe_from_command(command: &str) -> Option<String> {
     return None;
   }
 
-  if let Some(stripped) = cmd.strip_prefix('"') {
+  let first_token = if let Some(stripped) = cmd.strip_prefix('"') {
     if let Some(end) = stripped.find('"') {
-      return Some(stripped[..end].to_string());
+      &stripped[..end]
+    } else {
+      cmd
     }
-  }
+  } else {
+    cmd.split_whitespace().next().unwrap_or(cmd)
+  };
 
-  let lower_cmd = cmd.to_ascii_lowercase();
-  if let Some(exe_end) = lower_cmd.rfind(".exe") {
+  let lower_token = first_token.to_ascii_lowercase();
+  if let Some(exe_end) = lower_token.rfind(".exe") {
     let boundary_idx = exe_end + 4;
-    if boundary_idx >= cmd.len()
-      || cmd.as_bytes()[boundary_idx].is_ascii_whitespace()
-      || cmd.as_bytes()[boundary_idx] == b'"'
-      || cmd.as_bytes()[boundary_idx] == b'\''
+    if boundary_idx >= first_token.len()
+      || first_token.as_bytes()[boundary_idx].is_ascii_whitespace()
+      || first_token.as_bytes()[boundary_idx] == b'"'
+      || first_token.as_bytes()[boundary_idx] == b'\''
     {
-      let exe_path = cmd[..boundary_idx].trim();
+      let exe_path = first_token[..boundary_idx].trim();
       return Some(exe_path.to_string());
     }
   }
