@@ -24,5 +24,6 @@ dist-ssr
 *.sw?
 
 # Misc
+.kilocode
 AGENTS.md
 telemetry-id
