@@ -31,6 +31,8 @@ export function VirtualizedGroup({
     },
   })
 
+  const isVirtualized = items.length > maxVisibleRows
+
   useEffect(() => {
     if (scrollRef.current && viewportRef.current) {
       initialize({
@@ -40,7 +42,7 @@ export function VirtualizedGroup({
     }
 
     return () => osInstance()?.destroy()
-  }, [initialize, osInstance])
+  }, [initialize, osInstance, isVirtualized])
 
   const virtualizer = useVirtualizer({
     count: items.length,

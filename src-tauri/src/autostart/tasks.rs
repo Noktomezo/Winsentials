@@ -9,9 +9,9 @@ use windows::Win32::System::Com::{
   CoUninitialize,
 };
 use windows::Win32::System::TaskScheduler::{
-  IExecAction, ILogonTrigger, IRegisteredTask, ITaskFolder, ITaskService,
-  TASK_ACTION_EXEC, TASK_ENUM_HIDDEN, TASK_STATE_DISABLED, TASK_TRIGGER_BOOT,
-  TASK_TRIGGER_LOGON, TaskScheduler,
+  IBootTrigger, IExecAction, ILogonTrigger, IRegisteredTask, ITaskFolder,
+  ITaskService, TASK_ACTION_EXEC, TASK_ENUM_HIDDEN, TASK_STATE_DISABLED,
+  TASK_TRIGGER_BOOT, TASK_TRIGGER_LOGON, TaskScheduler,
 };
 use windows::Win32::System::Variant::VARIANT;
 use windows::core::{BSTR, Interface};
@@ -65,7 +65,11 @@ pub fn get_task_items_fast() -> Vec<AutostartItem> {
 
 fn collect_tasks_via_com() -> Vec<TaskData> {
   unsafe {
-    let _ = CoInitializeEx(None, COINIT(0));
+    let hr = CoInitializeEx(None, COINIT(0));
+
+    if hr.is_err() {
+      return Vec::new();
+    }
 
     let Ok(service): Result<ITaskService, _> =
       CoCreateInstance(&TaskScheduler, None, CLSCTX_INPROC_SERVER)
@@ -216,10 +220,19 @@ unsafe fn has_delay(task: &IRegisteredTask) -> bool {
         && (trigger_type == TASK_TRIGGER_LOGON
           || trigger_type == TASK_TRIGGER_BOOT)
       {
-        if let Ok(logon_trigger) = trigger.cast::<ILogonTrigger>() {
-          let mut delay = BSTR::new();
-          if logon_trigger.Delay(&mut delay).is_ok() && !delay.is_empty() {
-            return true;
+        if trigger_type == TASK_TRIGGER_LOGON {
+          if let Ok(logon_trigger) = trigger.cast::<ILogonTrigger>() {
+            let mut delay = BSTR::new();
+            if logon_trigger.Delay(&mut delay).is_ok() && !delay.is_empty() {
+              return true;
+            }
+          }
+        } else if trigger_type == TASK_TRIGGER_BOOT {
+          if let Ok(boot_trigger) = trigger.cast::<IBootTrigger>() {
+            let mut delay = BSTR::new();
+            if boot_trigger.Delay(&mut delay).is_ok() && !delay.is_empty() {
+              return true;
+            }
           }
         }
       }
@@ -366,7 +379,11 @@ pub fn delete_task_item(id: &str) -> Result<(), String> {
   let task_path = extract_task_path_from_id(id)?;
 
   unsafe {
-    let _ = CoInitializeEx(None, COINIT(0));
+    let hr = CoInitializeEx(None, COINIT(0));
+
+    if hr.is_err() {
+      return Err("Failed to initialize COM".to_string());
+    }
 
     let result = (|| {
       let service: ITaskService =
@@ -412,9 +429,14 @@ fn extract_task_path_from_id(id: &str) -> Result<String, String> {
 fn get_parent_folder_path(task_path: &str) -> String {
   task_path
     .rsplit_once('\\')
-    .map(|(folder, _)| folder)
-    .unwrap_or("\\")
-    .to_string()
+    .map(|(folder, _)| {
+      if folder.is_empty() {
+        "\\".to_string()
+      } else {
+        folder.to_string()
+      }
+    })
+    .unwrap_or_else(|| "\\".to_string())
 }
 
 fn get_task_name(task_path: &str) -> String {

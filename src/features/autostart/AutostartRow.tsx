@@ -7,6 +7,13 @@ import { useTranslation } from 'react-i18next'
 import { openLocation } from '@/shared/api/autostart'
 import { cn } from '@/shared/lib/utils'
 import { useAutostartStore } from '@/shared/store/autostart'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/ui/dropdown-menu'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { Switch } from '@/shared/ui/switch'
 import { FilePropertiesDialog } from './FilePropertiesDialog'
@@ -18,13 +25,10 @@ interface AutostartRowProps {
 export function AutostartRow({ item }: AutostartRowProps) {
   const { t } = useTranslation()
   const { toggle, delete: deleteItem, enriching } = useAutostartStore()
-  const [showMenu, setShowMenu] = useState(false)
   const [showProperties, setShowProperties] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isToggling, setIsToggling] = useState(false)
   const cancelBtnRef = useRef<HTMLButtonElement>(null)
-
-  const menuItemClass = 'flex w-full items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent cursor-pointer'
 
   useEffect(() => {
     if (showDeleteConfirm) {
@@ -41,7 +45,7 @@ export function AutostartRow({ item }: AutostartRowProps) {
   }, [showDeleteConfirm])
 
   const rowClass = cn(
-    'flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors hover:bg-accent/50',
+    'flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors',
     item.critical_level === 'Critical' && 'bg-red-500/5 border-l-2 border-l-red-500',
     item.critical_level === 'Warning' && 'bg-orange-500/5 border-l-2 border-l-orange-500',
   )
@@ -53,9 +57,6 @@ export function AutostartRow({ item }: AutostartRowProps) {
     catch (error) {
       console.error('Failed to copy:', error)
     }
-    finally {
-      setShowMenu(false)
-    }
   }
 
   const handleOpenLocation = async () => {
@@ -66,9 +67,6 @@ export function AutostartRow({ item }: AutostartRowProps) {
     }
     catch (error) {
       console.error('Failed to open location:', error)
-    }
-    finally {
-      setShowMenu(false)
     }
   }
 
@@ -94,7 +92,6 @@ export function AutostartRow({ item }: AutostartRowProps) {
     }
     finally {
       setShowDeleteConfirm(false)
-      setShowMenu(false)
     }
   }
 
@@ -155,76 +152,43 @@ export function AutostartRow({ item }: AutostartRowProps) {
             aria-label={t('autostart.toggleAria', { name: item.name })}
           />
 
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowMenu(!showMenu)}
-              className="rounded p-1 hover:bg-accent cursor-pointer"
-              aria-label={showMenu ? t('autostart.closeMenu') : t('autostart.openMenu')}
-              aria-expanded={showMenu}
-              aria-haspopup="menu"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </button>
-
-            {showMenu && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setShowMenu(false)}
-                />
-                <div className="absolute right-0 top-full z-20 mt-1 w-48 rounded-lg border border-border bg-card py-1 shadow-lg">
-                  {item.file_path && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handleOpenLocation}
-                        className={menuItemClass}
-                      >
-                        <FolderOpen className="h-4 w-4" />
-                        {t('autostart.openLocation')}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowProperties(true)
-                          setShowMenu(false)
-                        }}
-                        className={menuItemClass}
-                      >
-                        <Info className="h-4 w-4" />
-                        {t('autostart.properties')}
-                      </button>
-                    </>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={handleCopyCommand}
-                    className={menuItemClass}
-                  >
-                    <Copy className="h-4 w-4" />
-                    {t('autostart.copyCommand')}
-                  </button>
-
-                  <div className="my-1 border-t border-border" />
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowMenu(false)
-                      setShowDeleteConfirm(true)
-                    }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10 cursor-pointer"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    {t('autostart.delete')}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="rounded p-1 hover:bg-accent cursor-pointer"
+                aria-label={t('autostart.openMenu')}
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {item.file_path && (
+                <>
+                  <DropdownMenuItem onClick={handleOpenLocation}>
+                    <FolderOpen className="mr-2 h-4 w-4" />
+                    {t('autostart.openLocation')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowProperties(true)}>
+                    <Info className="mr-2 h-4 w-4" />
+                    {t('autostart.properties')}
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuItem onClick={handleCopyCommand}>
+                <Copy className="mr-2 h-4 w-4" />
+                {t('autostart.copyCommand')}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setShowDeleteConfirm(true)}
+                className="text-red-600 focus:text-red-600 focus:bg-red-500/10"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {t('autostart.delete')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

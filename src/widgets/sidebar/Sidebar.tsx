@@ -67,8 +67,9 @@ function SidebarLink({
       <span
         className={cn(
           'truncate whitespace-nowrap transition-all duration-300 ease-in-out',
-          collapsed ? 'w-0 opacity-0' : 'w-32 opacity-100',
+          collapsed ? 'w-0 opacity-0' : 'w-auto opacity-100 max-w-[12rem]',
         )}
+        title={label}
       >
         {label}
       </span>
@@ -106,6 +107,8 @@ export function Sidebar() {
             type="button"
             onClick={() => setCollapsed(!collapsed)}
             className="rounded p-1.5 hover:bg-accent cursor-pointer"
+            aria-label={collapsed ? 'Open sidebar' : 'Close sidebar'}
+            aria-expanded={!collapsed}
           >
             {collapsed
               ? (
@@ -119,17 +122,22 @@ export function Sidebar() {
 
         <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4">
           <ul className="space-y-1 px-2">
-            {categories.map(cat => (
-              <li key={cat.id}>
-                <SidebarLink
-                  to={cat.path}
-                  icon={cat.icon}
-                  label={t(`sidebar.categories.${cat.id}`)}
-                  collapsed={collapsed}
-                  isActive={currentPath === cat.path}
-                />
-              </li>
-            ))}
+            {categories.map((cat) => {
+              const isActive = cat.path === '/'
+                ? currentPath === '/'
+                : currentPath.startsWith(cat.path)
+              return (
+                <li key={cat.id}>
+                  <SidebarLink
+                    to={cat.path}
+                    icon={cat.icon}
+                    label={t(`sidebar.categories.${cat.id}`)}
+                    collapsed={collapsed}
+                    isActive={isActive}
+                  />
+                </li>
+              )
+            })}
           </ul>
         </nav>
 
@@ -139,14 +147,14 @@ export function Sidebar() {
             icon={Rocket}
             label={t('sidebar.autostart')}
             collapsed={collapsed}
-            isActive={currentPath === '/autostart'}
+            isActive={currentPath.startsWith('/autostart')}
           />
           <SidebarLink
             to="/settings"
             icon={Settings}
             label={t('sidebar.settings')}
             collapsed={collapsed}
-            isActive={currentPath === '/settings'}
+            isActive={currentPath.startsWith('/settings')}
           />
         </div>
       </aside>

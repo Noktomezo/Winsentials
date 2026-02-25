@@ -84,22 +84,26 @@ impl Tweak for FilterKeysTweak {
     let flags =
       registry::read_reg_string(HKEY_CURRENT_USER, ACCESSIBILITY_PATH, FLAGS);
 
-    let current_value = if flags.is_none() || auto_repeat_delay.is_none() {
+    let current_value = if flags.is_none() && auto_repeat_delay.is_none() {
       if keyboard_delay.as_deref() == Some("0") {
         "fast"
       } else {
         "default"
       }
-    } else if auto_repeat_delay.as_deref() == Some("150")
-      && flags.as_deref() == Some("27")
-    {
-      "ultrafast"
-    } else if auto_repeat_delay.as_deref() == Some("100")
-      && flags.as_deref() == Some("27")
-    {
-      "aggressive"
+    } else if flags.is_some() && auto_repeat_delay.is_some() {
+      if auto_repeat_delay.as_deref() == Some("150")
+        && flags.as_deref() == Some("27")
+      {
+        "ultrafast"
+      } else if auto_repeat_delay.as_deref() == Some("100")
+        && flags.as_deref() == Some("27")
+      {
+        "aggressive"
+      } else {
+        "default"
+      }
     } else {
-      "default"
+      "partial"
     };
 
     let is_applied = current_value != "default";

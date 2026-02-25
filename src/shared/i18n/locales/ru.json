@@ -31,7 +31,7 @@
     "enable": "Включить",
     "disable": "Отключить",
     "delete": "Удалить",
-    "openLocation": "Расположение",
+    "openLocation": "Открыть расположение",
     "properties": "Свойства",
     "copyCommand": "Копировать команду",
     "unknownPublisher": "Неизвестный издатель",
@@ -63,7 +63,7 @@
       "Auto": "Авто",
       "Delayed": "Отложенный",
       "Manual": "Вручную",
-      "Disabled": "Отключена"
+      "Disabled": "Отключено"
     }
   },
   "categoryDescriptions": {

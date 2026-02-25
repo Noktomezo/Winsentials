@@ -5,6 +5,18 @@ use crate::utils::command::hidden_command;
 
 const TASK_NAME: &str = r"\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser";
 
+fn decode_schtasks_output(bytes: &[u8]) -> String {
+  if bytes.len() >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE {
+    let u16_slice: Vec<u16> = bytes[2..]
+      .chunks_exact(2)
+      .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+      .collect();
+    String::from_utf16_lossy(&u16_slice)
+  } else {
+    String::from_utf8_lossy(bytes).to_string()
+  }
+}
+
 fn task_exists(task: &str) -> bool {
   hidden_command("schtasks")
     .args(["/query", "/tn", task])
@@ -23,7 +35,7 @@ fn check_task() -> Result<bool, String> {
     return Ok(true);
   }
 
-  let stdout = String::from_utf8_lossy(&output.stdout);
+  let stdout = decode_schtasks_output(&output.stdout);
   let is_disabled = stdout.contains("<Enabled>false</Enabled>");
 
   Ok(is_disabled)

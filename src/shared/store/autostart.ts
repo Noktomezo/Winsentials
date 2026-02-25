@@ -58,6 +58,12 @@ export const useAutostartStore = create<AutostartState>((set, get) => ({
         id: item.id,
         file_path: item.file_path,
       }))
+
+      if (requests.length === 0) {
+        set({ enriching: false })
+        return
+      }
+
       const enrichments = await enrichAutostartItems(requests)
 
       const enrichmentMap = new Map(enrichments.map(e => [e.id, e]))

@@ -11,6 +11,9 @@ dev:
 # Final release build
 build:
   bun run tauri build
+
+# Pack the release build with UPX (requires UPX to be installed)
+pack: build
   upx --best --lzma src-tauri/target/release/Winsentials.exe
 
 # Lint only backend
@@ -30,6 +33,9 @@ lint: lint-back lint-front
 # Format only backend
 format-back:
   cargo fmt --manifest-path=./src-tauri/Cargo.toml
+
+# Fix backend issues
+fix-back:
   cargo clippy --manifest-path=./src-tauri/Cargo.toml --fix --lib -p winsentials --allow-dirty
 
 # Format only frontend

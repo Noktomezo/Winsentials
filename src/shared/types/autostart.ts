@@ -1,5 +1,6 @@
 export type AutostartSource = 'Registry' | 'Folder' | 'Task' | 'Service'
 export type CriticalLevel = 'None' | 'Warning' | 'Critical'
+export type StartType = 'Auto' | 'Manual' | 'Disabled' | 'Boot' | 'System' | 'Delayed' | 'Unknown' | null
 
 export interface AutostartItem {
   id: string
@@ -13,7 +14,7 @@ export interface AutostartItem {
   icon_base64: string | null
   critical_level: CriticalLevel
   file_path: string | null
-  start_type: string | null
+  start_type: StartType
 }
 
 export interface EnrichmentData {

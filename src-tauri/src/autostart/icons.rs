@@ -228,6 +228,17 @@ unsafe fn icon_to_base64(icon: HICON) -> Option<String> {
 }
 
 pub fn get_icon(path: &str) -> Option<String> {
+  let cache_key = path.to_lowercase();
+
+  if let Some(cached) = ICON_CACHE.read().get(&cache_key) {
+    return Some(cached.clone());
+  }
+
+  if let Some(cached) = load_from_cache(&cache_key) {
+    ICON_CACHE.write().insert(cache_key.clone(), cached.clone());
+    return Some(cached);
+  }
+
   let _guard = GDI_LOCK.lock();
   extract_icon_base64(path)
 }

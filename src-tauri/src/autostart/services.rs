@@ -1,3 +1,4 @@
+use std::mem::size_of;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use rayon::prelude::*;
@@ -24,6 +25,27 @@ const IGNORED_SERVICES: [&str; 10] = [
   "Schedule",
 ];
 
+struct ServiceHandle(SC_HANDLE);
+
+#[allow(dead_code)]
+impl ServiceHandle {
+  fn new(handle: SC_HANDLE) -> Option<Self> {
+    if handle.is_invalid() {
+      None
+    } else {
+      Some(Self(handle))
+    }
+  }
+}
+
+impl Drop for ServiceHandle {
+  fn drop(&mut self) {
+    unsafe {
+      let _ = CloseServiceHandle(self.0);
+    }
+  }
+}
+
 struct ServiceConfig {
   command: Option<String>,
   exe_path: Option<String>,
@@ -41,12 +63,6 @@ struct RawServiceItem {
 
 fn open_scm(access: u32) -> Option<SC_HANDLE> {
   unsafe { OpenSCManagerW(None, None, access).ok() }
-}
-
-fn close_scm_handle(handle: SC_HANDLE) {
-  unsafe {
-    let _ = CloseServiceHandle(handle);
-  }
 }
 
 fn enum_all_services(manager: SC_HANDLE) -> Option<Vec<(String, String)>> {
@@ -85,45 +101,50 @@ fn enum_all_services(manager: SC_HANDLE) -> Option<Vec<(String, String)>> {
     )
     .ok()?;
 
-    let ptr = buffer.as_ptr() as *const ENUM_SERVICE_STATUS_PROCESSW;
-    let services = std::slice::from_raw_parts(ptr, services_returned as usize);
+    let mut result = Vec::with_capacity(services_returned as usize);
+    let mut offset = 0usize;
 
-    Some(
-      services
-        .iter()
-        .filter_map(|s| {
-          let name = PCWSTR::from_raw(s.lpServiceName.as_ptr())
-            .to_string()
-            .unwrap_or_default();
-          let display = PCWSTR::from_raw(s.lpDisplayName.as_ptr())
-            .to_string()
-            .unwrap_or_default();
-          if name.is_empty() {
-            None
-          } else {
-            Some((name, display))
-          }
-        })
-        .collect(),
-    )
+    for _ in 0..services_returned {
+      if offset + size_of::<ENUM_SERVICE_STATUS_PROCESSW>() > buffer.len() {
+        break;
+      }
+      let service: ENUM_SERVICE_STATUS_PROCESSW =
+        std::ptr::read_unaligned(buffer.as_ptr().add(offset) as *const _);
+      offset += size_of::<ENUM_SERVICE_STATUS_PROCESSW>();
+
+      let name = PCWSTR::from_raw(service.lpServiceName.as_ptr())
+        .to_string()
+        .unwrap_or_default();
+      let display = PCWSTR::from_raw(service.lpDisplayName.as_ptr())
+        .to_string()
+        .unwrap_or_default();
+      if !name.is_empty() {
+        result.push((name, display));
+      }
+    }
+
+    Some(result)
   }
 }
 
 fn query_service_config(name: &str) -> Option<ServiceConfig> {
   let manager = open_scm(SC_MANAGER_CONNECT)?;
-  let result = unsafe {
+  let _manager_guard = ServiceHandle(manager);
+
+  unsafe {
     let name_wide: Vec<u16> = name.encode_utf16().chain(Some(0)).collect();
 
     let service =
       OpenServiceW(manager, PCWSTR(name_wide.as_ptr()), SERVICE_QUERY_CONFIG)
         .ok()?;
 
+    let _service_guard = ServiceHandle(service);
+
     let mut bytes_needed = 0u32;
 
     let _ = QueryServiceConfigW(service, None, 0, &mut bytes_needed);
 
     if bytes_needed == 0 {
-      let _ = CloseServiceHandle(service);
       return None;
     }
 
@@ -136,7 +157,8 @@ fn query_service_config(name: &str) -> Option<ServiceConfig> {
     )
     .ok()?;
 
-    let config = &*(buffer.as_ptr() as *const QUERY_SERVICE_CONFIGW);
+    let config: QUERY_SERVICE_CONFIGW =
+      std::ptr::read_unaligned(buffer.as_ptr() as *const _);
 
     let binary_path = if !config.lpBinaryPathName.is_null() {
       PCWSTR::from_raw(config.lpBinaryPathName.as_ptr())
@@ -146,15 +168,11 @@ fn query_service_config(name: &str) -> Option<ServiceConfig> {
       String::new()
     };
 
-    let _ = CloseServiceHandle(service);
-
     Some(ServiceConfig {
       command: Some(binary_path.clone()),
       exe_path: parse_exe_path(&binary_path),
     })
-  };
-  close_scm_handle(manager);
-  result
+  }
 }
 
 fn parse_exe_path(raw: &str) -> Option<String> {
@@ -241,17 +259,15 @@ fn collect_raw_service_items() -> Vec<RawServiceItem> {
       return Vec::new();
     }
   };
+  let _manager_guard = ServiceHandle(manager);
 
   let services = match enum_all_services(manager) {
     Some(s) => s,
     None => {
       eprintln!("[services] Failed to enumerate services");
-      close_scm_handle(manager);
       return Vec::new();
     }
   };
-
-  close_scm_handle(manager);
 
   eprintln!("[services] Found {} services", services.len());
 
@@ -382,8 +398,9 @@ pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {
   let name = extract_service_name(id)?;
 
   let manager = open_scm(SC_MANAGER_ALL_ACCESS).ok_or("Failed to open SCM")?;
+  let _manager_guard = ServiceHandle(manager);
 
-  let result = unsafe {
+  unsafe {
     let name_wide: Vec<u16> = name.encode_utf16().chain(Some(0)).collect();
 
     let service = OpenServiceW(
@@ -392,6 +409,8 @@ pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {
       SERVICE_CHANGE_CONFIG | SERVICE_START | SERVICE_STOP,
     )
     .map_err(|e| format!("Failed to open service: {e}"))?;
+
+    let _service_guard = ServiceHandle(service);
 
     if enable {
       ChangeServiceConfigW(
@@ -430,20 +449,17 @@ pub fn toggle_service_item(id: &str, enable: bool) -> Result<(), String> {
       .map_err(|e| format!("Failed to disable: {e}"))?;
     }
 
-    let _ = CloseServiceHandle(service);
     Ok(())
-  };
-
-  close_scm_handle(manager);
-  result
+  }
 }
 
 pub fn delete_service_item(id: &str) -> Result<(), String> {
   let name = extract_service_name(id)?;
 
   let manager = open_scm(SC_MANAGER_ALL_ACCESS).ok_or("Failed to open SCM")?;
+  let _manager_guard = ServiceHandle(manager);
 
-  let result = unsafe {
+  unsafe {
     let name_wide: Vec<u16> = name.encode_utf16().chain(Some(0)).collect();
 
     let service = OpenServiceW(
@@ -453,15 +469,13 @@ pub fn delete_service_item(id: &str) -> Result<(), String> {
     )
     .map_err(|e| format!("Failed to open service: {e}"))?;
 
+    let _service_guard = ServiceHandle(service);
+
     let mut status = SERVICE_STATUS::default();
     let _ = ControlService(service, SERVICE_CONTROL_STOP, &mut status);
 
     DeleteService(service).map_err(|e| format!("Failed to delete: {e}"))?;
 
-    let _ = CloseServiceHandle(service);
     Ok(())
-  };
-
-  close_scm_handle(manager);
-  result
+  }
 }
