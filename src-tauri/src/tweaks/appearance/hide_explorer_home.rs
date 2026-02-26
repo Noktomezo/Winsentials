@@ -51,7 +51,7 @@ impl Tweak for HideExplorerHomeTweak {
 
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
     registry::write_reg_u32(HKEY_CURRENT_USER, REG_PATH, REG_VALUE, 0)
-      .map_err(|e| format!("Failed to hide Home button: {}", e))?;
+      .map_err(|e| format!("Failed to hide Home button: {e}"))?;
 
     registry::restart_explorer();
 
@@ -60,7 +60,7 @@ impl Tweak for HideExplorerHomeTweak {
 
   fn revert(&self) -> Result<(), String> {
     registry::write_reg_u32(HKEY_CURRENT_USER, REG_PATH, REG_VALUE, 1)
-      .map_err(|e| format!("Failed to show Home button: {}", e))?;
+      .map_err(|e| format!("Failed to show Home button: {e}"))?;
 
     registry::restart_explorer();
 

@@ -34,7 +34,7 @@ export default defineConfig(async () => ({
     rollupOptions: {
       output: {
         manualChunks: {
-          ui: ['radix-ui', 'lucide-react'],
+          ui: ['radix-ui', 'lucide-react', 'overlayscrollbars', 'overlayscrollbars-react'],
           router: ['@tanstack/react-router'],
         },
       },

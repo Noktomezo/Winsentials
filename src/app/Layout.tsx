@@ -1,5 +1,7 @@
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
-import { TooltipProvider } from '@/components/ui/tooltip'
+import { useEffect } from 'react'
+import { useAutostartStore } from '@/shared/store/autostart'
+import { TooltipProvider } from '@/shared/ui/tooltip'
 import { Sidebar } from '@/widgets/sidebar'
 import { Titlebar } from '@/widgets/titlebar'
 
@@ -8,6 +10,10 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
+  useEffect(() => {
+    useAutostartStore.getState().load()
+  }, [])
+
   return (
     <TooltipProvider>
       <div className="flex h-screen flex-col bg-background">

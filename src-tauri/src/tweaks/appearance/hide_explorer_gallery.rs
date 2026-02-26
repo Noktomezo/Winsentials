@@ -51,7 +51,7 @@ impl Tweak for HideExplorerGalleryTweak {
 
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
     registry::write_reg_u32(HKEY_CURRENT_USER, REG_PATH, REG_VALUE, 0)
-      .map_err(|e| format!("Failed to hide Gallery button: {}", e))?;
+      .map_err(|e| format!("Failed to hide Gallery button: {e}"))?;
 
     registry::restart_explorer();
 
@@ -60,7 +60,7 @@ impl Tweak for HideExplorerGalleryTweak {
 
   fn revert(&self) -> Result<(), String> {
     registry::write_reg_u32(HKEY_CURRENT_USER, REG_PATH, REG_VALUE, 1)
-      .map_err(|e| format!("Failed to show Gallery button: {}", e))?;
+      .map_err(|e| format!("Failed to show Gallery button: {e}"))?;
 
     registry::restart_explorer();
 

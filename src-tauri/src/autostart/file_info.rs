@@ -1,11 +1,17 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::sync::LazyLock;
 
 use chrono::{DateTime, Utc};
+use parking_lot::RwLock;
 use pelite::pe::Pe;
 use pelite::pe::PeFile;
 
 use crate::autostart::types::FileProperties;
+
+static VERSION_CACHE: LazyLock<RwLock<HashMap<String, VersionInfoResult>>> =
+  LazyLock::new(|| RwLock::new(HashMap::new()));
 
 fn format_size(size: u64) -> String {
   const KB: u64 = 1024;
@@ -19,7 +25,7 @@ fn format_size(size: u64) -> String {
   } else if size >= KB {
     format!("{:.2} KB", size as f64 / KB as f64)
   } else {
-    format!("{} B", size)
+    format!("{size} B")
   }
 }
 
@@ -27,6 +33,7 @@ fn format_datetime(dt: DateTime<Utc>) -> String {
   dt.format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
+#[derive(Clone)]
 pub struct VersionInfoResult {
   pub file_version: Option<String>,
   pub company_name: Option<String>,
@@ -34,10 +41,19 @@ pub struct VersionInfoResult {
 }
 
 pub fn get_file_version_info(path: &str) -> Result<VersionInfoResult, String> {
+  let normalized_key = path.to_lowercase();
+
+  {
+    let cache = VERSION_CACHE.read();
+    if let Some(cached) = cache.get(&normalized_key) {
+      return Ok(cached.clone());
+    }
+  }
+
   let buffer = std::fs::read(path).map_err(|e| e.to_string())?;
 
   let pe_file = PeFile::from_bytes(&buffer)
-    .map_err(|e| format!("Failed to parse PE: {:?}", e))?;
+    .map_err(|e| format!("Failed to parse PE: {e:?}"))?;
 
   let resources = pe_file
     .resources()
@@ -50,7 +66,7 @@ pub fn get_file_version_info(path: &str) -> Result<VersionInfoResult, String> {
   let fixed_info = version_info.fixed();
   let file_version = fixed_info.map(|fi| {
     let v = fi.dwFileVersion;
-    format!("{}", v)
+    format!("{v}")
   });
 
   let strings = version_info.file_info();
@@ -69,11 +85,21 @@ pub fn get_file_version_info(path: &str) -> Result<VersionInfoResult, String> {
     .and_then(|lang| lang.get("FileDescription"))
     .map(|s| s.to_string());
 
-  Ok(VersionInfoResult {
+  let result = VersionInfoResult {
     file_version,
     company_name,
     file_description,
-  })
+  };
+
+  {
+    let mut cache = VERSION_CACHE.write();
+    if let Some(cached) = cache.get(&normalized_key) {
+      return Ok(cached.clone());
+    }
+    cache.insert(normalized_key, result.clone());
+  }
+
+  Ok(result)
 }
 
 pub fn get_file_properties(path: &str) -> Result<FileProperties, String> {
@@ -89,7 +115,7 @@ pub fn get_file_properties(path: &str) -> Result<FileProperties, String> {
     .unwrap_or_else(|| path.to_string());
 
   let metadata = fs::metadata(file_path)
-    .map_err(|e| format!("Failed to read file metadata: {}", e))?;
+    .map_err(|e| format!("Failed to read file metadata: {e}"))?;
 
   let size = format_size(metadata.len());
 
@@ -141,14 +167,16 @@ pub fn open_file_location(path: &str) -> Result<(), String> {
     return Err("File does not exist".to_string());
   }
 
-  let parent = file_path
-    .parent()
-    .ok_or("Cannot determine parent directory")?;
+  let abs_path = dunce::canonicalize(file_path)
+    .map_err(|e| format!("Failed to resolve path: {e}"))?;
 
-  std::process::Command::new("explorer")
-    .arg(parent)
+  let path_str = abs_path.display().to_string();
+  let escaped_path = path_str.replace('"', "\\\"");
+
+  crate::utils::command::hidden_command("explorer")
+    .arg(format!("/select,\"{escaped_path}\""))
     .spawn()
-    .map_err(|e| format!("Failed to open explorer: {}", e))?;
+    .map_err(|e| format!("Failed to open explorer: {e}"))?;
 
   Ok(())
 }

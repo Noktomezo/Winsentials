@@ -1,12 +1,24 @@
 use crate::tweaks::{
   RiskLevel, Tweak, TweakCategory, TweakMeta, TweakState, TweakUiType,
 };
-use std::process::Command;
+use crate::utils::command::hidden_command;
 
 const TASK_NAME: &str = r"\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser";
 
+fn decode_schtasks_output(bytes: &[u8]) -> String {
+  if bytes.len() >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE {
+    let u16_slice: Vec<u16> = bytes[2..]
+      .chunks_exact(2)
+      .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+      .collect();
+    String::from_utf16_lossy(&u16_slice)
+  } else {
+    String::from_utf8_lossy(bytes).to_string()
+  }
+}
+
 fn task_exists(task: &str) -> bool {
-  Command::new("schtasks")
+  hidden_command("schtasks")
     .args(["/query", "/tn", task])
     .output()
     .map(|o| o.status.success())
@@ -14,16 +26,16 @@ fn task_exists(task: &str) -> bool {
 }
 
 fn check_task() -> Result<bool, String> {
-  let output = Command::new("schtasks")
+  let output = hidden_command("schtasks")
     .args(["/query", "/tn", TASK_NAME, "/xml"])
     .output()
-    .map_err(|e| format!("Failed to query task: {}", e))?;
+    .map_err(|e| format!("Failed to query task: {e}"))?;
 
   if !output.status.success() {
     return Ok(true);
   }
 
-  let stdout = String::from_utf8_lossy(&output.stdout);
+  let stdout = decode_schtasks_output(&output.stdout);
   let is_disabled = stdout.contains("<Enabled>false</Enabled>");
 
   Ok(is_disabled)
@@ -73,10 +85,10 @@ impl Tweak for DisableCompatAppraiserTweak {
       return Ok(());
     }
 
-    let output = Command::new("schtasks")
+    let output = hidden_command("schtasks")
       .args(["/change", "/tn", TASK_NAME, "/disable"])
       .output()
-      .map_err(|e| format!("Failed to disable task: {}", e))?;
+      .map_err(|e| format!("Failed to disable task: {e}"))?;
 
     if !output.status.success() {
       let stderr = String::from_utf8_lossy(&output.stderr);
@@ -91,10 +103,10 @@ impl Tweak for DisableCompatAppraiserTweak {
       return Ok(());
     }
 
-    let output = Command::new("schtasks")
+    let output = hidden_command("schtasks")
       .args(["/change", "/tn", TASK_NAME, "/enable"])
       .output()
-      .map_err(|e| format!("Failed to enable task: {}", e))?;
+      .map_err(|e| format!("Failed to enable task: {e}"))?;
 
     if !output.status.success() {
       let stderr = String::from_utf8_lossy(&output.stderr);

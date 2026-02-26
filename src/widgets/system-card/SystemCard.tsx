@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { Progress } from '@/components/ui/progress'
+import { Progress } from '@/shared/ui/progress'
 
 interface SystemCardProps {
   icon: LucideIcon
@@ -36,7 +36,7 @@ export function SystemCard({ icon: Icon, title, value, usage, metrics, progressB
       {metrics && metrics.length > 0 && (
         <div className="mt-3 space-y-1 text-sm">
           {metrics.map((metric, i) => (
-            <div key={i} className="flex items-center gap-2">
+            <div key={`metric-${i}`} className="flex items-center gap-2">
               <span className="text-muted-foreground">
                 {metric.label}
                 :
@@ -49,7 +49,7 @@ export function SystemCard({ icon: Icon, title, value, usage, metrics, progressB
       {progressBars && progressBars.length > 0 && (
         <div className="mt-3 space-y-2">
           {progressBars.map((bar, i) => (
-            <div key={i} className="space-y-1">
+            <div key={`bar-${i}`} className="space-y-1">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{bar.label}</span>
                 <span className="font-medium">

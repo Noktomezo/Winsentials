@@ -1,6 +1,7 @@
 use std::ffi::OsString;
 use std::os::windows::ffi::OsStringExt;
 
+use rayon::prelude::*;
 use windows::Win32::System::Environment::ExpandEnvironmentStringsW;
 use winreg::enums::*;
 use winreg::{HKEY, RegKey, RegValue};
@@ -27,6 +28,13 @@ const REGISTRY_KEYS: &[(&str, HKEY, &str)] = &[
     r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run",
   ),
 ];
+
+struct RawRegistryItem {
+  name: String,
+  command: String,
+  location_name: String,
+  is_disabled: bool,
+}
 
 fn is_disabled_in_startup_approved(
   name: &str,
@@ -62,9 +70,9 @@ fn get_target_path(command: &str) -> Option<String> {
   }
 
   // Handle quoted paths
-  if cmd.starts_with('"') {
-    if let Some(end_quote) = cmd[1..].find('"') {
-      return Some(cmd[1..end_quote + 1].to_string());
+  if let Some(stripped) = cmd.strip_prefix('"') {
+    if let Some(end_quote) = stripped.find('"') {
+      return Some(stripped[..end_quote].to_string());
     }
   }
 
@@ -108,6 +116,48 @@ fn expand_env_vars(s: &str) -> String {
 }
 
 pub fn get_registry_autostart_items() -> Vec<AutostartItem> {
+  let raw_items = collect_raw_registry_items();
+
+  raw_items
+    .into_par_iter()
+    .map(enrich_registry_item)
+    .collect()
+}
+
+pub fn get_registry_items_fast() -> Vec<AutostartItem> {
+  let raw_items = collect_raw_registry_items();
+
+  raw_items
+    .into_iter()
+    .map(|raw| {
+      let target_path = get_target_path(&raw.command);
+      let critical_level = get_critical_level(&raw.name, &raw.command);
+
+      let id = format!(
+        "registry|{}|{}",
+        raw.location_name.replace('\\', "/"),
+        raw.name
+      );
+
+      AutostartItem {
+        id,
+        name: raw.name,
+        publisher: String::new(),
+        command: raw.command,
+        location: raw.location_name,
+        source: AutostartSource::Registry,
+        is_enabled: !raw.is_disabled,
+        is_delayed: false,
+        icon_base64: None,
+        critical_level,
+        file_path: target_path,
+        start_type: None,
+      }
+    })
+    .collect()
+}
+
+fn collect_raw_registry_items() -> Vec<RawRegistryItem> {
   let mut items = Vec::new();
 
   for (location_name, hk_root, path) in REGISTRY_KEYS {
@@ -155,38 +205,51 @@ pub fn get_registry_autostart_items() -> Vec<AutostartItem> {
         let is_disabled =
           is_disabled_in_startup_approved(&name, *hk_root, path);
 
-        let target_path = get_target_path(&command);
-        let icon_base64 = target_path.as_ref().and_then(|p| get_icon(p));
-
-        let critical_level = get_critical_level(&name, &command);
-
-        let publisher = target_path
-          .as_ref()
-          .and_then(|p| get_file_version_info(p).ok())
-          .and_then(|v| v.company_name)
-          .unwrap_or_default();
-
-        let id =
-          format!("registry|{}|{}", location_name.replace('\\', "/"), name);
-
-        items.push(AutostartItem {
-          id,
-          name: name.clone(),
-          publisher,
-          command: command.clone(),
-          location: location_name.to_string(),
-          source: AutostartSource::Registry,
-          is_enabled: !is_disabled,
-          is_delayed: false,
-          icon_base64,
-          critical_level,
-          file_path: target_path,
+        items.push(RawRegistryItem {
+          name,
+          command,
+          location_name: location_name.to_string(),
+          is_disabled,
         });
       }
     }
   }
 
   items
+}
+
+fn enrich_registry_item(raw: RawRegistryItem) -> AutostartItem {
+  let target_path = get_target_path(&raw.command);
+  let icon_base64 = target_path.as_ref().and_then(|p| get_icon(p));
+
+  let critical_level = get_critical_level(&raw.name, &raw.command);
+
+  let publisher = target_path
+    .as_ref()
+    .and_then(|p| get_file_version_info(p).ok())
+    .and_then(|v| v.company_name)
+    .unwrap_or_default();
+
+  let id = format!(
+    "registry|{}|{}",
+    raw.location_name.replace('\\', "/"),
+    raw.name
+  );
+
+  AutostartItem {
+    id,
+    name: raw.name,
+    publisher,
+    command: raw.command,
+    location: raw.location_name,
+    source: AutostartSource::Registry,
+    is_enabled: !raw.is_disabled,
+    is_delayed: false,
+    icon_base64,
+    critical_level,
+    file_path: target_path,
+    start_type: None,
+  }
 }
 
 pub fn toggle_registry_item(id: &str, enable: bool) -> Result<(), String> {
@@ -223,14 +286,14 @@ pub fn toggle_registry_item(id: &str, enable: bool) -> Result<(), String> {
     let approved_key = root
       .create_subkey(approved_path)
       .map(|(k, _)| k)
-      .map_err(|e| format!("Failed to open StartupApproved: {}", e))?;
+      .map_err(|e| format!("Failed to open StartupApproved: {e}"))?;
 
     let _ = approved_key.delete_value(name);
   } else {
     let approved_key = root
       .create_subkey(approved_path)
       .map(|(k, _)| k)
-      .map_err(|e| format!("Failed to open StartupApproved: {}", e))?;
+      .map_err(|e| format!("Failed to open StartupApproved: {e}"))?;
 
     let data: Vec<u8> = vec![
       0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -243,7 +306,7 @@ pub fn toggle_registry_item(id: &str, enable: bool) -> Result<(), String> {
           bytes: data,
         },
       )
-      .map_err(|e| format!("Failed to disable item: {}", e))?;
+      .map_err(|e| format!("Failed to disable item: {e}"))?;
   }
 
   Ok(())
@@ -281,11 +344,11 @@ pub fn delete_registry_item(id: &str) -> Result<(), String> {
 
   let key = root
     .open_subkey_with_flags(base_path, KEY_WRITE | KEY_READ)
-    .map_err(|e| format!("Failed to open registry key: {}", e))?;
+    .map_err(|e| format!("Failed to open registry key: {e}"))?;
 
   key
     .delete_value(name)
-    .map_err(|e| format!("Failed to delete registry value: {}", e))?;
+    .map_err(|e| format!("Failed to delete registry value: {e}"))?;
 
   if let Ok(approved_key) =
     root.open_subkey_with_flags(approved_path, KEY_WRITE)

@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::LazyLock;
 
 use base64::Engine;
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use windows::Win32::Foundation::HWND;
 use windows::Win32::Graphics::Gdi::{
   BITMAP, BITMAPINFO, BITMAPINFOHEADER, DIB_RGB_COLORS, DeleteObject, GetDC,
@@ -22,6 +22,8 @@ use windows::core::PCWSTR;
 
 static ICON_CACHE: LazyLock<RwLock<HashMap<String, String>>> =
   LazyLock::new(|| RwLock::new(HashMap::new()));
+
+static GDI_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
 fn get_cache_dir() -> PathBuf {
   let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
@@ -41,7 +43,7 @@ fn get_cache_path(key: &str) -> PathBuf {
       }
     })
     .collect();
-  get_cache_dir().join(format!("{}.txt", safe_key))
+  get_cache_dir().join(format!("{safe_key}.txt"))
 }
 
 fn load_from_cache(key: &str) -> Option<String> {
@@ -116,7 +118,7 @@ unsafe fn icon_to_base64(icon: HICON) -> Option<String> {
   let mut bitmap = BITMAP::default();
   unsafe {
     GetObjectW(
-      icon_info.hbmColor,
+      icon_info.hbmColor.into(),
       std::mem::size_of::<BITMAP>() as i32,
       Some(&mut bitmap as *mut _ as *mut _),
     );
@@ -127,8 +129,8 @@ unsafe fn icon_to_base64(icon: HICON) -> Option<String> {
 
   if width <= 0 || height <= 0 {
     unsafe {
-      let _ = DeleteObject(icon_info.hbmColor);
-      let _ = DeleteObject(icon_info.hbmMask);
+      let _ = DeleteObject(icon_info.hbmColor.into());
+      let _ = DeleteObject(icon_info.hbmMask.into());
     };
     return None;
   }
@@ -138,16 +140,16 @@ unsafe fn icon_to_base64(icon: HICON) -> Option<String> {
       Some(s) => s,
       None => {
         unsafe {
-          let _ = DeleteObject(icon_info.hbmColor);
-          let _ = DeleteObject(icon_info.hbmMask);
+          let _ = DeleteObject(icon_info.hbmColor.into());
+          let _ = DeleteObject(icon_info.hbmMask.into());
         };
         return None;
       }
     },
     None => {
       unsafe {
-        let _ = DeleteObject(icon_info.hbmColor);
-        let _ = DeleteObject(icon_info.hbmMask);
+        let _ = DeleteObject(icon_info.hbmColor.into());
+        let _ = DeleteObject(icon_info.hbmMask.into());
       };
       return None;
     }
@@ -168,11 +170,11 @@ unsafe fn icon_to_base64(icon: HICON) -> Option<String> {
     ..Default::default()
   };
 
-  let hdc = unsafe { GetDC(HWND::default()) };
+  let hdc = unsafe { GetDC(Some(HWND::default())) };
   if hdc.is_invalid() {
     unsafe {
-      let _ = DeleteObject(icon_info.hbmColor);
-      let _ = DeleteObject(icon_info.hbmMask);
+      let _ = DeleteObject(icon_info.hbmColor.into());
+      let _ = DeleteObject(icon_info.hbmMask.into());
     };
     return None;
   }
@@ -188,21 +190,21 @@ unsafe fn icon_to_base64(icon: HICON) -> Option<String> {
       DIB_RGB_COLORS,
     )
   };
-  unsafe { ReleaseDC(HWND::default(), hdc) };
+  unsafe { ReleaseDC(Some(HWND::default()), hdc) };
 
   if dib_result == 0 {
     unsafe {
-      let _ = DeleteObject(icon_info.hbmColor);
-      let _ = DeleteObject(icon_info.hbmMask);
+      let _ = DeleteObject(icon_info.hbmColor.into());
+      let _ = DeleteObject(icon_info.hbmMask.into());
     };
     return None;
   }
 
   unsafe {
-    let _ = DeleteObject(icon_info.hbmColor);
+    let _ = DeleteObject(icon_info.hbmColor.into());
   }
   unsafe {
-    let _ = DeleteObject(icon_info.hbmMask);
+    let _ = DeleteObject(icon_info.hbmMask.into());
   }
 
   for chunk in pixels.chunks_exact_mut(4) {
@@ -222,9 +224,21 @@ unsafe fn icon_to_base64(icon: HICON) -> Option<String> {
   }
 
   let b64 = base64::engine::general_purpose::STANDARD.encode(&png_data);
-  Some(format!("data:image/png;base64,{}", b64))
+  Some(format!("data:image/png;base64,{b64}"))
 }
 
 pub fn get_icon(path: &str) -> Option<String> {
+  let cache_key = path.to_lowercase();
+
+  if let Some(cached) = ICON_CACHE.read().get(&cache_key) {
+    return Some(cached.clone());
+  }
+
+  if let Some(cached) = load_from_cache(&cache_key) {
+    ICON_CACHE.write().insert(cache_key.clone(), cached.clone());
+    return Some(cached);
+  }
+
+  let _guard = GDI_LOCK.lock();
   extract_icon_base64(path)
 }

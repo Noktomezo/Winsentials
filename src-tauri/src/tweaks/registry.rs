@@ -1,5 +1,6 @@
 use std::io;
-use std::process::Command;
+
+use crate::utils::command::hidden_command;
 use winreg::enums::*;
 use winreg::{HKEY, RegKey, RegValue};
 
@@ -74,9 +75,9 @@ pub fn delete_reg_key(hive: HKEY, path: &str) -> io::Result<()> {
 }
 
 pub fn restart_explorer() {
-  let _ = Command::new("taskkill")
+  let _ = hidden_command("taskkill")
     .args(["/f", "/im", "explorer.exe"])
     .status();
   std::thread::sleep(std::time::Duration::from_millis(700));
-  let _ = Command::new("explorer.exe").spawn();
+  let _ = hidden_command("explorer.exe").spawn();
 }

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { useSettingsStore } from '@/shared/store/settings'
 import {
   Select,
   SelectContent,
@@ -6,8 +7,7 @@ import {
   SelectItemText,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { useSettingsStore } from '@/shared/store/settings'
+} from '@/shared/ui/select'
 
 export function SettingsPage() {
   const { t } = useTranslation()

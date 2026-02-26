@@ -2,7 +2,7 @@ use crate::tweaks::registry;
 use crate::tweaks::{
   RiskLevel, Tweak, TweakCategory, TweakMeta, TweakState, TweakUiType,
 };
-use std::process::Command;
+use crate::utils::command::hidden_command;
 use winreg::enums::*;
 
 const EXPLORER_ADVANCED_PATH: &str =
@@ -12,10 +12,10 @@ const TASK_NAME: &str =
   r"\Microsoft\Windows\Application Experience\ProgramDataUpdater";
 
 fn is_task_disabled() -> Result<bool, String> {
-  let output = Command::new("schtasks")
+  let output = hidden_command("schtasks")
     .args(["/query", "/tn", TASK_NAME, "/xml"])
     .output()
-    .map_err(|e| format!("Failed to query task: {}", e))?;
+    .map_err(|e| format!("Failed to query task: {e}"))?;
 
   if !output.status.success() {
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -87,10 +87,10 @@ impl Tweak for DisableUsageTrackingTweak {
     )
     .map_err(|e| e.to_string())?;
 
-    let output = Command::new("schtasks")
+    let output = hidden_command("schtasks")
       .args(["/change", "/tn", TASK_NAME, "/disable"])
       .output()
-      .map_err(|e| format!("Failed to disable task: {}", e))?;
+      .map_err(|e| format!("Failed to disable task: {e}"))?;
 
     if !output.status.success() {
       let stderr = String::from_utf8_lossy(&output.stderr);
@@ -111,10 +111,10 @@ impl Tweak for DisableUsageTrackingTweak {
     )
     .map_err(|e| e.to_string())?;
 
-    let output = Command::new("schtasks")
+    let output = hidden_command("schtasks")
       .args(["/change", "/tn", TASK_NAME, "/enable"])
       .output()
-      .map_err(|e| format!("Failed to enable task: {}", e))?;
+      .map_err(|e| format!("Failed to enable task: {e}"))?;
 
     if !output.status.success() {
       let stderr = String::from_utf8_lossy(&output.stderr);

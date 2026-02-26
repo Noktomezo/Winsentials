@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 
 import { useTranslation } from 'react-i18next'
 import { useAutostartStore } from '@/shared/store/autostart'
-import { AutostartRow } from './AutostartRow'
+import { VirtualizedGroup } from './VirtualizedGroup'
 
 const sourceConfig: Record<AutostartSource, { icon: typeof Folder, label: string }> = {
   Registry: { icon: FileText, label: 'sourceRegistry' },
@@ -77,7 +77,7 @@ export function AutostartTable() {
             <button
               type="button"
               onClick={() => toggleGroup(source)}
-              className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/50"
+              className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-accent/50 cursor-pointer"
             >
               {isExpanded
                 ? (
@@ -94,10 +94,8 @@ export function AutostartTable() {
             </button>
 
             {isExpanded && (
-              <div className="border-t border-border p-3 space-y-2">
-                {groupItems.map(item => (
-                  <AutostartRow key={item.id} item={item} />
-                ))}
+              <div className="border-t border-border p-3">
+                <VirtualizedGroup items={groupItems} />
               </div>
             )}
           </div>

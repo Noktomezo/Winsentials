@@ -1,250 +1,296 @@
-use std::process::Command;
-
-use quick_xml::Reader;
-use quick_xml::events::Event;
-
 use crate::autostart::critical::get_critical_level;
 use crate::autostart::file_info::get_file_version_info;
 use crate::autostart::icons::get_icon;
 use crate::autostart::types::{AutostartItem, AutostartSource};
+use crate::utils::command::hidden_command;
+use rayon::prelude::*;
+use windows::Win32::System::Com::{
+  CLSCTX_INPROC_SERVER, COINIT, CoCreateInstance, CoInitializeEx,
+  CoUninitialize,
+};
+use windows::Win32::System::TaskScheduler::{
+  IBootTrigger, IExecAction, ILogonTrigger, IRegisteredTask, ITaskFolder,
+  ITaskService, TASK_ACTION_EXEC, TASK_ENUM_HIDDEN, TASK_STATE_DISABLED,
+  TASK_TRIGGER_BOOT, TASK_TRIGGER_LOGON, TaskScheduler,
+};
+use windows::Win32::System::Variant::VARIANT;
+use windows::core::{BSTR, Interface};
 
-const STARTUP_TRIGGERS: &[&str] = &["LogonTrigger", "BootTrigger"];
-
-struct TaskInfo {
-  name: String,
+struct TaskData {
+  path: String,
   command: String,
-  state: String,
-  triggers: Vec<String>,
+  is_enabled: bool,
   is_delayed: bool,
 }
 
-fn parse_task_xml(xml: &str) -> Option<TaskInfo> {
-  let mut reader = Reader::from_str(xml);
-  reader.config_mut().trim_text(true);
-
-  let mut name = String::new();
-  let mut command = String::new();
-  let mut state = String::new();
-  let mut triggers = Vec::new();
-  let mut is_delayed = false;
-
-  let mut in_registration_info = false;
-  let mut in_uri = false;
-  let mut in_exec = false;
-  let mut in_command = false;
-  let mut in_triggers = false;
-  let mut in_settings = false;
-  let mut in_enabled_setting = false;
-  let mut in_delay = false;
-  let mut current_trigger_is_startup = false;
-
-  let mut buf = Vec::new();
-
-  loop {
-    match reader.read_event_into(&mut buf) {
-      Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
-        match e.local_name().as_ref() {
-          b"RegistrationInfo" => in_registration_info = true,
-          b"URI" if in_registration_info => in_uri = true,
-          b"Exec" => in_exec = true,
-          b"Command" if in_exec => in_command = true,
-
-          b"Triggers" => in_triggers = true,
-          b"Settings" => in_settings = true,
-          b"Enabled" if in_settings => in_enabled_setting = true,
-          b"Delay" => in_delay = true,
-          trigger_name if in_triggers => {
-            if STARTUP_TRIGGERS
-              .iter()
-              .any(|t| t.as_bytes() == trigger_name)
-            {
-              current_trigger_is_startup = true;
-              let trigger_name_str =
-                String::from_utf8_lossy(trigger_name).to_string();
-              triggers.push(trigger_name_str);
-            }
-          }
-          _ => {}
-        }
-      }
-      Ok(Event::End(ref e)) => match e.local_name().as_ref() {
-        b"RegistrationInfo" => in_registration_info = false,
-        b"URI" => in_uri = false,
-        b"Exec" => in_exec = false,
-        b"Command" => in_command = false,
-        b"Triggers" => in_triggers = false,
-        b"Settings" => in_settings = false,
-        b"Enabled" => in_enabled_setting = false,
-        b"Delay" => {
-          in_delay = false;
-        }
-        b"LogonTrigger" | b"BootTrigger" => {
-          current_trigger_is_startup = false;
-        }
-        _ => {}
-      },
-      Ok(Event::Text(ref e)) => {
-        let text = e.unescape().unwrap_or_default();
-        if in_uri && name.is_empty() {
-          name = text.to_string();
-        }
-        if in_command {
-          command = text.to_string();
-        }
-        if in_enabled_setting && text.to_lowercase() == "false" {
-          state = "Disabled".to_string();
-        }
-        if in_delay && current_trigger_is_startup && !text.is_empty() {
-          is_delayed = true;
-        }
-      }
-      Ok(Event::Eof) => break,
-      Err(e) => {
-        eprintln!("XML parsing error: {:?}", e);
-        break;
-      }
-      _ => {}
-    }
-    buf.clear();
-  }
-
-  if name.is_empty() {
-    return None;
-  }
-
-  Some(TaskInfo {
-    name,
-    command,
-    state,
-    triggers,
-    is_delayed,
-  })
-}
-
-fn get_tasks_xml() -> Option<String> {
-  let output = Command::new("schtasks")
-    .args(["/query", "/xml"])
-    .output()
-    .ok()?;
-
-  if !output.status.success() {
-    return None;
-  }
-
-  let stdout = &output.stdout;
-  if stdout.len() >= 2 && stdout[0] == 0xFF && stdout[1] == 0xFE {
-    let utf16_chars: Vec<u16> = stdout[2..]
-      .chunks_exact(2)
-      .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
-      .collect();
-    Some(String::from_utf16_lossy(&utf16_chars))
-  } else {
-    Some(String::from_utf8_lossy(stdout).to_string())
-  }
-}
-
 pub fn get_task_autostart_items() -> Vec<AutostartItem> {
-  let mut items = Vec::new();
+  let raw_items = collect_tasks_via_com();
+  raw_items.into_par_iter().map(enrich_task_item).collect()
+}
 
-  let xml = match get_tasks_xml() {
-    Some(x) => x,
-    None => return items,
-  };
+pub fn get_task_items_fast() -> Vec<AutostartItem> {
+  let raw_items = collect_tasks_via_com();
+  raw_items
+    .into_iter()
+    .map(|raw| {
+      let target_path = extract_exe_from_command(&raw.command);
+      let critical_level = get_critical_level(&raw.path, &raw.command);
 
-  let mut reader = Reader::from_str(&xml);
-  reader.config_mut().trim_text(true);
+      let display_name = raw
+        .path
+        .split('\\')
+        .next_back()
+        .unwrap_or(&raw.path)
+        .to_string();
 
-  let mut buf = Vec::new();
-  let mut task_xml = String::new();
-  let mut in_task = false;
-  let mut depth = 0;
+      let id = format!("task|{}", raw.path.replace('\\', "/"));
 
-  loop {
-    match reader.read_event_into(&mut buf) {
-      Ok(Event::Start(ref e)) => {
-        if e.local_name().as_ref() == b"Task" && !in_task {
-          in_task = true;
-          task_xml = String::from("<?xml version=\"1.0\"?>\n<Task>");
-          depth = 1;
-        } else if in_task {
-          depth += 1;
-          task_xml.push_str(&format!(
-            "<{}>",
-            String::from_utf8_lossy(e.local_name().as_ref())
-          ));
-        }
+      AutostartItem {
+        id,
+        name: display_name,
+        publisher: String::new(),
+        command: raw.command,
+        location: format!("Task: {}", raw.path),
+        source: AutostartSource::Task,
+        is_enabled: raw.is_enabled,
+        is_delayed: raw.is_delayed,
+        icon_base64: None,
+        critical_level,
+        file_path: target_path,
+        start_type: None,
       }
-      Ok(Event::Empty(ref e)) => {
-        if in_task {
-          task_xml.push_str(&format!(
-            "<{}/>",
-            String::from_utf8_lossy(e.local_name().as_ref())
-          ));
-        }
-      }
-      Ok(Event::Text(ref e)) => {
-        if in_task {
-          let text = e.unescape().unwrap_or_default();
-          let escaped = quick_xml::escape::escape(text.as_ref());
-          task_xml.push_str(&escaped);
-        }
-      }
-      Ok(Event::End(ref e)) => {
-        if in_task {
-          depth -= 1;
-          if depth == 0 {
-            task_xml.push_str("</Task>");
-            in_task = false;
+    })
+    .collect()
+}
 
-            if let Some(task_info) = parse_task_xml(&task_xml) {
-              if should_include_task(&task_info) {
-                if let Some(item) = create_autostart_item(task_info) {
-                  items.push(item);
-                }
-              }
+fn collect_tasks_via_com() -> Vec<TaskData> {
+  unsafe {
+    let hr = CoInitializeEx(None, COINIT(0));
+
+    if hr.is_err() {
+      return Vec::new();
+    }
+
+    let Ok(service): Result<ITaskService, _> =
+      CoCreateInstance(&TaskScheduler, None, CLSCTX_INPROC_SERVER)
+    else {
+      CoUninitialize();
+      return Vec::new();
+    };
+
+    let Ok(()) = service.Connect(
+      &VARIANT::default(),
+      &VARIANT::default(),
+      &VARIANT::default(),
+      &VARIANT::default(),
+    ) else {
+      CoUninitialize();
+      return Vec::new();
+    };
+
+    let Ok(root) = service.GetFolder(&BSTR::from("\\")) else {
+      CoUninitialize();
+      return Vec::new();
+    };
+
+    let mut items = Vec::new();
+    collect_tasks_recursive(&root, &mut items);
+
+    CoUninitialize();
+    items
+  }
+}
+
+unsafe fn collect_tasks_recursive(
+  folder: &ITaskFolder,
+  items: &mut Vec<TaskData>,
+) {
+  unsafe {
+    let Ok(tasks) = folder.GetTasks(TASK_ENUM_HIDDEN.0) else {
+      return;
+    };
+
+    let Ok(count) = tasks.Count() else {
+      return;
+    };
+
+    for i in 1..=count {
+      let Ok(task) = tasks.get_Item(&VARIANT::from(i)) else {
+        continue;
+      };
+      if let Some(data) = process_task(&task) {
+        items.push(data);
+      }
+    }
+
+    let Ok(subfolders) = folder.GetFolders(0) else {
+      return;
+    };
+
+    let Ok(folder_count) = subfolders.Count() else {
+      return;
+    };
+
+    for i in 1..=folder_count {
+      let Ok(subfolder) = subfolders.get_Item(&VARIANT::from(i)) else {
+        continue;
+      };
+      collect_tasks_recursive(&subfolder, items);
+    }
+  }
+}
+
+unsafe fn process_task(task: &IRegisteredTask) -> Option<TaskData> {
+  unsafe {
+    let path = task.Path().ok()?.to_string();
+
+    if path.starts_with("\\Microsoft") {
+      return None;
+    }
+
+    if !has_startup_trigger(task) {
+      return None;
+    }
+
+    let state = task.State().ok().unwrap_or(TASK_STATE_DISABLED);
+    let is_enabled = state != TASK_STATE_DISABLED;
+    let is_delayed = has_delay(task);
+
+    Some(TaskData {
+      path,
+      command: get_task_command(task),
+      is_enabled,
+      is_delayed,
+    })
+  }
+}
+
+unsafe fn has_startup_trigger(task: &IRegisteredTask) -> bool {
+  unsafe {
+    let Ok(definition) = task.Definition() else {
+      return false;
+    };
+    let Ok(triggers) = definition.Triggers() else {
+      return false;
+    };
+
+    let mut count: i32 = 0;
+    if triggers.Count(&mut count).is_err() {
+      return false;
+    }
+
+    for i in 1..=count {
+      let Ok(trigger) = triggers.get_Item(i) else {
+        continue;
+      };
+
+      let mut trigger_type = Default::default();
+      if trigger.Type(&mut trigger_type).is_ok()
+        && (trigger_type == TASK_TRIGGER_LOGON
+          || trigger_type == TASK_TRIGGER_BOOT)
+      {
+        return true;
+      }
+    }
+    false
+  }
+}
+
+unsafe fn has_delay(task: &IRegisteredTask) -> bool {
+  unsafe {
+    let Ok(definition) = task.Definition() else {
+      return false;
+    };
+    let Ok(triggers) = definition.Triggers() else {
+      return false;
+    };
+
+    let mut count: i32 = 0;
+    if triggers.Count(&mut count).is_err() {
+      return false;
+    }
+
+    for i in 1..=count {
+      let Ok(trigger) = triggers.get_Item(i) else {
+        continue;
+      };
+
+      let mut trigger_type = Default::default();
+      if trigger.Type(&mut trigger_type).is_ok()
+        && (trigger_type == TASK_TRIGGER_LOGON
+          || trigger_type == TASK_TRIGGER_BOOT)
+      {
+        if trigger_type == TASK_TRIGGER_LOGON {
+          if let Ok(logon_trigger) = trigger.cast::<ILogonTrigger>() {
+            let mut delay = BSTR::new();
+            if logon_trigger.Delay(&mut delay).is_ok() && !delay.is_empty() {
+              return true;
             }
-          } else {
-            task_xml.push_str(&format!(
-              "</{}>",
-              String::from_utf8_lossy(e.local_name().as_ref())
-            ));
+          }
+        } else if trigger_type == TASK_TRIGGER_BOOT {
+          if let Ok(boot_trigger) = trigger.cast::<IBootTrigger>() {
+            let mut delay = BSTR::new();
+            if boot_trigger.Delay(&mut delay).is_ok() && !delay.is_empty() {
+              return true;
+            }
           }
         }
       }
-      Ok(Event::Eof) => break,
-      Err(e) => {
-        eprintln!("Task XML parsing error: {:?}", e);
-        in_task = false;
-        depth = 0;
-      }
-      _ => {}
     }
-    buf.clear();
+    false
   }
-
-  items
 }
 
-fn should_include_task(task: &TaskInfo) -> bool {
-  if task.name.is_empty() {
-    return false;
-  }
+unsafe fn get_task_command(task: &IRegisteredTask) -> String {
+  unsafe {
+    let Ok(definition) = task.Definition() else {
+      return String::new();
+    };
+    let Ok(actions) = definition.Actions() else {
+      return String::new();
+    };
 
-  if task.name.starts_with("\\Microsoft") {
-    return false;
-  }
+    let mut count: i32 = 0;
+    if actions.Count(&mut count).is_err() {
+      return String::new();
+    }
 
-  task
-    .triggers
-    .iter()
-    .any(|t| STARTUP_TRIGGERS.contains(&t.as_str()))
+    for i in 1..=count {
+      let Ok(action) = actions.get_Item(i) else {
+        continue;
+      };
+
+      let mut action_type = Default::default();
+      if action.Type(&mut action_type).is_ok()
+        && action_type == TASK_ACTION_EXEC
+      {
+        if let Ok(exec) = action.cast::<IExecAction>() {
+          let mut path = BSTR::new();
+          if exec.Path(&mut path).is_ok() {
+            let path_str = path.to_string();
+            if !path_str.is_empty() {
+              let quoted_path = format!("\"{path_str}\"");
+              let mut args = BSTR::new();
+              if exec.Arguments(&mut args).is_ok() {
+                let args_str = args.to_string();
+                return if args_str.is_empty() {
+                  quoted_path
+                } else {
+                  format!("{quoted_path} {args_str}")
+                };
+              }
+              return quoted_path;
+            }
+          }
+        }
+      }
+    }
+    String::new()
+  }
 }
 
-fn create_autostart_item(task: TaskInfo) -> Option<AutostartItem> {
-  let is_enabled = task.state != "Disabled";
-  let is_delayed = task.is_delayed;
-
-  let target_path = extract_exe_from_command(&task.command);
+fn enrich_task_item(raw: TaskData) -> AutostartItem {
+  let target_path = extract_exe_from_command(&raw.command);
   let icon_base64 = target_path.as_ref().and_then(|p| get_icon(p));
 
   let publisher = target_path
@@ -253,30 +299,31 @@ fn create_autostart_item(task: TaskInfo) -> Option<AutostartItem> {
     .and_then(|v| v.company_name)
     .unwrap_or_default();
 
-  let critical_level = get_critical_level(&task.name, &task.command);
+  let critical_level = get_critical_level(&raw.path, &raw.command);
 
-  let display_name = task
-    .name
+  let display_name = raw
+    .path
     .split('\\')
     .next_back()
-    .unwrap_or(&task.name)
+    .unwrap_or(&raw.path)
     .to_string();
 
-  let id = format!("task|{}", task.name.replace('\\', "/"));
+  let id = format!("task|{}", raw.path.replace('\\', "/"));
 
-  Some(AutostartItem {
+  AutostartItem {
     id,
     name: display_name,
     publisher,
-    command: task.command,
-    location: format!("Task: {}", task.name),
+    command: raw.command,
+    location: format!("Task: {}", raw.path),
     source: AutostartSource::Task,
-    is_enabled,
-    is_delayed,
+    is_enabled: raw.is_enabled,
+    is_delayed: raw.is_delayed,
     icon_base64,
     critical_level,
     file_path: target_path,
-  })
+    start_type: None,
+  }
 }
 
 fn extract_exe_from_command(command: &str) -> Option<String> {
@@ -289,21 +336,25 @@ fn extract_exe_from_command(command: &str) -> Option<String> {
     return None;
   }
 
-  if cmd.starts_with('"')
-    && let Some(end) = cmd[1..].find('"')
-  {
-    return Some(cmd[1..end + 1].to_string());
-  }
+  let first_token = if let Some(stripped) = cmd.strip_prefix('"') {
+    if let Some(end) = stripped.find('"') {
+      &stripped[..end]
+    } else {
+      cmd
+    }
+  } else {
+    cmd.split_whitespace().next().unwrap_or(cmd)
+  };
 
-  let lower_cmd = cmd.to_ascii_lowercase();
-  if let Some(exe_end) = lower_cmd.rfind(".exe") {
+  let lower_token = first_token.to_ascii_lowercase();
+  if let Some(exe_end) = lower_token.rfind(".exe") {
     let boundary_idx = exe_end + 4;
-    if boundary_idx >= cmd.len()
-      || cmd.as_bytes()[boundary_idx].is_ascii_whitespace()
-      || cmd.as_bytes()[boundary_idx] == b'"'
-      || cmd.as_bytes()[boundary_idx] == b'\''
+    if boundary_idx >= first_token.len()
+      || first_token.as_bytes()[boundary_idx].is_ascii_whitespace()
+      || first_token.as_bytes()[boundary_idx] == b'"'
+      || first_token.as_bytes()[boundary_idx] == b'\''
     {
-      let exe_path = cmd[..boundary_idx].trim();
+      let exe_path = first_token[..boundary_idx].trim();
       return Some(exe_path.to_string());
     }
   }
@@ -312,45 +363,105 @@ fn extract_exe_from_command(command: &str) -> Option<String> {
 }
 
 pub fn toggle_task_item(id: &str, enable: bool) -> Result<(), String> {
-  let parts: Vec<&str> = id.splitn(2, '|').collect();
-  if parts.len() != 2 || parts[0] != "task" {
-    return Err("Invalid task item ID".to_string());
-  }
-
-  let task_name = parts[1].replace('/', "\\");
+  let task_path = extract_task_path_from_id(id)?;
 
   let status = if enable { "enable" } else { "disable" };
 
-  let output = Command::new("schtasks")
-    .args(["/change", "/tn", &task_name, &format!("/{}", status)])
+  let output = hidden_command("schtasks")
+    .args(["/change", "/tn", &task_path, &format!("/{status}")])
     .output()
-    .map_err(|e| format!("Failed to execute schtasks: {}", e))?;
+    .map_err(|e| format!("Failed to execute schtasks: {e}"))?;
 
   if !output.status.success() {
     let stderr = String::from_utf8_lossy(&output.stderr);
-    return Err(format!("Failed to {} task: {}", status, stderr));
+    return Err(format!("Failed to {status} task: {stderr}"));
   }
 
   Ok(())
 }
 
 pub fn delete_task_item(id: &str) -> Result<(), String> {
+  let task_path = extract_task_path_from_id(id)?;
+
+  unsafe {
+    let hr = CoInitializeEx(None, COINIT(0));
+
+    if hr.is_err() {
+      return Err("Failed to initialize COM".to_string());
+    }
+
+    let result = (|| {
+      let service: ITaskService =
+        CoCreateInstance(&TaskScheduler, None, CLSCTX_INPROC_SERVER)
+          .map_err(|e| format!("Failed to create TaskService: {e}"))?;
+
+      service
+        .Connect(
+          &VARIANT::default(),
+          &VARIANT::default(),
+          &VARIANT::default(),
+          &VARIANT::default(),
+        )
+        .map_err(|e| format!("Failed to connect: {e}"))?;
+
+      let folder_path = get_parent_folder_path(&task_path);
+      let task_name = get_task_name(&task_path);
+
+      let folder = service
+        .GetFolder(&BSTR::from(folder_path))
+        .map_err(|e| format!("Failed to get folder: {e}"))?;
+
+      folder
+        .DeleteTask(&BSTR::from(task_name), 0)
+        .map_err(|e| format!("Failed to delete task: {e}"))?;
+
+      Ok(())
+    })();
+
+    CoUninitialize();
+    result
+  }
+}
+
+fn extract_task_path_from_id(id: &str) -> Result<String, String> {
   let parts: Vec<&str> = id.splitn(2, '|').collect();
   if parts.len() != 2 || parts[0] != "task" {
     return Err("Invalid task item ID".to_string());
   }
 
-  let task_name = parts[1].replace('/', "\\");
-
-  let output = Command::new("schtasks")
-    .args(["/delete", "/tn", &task_name, "/f"])
-    .output()
-    .map_err(|e| format!("Failed to execute schtasks: {}", e))?;
-
-  if !output.status.success() {
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    return Err(format!("Failed to delete task: {}", stderr));
+  let path = parts[1].trim();
+  if path.is_empty() {
+    return Err("Invalid task item ID".to_string());
   }
 
-  Ok(())
+  let is_rooted = path.starts_with('\\')
+    || path.starts_with('/')
+    || (path.len() >= 2 && path.chars().nth(1) == Some(':'));
+
+  if !is_rooted {
+    return Err("Invalid task item ID".to_string());
+  }
+
+  Ok(path.replace('/', "\\"))
+}
+
+fn get_parent_folder_path(task_path: &str) -> String {
+  task_path
+    .rsplit_once('\\')
+    .map(|(folder, _)| {
+      if folder.is_empty() {
+        "\\".to_string()
+      } else {
+        folder.to_string()
+      }
+    })
+    .unwrap_or_else(|| "\\".to_string())
+}
+
+fn get_task_name(task_path: &str) -> String {
+  task_path
+    .rsplit_once('\\')
+    .map(|(_, name)| name)
+    .unwrap_or(task_path)
+    .to_string()
 }

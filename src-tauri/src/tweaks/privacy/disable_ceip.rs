@@ -2,7 +2,7 @@ use crate::tweaks::registry;
 use crate::tweaks::{
   RiskLevel, Tweak, TweakCategory, TweakMeta, TweakState, TweakUiType,
 };
-use std::process::Command;
+use crate::utils::command::hidden_command;
 use winreg::enums::*;
 
 const SQMCLIENT_PATH: &str = r"SOFTWARE\Microsoft\SQMClient\Windows";
@@ -16,7 +16,7 @@ const CEIP_TASKS: [&str; 4] = [
 ];
 
 fn task_exists(task: &str) -> bool {
-  Command::new("schtasks")
+  hidden_command("schtasks")
     .args(["/query", "/tn", task])
     .output()
     .map(|o| o.status.success())
@@ -24,7 +24,7 @@ fn task_exists(task: &str) -> bool {
 }
 
 fn check_task_disabled(task: &str) -> bool {
-  let output = match Command::new("schtasks")
+  let output = match hidden_command("schtasks")
     .args(["/query", "/tn", task, "/xml"])
     .output()
   {
@@ -46,10 +46,10 @@ fn disable_ceip_tasks() -> Result<(), String> {
       continue;
     }
 
-    let output = Command::new("schtasks")
+    let output = hidden_command("schtasks")
       .args(["/change", "/tn", task, "/disable"])
       .output()
-      .map_err(|e| format!("Failed to spawn schtasks: {}", e))?;
+      .map_err(|e| format!("Failed to spawn schtasks: {e}"))?;
 
     if !output.status.success() {
       let stderr = String::from_utf8_lossy(&output.stderr);
@@ -69,10 +69,10 @@ fn enable_ceip_tasks() -> Result<(), String> {
       continue;
     }
 
-    let output = Command::new("schtasks")
+    let output = hidden_command("schtasks")
       .args(["/change", "/tn", task, "/enable"])
       .output()
-      .map_err(|e| format!("Failed to spawn schtasks: {}", e))?;
+      .map_err(|e| format!("Failed to spawn schtasks: {e}"))?;
 
     if !output.status.success() {
       let stderr = String::from_utf8_lossy(&output.stderr);

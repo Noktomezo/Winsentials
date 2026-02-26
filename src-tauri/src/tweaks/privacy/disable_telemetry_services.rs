@@ -1,16 +1,16 @@
 use crate::tweaks::{
   RiskLevel, Tweak, TweakCategory, TweakMeta, TweakState, TweakUiType,
 };
-use std::process::Command;
+use crate::utils::command::hidden_command;
 
 const DIAG_TRACK: &str = "DiagTrack";
 const DMWAPPUSH_SERVICE: &str = "dmwappushservice";
 
 fn check_service(service: &str) -> Result<bool, String> {
-  let output = Command::new("sc")
+  let output = hidden_command("sc")
     .args(["query", service])
     .output()
-    .map_err(|e| format!("Failed to query service: {}", e))?;
+    .map_err(|e| format!("Failed to query service: {e}"))?;
 
   let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -18,10 +18,10 @@ fn check_service(service: &str) -> Result<bool, String> {
     return Ok(true);
   }
 
-  let qc_output = Command::new("sc")
+  let qc_output = hidden_command("sc")
     .args(["qc", service])
     .output()
-    .map_err(|e| format!("Failed to query service config: {}", e))?;
+    .map_err(|e| format!("Failed to query service config: {e}"))?;
 
   let qc_stdout = String::from_utf8_lossy(&qc_output.stdout);
 
@@ -50,10 +50,10 @@ fn parse_start_type(qc_stdout: &str) -> Option<u32> {
 }
 
 fn set_service_disabled(service: &str) -> Result<(), String> {
-  let output = Command::new("sc")
+  let output = hidden_command("sc")
     .args(["query", service])
     .output()
-    .map_err(|e| format!("Failed to query service: {}", e))?;
+    .map_err(|e| format!("Failed to query service: {e}"))?;
 
   let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -61,26 +61,26 @@ fn set_service_disabled(service: &str) -> Result<(), String> {
     return Ok(());
   }
 
-  let output = Command::new("sc")
+  let output = hidden_command("sc")
     .args(["config", service, "start=", "disabled"])
     .output()
-    .map_err(|e| format!("Failed to disable {}: {}", service, e))?;
+    .map_err(|e| format!("Failed to disable {service}: {e}"))?;
 
   if !output.status.success() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     return Err(format!("Failed to disable {}: {}", service, stdout.trim()));
   }
 
-  let _ = Command::new("sc").args(["stop", service]).output();
+  let _ = hidden_command("sc").args(["stop", service]).output();
 
   Ok(())
 }
 
 fn set_service_auto(service: &str) -> Result<(), String> {
-  let output = Command::new("sc")
+  let output = hidden_command("sc")
     .args(["query", service])
     .output()
-    .map_err(|e| format!("Failed to query service: {}", e))?;
+    .map_err(|e| format!("Failed to query service: {e}"))?;
 
   let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -88,17 +88,17 @@ fn set_service_auto(service: &str) -> Result<(), String> {
     return Ok(());
   }
 
-  let output = Command::new("sc")
+  let output = hidden_command("sc")
     .args(["config", service, "start=", "auto"])
     .output()
-    .map_err(|e| format!("Failed to enable {}: {}", service, e))?;
+    .map_err(|e| format!("Failed to enable {service}: {e}"))?;
 
   if !output.status.success() {
     let stdout = String::from_utf8_lossy(&output.stdout);
     return Err(format!("Failed to enable {}: {}", service, stdout.trim()));
   }
 
-  let start_result = Command::new("sc").args(["start", service]).output();
+  let start_result = hidden_command("sc").args(["start", service]).output();
   if let Ok(result) = start_result {
     if !result.status.success() {
       let stdout = String::from_utf8_lossy(&result.stdout);

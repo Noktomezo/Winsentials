@@ -1,5 +1,5 @@
 import type { TweakInfo } from '@/shared/types/tweak'
-import { Switch } from '@/components/ui/switch'
+import { Switch } from '@/shared/ui/switch'
 
 interface ToggleControlProps {
   tweak: TweakInfo

@@ -4,6 +4,8 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 
 use lnk::ShellLink;
+use lnk::encoding::WINDOWS_1252;
+use rayon::prelude::*;
 
 use crate::autostart::critical::get_critical_level;
 use crate::autostart::file_info::get_file_version_info;
@@ -62,36 +64,40 @@ fn get_startup_folders() -> Vec<(String, PathBuf)> {
 }
 
 fn parse_lnk_file(path: &std::path::Path) -> Option<(String, String)> {
-  let link = ShellLink::open(path).ok()?;
+  let link = ShellLink::open(path, WINDOWS_1252).ok()?;
 
   let target = if let Some(info) = link.link_info() {
     if let Some(local) = info.local_base_path() {
-      local.clone()
-    } else if let Some(rel) = link.relative_path() {
+      local.to_string()
+    } else if let Some(rel) = link.string_data().relative_path() {
       if let Some(parent) = path.parent() {
         parent.join(rel).to_string_lossy().to_string()
       } else {
-        rel.to_string()
+        rel.clone()
       }
     } else {
       path.to_string_lossy().to_string()
     }
-  } else if let Some(rel) = link.relative_path() {
+  } else if let Some(rel) = link.string_data().relative_path() {
     if let Some(parent) = path.parent() {
       parent.join(rel).to_string_lossy().to_string()
     } else {
-      rel.to_string()
+      rel.clone()
     }
   } else {
     path.to_string_lossy().to_string()
   };
 
-  let args: String = link.arguments().clone().unwrap_or_default();
+  let args: String = link
+    .string_data()
+    .command_line_arguments()
+    .clone()
+    .unwrap_or_default();
 
   let command = if args.is_empty() {
     target.clone()
   } else {
-    format!("{} {}", target, args)
+    format!("{target} {args}")
   };
 
   Some((target, command))
@@ -107,12 +113,21 @@ fn get_disabled_folder(location: &str) -> Option<PathBuf> {
   )
 }
 
-fn collect_lnk_items(
+struct RawFolderItem {
+  name: String,
+  target_path: String,
+  command: String,
+  location_name: String,
+  filename: String,
+  is_enabled: bool,
+}
+
+fn collect_raw_lnk_items(
   dir: &Path,
   location_name: &str,
   is_enabled: bool,
   seen_files: &mut HashSet<String>,
-  items: &mut Vec<AutostartItem>,
+  items: &mut Vec<RawFolderItem>,
 ) {
   if let Ok(entries) = fs::read_dir(dir) {
     for entry in entries.filter_map(|e| e.ok()) {
@@ -150,38 +165,53 @@ fn collect_lnk_items(
             )
           });
 
-        let icon_base64 = get_icon(&target_path);
-
-        let critical_level = get_critical_level(&name, &command);
-
-        let publisher = get_file_version_info(&target_path)
-          .ok()
-          .and_then(|v| v.company_name)
-          .unwrap_or_default();
-
-        let id =
-          format!("folder|{}|{}", location_name.replace(' ', "_"), filename);
-
-        items.push(AutostartItem {
-          id,
+        items.push(RawFolderItem {
           name,
-          publisher,
+          target_path,
           command,
-          location: location_name.to_string(),
-          source: AutostartSource::Folder,
+          location_name: location_name.to_string(),
+          filename,
           is_enabled,
-          is_delayed: false,
-          icon_base64,
-          critical_level,
-          file_path: Some(target_path),
         });
       }
     }
   }
 }
 
-pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
-  let mut items = Vec::new();
+fn enrich_folder_item(raw: RawFolderItem) -> AutostartItem {
+  let icon_base64 = get_icon(&raw.target_path);
+
+  let critical_level = get_critical_level(&raw.name, &raw.command);
+
+  let publisher = get_file_version_info(&raw.target_path)
+    .ok()
+    .and_then(|v| v.company_name)
+    .unwrap_or_default();
+
+  let id = format!(
+    "folder|{}|{}",
+    raw.location_name.replace(' ', "_"),
+    raw.filename
+  );
+
+  AutostartItem {
+    id,
+    name: raw.name,
+    publisher,
+    command: raw.command,
+    location: raw.location_name,
+    source: AutostartSource::Folder,
+    is_enabled: raw.is_enabled,
+    is_delayed: false,
+    icon_base64,
+    critical_level,
+    file_path: Some(raw.target_path),
+    start_type: None,
+  }
+}
+
+fn collect_all_raw_folder_items() -> Vec<RawFolderItem> {
+  let mut raw_items = Vec::new();
 
   for (location_name, folder_path) in get_startup_folders() {
     if !folder_path.exists() {
@@ -191,28 +221,65 @@ pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
     let disabled_folder = get_disabled_folder(&location_name);
     let mut seen_files: HashSet<String> = HashSet::new();
 
-    collect_lnk_items(
+    collect_raw_lnk_items(
       &folder_path,
       &location_name,
       true,
       &mut seen_files,
-      &mut items,
+      &mut raw_items,
     );
 
     if let Some(disabled_path) = &disabled_folder {
       if disabled_path.exists() {
-        collect_lnk_items(
+        collect_raw_lnk_items(
           disabled_path,
           &location_name,
           false,
           &mut seen_files,
-          &mut items,
+          &mut raw_items,
         );
       }
     }
   }
 
-  items
+  raw_items
+}
+
+pub fn get_folder_autostart_items() -> Vec<AutostartItem> {
+  collect_all_raw_folder_items()
+    .into_par_iter()
+    .map(enrich_folder_item)
+    .collect()
+}
+
+pub fn get_folder_items_fast() -> Vec<AutostartItem> {
+  collect_all_raw_folder_items()
+    .into_iter()
+    .map(|raw| {
+      let critical_level = get_critical_level(&raw.name, &raw.command);
+
+      let id = format!(
+        "folder|{}|{}",
+        raw.location_name.replace(' ', "_"),
+        raw.filename
+      );
+
+      AutostartItem {
+        id,
+        name: raw.name,
+        publisher: String::new(),
+        command: raw.command,
+        location: raw.location_name,
+        source: AutostartSource::Folder,
+        is_enabled: raw.is_enabled,
+        is_delayed: false,
+        icon_base64: None,
+        critical_level,
+        file_path: Some(raw.target_path),
+        start_type: None,
+      }
+    })
+    .collect()
 }
 
 pub fn toggle_folder_item(id: &str, enable: bool) -> Result<(), String> {
@@ -242,14 +309,14 @@ pub fn toggle_folder_item(id: &str, enable: bool) -> Result<(), String> {
   if enable {
     if disabled_file.exists() {
       fs::rename(&disabled_file, &source_file)
-        .map_err(|e| format!("Failed to restore file: {}", e))?;
+        .map_err(|e| format!("Failed to restore file: {e}"))?;
     }
   } else {
     fs::create_dir_all(&disabled_folder)
-      .map_err(|e| format!("Failed to create disabled folder: {}", e))?;
+      .map_err(|e| format!("Failed to create disabled folder: {e}"))?;
     if source_file.exists() {
       fs::rename(&source_file, &disabled_file)
-        .map_err(|e| format!("Failed to disable file: {}", e))?;
+        .map_err(|e| format!("Failed to disable file: {e}"))?;
     }
   }
 
@@ -282,12 +349,12 @@ pub fn delete_folder_item(id: &str) -> Result<(), String> {
 
   if source_file.exists() {
     fs::remove_file(&source_file)
-      .map_err(|e| format!("Failed to delete file: {}", e))?;
+      .map_err(|e| format!("Failed to delete file: {e}"))?;
   }
 
   if disabled_file.exists() {
     fs::remove_file(&disabled_file)
-      .map_err(|e| format!("Failed to delete disabled file: {}", e))?;
+      .map_err(|e| format!("Failed to delete disabled file: {e}"))?;
   }
 
   Ok(())

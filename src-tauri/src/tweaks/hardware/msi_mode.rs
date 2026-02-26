@@ -60,10 +60,8 @@ impl Tweak for MsiModeTweak {
         && pnp_id.starts_with("PCI\\VEN_")
       {
         any_device = true;
-        let path = format!(
-          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-          pnp_id, MSI_PROPS_SUFFIX
-        );
+        let path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{MSI_PROPS_SUFFIX}");
         let msi_supported =
           registry::read_reg_u32(HKEY_LOCAL_MACHINE, &path, MSI_SUPPORTED);
         if msi_supported != Some(1) {
@@ -77,10 +75,8 @@ impl Tweak for MsiModeTweak {
         && pnp_id.starts_with("PCI\\VEN_")
       {
         any_device = true;
-        let path = format!(
-          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-          pnp_id, MSI_PROPS_SUFFIX
-        );
+        let path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{MSI_PROPS_SUFFIX}");
         let msi_supported =
           registry::read_reg_u32(HKEY_LOCAL_MACHINE, &path, MSI_SUPPORTED);
         if msi_supported != Some(1) {
@@ -111,10 +107,8 @@ impl Tweak for MsiModeTweak {
       if let Some(pnp_id) = gpu.PNPDeviceID
         && pnp_id.starts_with("PCI\\VEN_")
       {
-        let msi_path = format!(
-          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-          pnp_id, MSI_PROPS_SUFFIX
-        );
+        let msi_path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{MSI_PROPS_SUFFIX}");
         registry::write_reg_u32(
           HKEY_LOCAL_MACHINE,
           &msi_path,
@@ -123,10 +117,8 @@ impl Tweak for MsiModeTweak {
         )
         .map_err(|e| e.to_string())?;
 
-        let affinity_path = format!(
-          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-          pnp_id, AFFINITY_SUFFIX
-        );
+        let affinity_path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}");
         registry::delete_reg_value(
           HKEY_LOCAL_MACHINE,
           &affinity_path,
@@ -140,10 +132,8 @@ impl Tweak for MsiModeTweak {
       if let Some(pnp_id) = nic.PNPDeviceID
         && pnp_id.starts_with("PCI\\VEN_")
       {
-        let msi_path = format!(
-          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-          pnp_id, MSI_PROPS_SUFFIX
-        );
+        let msi_path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{MSI_PROPS_SUFFIX}");
         registry::write_reg_u32(
           HKEY_LOCAL_MACHINE,
           &msi_path,
@@ -152,10 +142,8 @@ impl Tweak for MsiModeTweak {
         )
         .map_err(|e| e.to_string())?;
 
-        let affinity_path = format!(
-          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-          pnp_id, AFFINITY_SUFFIX
-        );
+        let affinity_path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}");
         registry::delete_reg_value(
           HKEY_LOCAL_MACHINE,
           &affinity_path,
@@ -182,10 +170,8 @@ impl Tweak for MsiModeTweak {
       if let Some(pnp_id) = gpu.PNPDeviceID
         && pnp_id.starts_with("PCI\\VEN_")
       {
-        let msi_path = format!(
-          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-          pnp_id, MSI_PROPS_SUFFIX
-        );
+        let msi_path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{MSI_PROPS_SUFFIX}");
         registry::delete_reg_value(
           HKEY_LOCAL_MACHINE,
           &msi_path,
@@ -193,10 +179,8 @@ impl Tweak for MsiModeTweak {
         )
         .ok();
 
-        let affinity_path = format!(
-          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-          pnp_id, AFFINITY_SUFFIX
-        );
+        let affinity_path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}");
         registry::delete_reg_value(
           HKEY_LOCAL_MACHINE,
           &affinity_path,
@@ -210,10 +194,8 @@ impl Tweak for MsiModeTweak {
       if let Some(pnp_id) = nic.PNPDeviceID
         && pnp_id.starts_with("PCI\\VEN_")
       {
-        let msi_path = format!(
-          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-          pnp_id, MSI_PROPS_SUFFIX
-        );
+        let msi_path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{MSI_PROPS_SUFFIX}");
         registry::delete_reg_value(
           HKEY_LOCAL_MACHINE,
           &msi_path,
@@ -221,10 +203,8 @@ impl Tweak for MsiModeTweak {
         )
         .ok();
 
-        let affinity_path = format!(
-          r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-          pnp_id, AFFINITY_SUFFIX
-        );
+        let affinity_path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}");
         registry::delete_reg_value(
           HKEY_LOCAL_MACHINE,
           &affinity_path,

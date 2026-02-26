@@ -40,10 +40,8 @@ fn check_device_affinity(
   pnp_id: &str,
   expected_assignment: &[u8],
 ) -> Option<bool> {
-  let path = format!(
-    r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-    pnp_id, AFFINITY_SUFFIX
-  );
+  let path =
+    format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}");
 
   let device_policy =
     registry::read_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)?;
@@ -126,8 +124,7 @@ impl Tweak for DeviceAffinityTweak {
       if let Some(pnp_id) = &gpu.PNPDeviceID {
         if pnp_id.starts_with("PCI\\VEN_") {
           let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, AFFINITY_SUFFIX
+            r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}"
           );
           registry::write_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY, 4)
             .map_err(|e| e.to_string())?;
@@ -146,8 +143,7 @@ impl Tweak for DeviceAffinityTweak {
       if let Some(pnp_id) = &nic.PNPDeviceID {
         if pnp_id.starts_with("PCI\\VEN_") {
           let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, AFFINITY_SUFFIX
+            r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}"
           );
           registry::write_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY, 4)
             .map_err(|e| e.to_string())?;
@@ -166,8 +162,7 @@ impl Tweak for DeviceAffinityTweak {
       if let Some(pnp_id) = &usb.PNPDeviceID {
         if pnp_id.starts_with("PCI\\VEN_") {
           let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, AFFINITY_SUFFIX
+            r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}"
           );
           registry::write_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY, 4)
             .map_err(|e| e.to_string())?;
@@ -201,8 +196,7 @@ impl Tweak for DeviceAffinityTweak {
       if let Some(pnp_id) = &gpu.PNPDeviceID {
         if pnp_id.starts_with("PCI\\VEN_") {
           let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, AFFINITY_SUFFIX
+            r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}"
           );
           registry::delete_reg_value(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)
             .ok();
@@ -220,8 +214,7 @@ impl Tweak for DeviceAffinityTweak {
       if let Some(pnp_id) = &nic.PNPDeviceID {
         if pnp_id.starts_with("PCI\\VEN_") {
           let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, AFFINITY_SUFFIX
+            r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}"
           );
           registry::delete_reg_value(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)
             .ok();
@@ -239,8 +232,7 @@ impl Tweak for DeviceAffinityTweak {
       if let Some(pnp_id) = &usb.PNPDeviceID {
         if pnp_id.starts_with("PCI\\VEN_") {
           let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{}\{}",
-            pnp_id, AFFINITY_SUFFIX
+            r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}"
           );
           registry::delete_reg_value(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)
             .ok();

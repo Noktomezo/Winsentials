@@ -1,9 +1,15 @@
 import type { FileProperties } from '@/shared/types/autostart'
-import { X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { useTranslation } from 'react-i18next'
 import { getProperties } from '@/shared/api/autostart'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/ui/dialog'
 
 interface FilePropertiesDialogProps {
   path: string
@@ -22,20 +28,13 @@ export function FilePropertiesDialog({ path, onClose }: FilePropertiesDialogProp
   }, [path])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-lg border border-border bg-card">
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h3 className="text-lg font-semibold">{t('autostart.properties')}</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded p-1 hover:bg-accent"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <Dialog open={true} onOpenChange={open => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t('autostart.properties')}</DialogTitle>
+        </DialogHeader>
 
-        <div className="p-4">
+        <div className="py-2">
           {loading
             ? (
                 <div className="text-center text-muted-foreground">{t('common.loading')}</div>
@@ -64,17 +63,17 @@ export function FilePropertiesDialog({ path, onClose }: FilePropertiesDialogProp
                 )}
         </div>
 
-        <div className="flex justify-end border-t border-border px-4 py-3">
+        <DialogFooter>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent"
+            className="cursor-pointer rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent"
           >
             {t('common.close')}
           </button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
