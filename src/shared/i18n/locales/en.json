@@ -34,6 +34,7 @@
     "disable": "Disable",
     "delete": "Delete",
     "openLocation": "Location",
+    "openMenu": "Open menu",
     "properties": "Properties",
     "copyCommand": "Copy command",
     "unknownPublisher": "Unknown publisher",
@@ -65,7 +66,8 @@
       "Auto": "Auto",
       "Delayed": "Delayed",
       "Manual": "Manual",
-      "Disabled": "Disabled"
+      "Disabled": "Disabled",
+      "Unknown": "Unknown"
     }
   },
   "categoryDescriptions": {

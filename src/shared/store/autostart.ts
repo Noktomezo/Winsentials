@@ -17,6 +17,8 @@ interface AutostartState {
   filter: Filter
   search: string
   loaded: boolean
+  loadingPromise: Promise<void> | null
+  enrichingPromise: Promise<void> | null
 
   load: () => Promise<void>
   fetchAndEnrich: () => Promise<void>
@@ -35,71 +37,112 @@ export const useAutostartStore = create<AutostartState>((set, get) => ({
   filter: 'all',
   search: '',
   loaded: false,
+  loadingPromise: null,
+  enrichingPromise: null,
 
   load: async () => {
     if (get().loaded)
       return
 
-    set({ loading: true })
-    try {
-      const items = await getAutostartItemsFast()
-      set({ items, loading: false, loaded: true })
-      get().enrich()
+    if (get().loadingPromise) {
+      await get().loadingPromise
+      return
     }
-    catch (error) {
-      console.error('Failed to load autostart items:', error)
-      set({ loading: false })
-    }
+
+    const loadPromise = (async () => {
+      set({ loading: true })
+      try {
+        const items = await getAutostartItemsFast()
+        set({ items, loading: false, loaded: true })
+        get().enrich()
+      }
+      catch (error) {
+        console.error('Failed to load autostart items:', error)
+        set({ loading: false })
+      }
+      finally {
+        set({ loadingPromise: null })
+      }
+    })()
+
+    set({ loadingPromise: loadPromise })
+    await loadPromise
   },
 
   fetchAndEnrich: async () => {
-    try {
-      const items = await getAutostartItemsFast()
-      set({ items, loading: false, loaded: true })
-      get().enrich()
+    if (get().loadingPromise) {
+      await get().loadingPromise
+      return
     }
-    catch (error) {
-      console.error('Failed to fetch autostart items:', error)
-      set({ loading: false })
-    }
+
+    const fetchPromise = (async () => {
+      try {
+        const items = await getAutostartItemsFast()
+        set({ items, loading: false, loaded: true })
+        get().enrich()
+      }
+      catch (error) {
+        console.error('Failed to fetch autostart items:', error)
+        set({ loading: false })
+      }
+      finally {
+        set({ loadingPromise: null })
+      }
+    })()
+
+    set({ loadingPromise: fetchPromise })
+    await fetchPromise
   },
 
   enrich: async () => {
-    set({ enriching: true })
-    try {
-      const requests: EnrichRequest[] = get().items.map(item => ({
-        id: item.id,
-        file_path: item.file_path,
-      }))
+    if (get().enrichingPromise) {
+      await get().enrichingPromise
+      return
+    }
 
-      if (requests.length === 0) {
-        set({ enriching: false })
-        return
-      }
+    const enrichPromise = (async () => {
+      set({ enriching: true })
+      try {
+        const requests: EnrichRequest[] = get().items.map(item => ({
+          id: item.id,
+          file_path: item.file_path,
+        }))
 
-      const enrichments = await enrichAutostartItems(requests)
+        if (requests.length === 0) {
+          set({ enriching: false })
+          return
+        }
 
-      const enrichmentMap = new Map(enrichments.map(e => [e.id, e]))
+        const enrichments = await enrichAutostartItems(requests)
 
-      set(state => ({
-        items: state.items.map((item) => {
-          const enrichment = enrichmentMap.get(item.id)
-          if (enrichment) {
-            return {
-              ...item,
-              icon_base64: enrichment.icon_base64,
-              publisher: enrichment.publisher,
+        const enrichmentMap = new Map(enrichments.map(e => [e.id, e]))
+
+        set(state => ({
+          items: state.items.map((item) => {
+            const enrichment = enrichmentMap.get(item.id)
+            if (enrichment) {
+              return {
+                ...item,
+                icon_base64: enrichment.icon_base64,
+                publisher: enrichment.publisher,
+              }
             }
-          }
-          return item
-        }),
-        enriching: false,
-      }))
-    }
-    catch (error) {
-      console.error('Failed to enrich autostart items:', error)
-      set({ enriching: false })
-    }
+            return item
+          }),
+          enriching: false,
+        }))
+      }
+      catch (error) {
+        console.error('Failed to enrich autostart items:', error)
+        set({ enriching: false })
+      }
+      finally {
+        set({ enrichingPromise: null })
+      }
+    })()
+
+    set({ enrichingPromise: enrichPromise })
+    await enrichPromise
   },
 
   forceReload: async () => {

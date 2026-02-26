@@ -60,6 +60,7 @@ export function AutostartRow({ item }: AutostartRowProps) {
   }
 
   const handleOpenLocation = async () => {
+    console.log('openLocation called with:', item.file_path)
     try {
       if (item.file_path) {
         await openLocation(item.file_path)

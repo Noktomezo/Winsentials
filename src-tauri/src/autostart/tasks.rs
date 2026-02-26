@@ -269,16 +269,17 @@ unsafe fn get_task_command(task: &IRegisteredTask) -> String {
           if exec.Path(&mut path).is_ok() {
             let path_str = path.to_string();
             if !path_str.is_empty() {
+              let quoted_path = format!("\"{path_str}\"");
               let mut args = BSTR::new();
               if exec.Arguments(&mut args).is_ok() {
                 let args_str = args.to_string();
                 return if args_str.is_empty() {
-                  path_str
+                  quoted_path
                 } else {
-                  format!("{path_str} {args_str}")
+                  format!("{quoted_path} {args_str}")
                 };
               }
-              return path_str;
+              return quoted_path;
             }
           }
         }
@@ -427,7 +428,21 @@ fn extract_task_path_from_id(id: &str) -> Result<String, String> {
   if parts.len() != 2 || parts[0] != "task" {
     return Err("Invalid task item ID".to_string());
   }
-  Ok(parts[1].replace('/', "\\"))
+
+  let path = parts[1].trim();
+  if path.is_empty() {
+    return Err("Invalid task item ID".to_string());
+  }
+
+  let is_rooted = path.starts_with('\\')
+    || path.starts_with('/')
+    || (path.len() >= 2 && path.chars().nth(1) == Some(':'));
+
+  if !is_rooted {
+    return Err("Invalid task item ID".to_string());
+  }
+
+  Ok(path.replace('/', "\\"))
 }
 
 fn get_parent_folder_path(task_path: &str) -> String {

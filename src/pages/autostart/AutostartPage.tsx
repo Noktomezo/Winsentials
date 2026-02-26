@@ -10,7 +10,7 @@ function AutostartSkeleton() {
   return (
     <div className="space-y-3">
       {[1, 2, 3, 4, 5].map(i => (
-        <div key={i} className="rounded-lg border border-border bg-card p-3">
+        <div key={`skeleton-${i}`} className="rounded-lg border border-border bg-card p-3">
           <div className="flex items-center gap-3">
             <Skeleton className="h-8 w-8 rounded" />
             <div className="flex-1 space-y-2">
