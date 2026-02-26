@@ -19,7 +19,7 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
@@ -29,6 +29,11 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Install jq 
+        uses: dcarbone/install-jq-action@v3
+        with:
+          version: latest
+
       - name: Git Config
         run: |
           git config --global user.name "github-actions[bot]"
@@ -37,20 +42,33 @@ jobs:
       - name: Bump package.json version
         shell: bash
         run: |
-          bun npm version ${{ github.event.inputs.bump_type }} --no-git-tag-version
-          NEW_VERSION=$(jq -r '.version' package.json)
+          CURRENT_VERSION=$(jq -r '.version' package.json)
+
+          case "${{ github.event.inputs.bump_type }}" in
+            major)
+              NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{print $1+1".0.0"}')
+              ;;
+            minor)
+              NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{print $1"."$2+1".0"}')
+              ;;
+            patch|*)
+              NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{print $1"."$2"."$3+1}')
+              ;;
+          esac
+
+          jq --arg v "$NEW_VERSION" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
+
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "✅ Version bumped: $CURRENT_VERSION → $NEW_VERSION"
 
       - name: Update tauri.conf.json
         shell: bash
         run: |
-          # Use jq to update version in tauri.conf.json
           jq ".version = \"${{ env.NEW_VERSION }}\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
 
       - name: Update Cargo.toml
         shell: bash
         run: |
-          # Use sed to update version in Cargo.toml [package] section
           sed -i "s/^version = \".*\"/version = \"${{ env.NEW_VERSION }}\"/" src-tauri/Cargo.toml
 
       - name: Create Pull Request
