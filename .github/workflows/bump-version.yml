@@ -19,17 +19,18 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
+          persist-credentials: false   # ← это убирает конфликт заголовков
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Install jq 
+      - name: Install jq (для Windows)
         uses: dcarbone/install-jq-action@v3
         with:
           version: latest
@@ -73,9 +74,9 @@ jobs:
 
       - name: Create Pull Request
         id: cpr
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8   
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_TOKEN }}     
           commit-message: "chore: bump version to v${{ env.NEW_VERSION }}"
           committer: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
           author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
@@ -95,5 +96,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
+          # Настраиваем авторизацию (persist-credentials: false)
+          git config --local http.https://github.com/.extraheader "AUTHORIZATION: basic $(echo -n x-access-token:${GITHUB_TOKEN} | base64)"
+          
           git tag -f "v${{ env.NEW_VERSION }}" ${{ steps.cpr.outputs.pull-request-head-sha }}
           git push origin "v${{ env.NEW_VERSION }}" --force
