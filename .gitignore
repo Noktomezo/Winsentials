@@ -24,5 +24,6 @@ dist-ssr
 *.sw?
 
 # Misc
+.opencode
 AGENTS.md
 telemetry-id
