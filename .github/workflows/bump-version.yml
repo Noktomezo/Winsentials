@@ -23,7 +23,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
-          persist-credentials: false   # ← это убирает конфликт заголовков
+          persist-credentials: false   
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
