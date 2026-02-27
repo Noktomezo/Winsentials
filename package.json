@@ -10,7 +10,7 @@
     "tauri": "tauri",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "prek": "prek run",
+    "prepare": "prek install",
     "format": "eslint --fix .",
     "release": "bunx --bun bumpp"
   },

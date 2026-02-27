@@ -5,16 +5,26 @@ repos:
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
+        stages: [pre-commit]
+
       - id: end-of-file-fixer
+        stages: [pre-commit]
+
       - id: check-yaml
+        stages: [pre-commit]
+
       - id: check-toml
+        stages: [pre-commit]
+
       - id: check-json
+        stages: [pre-commit]
 
   # Typos check
   - repo: https://github.com/crate-ci/typos
     rev: v1.30.2
     hooks:
       - id: typos
+        stages: [pre-commit]
 
   # Rust (src-tauri)
   - repo: local
@@ -25,6 +35,7 @@ repos:
         language: system
         pass_filenames: false
         files: ^src-tauri/
+        stages: [pre-commit]
 
       - id: cargo-clippy
         name: cargo clippy
@@ -32,6 +43,7 @@ repos:
         language: system
         pass_filenames: false
         files: ^src-tauri/
+        stages: [pre-commit]
 
   # Frontend (Eslint)
   - repo: local
@@ -43,3 +55,4 @@ repos:
         pass_filenames: true
         files: \.(js|ts|jsx|tsx|vue|svelte|css|scss|html|json|md|yaml|yml)$
         exclude: ^(node_modules|dist|src-tauri)/
+        stages: [pre-commit]
