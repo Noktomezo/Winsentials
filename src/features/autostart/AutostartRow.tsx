@@ -4,7 +4,7 @@ import { Clock, Copy, FolderOpen, Info, MoreVertical, Trash2 } from 'lucide-reac
 
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { openLocation } from '@/shared/api/autostart'
+import { openAutostartLocation } from '@/shared/api/autostart'
 import { cn } from '@/shared/lib/utils'
 import { useAutostartStore } from '@/shared/store/autostart'
 import {
@@ -28,6 +28,7 @@ export function AutostartRow({ item }: AutostartRowProps) {
   const [showProperties, setShowProperties] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isToggling, setIsToggling] = useState(false)
+  const [isOpeningLocation, setIsOpeningLocation] = useState(false)
   const cancelBtnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -60,14 +61,16 @@ export function AutostartRow({ item }: AutostartRowProps) {
   }
 
   const handleOpenLocation = async () => {
-    console.log('openLocation called with:', item.file_path)
+    setIsOpeningLocation(true)
     try {
-      if (item.file_path) {
-        await openLocation(item.file_path)
-      }
+      await openAutostartLocation(item.file_path || undefined)
     }
     catch (error) {
       console.error('Failed to open location:', error)
+      // You could add toast notification here if needed
+    }
+    finally {
+      setIsOpeningLocation(false)
     }
   }
 
@@ -164,17 +167,18 @@ export function AutostartRow({ item }: AutostartRowProps) {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem
+                onClick={handleOpenLocation}
+                disabled={isOpeningLocation}
+              >
+                <FolderOpen className="mr-2 h-4 w-4" />
+                {isOpeningLocation ? 'Opening...' : t('autostart.openLocation')}
+              </DropdownMenuItem>
               {item.file_path && (
-                <>
-                  <DropdownMenuItem onClick={handleOpenLocation}>
-                    <FolderOpen className="mr-2 h-4 w-4" />
-                    {t('autostart.openLocation')}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowProperties(true)}>
-                    <Info className="mr-2 h-4 w-4" />
-                    {t('autostart.properties')}
-                  </DropdownMenuItem>
-                </>
+                <DropdownMenuItem onClick={() => setShowProperties(true)}>
+                  <Info className="mr-2 h-4 w-4" />
+                  {t('autostart.properties')}
+                </DropdownMenuItem>
               )}
               <DropdownMenuItem onClick={handleCopyCommand}>
                 <Copy className="mr-2 h-4 w-4" />

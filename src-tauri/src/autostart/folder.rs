@@ -229,16 +229,16 @@ fn collect_all_raw_folder_items() -> Vec<RawFolderItem> {
       &mut raw_items,
     );
 
-    if let Some(disabled_path) = &disabled_folder {
-      if disabled_path.exists() {
-        collect_raw_lnk_items(
-          disabled_path,
-          &location_name,
-          false,
-          &mut seen_files,
-          &mut raw_items,
-        );
-      }
+    if let Some(disabled_path) = &disabled_folder
+      && disabled_path.exists()
+    {
+      collect_raw_lnk_items(
+        disabled_path,
+        &location_name,
+        false,
+        &mut seen_files,
+        &mut raw_items,
+      );
     }
   }
 

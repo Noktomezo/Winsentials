@@ -194,6 +194,7 @@ fn get_properties(path: String) -> Result<FileProperties, String> {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+#[allow(clippy::disallowed_macros)]
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_shell::init())

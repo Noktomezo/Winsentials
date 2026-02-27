@@ -1,6 +1,7 @@
 use std::mem::size_of;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use log::{info, warn};
 use rayon::prelude::*;
 use windows::Win32::System::Services::*;
 use windows::core::PCWSTR;
@@ -255,7 +256,7 @@ fn collect_raw_service_items() -> Vec<RawServiceItem> {
   let manager = match open_scm(SC_MANAGER_ENUMERATE_SERVICE) {
     Some(m) => m,
     None => {
-      eprintln!("[services] Failed to open SCM");
+      warn!("[services] Failed to open SCM");
       return Vec::new();
     }
   };
@@ -264,12 +265,12 @@ fn collect_raw_service_items() -> Vec<RawServiceItem> {
   let services = match enum_all_services(manager) {
     Some(s) => s,
     None => {
-      eprintln!("[services] Failed to enumerate services");
+      warn!("[services] Failed to enumerate services");
       return Vec::new();
     }
   };
 
-  eprintln!("[services] Found {} services", services.len());
+  info!("[services] Found {} services", services.len());
 
   let ignored_count = AtomicUsize::new(0);
   let error_count = AtomicUsize::new(0);
@@ -307,7 +308,7 @@ fn collect_raw_service_items() -> Vec<RawServiceItem> {
     })
     .collect();
 
-  eprintln!(
+  info!(
     "[services] Collected {} services (ignored: {}, errors: {})",
     items.len(),
     ignored_count.load(Ordering::Relaxed),

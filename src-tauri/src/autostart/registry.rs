@@ -70,10 +70,10 @@ fn get_target_path(command: &str) -> Option<String> {
   }
 
   // Handle quoted paths
-  if let Some(stripped) = cmd.strip_prefix('"') {
-    if let Some(end_quote) = stripped.find('"') {
-      return Some(stripped[..end_quote].to_string());
-    }
+  if let Some(stripped) = cmd.strip_prefix('"')
+    && let Some(end_quote) = stripped.find('"')
+  {
+    return Some(stripped[..end_quote].to_string());
   }
 
   // For unquoted paths, find the executable by looking for .exe

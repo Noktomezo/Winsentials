@@ -24,6 +24,7 @@ impl DisableGpuEnergyDrvTweak {
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,
+        requires_logout: false,
         risk_level: RiskLevel::Medium,
         min_windows_build: None,
       },

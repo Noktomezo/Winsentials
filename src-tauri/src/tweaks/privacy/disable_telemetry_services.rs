@@ -1,3 +1,5 @@
+use log::warn;
+
 use crate::tweaks::{
   RiskLevel, Tweak, TweakCategory, TweakMeta, TweakState, TweakUiType,
 };
@@ -99,15 +101,11 @@ fn set_service_auto(service: &str) -> Result<(), String> {
   }
 
   let start_result = hidden_command("sc").args(["start", service]).output();
-  if let Ok(result) = start_result {
-    if !result.status.success() {
-      let stdout = String::from_utf8_lossy(&result.stdout);
-      eprintln!(
-        "Warning: Failed to start service '{}': {}",
-        service,
-        stdout.trim()
-      );
-    }
+  if let Ok(result) = start_result
+    && !result.status.success()
+  {
+    let stdout = String::from_utf8_lossy(&result.stdout);
+    warn!("Failed to start service '{}': {}", service, stdout.trim());
   }
 
   Ok(())
@@ -130,6 +128,7 @@ impl DisableTelemetryServicesTweak {
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,
+        requires_logout: false,
         risk_level: RiskLevel::Low,
         min_windows_build: None,
       },

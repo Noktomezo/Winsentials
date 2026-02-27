@@ -1,0 +1,45 @@
+fail_fast: true
+repos:
+  # Basic checks (files, YAML, TOML, JSON, etc.)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+
+  # Typos check
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.30.2
+    hooks:
+      - id: typos
+
+  # Rust (src-tauri)
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: cargo fmt --manifest-path=src-tauri/Cargo.toml --
+        language: system
+        pass_filenames: false
+        files: ^src-tauri/
+
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: cargo clippy --manifest-path=src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
+        language: system
+        pass_filenames: false
+        files: ^src-tauri/
+
+  # Frontend (Eslint)
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: bunx eslint --fix
+        language: system
+        pass_filenames: true
+        files: \.(js|ts|jsx|tsx|vue|svelte|css|scss|html|json|md|yaml|yml)$
+        exclude: ^(node_modules|dist|src-tauri)/

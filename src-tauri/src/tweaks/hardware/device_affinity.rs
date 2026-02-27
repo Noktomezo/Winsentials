@@ -29,6 +29,7 @@ impl DeviceAffinityTweak {
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,
+        requires_logout: false,
         risk_level: RiskLevel::Medium,
         min_windows_build: None,
       },
@@ -64,13 +65,13 @@ fn check_devices(
   all_applied: &mut bool,
 ) {
   for device in devices {
-    if let Some(pnp_id) = &device.pnp_device_id() {
-      if pnp_id.starts_with("PCI\\VEN_") {
-        *any_device = true;
-        match check_device_affinity(pnp_id, mask) {
-          Some(true) => {}
-          Some(false) | None => *all_applied = false,
-        }
+    if let Some(pnp_id) = &device.pnp_device_id()
+      && pnp_id.starts_with("PCI\\VEN_")
+    {
+      *any_device = true;
+      match check_device_affinity(pnp_id, mask) {
+        Some(true) => {}
+        Some(false) | None => *all_applied = false,
       }
     }
   }
@@ -121,59 +122,56 @@ impl Tweak for DeviceAffinityTweak {
       wmi.query().map_err(|e| e.to_string())?;
 
     for gpu in &gpus {
-      if let Some(pnp_id) = &gpu.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}"
-          );
-          registry::write_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY, 4)
-            .map_err(|e| e.to_string())?;
-          registry::write_reg_binary(
-            HKEY_LOCAL_MACHINE,
-            &path,
-            ASSIGNMENT_SET_OVERRIDE,
-            &[0x02],
-          )
-          .ok();
-        }
+      if let Some(pnp_id) = &gpu.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_")
+      {
+        let path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}");
+        registry::write_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY, 4)
+          .map_err(|e| e.to_string())?;
+        registry::write_reg_binary(
+          HKEY_LOCAL_MACHINE,
+          &path,
+          ASSIGNMENT_SET_OVERRIDE,
+          &[0x02],
+        )
+        .ok();
       }
     }
 
     for nic in &nics {
-      if let Some(pnp_id) = &nic.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}"
-          );
-          registry::write_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY, 4)
-            .map_err(|e| e.to_string())?;
-          registry::write_reg_binary(
-            HKEY_LOCAL_MACHINE,
-            &path,
-            ASSIGNMENT_SET_OVERRIDE,
-            &[0x04],
-          )
-          .ok();
-        }
+      if let Some(pnp_id) = &nic.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_")
+      {
+        let path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}");
+        registry::write_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY, 4)
+          .map_err(|e| e.to_string())?;
+        registry::write_reg_binary(
+          HKEY_LOCAL_MACHINE,
+          &path,
+          ASSIGNMENT_SET_OVERRIDE,
+          &[0x04],
+        )
+        .ok();
       }
     }
 
     for usb in &usbs {
-      if let Some(pnp_id) = &usb.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}"
-          );
-          registry::write_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY, 4)
-            .map_err(|e| e.to_string())?;
-          registry::write_reg_binary(
-            HKEY_LOCAL_MACHINE,
-            &path,
-            ASSIGNMENT_SET_OVERRIDE,
-            &[0x08],
-          )
-          .ok();
-        }
+      if let Some(pnp_id) = &usb.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_")
+      {
+        let path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}");
+        registry::write_reg_u32(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY, 4)
+          .map_err(|e| e.to_string())?;
+        registry::write_reg_binary(
+          HKEY_LOCAL_MACHINE,
+          &path,
+          ASSIGNMENT_SET_OVERRIDE,
+          &[0x08],
+        )
+        .ok();
       }
     }
 
@@ -193,56 +191,53 @@ impl Tweak for DeviceAffinityTweak {
       wmi.query().map_err(|e| e.to_string())?;
 
     for gpu in &gpus {
-      if let Some(pnp_id) = &gpu.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}"
-          );
-          registry::delete_reg_value(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)
-            .ok();
-          registry::delete_reg_value(
-            HKEY_LOCAL_MACHINE,
-            &path,
-            ASSIGNMENT_SET_OVERRIDE,
-          )
+      if let Some(pnp_id) = &gpu.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_")
+      {
+        let path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}");
+        registry::delete_reg_value(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)
           .ok();
-        }
+        registry::delete_reg_value(
+          HKEY_LOCAL_MACHINE,
+          &path,
+          ASSIGNMENT_SET_OVERRIDE,
+        )
+        .ok();
       }
     }
 
     for nic in &nics {
-      if let Some(pnp_id) = &nic.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}"
-          );
-          registry::delete_reg_value(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)
-            .ok();
-          registry::delete_reg_value(
-            HKEY_LOCAL_MACHINE,
-            &path,
-            ASSIGNMENT_SET_OVERRIDE,
-          )
+      if let Some(pnp_id) = &nic.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_")
+      {
+        let path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}");
+        registry::delete_reg_value(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)
           .ok();
-        }
+        registry::delete_reg_value(
+          HKEY_LOCAL_MACHINE,
+          &path,
+          ASSIGNMENT_SET_OVERRIDE,
+        )
+        .ok();
       }
     }
 
     for usb in &usbs {
-      if let Some(pnp_id) = &usb.PNPDeviceID {
-        if pnp_id.starts_with("PCI\\VEN_") {
-          let path = format!(
-            r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}"
-          );
-          registry::delete_reg_value(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)
-            .ok();
-          registry::delete_reg_value(
-            HKEY_LOCAL_MACHINE,
-            &path,
-            ASSIGNMENT_SET_OVERRIDE,
-          )
+      if let Some(pnp_id) = &usb.PNPDeviceID
+        && pnp_id.starts_with("PCI\\VEN_")
+      {
+        let path =
+          format!(r"SYSTEM\CurrentControlSet\Enum\{pnp_id}\{AFFINITY_SUFFIX}");
+        registry::delete_reg_value(HKEY_LOCAL_MACHINE, &path, DEVICE_POLICY)
           .ok();
-        }
+        registry::delete_reg_value(
+          HKEY_LOCAL_MACHINE,
+          &path,
+          ASSIGNMENT_SET_OVERRIDE,
+        )
+        .ok();
       }
     }
 

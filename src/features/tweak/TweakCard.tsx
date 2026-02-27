@@ -1,6 +1,6 @@
 import type { TweakInfo } from '@/shared/types/tweak'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertCircle, AlertTriangle, Info, RefreshCw, RotateCcw } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Info, LogOut, RefreshCw, RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { applyTweak, revertTweak } from '@/shared/api/tweaks'
 import { Badge } from '@/shared/ui/badge'
@@ -92,6 +92,18 @@ export function TweakCard({ tweak }: TweakCardProps) {
                   </TooltipTrigger>
                   <TooltipContent>
                     {t('common.requiresReboot')}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {tweak.meta.requires_logout && (
+                <Tooltip>
+                  <TooltipTrigger className="cursor-pointer">
+                    <Badge variant="outline" className="border-orange-500/50 bg-orange-500/10 text-orange-600 dark:text-orange-400 px-1.5">
+                      <LogOut className="h-3 w-3" />
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {t('common.requiresLogout')}
                   </TooltipContent>
                 </Tooltip>
               )}

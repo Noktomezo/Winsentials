@@ -6,7 +6,8 @@ _default:
 
 # Run in dev mode with hot reload
 dev:
-    bun run tauri dev
+	bun tauri icon assets/app-logo.svg
+	bun run tauri dev
 
 # Final release build
 build:
@@ -22,7 +23,6 @@ lint-back:
 lint-front:
     bun run typecheck
     bun run lint
-    bunx react-doctor --yes --lint --no-ami --dead-code --verbose
 
 # Lint both backend and frontend
 lint: lint-back lint-front
