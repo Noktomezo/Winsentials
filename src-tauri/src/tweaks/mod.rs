@@ -64,6 +64,8 @@ pub struct TweakMeta {
   #[serde(default)]
   pub requires_reboot: bool,
   #[serde(default)]
+  pub requires_logout: bool,
+  #[serde(default)]
   pub risk_level: RiskLevel,
   #[serde(default)]
   pub min_windows_build: Option<u32>,

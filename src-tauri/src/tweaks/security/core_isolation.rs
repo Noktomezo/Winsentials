@@ -23,6 +23,7 @@ impl CoreIsolationTweak {
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,
+        requires_logout: false,
         risk_level: RiskLevel::High,
         min_windows_build: None,
       },

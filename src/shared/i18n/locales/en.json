@@ -101,13 +101,13 @@
     },
     "clearPageFileShutdown": {
       "name": "Clear Page File at Shutdown",
-      "description": "Clear virtual memory page file during shutdown (increases shutdown time)",
-      "details": "Writes zeros to the page file during shutdown for security. Significantly increases shutdown time on systems with large page files or slow storage."
+      "description": "Clear virtual memory page file during shutdown",
+      "details": "⚠️ MEDIUM RISK: Writes zeros to the page file during shutdown for security. WARNING: Can increase shutdown time from 30 seconds to 5+ minutes on systems with large page files or slow storage. Only enable if you need maximum security and don't mind long shutdown times."
     },
     "largeSystemCache": {
       "name": "Large System Cache",
-      "description": "Prioritize system cache over application working set",
-      "details": "Increases the system cache size, beneficial for file servers and workstations with heavy file I/O. May reduce performance for gaming or applications that need more RAM."
+      "description": "Prioritize system cache over applications",
+      "details": "⚠️ MEDIUM RISK: Increases system cache size at the expense of application memory. BENEFICIAL: File servers, workstations with heavy file I/O. HARMFUL: Gaming, memory-intensive applications. WARNING: Can cause out-of-memory errors on systems with <16GB RAM. Monitor memory usage after applying."
     },
     "bootOptimizeFunction": {
       "name": "Boot Optimize Function",
@@ -178,7 +178,7 @@
     "disableAdvertising": {
       "name": "Disable Targeted Advertising",
       "description": "Disable personalized advertising and advertising ID",
-      "details": "Disables the unique advertising ID that apps use for personalized advertising. Apps will still show ads, but they will be less targeted. 'Your Phone' (Link to Windows) may not work."
+      "details": "⚠️ MEDIUM RISK: Disables the unique advertising ID used for personalized ads. WARNING: Will break 'Your Phone' (Link to Windows) functionality and may affect some Windows Store apps. Apps will still show ads, but they won't be personalized. Reversible if needed."
     },
     "disableSilentApps": {
       "name": "Disable Silent App Installation",
@@ -403,18 +403,18 @@
     },
     "coreIsolation": {
       "name": "Disable Core Isolation",
-      "description": "Disable memory integrity for maximum performance",
-      "details": "Disables Core Isolation/Memory Integrity (HVCI). This security feature can impact gaming performance by 5-15%. Disabling reduces protection against certain memory-based attacks."
+      "description": "Disable memory integrity/HVCI for performance",
+      "details": "⚠️ HIGH SECURITY RISK: Disables Core Isolation/Memory Integrity (HVCI) which protects against kernel-level malware and ransomware. Performance improvement: 5-15% in games. WARNING: May cause driver compatibility issues, especially with older hardware or virtualization software. Only disable if you experience significant performance issues and understand the security trade-offs."
     },
     "spectreMeltdown": {
       "name": "Disable Spectre/Meltdown Mitigations",
-      "description": "Disable CPU vulnerability mitigations for performance",
-      "details": "Disables mitigations for Spectre and Meltdown CPU vulnerabilities. Can improve performance by 5-20% on older CPUs. Significantly reduces security against certain attacks. High risk."
+      "description": "Disable CPU vulnerability protections for performance",
+      "details": "⚠️ HIGH SECURITY RISK: Disables critical CPU protections against Spectre and Meltdown attacks. These vulnerabilities allow malicious programs to steal sensitive data from memory. Performance gain: 5-20% on older CPUs. Recommended ONLY for offline systems or advanced users who understand the security implications. This makes your system vulnerable to sophisticated attacks."
     },
     "sehop": {
       "name": "Disable SEHOP",
-      "description": "Disable Structured Exception Handler Overwrite Protection",
-      "details": "Disables SEHOP security feature. May improve performance slightly but reduces protection against certain exploitation techniques."
+      "description": "Disable Structured Exception Handler protection",
+      "details": "⚠️ HIGH SECURITY RISK: SEHOP prevents exploitation techniques that overwrite exception handlers to execute malicious code. Disabling may cause compatibility issues with older software (especially 32-bit applications). Performance gain is minimal. Only recommended if you have specific compatibility problems and understand the security implications."
     },
     "disableNagle": {
       "name": "Disable Nagle's Algorithm",
@@ -458,13 +458,13 @@
     },
     "msiMode": {
       "name": "MSI Mode",
-      "description": "Enable MSI mode for GPU and network adapters",
-      "details": "Enables Message Signaled Interrupts for better interrupt handling. Can reduce latency and improve performance. Requires reboot to take effect."
+      "description": "Enable Message Signaled Interrupts for GPU/network",
+      "details": "⚠️ MEDIUM RISK: Enables MSI (Message Signaled Interrupts) instead of traditional line-based interrupts. Can reduce latency and improve performance in games. WARNING: May cause compatibility issues with older hardware or certain motherboards. If system becomes unstable, disable this tweak. Requires reboot."
     },
     "deviceAffinity": {
       "name": "Device Affinity",
       "description": "Spread device interrupts across CPU cores",
-      "details": "Distributes interrupt handling for GPU, network adapters, and USB controllers across different CPU cores. Can reduce DPC latency and improve system responsiveness. Requires reboot."
+      "details": "⚠️ MEDIUM RISK: Distributes interrupt handling for GPU, network adapters, and USB controllers across different CPU cores. Can reduce DPC latency and improve system responsiveness. WARNING: Affects core system drivers - may cause instability on some systems. Test stability after applying. Requires reboot."
     },
     "disableFth": {
       "name": "Disable Fault Tolerant Heap",
@@ -512,6 +512,7 @@
     "recommended": "Recommended",
     "default": "Default",
     "requiresReboot": "Requires reboot",
+    "requiresLogout": "Requires logout",
     "loading": "Loading...",
     "error": "An error occurred",
     "cancel": "Cancel",

@@ -69,6 +69,7 @@ impl FilterKeysTweak {
           },
         ],
         requires_reboot: false,
+        requires_logout: true,
         risk_level: RiskLevel::Low,
         min_windows_build: None,
       },

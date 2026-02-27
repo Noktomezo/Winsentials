@@ -1,5 +1,6 @@
 import type { AutostartItem, EnrichmentData, EnrichRequest, FileProperties } from '@/shared/types/autostart'
 import { invoke } from '@tauri-apps/api/core'
+import { revealItemInDir } from '@tauri-apps/plugin-opener'
 
 export async function getAutostartItems(): Promise<AutostartItem[]> {
   return invoke('get_autostart_items')
@@ -23,6 +24,15 @@ export async function deleteAutostart(id: string): Promise<void> {
 
 export async function openLocation(path: string): Promise<void> {
   return invoke('open_location', { path })
+}
+
+export async function openAutostartLocation(filePath?: string): Promise<void> {
+  if (filePath) {
+    await revealItemInDir(filePath)
+  }
+  else {
+    throw new Error('No file path available for this autostart item')
+  }
 }
 
 export async function getProperties(path: string): Promise<FileProperties> {

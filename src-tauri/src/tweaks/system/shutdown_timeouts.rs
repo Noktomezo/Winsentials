@@ -26,6 +26,7 @@ impl ShutdownTimeoutsTweak {
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,
+        requires_logout: false,
         risk_level: RiskLevel::Low,
         min_windows_build: None,
       },

@@ -227,12 +227,12 @@ unsafe fn has_delay(task: &IRegisteredTask) -> bool {
               return true;
             }
           }
-        } else if trigger_type == TASK_TRIGGER_BOOT {
-          if let Ok(boot_trigger) = trigger.cast::<IBootTrigger>() {
-            let mut delay = BSTR::new();
-            if boot_trigger.Delay(&mut delay).is_ok() && !delay.is_empty() {
-              return true;
-            }
+        } else if trigger_type == TASK_TRIGGER_BOOT
+          && let Ok(boot_trigger) = trigger.cast::<IBootTrigger>()
+        {
+          let mut delay = BSTR::new();
+          if boot_trigger.Delay(&mut delay).is_ok() && !delay.is_empty() {
+            return true;
           }
         }
       }
@@ -263,24 +263,23 @@ unsafe fn get_task_command(task: &IRegisteredTask) -> String {
       let mut action_type = Default::default();
       if action.Type(&mut action_type).is_ok()
         && action_type == TASK_ACTION_EXEC
+        && let Ok(exec) = action.cast::<IExecAction>()
       {
-        if let Ok(exec) = action.cast::<IExecAction>() {
-          let mut path = BSTR::new();
-          if exec.Path(&mut path).is_ok() {
-            let path_str = path.to_string();
-            if !path_str.is_empty() {
-              let quoted_path = format!("\"{path_str}\"");
-              let mut args = BSTR::new();
-              if exec.Arguments(&mut args).is_ok() {
-                let args_str = args.to_string();
-                return if args_str.is_empty() {
-                  quoted_path
-                } else {
-                  format!("{quoted_path} {args_str}")
-                };
-              }
-              return quoted_path;
+        let mut path = BSTR::new();
+        if exec.Path(&mut path).is_ok() {
+          let path_str = path.to_string();
+          if !path_str.is_empty() {
+            let quoted_path = format!("\"{path_str}\"");
+            let mut args = BSTR::new();
+            if exec.Arguments(&mut args).is_ok() {
+              let args_str = args.to_string();
+              return if args_str.is_empty() {
+                quoted_path
+              } else {
+                format!("{quoted_path} {args_str}")
+              };
             }
+            return quoted_path;
           }
         }
       }

@@ -5881,6 +5881,7 @@ dependencies = [
  "dunce",
  "gfxinfo",
  "lnk",
+ "log",
  "parking_lot",
  "paste",
  "pelite",

@@ -24,6 +24,7 @@ impl GameModeTweak {
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,
+        requires_logout: true,
         risk_level: RiskLevel::Low,
         min_windows_build: None,
       },

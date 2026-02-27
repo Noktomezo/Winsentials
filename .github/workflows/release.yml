@@ -36,7 +36,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Winsentials ${{ github.ref_name }}'
-          releaseBody: 'A a sleek Windows optimizer. See assets below.'
+          releaseBody: A a sleek Windows optimizer. See assets below.
           releaseDraft: true
           prerelease: false
           args: --verbose

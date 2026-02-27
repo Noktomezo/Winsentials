@@ -20,6 +20,7 @@ export const TweakMetaSchema = z.object({
   ui_type: TweakUiTypeSchema,
   options: z.array(TweakOptionSchema).default([]),
   requires_reboot: z.boolean().default(false),
+  requires_logout: z.boolean().default(false),
   risk_level: RiskLevelSchema.default('low'),
   min_windows_build: z.number().nullable().optional(),
 })

@@ -10,12 +10,25 @@ name = "Winsentials"
 path = "src/main.rs"
 
 [profile.release]
+opt-level = 3
+debug-assertions = false
 overflow-checks = false
-codegen-units = 1
-opt-level = "z"
-panic = "abort"
-strip = true
-lto = true
+lto = "thin"
+panic = 'unwind'
+incremental = false
+codegen-units = 16
+rpath = false
+
+[profile.dev]
+opt-level = 0
+debug = true
+debug-assertions = true
+overflow-checks = true
+lto = false
+panic = 'unwind'
+incremental = true
+codegen-units = 256
+rpath = false
 
 [lib]
 name = "winsentials_lib"
@@ -62,3 +75,4 @@ quick-xml = "0.39.2"
 tauri-plugin-clipboard-manager = "2.3.2"
 rayon = "1.11.0"
 dunce = "1.0.5"
+log = "0.4"

@@ -68,6 +68,7 @@ impl Win32PrioritySeparationTweak {
           },
         ],
         requires_reboot: true,
+        requires_logout: false,
         risk_level: RiskLevel::Low,
         min_windows_build: None,
       },
