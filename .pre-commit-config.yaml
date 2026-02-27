@@ -35,7 +35,6 @@ repos:
         entry: cargo fmt --manifest-path=src-tauri/Cargo.toml --
         language: system
         pass_filenames: false
-        files: ^src-tauri/
         stages: [pre-commit]
 
       - id: cargo-clippy
@@ -43,7 +42,6 @@ repos:
         entry: cargo clippy --manifest-path=src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
         language: system
         pass_filenames: false
-        files: ^src-tauri/
         stages: [pre-commit]
 
   # Frontend (Eslint)
