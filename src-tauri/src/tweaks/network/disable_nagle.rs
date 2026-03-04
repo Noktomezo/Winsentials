@@ -30,8 +30,8 @@ fn get_network_adapter_guids() -> Result<Vec<String>, String> {
     return Ok(vec![]);
   }
 
-  let buffer = vec![0u8; size as usize];
-  let mut addresses = buffer.as_ptr() as *mut IP_ADAPTER_ADDRESSES_LH;
+  let mut buffer = vec![0u8; size as usize];
+  let mut addresses = buffer.as_mut_ptr() as *mut IP_ADAPTER_ADDRESSES_LH;
 
   unsafe {
     let result =

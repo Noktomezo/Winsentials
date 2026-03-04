@@ -132,6 +132,11 @@
       "description": "Restore the classic Windows 10-style right-click context menu in Windows 11",
       "details": "Replaces the Windows 11 simplified context menu with the full classic menu. Removes the need to click 'Show more options' to access all context menu items."
     },
+    "disableShortcutArrows": {
+      "name": "Disable Shortcut Arrows",
+      "description": "Remove the small arrows from shortcut icons on the desktop",
+      "details": "Hides the classic shortcut arrows (link overlays) from all desktop shortcuts. Makes icons look cleaner. Requires explorer.exe restart after applying."
+    },
     "disableTransparency": {
       "name": "Disable Transparency Effects",
       "description": "Make taskbar, Start menu, and windows fully opaque for a classic look",
@@ -358,7 +363,7 @@
       "description": "Prevent all applications from accessing notifications",
       "details": "Blocks apps from reading your notification history or posting new notifications. May affect notification center functionality."
     },
-    "cssrssPriority": {
+    "csrssPriority": {
       "name": "CSRSS High Priority",
       "description": "Set CSRSS process to high priority for improved input latency",
       "details": "CSRSS handles mouse and keyboard input. Setting it to high priority can reduce input lag and improve mouse responsiveness."

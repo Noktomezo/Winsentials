@@ -1,12 +1,14 @@
+import type { ReactNode } from 'react'
 import { Skeleton } from '@/shared/ui/skeleton'
 
 interface PageLoaderProps {
   isLoading: boolean
-  skeleton?: React.ReactNode
-  children: React.ReactNode
+  skeleton?: ReactNode
+  children: ReactNode
+  rows?: number
 }
 
-export function PageLoader({ isLoading, skeleton, children }: PageLoaderProps) {
+export function PageLoader({ isLoading, skeleton, children, rows = 5 }: PageLoaderProps) {
   if (!isLoading) {
     return <>{children}</>
   }
@@ -22,7 +24,7 @@ export function PageLoader({ isLoading, skeleton, children }: PageLoaderProps) {
         <Skeleton className="h-4 w-64" />
       </div>
       <div className="space-y-4">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {Array.from({ length: rows }).map((_, i) => (
           <Skeleton key={i} className="h-24 w-full" />
         ))}
       </div>

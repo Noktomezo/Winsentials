@@ -18,9 +18,9 @@ impl CsrssPriorityTweak {
       meta: TweakMeta {
         id: "csrss_priority".to_string(),
         category: TweakCategory::Input,
-        name_key: "tweaks.cssrssPriority.name".to_string(),
-        description_key: "tweaks.cssrssPriority.description".to_string(),
-        details_key: "tweaks.cssrssPriority.details".to_string(),
+        name_key: "tweaks.csrssPriority.name".to_string(),
+        description_key: "tweaks.csrssPriority.description".to_string(),
+        details_key: "tweaks.csrssPriority.details".to_string(),
         risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
