@@ -2,6 +2,7 @@ use crate::tweaks::registry;
 use crate::tweaks::{
   RiskLevel, Tweak, TweakCategory, TweakMeta, TweakState, TweakUiType,
 };
+use std::ffi::CStr;
 use windows::Win32::NetworkManagement::IpHelper::{
   GET_ADAPTERS_ADDRESSES_FLAGS, GetAdaptersAddresses, IP_ADAPTER_ADDRESSES_LH,
   MIB_IF_TYPE_ETHERNET,
@@ -51,15 +52,9 @@ fn get_network_adapter_guids() -> Result<Vec<String>, String> {
       if if_type == MIB_IF_TYPE_ETHERNET || if_type == IF_TYPE_IEEE80211 {
         let name_ptr = adapter.AdapterName;
         if !name_ptr.is_null() {
-          let mut guid_bytes = Vec::new();
-          let mut offset = 0;
-          let raw_ptr = name_ptr.0;
-          while *raw_ptr.add(offset) != 0 {
-            guid_bytes.push(*raw_ptr.add(offset));
-            offset += 1;
-          }
-          if let Ok(guid_str) = String::from_utf8(guid_bytes) {
-            guids.push(guid_str);
+          let c_str = CStr::from_ptr(name_ptr.0 as *const i8);
+          if let Ok(guid_str) = c_str.to_str() {
+            guids.push(guid_str.to_string());
           }
         }
       }
