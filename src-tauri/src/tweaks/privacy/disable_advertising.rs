@@ -21,6 +21,9 @@ impl DisableAdvertisingTweak {
         name_key: "tweaks.disableAdvertising.name".to_string(),
         description_key: "tweaks.disableAdvertising.description".to_string(),
         details_key: "tweaks.disableAdvertising.details".to_string(),
+        risk_details_key: Some(
+          "tweaks.disableAdvertising.riskDetails".to_string(),
+        ),
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

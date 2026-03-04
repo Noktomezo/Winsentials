@@ -102,12 +102,14 @@
     "clearPageFileShutdown": {
       "name": "Clear Page File at Shutdown",
       "description": "Clear virtual memory page file during shutdown",
-      "details": "⚠️ MEDIUM RISK: Writes zeros to the page file during shutdown for security. WARNING: Can increase shutdown time from 30 seconds to 5+ minutes on systems with large page files or slow storage. Only enable if you need maximum security and don't mind long shutdown times."
+      "details": "Writes zeros to the page file during shutdown for security. This ensures sensitive data in memory is not recoverable from the page file. Requires reboot to take effect.",
+      "riskDetails": "Can significantly increase shutdown time (30 seconds to 5+ minutes) on systems with large page files or slow storage (HDD). SSD impact is minimal. Only enable if you need maximum security and don't mind longer shutdown times."
     },
     "largeSystemCache": {
       "name": "Large System Cache",
       "description": "Prioritize system cache over applications",
-      "details": "⚠️ MEDIUM RISK: Increases system cache size at the expense of application memory. BENEFICIAL: File servers, workstations with heavy file I/O. HARMFUL: Gaming, memory-intensive applications. WARNING: Can cause out-of-memory errors on systems with <16GB RAM. Monitor memory usage after applying."
+      "details": "Increases system cache size, improving file server and workstation performance with heavy file I/O. Recommended for systems with 16GB+ RAM.",
+      "riskDetails": "Increases memory pressure on applications. Can cause out-of-memory errors on systems with less than 16GB RAM. May negatively impact gaming and memory-intensive applications. Monitor system memory after enabling."
     },
     "bootOptimizeFunction": {
       "name": "Boot Optimize Function",
@@ -178,7 +180,8 @@
     "disableAdvertising": {
       "name": "Disable Targeted Advertising",
       "description": "Disable personalized advertising and advertising ID",
-      "details": "⚠️ MEDIUM RISK: Disables the unique advertising ID used for personalized ads. WARNING: Will break 'Your Phone' (Link to Windows) functionality and may affect some Windows Store apps. Apps will still show ads, but they won't be personalized. Reversible if needed."
+      "details": "Disables the unique advertising ID used for personalized ads in Windows and Microsoft Store apps.",
+      "riskDetails": "Will break 'Your Phone' (Link to Windows) functionality and may affect some Windows Store apps. Apps will still show ads, but they won't be personalized. This change is reversible."
     },
     "disableSilentApps": {
       "name": "Disable Silent App Installation",
@@ -384,7 +387,8 @@
     "disableGpuEnergyDrv": {
       "name": "Disable GPU Energy Driver",
       "description": "Disable GPU power management for maximum performance",
-      "details": "Disables the GPU energy driver service. Prevents GPU from entering power-saving states. Increases power consumption and heat. Not recommended for laptops."
+      "details": "Disables the GPU energy driver service. Prevents GPU from entering power-saving states during idle.",
+      "riskDetails": "Increases power consumption and heat generation. Not recommended for laptops or systems without adequate cooling. GPU will always run at maximum frequency, which may reduce lifespan."
     },
     "disableHibernation": {
       "name": "Disable Hibernation",
@@ -404,17 +408,20 @@
     "coreIsolation": {
       "name": "Disable Core Isolation",
       "description": "Disable memory integrity/HVCI for performance",
-      "details": "⚠️ HIGH SECURITY RISK: Disables Core Isolation/Memory Integrity (HVCI) which protects against kernel-level malware and ransomware. Performance improvement: 5-15% in games. WARNING: May cause driver compatibility issues, especially with older hardware or virtualization software. Only disable if you experience significant performance issues and understand the security trade-offs."
+      "details": "Disables Core Isolation (HVCI) which provides kernel-level protection against malware and exploits. Provides 5-15% performance improvement in games.",
+      "riskDetails": "SECURITY RISK: Disables important system protection. Your system will be vulnerable to kernel-level malware, ransomware, and exploits. Only disable if you experience significant performance issues. Re-enable immediately if you encounter suspicious system behavior."
     },
     "spectreMeltdown": {
       "name": "Disable Spectre/Meltdown Mitigations",
       "description": "Disable CPU vulnerability protections for performance",
-      "details": "⚠️ HIGH SECURITY RISK: Disables critical CPU protections against Spectre and Meltdown attacks. These vulnerabilities allow malicious programs to steal sensitive data from memory. Performance gain: 5-20% on older CPUs. Recommended ONLY for offline systems or advanced users who understand the security implications. This makes your system vulnerable to sophisticated attacks."
+      "details": "Disables CPU protections against Spectre and Meltdown vulnerabilities. Provides 5-20% performance improvement on older CPUs.",
+      "riskDetails": "HIGH SECURITY RISK: Disables critical CPU security features. Your system will be vulnerable to attacks that can steal sensitive data from memory (passwords, encryption keys). Recommended ONLY for offline systems or when security is not a concern. Not recommended for daily use."
     },
     "sehop": {
       "name": "Disable SEHOP",
       "description": "Disable Structured Exception Handler protection",
-      "details": "⚠️ HIGH SECURITY RISK: SEHOP prevents exploitation techniques that overwrite exception handlers to execute malicious code. Disabling may cause compatibility issues with older software (especially 32-bit applications). Performance gain is minimal. Only recommended if you have specific compatibility problems and understand the security implications."
+      "details": "Disables SEHOP which protects against exception handler exploitation techniques. May improve compatibility with some older software.",
+      "riskDetails": "SECURITY RISK: Disables protection against code execution exploits. May cause compatibility issues with older 32-bit applications. Performance gain is minimal. Only recommended if you have specific compatibility problems."
     },
     "disableNagle": {
       "name": "Disable Nagle's Algorithm",
@@ -459,12 +466,14 @@
     "msiMode": {
       "name": "MSI Mode",
       "description": "Enable Message Signaled Interrupts for GPU/network",
-      "details": "⚠️ MEDIUM RISK: Enables MSI (Message Signaled Interrupts) instead of traditional line-based interrupts. Can reduce latency and improve performance in games. WARNING: May cause compatibility issues with older hardware or certain motherboards. If system becomes unstable, disable this tweak. Requires reboot."
+      "details": "Enables MSI (Message Signaled Interrupts) instead of traditional line-based interrupts for GPUs and network adapters. Can reduce latency and improve performance in games.",
+      "riskDetails": "May cause compatibility issues with older hardware or certain motherboards. Some devices may not support MSI. If system becomes unstable after reboot, disable this tweak immediately."
     },
     "deviceAffinity": {
       "name": "Device Affinity",
       "description": "Spread device interrupts across CPU cores",
-      "details": "⚠️ MEDIUM RISK: Distributes interrupt handling for GPU, network adapters, and USB controllers across different CPU cores. Can reduce DPC latency and improve system responsiveness. WARNING: Affects core system drivers - may cause instability on some systems. Test stability after applying. Requires reboot."
+      "details": "Distributes interrupt handling for GPU, network adapters, and USB controllers across different CPU cores. Can reduce DPC latency and improve system responsiveness.",
+      "riskDetails": "Modifies core system driver behavior. May cause system instability on some configurations. Test stability thoroughly after applying. Requires reboot."
     },
     "disableFth": {
       "name": "Disable Fault Tolerant Heap",

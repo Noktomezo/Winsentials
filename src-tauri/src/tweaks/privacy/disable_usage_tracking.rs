@@ -46,6 +46,7 @@ impl DisableUsageTrackingTweak {
         name_key: "tweaks.disableUsageTracking.name".to_string(),
         description_key: "tweaks.disableUsageTracking.description".to_string(),
         details_key: "tweaks.disableUsageTracking.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

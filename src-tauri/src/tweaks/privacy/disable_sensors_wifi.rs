@@ -24,6 +24,7 @@ impl DisableSensorsWifiTweak {
         name_key: "tweaks.disableSensorsWifi.name".to_string(),
         description_key: "tweaks.disableSensorsWifi.description".to_string(),
         details_key: "tweaks.disableSensorsWifi.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

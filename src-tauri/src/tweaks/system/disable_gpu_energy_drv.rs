@@ -21,6 +21,9 @@ impl DisableGpuEnergyDrvTweak {
         name_key: "tweaks.disableGpuEnergyDrv.name".to_string(),
         description_key: "tweaks.disableGpuEnergyDrv.description".to_string(),
         details_key: "tweaks.disableGpuEnergyDrv.details".to_string(),
+        risk_details_key: Some(
+          "tweaks.disableGpuEnergyDrv.riskDetails".to_string(),
+        ),
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,

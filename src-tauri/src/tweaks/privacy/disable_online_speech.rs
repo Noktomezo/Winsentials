@@ -21,6 +21,7 @@ impl DisableOnlineSpeechTweak {
         name_key: "tweaks.disableOnlineSpeech.name".to_string(),
         description_key: "tweaks.disableOnlineSpeech.description".to_string(),
         details_key: "tweaks.disableOnlineSpeech.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

@@ -21,6 +21,7 @@ impl GameModeTweak {
         name_key: "tweaks.gameMode.name".to_string(),
         description_key: "tweaks.gameMode.description".to_string(),
         details_key: "tweaks.gameMode.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

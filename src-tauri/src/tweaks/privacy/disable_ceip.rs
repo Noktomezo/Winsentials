@@ -99,6 +99,7 @@ impl DisableCEIPTweak {
         name_key: "tweaks.disableCEIP.name".to_string(),
         description_key: "tweaks.disableCEIP.description".to_string(),
         details_key: "tweaks.disableCEIP.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

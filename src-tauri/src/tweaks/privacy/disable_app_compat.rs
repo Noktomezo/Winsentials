@@ -21,6 +21,7 @@ impl DisableAppCompatTweak {
         name_key: "tweaks.disableAppCompat.name".to_string(),
         description_key: "tweaks.disableAppCompat.description".to_string(),
         details_key: "tweaks.disableAppCompat.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

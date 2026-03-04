@@ -8,11 +8,10 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
-    "prepare": "prek install",
-    "format": "eslint --fix .",
-    "release": "bunx --bun bumpp"
+    "typecheck": "bun --bun tsc --noEmit",
+    "lint": "bun --bun eslint .",
+    "prepare": "bun --bun prek install",
+    "format": "bun --bun eslint --fix ."
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.0",
@@ -27,6 +26,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "i18next": "^25.8.13",
+    "lenis": "^1.3.17",
     "lucide-react": "^0.575.0",
     "overlayscrollbars": "^2.14.0",
     "overlayscrollbars-react": "^0.5.6",

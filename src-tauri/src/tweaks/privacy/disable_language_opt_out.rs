@@ -20,6 +20,7 @@ impl DisableLanguageOptOutTweak {
         name_key: "tweaks.disableLanguageOptOut.name".to_string(),
         description_key: "tweaks.disableLanguageOptOut.description".to_string(),
         details_key: "tweaks.disableLanguageOptOut.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

@@ -23,6 +23,7 @@ impl DisableSuggestionsTweak {
         name_key: "tweaks.disableSuggestions.name".to_string(),
         description_key: "tweaks.disableSuggestions.description".to_string(),
         details_key: "tweaks.disableSuggestions.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

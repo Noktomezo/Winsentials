@@ -21,6 +21,7 @@ impl CsrssPriorityTweak {
         name_key: "tweaks.cssrssPriority.name".to_string(),
         description_key: "tweaks.cssrssPriority.description".to_string(),
         details_key: "tweaks.cssrssPriority.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

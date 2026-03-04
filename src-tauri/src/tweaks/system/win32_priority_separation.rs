@@ -22,6 +22,7 @@ impl Win32PrioritySeparationTweak {
         description_key: "tweaks.win32PrioritySeparation.description"
           .to_string(),
         details_key: "tweaks.win32PrioritySeparation.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Radio,
         options: vec![
           TweakOption {

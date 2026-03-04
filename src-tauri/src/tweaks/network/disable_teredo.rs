@@ -22,6 +22,7 @@ impl DisableTeredoTweak {
         name_key: "tweaks.disableTeredo.name".to_string(),
         description_key: "tweaks.disableTeredo.description".to_string(),
         details_key: "tweaks.disableTeredo.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,

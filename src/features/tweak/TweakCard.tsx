@@ -66,8 +66,10 @@ export function TweakCard({ tweak }: TweakCardProps) {
                       <AlertTriangle className="h-3 w-3" />
                     </Badge>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    {t('tweak.riskLevel.medium')}
+                  <TooltipContent className="max-w-xs">
+                    {tweak.meta.risk_details_key
+                      ? t(tweak.meta.risk_details_key)
+                      : t('tweak.riskLevel.medium')}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -78,8 +80,10 @@ export function TweakCard({ tweak }: TweakCardProps) {
                       <AlertTriangle className="h-3 w-3" />
                     </Badge>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    {t('tweak.riskLevel.high')}
+                  <TooltipContent className="max-w-xs">
+                    {tweak.meta.risk_details_key
+                      ? t(tweak.meta.risk_details_key)
+                      : t('tweak.riskLevel.high')}
                   </TooltipContent>
                 </Tooltip>
               )}

@@ -3,7 +3,9 @@
 @import "shadcn/tailwind.css";
 @import "overlayscrollbars/overlayscrollbars.css";
 
-@custom-variant dark (&:is(.dark *));
+html {
+  scroll-behavior: smooth;
+}
 
 @theme inline {
     --radius-sm: calc(var(--radius) - 4px);

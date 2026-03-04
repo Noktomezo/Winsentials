@@ -20,6 +20,7 @@ impl BootOptimizeFunctionTweak {
         name_key: "tweaks.bootOptimizeFunction.name".to_string(),
         description_key: "tweaks.bootOptimizeFunction.description".to_string(),
         details_key: "tweaks.bootOptimizeFunction.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,

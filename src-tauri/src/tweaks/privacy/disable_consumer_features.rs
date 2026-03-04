@@ -22,6 +22,7 @@ impl DisableConsumerFeaturesTweak {
         description_key: "tweaks.disableConsumerFeatures.description"
           .to_string(),
         details_key: "tweaks.disableConsumerFeatures.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

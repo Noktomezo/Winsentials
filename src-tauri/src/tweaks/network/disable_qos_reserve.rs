@@ -20,6 +20,7 @@ impl DisableQosReserveTweak {
         name_key: "tweaks.disableQosReserve.name".to_string(),
         description_key: "tweaks.disableQosReserve.description".to_string(),
         details_key: "tweaks.disableQosReserve.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

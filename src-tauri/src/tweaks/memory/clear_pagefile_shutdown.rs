@@ -21,6 +21,9 @@ impl ClearPageFileShutdownTweak {
         name_key: "tweaks.clearPageFileShutdown.name".to_string(),
         description_key: "tweaks.clearPageFileShutdown.description".to_string(),
         details_key: "tweaks.clearPageFileShutdown.details".to_string(),
+        risk_details_key: Some(
+          "tweaks.clearPageFileShutdown.riskDetails".to_string(),
+        ),
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,

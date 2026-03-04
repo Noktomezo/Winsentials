@@ -23,6 +23,7 @@ impl ShutdownTimeoutsTweak {
         name_key: "tweaks.shutdownTimeouts.name".to_string(),
         description_key: "tweaks.shutdownTimeouts.description".to_string(),
         details_key: "tweaks.shutdownTimeouts.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

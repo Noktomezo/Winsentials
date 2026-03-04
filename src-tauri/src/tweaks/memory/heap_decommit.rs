@@ -21,6 +21,7 @@ impl HeapDecommitTweak {
         name_key: "tweaks.heapDecommit.name".to_string(),
         description_key: "tweaks.heapDecommit.description".to_string(),
         details_key: "tweaks.heapDecommit.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

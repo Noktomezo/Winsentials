@@ -125,6 +125,7 @@ impl DisableTelemetryServicesTweak {
         description_key: "tweaks.disableTelemetryServices.description"
           .to_string(),
         details_key: "tweaks.disableTelemetryServices.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

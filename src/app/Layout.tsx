@@ -21,7 +21,7 @@ export function Layout({ children }: LayoutProps) {
         <div className="flex flex-1 overflow-hidden">
           <Sidebar />
           <OverlayScrollbarsComponent
-            className="flex-1 p-6"
+            className="flex-1 p-6 os-theme-winsentials"
             defer
             options={{
               scrollbars: {

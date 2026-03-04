@@ -22,6 +22,7 @@ impl HideExplorerHomeTweak {
         name_key: "tweaks.hideExplorerHome.name".to_string(),
         description_key: "tweaks.hideExplorerHome.description".to_string(),
         details_key: "tweaks.hideExplorerHome.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

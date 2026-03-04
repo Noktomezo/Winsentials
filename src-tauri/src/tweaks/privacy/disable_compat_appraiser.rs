@@ -55,6 +55,7 @@ impl DisableCompatAppraiserTweak {
         description_key: "tweaks.disableCompatAppraiser.description"
           .to_string(),
         details_key: "tweaks.disableCompatAppraiser.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

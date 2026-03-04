@@ -53,6 +53,7 @@ impl MouseAccelerationFixTweak {
         name_key: "tweaks.mouseAccelerationFix.name".to_string(),
         description_key: "tweaks.mouseAccelerationFix.description".to_string(),
         details_key: "tweaks.mouseAccelerationFix.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

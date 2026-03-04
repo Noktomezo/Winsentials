@@ -22,6 +22,7 @@ impl IncreasePortRangeTweak {
         name_key: "tweaks.increasePortRange.name".to_string(),
         description_key: "tweaks.increasePortRange.description".to_string(),
         details_key: "tweaks.increasePortRange.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,
