@@ -53,23 +53,36 @@ impl Tweak for DisableShortcutArrowsTweak {
   }
 
   fn apply(&self, _value: Option<&str>) -> Result<(), String> {
-    registry::write_reg_string(
-      HKEY_LOCAL_MACHINE,
-      REG_PATH,
-      REG_KEY,
-      DISABLED_VALUE,
-    )
-    .map_err(|e| format!("Failed to disable shortcut arrows: {e}"))?;
+    let existing_value =
+      registry::read_reg_string(HKEY_LOCAL_MACHINE, REG_PATH, REG_KEY);
 
-    registry::restart_explorer();
+    let needs_change = existing_value.as_deref() != Some(DISABLED_VALUE);
+
+    if needs_change {
+      registry::write_reg_string(
+        HKEY_LOCAL_MACHINE,
+        REG_PATH,
+        REG_KEY,
+        DISABLED_VALUE,
+      )
+      .map_err(|e| format!("Failed to disable shortcut arrows: {e}"))?;
+
+      registry::restart_explorer();
+    }
 
     Ok(())
   }
 
   fn revert(&self) -> Result<(), String> {
-    registry::delete_reg_value(HKEY_LOCAL_MACHINE, REG_PATH, REG_KEY).ok();
+    let existing_value =
+      registry::read_reg_string(HKEY_LOCAL_MACHINE, REG_PATH, REG_KEY);
 
-    registry::restart_explorer();
+    if existing_value.is_some() {
+      registry::delete_reg_value(HKEY_LOCAL_MACHINE, REG_PATH, REG_KEY)
+        .map_err(|e| format!("Failed to delete registry value: {e}"))?;
+
+      registry::restart_explorer();
+    }
 
     Ok(())
   }
