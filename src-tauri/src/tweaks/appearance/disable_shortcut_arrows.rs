@@ -77,7 +77,7 @@ impl Tweak for DisableShortcutArrowsTweak {
     let existing_value =
       registry::read_reg_string(HKEY_LOCAL_MACHINE, REG_PATH, REG_KEY);
 
-    if existing_value.is_some() {
+    if existing_value.as_deref() == Some(DISABLED_VALUE) {
       registry::delete_reg_value(HKEY_LOCAL_MACHINE, REG_PATH, REG_KEY)
         .map_err(|e| format!("Failed to delete registry value: {e}"))?;
 
