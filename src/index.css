@@ -3,6 +3,8 @@
 @import "shadcn/tailwind.css";
 @import "overlayscrollbars/overlayscrollbars.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 html {
   scroll-behavior: smooth;
 }
