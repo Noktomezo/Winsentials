@@ -20,6 +20,7 @@ impl CoreIsolationTweak {
         name_key: "tweaks.coreIsolation.name".to_string(),
         description_key: "tweaks.coreIsolation.description".to_string(),
         details_key: "tweaks.coreIsolation.details".to_string(),
+        risk_details_key: Some("tweaks.coreIsolation.riskDetails".to_string()),
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,

@@ -21,6 +21,7 @@ impl DisableLocationTweak {
         name_key: "tweaks.disableLocation.name".to_string(),
         description_key: "tweaks.disableLocation.description".to_string(),
         details_key: "tweaks.disableLocation.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

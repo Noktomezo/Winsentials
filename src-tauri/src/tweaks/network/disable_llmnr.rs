@@ -21,6 +21,7 @@ impl DisableLlmnrTweak {
         name_key: "tweaks.disableLlmnr.name".to_string(),
         description_key: "tweaks.disableLlmnr.description".to_string(),
         details_key: "tweaks.disableLlmnr.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

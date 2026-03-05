@@ -23,6 +23,9 @@ impl SpectreMeltdownTweak {
         name_key: "tweaks.spectreMeltdown.name".to_string(),
         description_key: "tweaks.spectreMeltdown.description".to_string(),
         details_key: "tweaks.spectreMeltdown.details".to_string(),
+        risk_details_key: Some(
+          "tweaks.spectreMeltdown.riskDetails".to_string(),
+        ),
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,

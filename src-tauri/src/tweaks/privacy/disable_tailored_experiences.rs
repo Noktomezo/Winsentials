@@ -22,6 +22,7 @@ impl DisableTailoredExperiencesTweak {
         description_key: "tweaks.disableTailoredExperiences.description"
           .to_string(),
         details_key: "tweaks.disableTailoredExperiences.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

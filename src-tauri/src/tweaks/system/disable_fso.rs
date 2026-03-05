@@ -26,6 +26,7 @@ impl DisableFullsreenOptimizationsTweak {
         name_key: "tweaks.disableFso.name".to_string(),
         description_key: "tweaks.disableFso.description".to_string(),
         details_key: "tweaks.disableFso.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

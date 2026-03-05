@@ -23,6 +23,7 @@ impl DnsCacheTweak {
         name_key: "tweaks.dnsCache.name".to_string(),
         description_key: "tweaks.dnsCache.description".to_string(),
         details_key: "tweaks.dnsCache.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

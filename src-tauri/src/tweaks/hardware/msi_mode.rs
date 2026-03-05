@@ -27,6 +27,7 @@ impl MsiModeTweak {
         name_key: "tweaks.msiMode.name".to_string(),
         description_key: "tweaks.msiMode.description".to_string(),
         details_key: "tweaks.msiMode.details".to_string(),
+        risk_details_key: Some("tweaks.msiMode.riskDetails".to_string()),
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,

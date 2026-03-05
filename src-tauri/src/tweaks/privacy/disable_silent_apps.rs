@@ -21,6 +21,7 @@ impl DisableSilentAppsTweak {
         name_key: "tweaks.disableSilentApps.name".to_string(),
         description_key: "tweaks.disableSilentApps.description".to_string(),
         details_key: "tweaks.disableSilentApps.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

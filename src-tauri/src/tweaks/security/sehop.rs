@@ -22,6 +22,7 @@ impl SehopTweak {
         name_key: "tweaks.sehop.name".to_string(),
         description_key: "tweaks.sehop.description".to_string(),
         details_key: "tweaks.sehop.details".to_string(),
+        risk_details_key: Some("tweaks.sehop.riskDetails".to_string()),
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,

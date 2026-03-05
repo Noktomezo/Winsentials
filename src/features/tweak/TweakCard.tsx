@@ -12,6 +12,13 @@ interface TweakCardProps {
   tweak: TweakInfo
 }
 
+function getRiskTooltipText(t: typeof useTranslation.prototype.t, riskLevel: string, riskDetailsKey: string | null | undefined): string {
+  if (riskDetailsKey) {
+    return t(riskDetailsKey)
+  }
+  return t(`tweak.riskLevel.${riskLevel}`)
+}
+
 export function TweakCard({ tweak }: TweakCardProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -66,8 +73,8 @@ export function TweakCard({ tweak }: TweakCardProps) {
                       <AlertTriangle className="h-3 w-3" />
                     </Badge>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    {t('tweak.riskLevel.medium')}
+                  <TooltipContent className="max-w-xs">
+                    {getRiskTooltipText(t, 'medium', tweak.meta.risk_details_key)}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -78,8 +85,8 @@ export function TweakCard({ tweak }: TweakCardProps) {
                       <AlertTriangle className="h-3 w-3" />
                     </Badge>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    {t('tweak.riskLevel.high')}
+                  <TooltipContent className="max-w-xs">
+                    {getRiskTooltipText(t, 'high', tweak.meta.risk_details_key)}
                   </TooltipContent>
                 </Tooltip>
               )}

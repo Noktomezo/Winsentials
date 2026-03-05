@@ -22,6 +22,7 @@ impl ClassicContextMenuTweak {
         name_key: "tweaks.classicContextMenu.name".to_string(),
         description_key: "tweaks.classicContextMenu.description".to_string(),
         details_key: "tweaks.classicContextMenu.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

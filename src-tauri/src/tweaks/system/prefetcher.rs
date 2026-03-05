@@ -21,6 +21,7 @@ impl PrefetcherTweak {
         name_key: "tweaks.prefetcher.name".to_string(),
         description_key: "tweaks.prefetcher.description".to_string(),
         details_key: "tweaks.prefetcher.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Radio,
         options: vec![
           TweakOption {

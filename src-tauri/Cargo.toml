@@ -5,30 +5,15 @@ description = "✨ Optimize Windows 10/11 performance, privacy, and appearance w
 authors = ["Noktomezo <noktomezo@duck.com>"]
 edition = "2024"
 
-[[bin]]
-name = "Winsentials"
-path = "src/main.rs"
+[profile.dev]
+incremental = true
 
 [profile.release]
-opt-level = 3
-debug-assertions = false
-overflow-checks = false
-lto = "thin"
-panic = 'unwind'
-incremental = false
-codegen-units = 16
-rpath = false
-
-[profile.dev]
-opt-level = 0
-debug = true
-debug-assertions = true
-overflow-checks = true
-lto = false
-panic = 'unwind'
-incremental = true
-codegen-units = 256
-rpath = false
+codegen-units = 1
+lto = true
+opt-level = "z"
+panic = "abort"
+strip = true
 
 [lib]
 name = "winsentials_lib"
@@ -38,7 +23,6 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tokio = { version = "1.49.0", features = ["sync", "time"] }
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1.0.228", features = ["derive"] }
@@ -67,11 +51,11 @@ windows = { version = "0.62.2", features = [
   "Win32_System_Ole",
   "Win32_System_Services",
   "Win32_Globalization",
+  "Win32_NetworkManagement_IpHelper",
 ] }
 chrono = "0.4.44"
 png = "0.18.1"
 pelite = "0.10.0"
-quick-xml = "0.39.2"
 tauri-plugin-clipboard-manager = "2.3.2"
 rayon = "1.11.0"
 dunce = "1.0.5"

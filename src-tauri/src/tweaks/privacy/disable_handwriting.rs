@@ -23,6 +23,7 @@ impl DisableHandwritingTweak {
         name_key: "tweaks.disableHandwriting.name".to_string(),
         description_key: "tweaks.disableHandwriting.description".to_string(),
         details_key: "tweaks.disableHandwriting.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

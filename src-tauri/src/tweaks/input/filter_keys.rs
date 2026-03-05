@@ -41,6 +41,7 @@ impl FilterKeysTweak {
         name_key: "tweaks.filterKeys.name".to_string(),
         description_key: "tweaks.filterKeys.description".to_string(),
         details_key: "tweaks.filterKeys.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Radio,
         options: vec![
           TweakOption {

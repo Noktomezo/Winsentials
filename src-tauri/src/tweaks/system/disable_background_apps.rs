@@ -24,6 +24,7 @@ impl DisableBackgroundAppsTweak {
         name_key: "tweaks.disableBackgroundApps.name".to_string(),
         description_key: "tweaks.disableBackgroundApps.description".to_string(),
         details_key: "tweaks.disableBackgroundApps.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

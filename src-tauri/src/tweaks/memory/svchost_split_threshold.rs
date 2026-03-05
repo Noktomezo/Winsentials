@@ -21,6 +21,7 @@ impl SvcHostSplitThresholdTweak {
         name_key: "tweaks.svchostSplitThreshold.name".to_string(),
         description_key: "tweaks.svchostSplitThreshold.description".to_string(),
         details_key: "tweaks.svchostSplitThreshold.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,

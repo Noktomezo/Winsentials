@@ -10,9 +10,10 @@ pub mod system;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum TweakCategory {
+  #[default]
   System,
   Appearance,
   Privacy,
@@ -23,9 +24,10 @@ pub enum TweakCategory {
   Memory,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum TweakUiType {
+  #[default]
   Toggle,
   Radio,
   Dropdown,
@@ -58,6 +60,7 @@ pub struct TweakMeta {
   pub name_key: String,
   pub description_key: String,
   pub details_key: String,
+  pub risk_details_key: Option<String>,
   pub ui_type: TweakUiType,
   #[serde(default)]
   pub options: Vec<TweakOption>,
@@ -69,6 +72,25 @@ pub struct TweakMeta {
   pub risk_level: RiskLevel,
   #[serde(default)]
   pub min_windows_build: Option<u32>,
+}
+
+impl Default for TweakMeta {
+  fn default() -> Self {
+    Self {
+      id: String::new(),
+      category: TweakCategory::System,
+      name_key: String::new(),
+      description_key: String::new(),
+      details_key: String::new(),
+      risk_details_key: None,
+      ui_type: TweakUiType::Toggle,
+      options: vec![],
+      requires_reboot: false,
+      requires_logout: false,
+      risk_level: RiskLevel::Low,
+      min_windows_build: None,
+    }
+  }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

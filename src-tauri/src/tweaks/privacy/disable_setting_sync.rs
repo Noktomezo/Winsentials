@@ -22,6 +22,7 @@ impl DisableSettingSyncTweak {
         name_key: "tweaks.disableSettingSync.name".to_string(),
         description_key: "tweaks.disableSettingSync.description".to_string(),
         details_key: "tweaks.disableSettingSync.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

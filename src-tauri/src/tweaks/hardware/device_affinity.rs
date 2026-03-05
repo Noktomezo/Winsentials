@@ -26,6 +26,7 @@ impl DeviceAffinityTweak {
         name_key: "tweaks.deviceAffinity.name".to_string(),
         description_key: "tweaks.deviceAffinity.description".to_string(),
         details_key: "tweaks.deviceAffinity.details".to_string(),
+        risk_details_key: Some("tweaks.deviceAffinity.riskDetails".to_string()),
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,

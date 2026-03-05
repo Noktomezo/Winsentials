@@ -22,6 +22,7 @@ impl DisableCortanaTweak {
         name_key: "tweaks.disableCortana.name".to_string(),
         description_key: "tweaks.disableCortana.description".to_string(),
         details_key: "tweaks.disableCortana.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

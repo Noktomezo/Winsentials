@@ -21,6 +21,7 @@ impl DisableTransparencyTweak {
         name_key: "tweaks.disableTransparency.name".to_string(),
         description_key: "tweaks.disableTransparency.description".to_string(),
         details_key: "tweaks.disableTransparency.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: false,

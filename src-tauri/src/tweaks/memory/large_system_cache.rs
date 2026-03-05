@@ -21,6 +21,9 @@ impl LargeSystemCacheTweak {
         name_key: "tweaks.largeSystemCache.name".to_string(),
         description_key: "tweaks.largeSystemCache.description".to_string(),
         details_key: "tweaks.largeSystemCache.details".to_string(),
+        risk_details_key: Some(
+          "tweaks.largeSystemCache.riskDetails".to_string(),
+        ),
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,

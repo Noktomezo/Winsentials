@@ -17,6 +17,7 @@ export const TweakMetaSchema = z.object({
   name_key: z.string(),
   description_key: z.string(),
   details_key: z.string(),
+  risk_details_key: z.string().nullable().optional(),
   ui_type: TweakUiTypeSchema,
   options: z.array(TweakOptionSchema).default([]),
   requires_reboot: z.boolean().default(false),

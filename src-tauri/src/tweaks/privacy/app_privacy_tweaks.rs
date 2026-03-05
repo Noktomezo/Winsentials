@@ -23,6 +23,7 @@ macro_rules! app_privacy_tweak {
               name_key: format!("tweaks.deny{}Access.name", $name_key),
               description_key: format!("tweaks.deny{}Access.description", $desc_key),
               details_key: format!("tweaks.deny{}Access.details", $desc_key),
+              risk_details_key: None,
               ui_type: TweakUiType::Toggle,
               options: vec![],
               requires_reboot: false,

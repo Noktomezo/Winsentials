@@ -22,6 +22,7 @@ impl DisablePagingExecutiveTweak {
         description_key: "tweaks.disablePagingExecutive.description"
           .to_string(),
         details_key: "tweaks.disablePagingExecutive.details".to_string(),
+        risk_details_key: None,
         ui_type: TweakUiType::Toggle,
         options: vec![],
         requires_reboot: true,
