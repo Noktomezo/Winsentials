@@ -80,13 +80,16 @@
     "acrylic": "Acrylic material",
     "acrylicDescription": "Apply Windows acrylic to the sidebar and titlebar.",
     "acrylicUnavailable": "Acrylic material is unavailable on this system.",
+    "disableUpdateChecks": "Disable update checks",
     "description": "Adjust application language and theme preferences.",
+    "installingUpdate": "Downloading and installing the latest update...",
     "language": "Language",
     "languageDescription": "Choose the interface language.",
     "languages": {
       "en": "English",
       "ru": "Russian"
     },
+    "notNow": "Not now",
     "theme": "Theme",
     "themeDescription": "Select the light, dark, or system appearance used by the application shell.",
     "themes": {
@@ -94,7 +97,16 @@
       "light": "Light",
       "system": "System"
     },
-    "title": "Settings"
+    "title": "Settings",
+    "updateChecks": "Automatic update checks",
+    "updateChecksDescription": "Check GitHub releases every 30 seconds and show a prompt when an NSIS update is available.",
+    "updateChecksDisabled": "Automatic update checks have been disabled.",
+    "updateInstallFailed": "Failed to install the update.",
+    "updateNow": "Update",
+    "updatePromptDescription": "Winsentials {{version}} is available and ready to install.",
+    "updatePromptTitle": "A new update is available.",
+    "updates": "Updates",
+    "updatesDescription": "Control automatic update checks and installation prompts."
   },
   "tweaks": {
     "actions": {

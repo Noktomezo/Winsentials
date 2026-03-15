@@ -24,8 +24,10 @@ interface ToastViewProps {
   action?: ToastActionButton
   cancel?: ToastCancelButton
   description?: ReactNode
+  extraActions?: ToastActionButton[]
   message: ReactNode
   onClose: () => void
+  onCloseButton?: () => void | Promise<void>
   variant: AppToastVariant
   visible: boolean
 }
@@ -57,22 +59,15 @@ export function ToastView({
   action,
   cancel,
   description,
+  extraActions,
   message,
   onClose,
+  onCloseButton,
   variant,
   visible,
 }: ToastViewProps) {
-  const handleAction = () => {
-    const result = action?.onClick()
-    onClose()
-
-    if (result instanceof Promise) {
-      void result
-    }
-  }
-
-  const handleCancel = () => {
-    const result = cancel?.onClick?.()
+  const handleButtonClick = (callback?: () => void | Promise<void>) => {
+    const result = callback?.()
     onClose()
 
     if (result instanceof Promise) {
@@ -103,21 +98,46 @@ export function ToastView({
         <button
           aria-label="Close notification"
           className="toast-close"
-          onClick={onClose}
+          onClick={() => {
+            const result = onCloseButton?.()
+            onClose()
+
+            if (result instanceof Promise) {
+              void result
+            }
+          }}
           type="button"
         >
           <X className="size-4" />
         </button>
       </div>
-      {(action || cancel) && (
+      {(action || cancel || extraActions?.length) && (
         <div className="toast-actions">
           {cancel && (
-            <button className="toast-cancel" onClick={handleCancel} type="button">
+            <button
+              className="toast-cancel"
+              onClick={() => handleButtonClick(cancel.onClick)}
+              type="button"
+            >
               {cancel.label}
             </button>
           )}
+          {extraActions?.map(extraAction => (
+            <button
+              key={String(extraAction.label)}
+              className="toast-cancel"
+              onClick={() => handleButtonClick(extraAction.onClick)}
+              type="button"
+            >
+              {extraAction.label}
+            </button>
+          ))}
           {action && (
-            <button className="toast-action" onClick={handleAction} type="button">
+            <button
+              className="toast-action"
+              onClick={() => handleButtonClick(action.onClick)}
+              type="button"
+            >
               {action.label}
             </button>
           )}

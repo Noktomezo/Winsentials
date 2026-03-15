@@ -11,17 +11,20 @@ interface PersistedPreferencesState {
   language?: AppLanguage
   sidebarAcrylic?: boolean
   theme?: AppTheme | 'acrylic'
+  updateChecksEnabled?: boolean
 }
 
 interface PreferencesState {
   chromeAcrylic: boolean
   hasHydrated: boolean
   language: AppLanguage
+  updateChecksEnabled: boolean
   setChromeAcrylic: (enabled: boolean) => void
   setHasHydrated: (hasHydrated: boolean) => void
   theme: AppTheme
   setLanguage: (language: AppLanguage) => void
   setTheme: (theme: AppTheme) => void
+  setUpdateChecksEnabled: (enabled: boolean) => void
 }
 
 export const usePreferencesStore = create<PreferencesState>()(
@@ -30,8 +33,10 @@ export const usePreferencesStore = create<PreferencesState>()(
       chromeAcrylic: false,
       hasHydrated: false,
       language: DEFAULT_LANGUAGE,
+      updateChecksEnabled: true,
       setChromeAcrylic: chromeAcrylic => set({ chromeAcrylic }),
       setHasHydrated: hasHydrated => set({ hasHydrated }),
+      setUpdateChecksEnabled: updateChecksEnabled => set({ updateChecksEnabled }),
       theme: DEFAULT_THEME,
       setLanguage: language => set({ language }),
       setTheme: theme => set({ theme }),
@@ -48,11 +53,12 @@ export const usePreferencesStore = create<PreferencesState>()(
             || state.sidebarAcrylic === true,
           language: state.language ?? DEFAULT_LANGUAGE,
           theme: legacyAcrylic ? 'dark' : (state.theme ?? DEFAULT_THEME),
+          updateChecksEnabled: state.updateChecksEnabled ?? true,
         }
       },
       name: 'winsentials-preferences',
       onRehydrateStorage: () => state => state?.setHasHydrated(true),
-      version: 3,
+      version: 4,
     },
   ),
 )
