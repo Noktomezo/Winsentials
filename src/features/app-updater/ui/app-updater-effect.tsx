@@ -2,14 +2,13 @@ import type { Update } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
 import { check } from '@tauri-apps/plugin-updater'
 import { useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
 import { usePreferencesStore } from '@/entities/settings/model/preferences-store'
+import i18n from '@/shared/i18n'
 import { toast } from '@/shared/lib/toast'
 
 const UPDATE_CHECK_INTERVAL = 30_000
 
 export function AppUpdaterEffect() {
-  const { t } = useTranslation()
   const hasHydrated = usePreferencesStore(state => state.hasHydrated)
   const setUpdateChecksEnabled = usePreferencesStore(state => state.setUpdateChecksEnabled)
   const updateChecksEnabled = usePreferencesStore(state => state.updateChecksEnabled)
@@ -50,13 +49,13 @@ export function AppUpdaterEffect() {
     }
 
     const showUpdatePrompt = (update: Update) => {
-      activeToastIdRef.current = toast.action(t('settings.updatePromptTitle'), {
+      activeToastIdRef.current = toast.action(i18n.t('settings.updatePromptTitle'), {
         action: {
-          label: t('settings.updateNow'),
+          label: i18n.t('settings.updateNow'),
           onClick: async () => {
             isInstallingRef.current = true
             activeToastIdRef.current = undefined
-            toast.message(t('settings.installingUpdate'))
+            toast.message(i18n.t('settings.installingUpdate'))
 
             try {
               await update.downloadAndInstall()
@@ -65,7 +64,7 @@ export function AppUpdaterEffect() {
             catch (error) {
               promptedVersionRef.current = null
               console.warn('Failed to install update', error)
-              toast.error(t('settings.updateInstallFailed'))
+              toast.error(i18n.t('settings.updateInstallFailed'))
             }
             finally {
               isInstallingRef.current = false
@@ -73,18 +72,18 @@ export function AppUpdaterEffect() {
           },
         },
         cancel: {
-          label: t('settings.notNow'),
+          label: i18n.t('settings.notNow'),
           onClick: deferPrompt,
         },
-        description: t('settings.updatePromptDescription', { version: update.version }),
+        description: i18n.t('settings.updatePromptDescription', { version: update.version }),
         duration: Number.POSITIVE_INFINITY,
         extraActions: [
           {
-            label: t('settings.disableUpdateChecks'),
+            label: i18n.t('settings.disableUpdateChecks'),
             onClick: () => {
               setUpdateChecksEnabled(false)
               activeToastIdRef.current = undefined
-              toast.success(t('settings.updateChecksDisabled'))
+              toast.success(i18n.t('settings.updateChecksDisabled'))
             },
           },
         ],
@@ -141,7 +140,7 @@ export function AppUpdaterEffect() {
       cancelled = true
       window.clearInterval(interval)
     }
-  }, [hasHydrated, setUpdateChecksEnabled, t, updateChecksEnabled])
+  }, [hasHydrated, setUpdateChecksEnabled, updateChecksEnabled])
 
   return null
 }

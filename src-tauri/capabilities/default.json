@@ -8,8 +8,6 @@
     "core:window:allow-close",
     "core:window:allow-minimize",
     "clipboard-manager:allow-write-text",
-    "opener:default",
-    "process:default",
-    "updater:default"
+    "opener:default"
   ]
 }

@@ -9,6 +9,7 @@ import {
 import { cn } from '@/shared/lib/utils'
 
 export interface ToastActionButton {
+  id?: string
   label: ReactNode
   onClick: () => void | Promise<void>
 }
@@ -67,12 +68,14 @@ export function ToastView({
   visible,
 }: ToastViewProps) {
   const handleButtonClick = (callback?: () => void | Promise<void>) => {
-    const result = callback?.()
-    onClose()
-
-    if (result instanceof Promise) {
-      void result
-    }
+    void (async () => {
+      try {
+        await callback?.()
+      }
+      finally {
+        onClose()
+      }
+    })()
   }
 
   return (
@@ -98,14 +101,7 @@ export function ToastView({
         <button
           aria-label="Close notification"
           className="toast-close"
-          onClick={() => {
-            const result = onCloseButton?.()
-            onClose()
-
-            if (result instanceof Promise) {
-              void result
-            }
-          }}
+          onClick={() => handleButtonClick(onCloseButton)}
           type="button"
         >
           <X className="size-4" />
@@ -122,9 +118,9 @@ export function ToastView({
               {cancel.label}
             </button>
           )}
-          {extraActions?.map(extraAction => (
+          {extraActions?.map((extraAction, index) => (
             <button
-              key={String(extraAction.label)}
+              key={extraAction.id ?? `${String(extraAction.label)}-${index}`}
               className="toast-cancel"
               onClick={() => handleButtonClick(extraAction.onClick)}
               type="button"
