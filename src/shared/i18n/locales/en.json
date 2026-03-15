@@ -99,14 +99,14 @@
     },
     "title": "Settings",
     "updateChecks": "Automatic update checks",
-    "updateChecksDescription": "Check GitHub releases every 30 seconds and show a prompt when an NSIS update is available.",
+    "updateChecksDescription": "Automatically check for new app updates every 30 seconds.",
     "updateChecksDisabled": "Automatic update checks have been disabled.",
     "updateInstallFailed": "Failed to install the update.",
     "updateNow": "Update",
     "updatePromptDescription": "Winsentials {{version}} is available and ready to install.",
     "updatePromptTitle": "A new update is available.",
     "updates": "Updates",
-    "updatesDescription": "Control automatic update checks and installation prompts."
+    "updatesDescription": "Manage how the app checks for updates."
   },
   "tweaks": {
     "actions": {

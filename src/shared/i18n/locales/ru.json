@@ -99,14 +99,14 @@
     },
     "title": "Настройки",
     "updateChecks": "Автоматическая проверка обновлений",
-    "updateChecksDescription": "Проверять GitHub Releases каждые 30 секунд и показывать уведомление, когда доступно новое NSIS-обновление.",
+    "updateChecksDescription": "Автоматически проверять новые обновления приложения каждые 30 секунд.",
     "updateChecksDisabled": "Автоматическая проверка обновлений отключена.",
     "updateInstallFailed": "Не удалось установить обновление.",
     "updateNow": "Обновить",
     "updatePromptDescription": "Доступна версия Winsentials {{version}}, её можно установить прямо сейчас.",
     "updatePromptTitle": "Доступно новое обновление.",
     "updates": "Обновления",
-    "updatesDescription": "Управление автоматической проверкой обновлений и уведомлениями."
+    "updatesDescription": "Настройка автоматической проверки обновлений приложения."
   },
   "tweaks": {
     "actions": {
