@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  ✨ Optimize Windows 10/11 performance, privacy, and appearance with a sleek native desktop app.
+  ✨ **Winsentials** is a desktop application for Windows 10 and 11 that lets you tune performance, privacy, appearance, and system behavior through a clean interface built on top of low-level system settings.
 </p>
 
 <p align="center">
