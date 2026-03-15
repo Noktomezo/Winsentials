@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/app-thumbnail.png" alt="Winsentials thumbnail" width="720" />
+  <img src="assets/app-thumbnail.png" alt="Winsentials thumbnail" />
 </p>
 
 <p align="center">
@@ -13,6 +13,6 @@
   <img alt="License" src="https://img.shields.io/github/license/Noktomezo/Winsentials?logo=github&logoColor=white&color=0f766e" />
 </p>
 
-## Disclaimer
+## 🥶 Disclaimer
 
 Winsentials is currently under active development and is not recommended for use right now.
