@@ -18,6 +18,11 @@ export interface ToastActionOptions extends ToastMessageOptions {
     label: ReactNode
     onClick?: () => void | Promise<void>
   }
+  extraActions?: Array<{
+    label: ReactNode
+    onClick: () => void | Promise<void>
+  }>
+  onCloseButton?: () => void | Promise<void>
 }
 
 const DEFAULT_DURATION = 4000
@@ -30,6 +35,8 @@ function showToast(
   options: ToastMessageOptions & {
     action?: ToastActionOptions['action']
     cancel?: ToastActionOptions['cancel']
+    extraActions?: ToastActionOptions['extraActions']
+    onCloseButton?: ToastActionOptions['onCloseButton']
   } = {},
 ) {
   return hotToast.custom(
@@ -38,8 +45,10 @@ function showToast(
         action={options.action}
         cancel={options.cancel}
         description={options.description}
+        extraActions={options.extraActions}
         message={message}
         onClose={() => hotToast.dismiss(current.id)}
+        onCloseButton={options.onCloseButton}
         variant={variant}
         visible={current.visible}
       />

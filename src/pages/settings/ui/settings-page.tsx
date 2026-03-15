@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
-import { Languages, Palette } from 'lucide-react'
+import { Download, Languages, Palette } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { UpdateCheckSwitch } from '@/features/app-updater/ui/update-check-switch'
 import { LanguageSelect } from '@/features/language-switcher/ui/language-select'
 import { ChromeAcrylicSwitch } from '@/features/theme-switcher/ui/sidebar-acrylic-switch'
 import { ThemeSelect } from '@/features/theme-switcher/ui/theme-select'
@@ -62,6 +63,13 @@ export function SettingsPage() {
             <ThemeSelect />
             <ChromeAcrylicSwitch />
           </div>
+        </SettingsSection>
+        <SettingsSection
+          title={t('settings.updates')}
+          description={t('settings.updatesDescription')}
+          icon={Download}
+        >
+          <UpdateCheckSwitch />
         </SettingsSection>
       </div>
     </section>

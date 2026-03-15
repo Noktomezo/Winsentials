@@ -9,6 +9,7 @@ import {
 import { cn } from '@/shared/lib/utils'
 
 export interface ToastActionButton {
+  id?: string
   label: ReactNode
   onClick: () => void | Promise<void>
 }
@@ -24,8 +25,10 @@ interface ToastViewProps {
   action?: ToastActionButton
   cancel?: ToastCancelButton
   description?: ReactNode
+  extraActions?: ToastActionButton[]
   message: ReactNode
   onClose: () => void
+  onCloseButton?: () => void | Promise<void>
   variant: AppToastVariant
   visible: boolean
 }
@@ -57,27 +60,22 @@ export function ToastView({
   action,
   cancel,
   description,
+  extraActions,
   message,
   onClose,
+  onCloseButton,
   variant,
   visible,
 }: ToastViewProps) {
-  const handleAction = () => {
-    const result = action?.onClick()
-    onClose()
-
-    if (result instanceof Promise) {
-      void result
-    }
-  }
-
-  const handleCancel = () => {
-    const result = cancel?.onClick?.()
-    onClose()
-
-    if (result instanceof Promise) {
-      void result
-    }
+  const handleButtonClick = (callback?: () => void | Promise<void>) => {
+    void (async () => {
+      try {
+        await callback?.()
+      }
+      finally {
+        onClose()
+      }
+    })()
   }
 
   return (
@@ -103,21 +101,39 @@ export function ToastView({
         <button
           aria-label="Close notification"
           className="toast-close"
-          onClick={onClose}
+          onClick={() => handleButtonClick(onCloseButton)}
           type="button"
         >
           <X className="size-4" />
         </button>
       </div>
-      {(action || cancel) && (
+      {(action || cancel || extraActions?.length) && (
         <div className="toast-actions">
           {cancel && (
-            <button className="toast-cancel" onClick={handleCancel} type="button">
+            <button
+              className="toast-cancel"
+              onClick={() => handleButtonClick(cancel.onClick)}
+              type="button"
+            >
               {cancel.label}
             </button>
           )}
+          {extraActions?.map((extraAction, index) => (
+            <button
+              key={extraAction.id ?? `${String(extraAction.label)}-${index}`}
+              className="toast-cancel"
+              onClick={() => handleButtonClick(extraAction.onClick)}
+              type="button"
+            >
+              {extraAction.label}
+            </button>
+          ))}
           {action && (
-            <button className="toast-action" onClick={handleAction} type="button">
+            <button
+              className="toast-action"
+              onClick={() => handleButtonClick(action.onClick)}
+              type="button"
+            >
               {action.label}
             </button>
           )}

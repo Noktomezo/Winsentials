@@ -2,6 +2,7 @@ import type { PropsWithChildren } from 'react'
 import type { ResolvedTheme } from '@/shared/config/app'
 import { useEffect } from 'react'
 import { usePreferencesStore } from '@/entities/settings/model/preferences-store'
+import { AppUpdaterEffect } from '@/features/app-updater/ui/app-updater-effect'
 import i18n from '@/shared/i18n'
 import { syncChromeAcrylic } from '@/shared/lib/desktop/window-effects'
 import { useResolvedTheme } from '@/shared/lib/hooks/use-resolved-theme'
@@ -79,6 +80,7 @@ export function AppProviders({ children }: PropsWithChildren) {
   return (
     <TooltipProvider delayDuration={150}>
       <AppPreferencesEffect resolvedTheme={resolvedTheme} />
+      <AppUpdaterEffect />
       {children}
       <AppToastProvider resolvedTheme={resolvedTheme} />
     </TooltipProvider>

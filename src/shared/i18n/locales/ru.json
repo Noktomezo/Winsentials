@@ -80,13 +80,16 @@
     "acrylic": "Акриловый материал",
     "acrylicDescription": "Применять Windows acrylic к сайдбару и тайтлбару приложения.",
     "acrylicUnavailable": "Акриловый материал недоступен в этой системе.",
+    "disableUpdateChecks": "Отключить проверку обновлений",
     "description": "Настройка языка приложения и активной темы интерфейса.",
+    "installingUpdate": "Скачивание и установка последнего обновления...",
     "language": "Язык",
     "languageDescription": "Выберите язык интерфейса.",
     "languages": {
       "en": "English",
       "ru": "Русский"
     },
+    "notNow": "Не сейчас",
     "theme": "Тема",
     "themeDescription": "Выберите светлую, тёмную или системную тему для оболочки приложения.",
     "themes": {
@@ -94,7 +97,16 @@
       "light": "Светлая",
       "system": "Системная"
     },
-    "title": "Настройки"
+    "title": "Настройки",
+    "updateChecks": "Автоматическая проверка обновлений",
+    "updateChecksDescription": "Автоматически проверять новые обновления приложения каждые 30 секунд.",
+    "updateChecksDisabled": "Автоматическая проверка обновлений отключена.",
+    "updateInstallFailed": "Не удалось установить обновление.",
+    "updateNow": "Обновить",
+    "updatePromptDescription": "Доступна версия Winsentials {{version}}, её можно установить прямо сейчас.",
+    "updatePromptTitle": "Доступно новое обновление.",
+    "updates": "Обновления",
+    "updatesDescription": "Настройка автоматической проверки обновлений приложения."
   },
   "tweaks": {
     "actions": {
