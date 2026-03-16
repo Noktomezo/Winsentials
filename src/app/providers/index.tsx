@@ -14,6 +14,7 @@ function AppPreferencesEffect({ resolvedTheme }: { resolvedTheme: ResolvedTheme 
   const chromeAcrylic = usePreferencesStore(state => state.chromeAcrylic)
   const hasHydrated = usePreferencesStore(state => state.hasHydrated)
   const language = usePreferencesStore(state => state.language)
+  const palette = usePreferencesStore(state => state.palette)
   const setChromeAcrylic = usePreferencesStore(state => state.setChromeAcrylic)
 
   useEffect(() => {
@@ -22,10 +23,11 @@ function AppPreferencesEffect({ resolvedTheme }: { resolvedTheme: ResolvedTheme 
     }
 
     document.documentElement.dataset.theme = resolvedTheme
+    document.documentElement.dataset.palette = palette
     document.documentElement.dataset.chromeMaterial = chromeAcrylic
       ? 'acrylic'
       : 'solid'
-  }, [chromeAcrylic, hasHydrated, resolvedTheme])
+  }, [chromeAcrylic, hasHydrated, palette, resolvedTheme])
 
   useEffect(() => {
     if (!hasHydrated) {

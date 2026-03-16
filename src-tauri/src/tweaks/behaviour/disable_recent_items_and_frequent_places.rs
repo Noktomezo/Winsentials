@@ -56,7 +56,7 @@ impl DisableRecentItemsAndFrequentPlacesTweak {
         Ok(())
     }
 
-    fn is_enabled(&self) -> Result<bool, AppError> {
+    fn read_values(&self) -> Result<(u32, u32, u32), AppError> {
         let track_docs = match EXPLORER_ADVANCED_KEY.get_dword("Start_TrackDocs") {
             Ok(value) => value,
             Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {
@@ -81,10 +81,9 @@ impl DisableRecentItemsAndFrequentPlacesTweak {
             Err(error) => return Err(error),
         };
 
-        Ok(track_docs == HISTORY_DISABLED
-            && show_frequent == HISTORY_DISABLED
-            && show_recent == HISTORY_DISABLED)
+        Ok((track_docs, show_frequent, show_recent))
     }
+
 }
 
 impl Tweak for DisableRecentItemsAndFrequentPlacesTweak {
@@ -112,7 +111,14 @@ impl Tweak for DisableRecentItemsAndFrequentPlacesTweak {
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {
-        let is_enabled = self.is_enabled()?;
+        let (track_docs, show_frequent, show_recent) = self.read_values()?;
+        let is_enabled = track_docs == HISTORY_DISABLED
+            && show_frequent == HISTORY_DISABLED
+            && show_recent == HISTORY_DISABLED;
+        // Partial states (some flags disabled, some not) are neither enabled nor default.
+        let is_default = track_docs == HISTORY_ENABLED
+            && show_frequent == HISTORY_ENABLED
+            && show_recent == HISTORY_ENABLED;
 
         Ok(TweakStatus {
             current_value: if is_enabled {
@@ -120,7 +126,7 @@ impl Tweak for DisableRecentItemsAndFrequentPlacesTweak {
             } else {
                 DISABLED_VALUE.into()
             },
-            is_default: !is_enabled,
+            is_default,
         })
     }
 

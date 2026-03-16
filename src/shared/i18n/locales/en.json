@@ -87,10 +87,10 @@
     "title": "Network",
     "tweaks": {
       "enableBbr2": {
-        "detailDescription": "Switches all TCP supplemental templates (Internet, InternetCustom, Datacenter, DatacenterCustom, Compat) from the default CUBIC congestion algorithm to BBR2. BBR2 measures actual available bandwidth instead of reacting to packet loss, which reduces bufferbloat and improves throughput on high-latency or lossy connections. LoopbackLargeMTU is disabled automatically because it is incompatible with BBR2.",
+        "detailDescription": "Switches all TCP supplemental templates (Internet, InternetCustom, Datacenter, DatacenterCustom, Compat) to BBR2. Internet, InternetCustom, Datacenter, and DatacenterCustom default to CUBIC; Compat defaults to NewReno. BBR2 measures actual available bandwidth instead of reacting to packet loss, which reduces bufferbloat and improves throughput on high-latency or lossy connections. LoopbackLargeMTU is disabled automatically because it is incompatible with BBR2.",
         "name": "Enable BBR2 Congestion Control",
         "riskDescription": "BBR2 may behave differently on some ISP networks or VPN tunnels. If you notice unstable connections after enabling, reset this tweak.",
-        "shortDescription": "Replaces CUBIC with BBR2 across all TCP templates for lower latency and better throughput."
+        "shortDescription": "Replaces default congestion providers with BBR2 across all TCP templates for lower latency and better throughput."
       },
       "disableQosBandwidthLimit": {
         "detailDescription": "Windows reserves a portion of your connection for system services by default. This tweak sets the QoS reservation to 0%, allowing browsers, games, and download managers to use 100% of your available bandwidth.",
@@ -99,7 +99,7 @@
         "shortDescription": "Removes the 20% bandwidth reservation Windows holds back for system services."
       },
       "enableNetworkOffloadingRss": {
-        "detailDescription": "Enables Receive Side Scaling (RSS) and TCP Offload, moving network packet processing from the CPU to the network adapter's own controller. This frees up CPU resources and can reduce latency in games or during heavy file transfers. Also applies the change immediately via netsh so no data transfer is interrupted mid-session.",
+        "detailDescription": "Enables Receive Side Scaling (RSS) and TCP Offload, moving network packet processing from the CPU to the network adapter's own controller. This frees up CPU resources and can reduce latency in games or during heavy file transfers. A PC restart is required for the change to take full effect.",
         "name": "Enable Network Card Offloading (RSS)",
         "riskDescription": "Most effective on discrete network adapters (Intel, Realtek, Killer). On very old or cheap integrated adapters the effect is minimal, but the tweak is safe to enable regardless.",
         "shortDescription": "Offloads network data processing to the network card's own processor."
@@ -142,6 +142,13 @@
       "ru": "Russian"
     },
     "notNow": "Not now",
+    "mode": "Mode",
+    "palette": "Color palette",
+    "paletteDescription": "Choose the color palette applied to the selected theme.",
+    "palettes": {
+      "flexoki": "Flexoki",
+      "teal": "Teal"
+    },
     "theme": "Theme",
     "themeDescription": "Select the light, dark, or system appearance used by the application shell.",
     "themes": {
@@ -166,7 +173,8 @@
       "later": "Later",
       "restartNow": "Restart now",
       "retry": "Retry",
-      "showDetails": "Show details"
+      "showDetails": "Show details",
+      "showRiskDetails": "Show risk details"
     },
     "apps": {
       "explorer": "Explorer"

@@ -1,31 +1,30 @@
 import type { LucideIcon } from 'lucide-react'
-import { MonitorCog, MoonStar, SunMedium } from 'lucide-react'
+import { Leaf, Waves } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { usePreferencesStore } from '@/entities/settings/model/preferences-store'
-import { APP_THEMES } from '@/shared/config/app'
+import { APP_PALETTES } from '@/shared/config/app'
 import { cn } from '@/shared/lib/utils'
 import { RadioGroup, RadioGroupItem } from '@/shared/ui/radio-group'
 
-const THEME_ICONS: Record<(typeof APP_THEMES)[number], LucideIcon> = {
-  light: SunMedium,
-  dark: MoonStar,
-  system: MonitorCog,
+const PALETTE_ICONS: Record<(typeof APP_PALETTES)[number], LucideIcon> = {
+  flexoki: Leaf,
+  teal: Waves,
 }
 
-export function ThemeSelect() {
+export function PaletteSelect() {
   const { t } = useTranslation()
-  const theme = usePreferencesStore(state => state.theme)
-  const setTheme = usePreferencesStore(state => state.setTheme)
+  const palette = usePreferencesStore(state => state.palette)
+  const setPalette = usePreferencesStore(state => state.setPalette)
 
   return (
     <RadioGroup
       className="flex gap-1 rounded-lg border border-border/70 bg-background p-1"
-      onValueChange={value => setTheme(value as typeof theme)}
-      value={theme}
+      onValueChange={value => setPalette(value as typeof palette)}
+      value={palette}
     >
-      {APP_THEMES.map((item) => {
-        const checked = theme === item
-        const Icon = THEME_ICONS[item]
+      {APP_PALETTES.map((item) => {
+        const checked = palette === item
+        const Icon = PALETTE_ICONS[item]
 
         return (
           <label
@@ -37,7 +36,7 @@ export function ThemeSelect() {
           >
             <RadioGroupItem className="sr-only" value={item} />
             <Icon className="size-3.5 shrink-0" />
-            {t(`settings.themes.${item}`)}
+            {t(`settings.palettes.${item}`)}
           </label>
         )
       })}

@@ -36,14 +36,6 @@
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJDQTUzNTFFQThERkY2MDQKUldRRTl0K29IaldsdkNoR2JkRlhlNGg2QXlrRjhPZEtvM3E3K2JScTM2WVZqSnBCTGgzdFovWXUK"
     }
   },
-  "plugins": {
-    "updater": {
-      "endpoints": [
-        "https://github.com/Noktomezo/Winsentials/releases/latest/download/latest.json"
-      ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJDQTUzNTFFQThERkY2MDQKUldRRTl0K29IaldsdkNoR2JkRlhlNGg2QXlrRjhPZEtvM3E3K2JScTM2WVZqSnBCTGgzdFovWXUK"
-    }
-  },
   "bundle": {
     "publisher": "Noktomezo",
     "shortDescription": "Windows optimization toolbox.",

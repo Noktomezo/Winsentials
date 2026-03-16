@@ -60,7 +60,7 @@ function AppShellLayout({
         <AppSidebar />
         <SidebarInset className="min-h-0 overflow-hidden rounded-tl-[8px] border-t border-l border-border/70 bg-background">
           <SmoothScrollArea className="h-full" ref={scrollAreaRef}>
-            <div className="page-shell-transition flex min-h-full flex-col">
+            <div key={pathname} className="page-shell-transition flex min-h-full flex-col">
               <header className="p-4 md:p-6">
                 <div className="space-y-0.5">
                   <h1 className="text-xl font-semibold tracking-tight text-foreground">

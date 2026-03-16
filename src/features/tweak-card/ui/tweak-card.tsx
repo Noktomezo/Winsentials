@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { TweakMeta, WindowsVersion } from '@/entities/tweak/model/types'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
-import { BellOff, CircleAlert, Clock3, ExternalLink, FileType, HardDrive, History, House, Images, Info, Menu, Network, PanelsTopLeft, Power, RotateCcw, Shield, ShieldOff, TextCursor, TriangleAlert, Type } from 'lucide-react'
+import { BellOff, CircleAlert, Clock3, Cpu, ExternalLink, FileType, Gauge, HardDrive, History, House, Images, Info, Menu, Network, PanelsTopLeft, Power, RotateCcw, Shield, ShieldOff, TextCursor, TriangleAlert, Type, Zap } from 'lucide-react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/shared/lib/toast'
 import { cn } from '@/shared/lib/utils'
@@ -52,6 +52,9 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   disable_security_center_notifications: BellOff,
   disable_open_file_warning: ShieldOff,
   disable_user_account_control: Shield,
+  enable_bbr2: Zap,
+  disable_qos_bandwidth_limit: Gauge,
+  enable_network_offloading_rss: Cpu,
 }
 
 const COPYABLE_RISK_COMMANDS: Record<string, string> = {
@@ -126,11 +129,12 @@ export function TweakCard({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
+                    aria-label={t('tweaks.actions.showDetails')}
                     className="inline-flex items-center justify-center text-muted-foreground transition-colors hover:text-accent-foreground"
                     type="button"
                   >
-                    <TweakMetaPill>
-                      <Info className="size-3.5" />
+                    <TweakMetaPill className="text-inherit">
+                      <Info aria-hidden className="size-3.5" />
                     </TweakMetaPill>
                   </button>
                 </TooltipTrigger>
@@ -142,11 +146,12 @@ export function TweakCard({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
+                      aria-label={t('tweaks.requires.restartExplorer')}
                       className="inline-flex items-center justify-center text-primary/80 transition-colors hover:text-primary"
                       type="button"
                     >
                       <TweakMetaPill className="text-inherit">
-                        <RotateCcw className="size-3.5" />
+                        <RotateCcw aria-hidden className="size-3.5" />
                       </TweakMetaPill>
                     </button>
                   </TooltipTrigger>
@@ -159,11 +164,12 @@ export function TweakCard({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
+                      aria-label={t('tweaks.requires.restartPc')}
                       className="inline-flex items-center justify-center text-primary/80 transition-colors hover:text-primary"
                       type="button"
                     >
                       <TweakMetaPill className="text-inherit">
-                        <Power className="size-3.5" />
+                        <Power aria-hidden className="size-3.5" />
                       </TweakMetaPill>
                     </button>
                   </TooltipTrigger>
@@ -176,11 +182,12 @@ export function TweakCard({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
+                      aria-label={t('tweaks.actions.showRiskDetails')}
                       className="inline-flex items-center justify-center text-amber-700 transition-colors hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
                       type="button"
                     >
                       <TweakMetaPill className="text-inherit">
-                        <TriangleAlert className="size-3.5" />
+                        <TriangleAlert aria-hidden className="size-3.5" />
                       </TweakMetaPill>
                     </button>
                   </TooltipTrigger>
@@ -213,9 +220,15 @@ export function TweakCard({
               {isUnsupported && tweak.minOsBuild && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <TweakMetaPill className="text-amber-700 dark:text-amber-300">
-                      <CircleAlert className="size-3.5" />
-                    </TweakMetaPill>
+                    <button
+                      aria-label={t('tweaks.requires.windowsBuild', { build: minBuild })}
+                      className="inline-flex items-center justify-center text-amber-700 dark:text-amber-300"
+                      type="button"
+                    >
+                      <TweakMetaPill className="text-inherit">
+                        <CircleAlert aria-hidden className="size-3.5" />
+                      </TweakMetaPill>
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent sideOffset={8}>
                     {t('tweaks.requires.windowsBuild', { build: minBuild })}

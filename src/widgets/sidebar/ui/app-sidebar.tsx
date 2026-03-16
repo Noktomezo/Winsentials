@@ -2,7 +2,6 @@ import type { MouseEvent } from 'react'
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
 import { FolderCog, Network, Palette, Settings2, Shield } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { startRouteViewTransition } from '@/shared/lib/navigation/view-transition-navigation'
 import {
   Sidebar,
   SidebarContent,
@@ -22,12 +21,12 @@ export function AppSidebar() {
     select: state => state.location.pathname,
   })
 
-  async function handleNavigate(to: SidebarRoute) {
+  function handleNavigate(to: SidebarRoute) {
     if (pathname === to) {
       return
     }
 
-    await startRouteViewTransition(() => navigate({ to }))
+    void navigate({ to })
   }
 
   function handlePointerIntent(to: SidebarRoute) {
@@ -41,7 +40,7 @@ export function AppSidebar() {
     to: SidebarRoute,
   ) {
     event.preventDefault()
-    void handleNavigate(to)
+    handleNavigate(to)
   }
 
   return (

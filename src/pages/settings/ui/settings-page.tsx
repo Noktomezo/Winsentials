@@ -1,9 +1,10 @@
 import type { LucideIcon } from 'lucide-react'
-import { Download, Languages, Palette } from 'lucide-react'
+import { Download, Languages, Leaf, MoonStar, Palette } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { UpdateCheckSwitch } from '@/features/app-updater/ui/update-check-switch'
 import { LanguageSelect } from '@/features/language-switcher/ui/language-select'
 import { ChromeAcrylicSwitch } from '@/features/theme-switcher/ui/sidebar-acrylic-switch'
+import { PaletteSelect } from '@/features/theme-switcher/ui/palette-select'
 import { ThemeSelect } from '@/features/theme-switcher/ui/theme-select'
 
 function SettingsSection({
@@ -32,7 +33,7 @@ function SettingsSection({
           </div>
         </div>
         {control && (
-          <div className="w-full sm:w-[220px] sm:shrink-0">
+          <div className="sm:shrink-0">
             {control}
           </div>
         )}
@@ -59,18 +60,30 @@ export function SettingsPage() {
           description={t('settings.themeDescription')}
           icon={Palette}
         >
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)] lg:items-start">
-            <ThemeSelect />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-foreground">
+                <MoonStar className="size-4 text-muted-foreground" />
+                {t('settings.mode')}
+              </div>
+              <ThemeSelect />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-foreground">
+                <Leaf className="size-4 text-muted-foreground" />
+                {t('settings.palette')}
+              </div>
+              <PaletteSelect />
+            </div>
             <ChromeAcrylicSwitch />
           </div>
         </SettingsSection>
         <SettingsSection
           title={t('settings.updates')}
           description={t('settings.updatesDescription')}
+          control={<div className="flex sm:justify-end"><UpdateCheckSwitch /></div>}
           icon={Download}
-        >
-          <UpdateCheckSwitch />
-        </SettingsSection>
+        />
       </div>
     </section>
   )
