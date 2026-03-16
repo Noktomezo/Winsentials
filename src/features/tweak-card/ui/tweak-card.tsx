@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { TweakMeta, WindowsVersion } from '@/entities/tweak/model/types'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
-import { ArrowUpRight, CircleAlert, HardDrive, House, Images, Info, Menu, Network, PanelsTopLeft, Power, RotateCcw, Shield, ShieldOff, TextCursor, TriangleAlert, Type } from 'lucide-react'
+import { BellOff, CircleAlert, Clock3, ExternalLink, FileType, HardDrive, History, House, Images, Info, Menu, Network, PanelsTopLeft, Power, RotateCcw, Shield, ShieldOff, TextCursor, TriangleAlert, Type } from 'lucide-react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/shared/lib/toast'
 import { cn } from '@/shared/lib/utils'
@@ -43,9 +43,13 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   hide_gallery_navigation_pane: Images,
   hide_home_navigation_pane: House,
   hide_network_navigation_pane: Network,
+  disable_8dot3_name_creation: FileType,
+  disable_recent_items_and_frequent_places: History,
   open_explorer_to_this_pc: HardDrive,
-  remove_shortcut_arrows: ArrowUpRight,
+  unlock_lock_screen_timeout_setting: Clock3,
+  remove_shortcut_arrows: ExternalLink,
   remove_shortcut_suffix: Type,
+  disable_security_center_notifications: BellOff,
   disable_open_file_warning: ShieldOff,
   disable_user_account_control: Shield,
 }
@@ -109,135 +113,133 @@ export function TweakCard({
 
   return (
     <article className="rounded-xl border border-border/70 bg-card p-4">
-      <div className="flex flex-col gap-3">
-        <div className="min-w-0 flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/60 text-accent-foreground">
-            <Icon className="size-4" />
-          </span>
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex flex-wrap items-center gap-2">
-                <h2 className="text-sm font-medium text-foreground">
-                  {t(tweak.name)}
-                </h2>
+      <div className="min-w-0 flex items-start gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/60 text-accent-foreground">
+          <Icon className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex flex-wrap items-center gap-2">
+              <h2 className="text-sm font-medium text-foreground">
+                {t(tweak.name)}
+              </h2>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="inline-flex items-center justify-center text-muted-foreground transition-colors hover:text-accent-foreground"
+                    type="button"
+                  >
+                    <TweakMetaPill>
+                      <Info className="size-3.5" />
+                    </TweakMetaPill>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-80 text-pretty" sideOffset={8}>
+                  {t(tweak.detailDescription)}
+                </TooltipContent>
+              </Tooltip>
+              {tweak.requiresAction.type === 'restart_app' && tweak.requiresAction.appName === 'Explorer' && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
-                      className="inline-flex items-center justify-center text-muted-foreground transition-colors hover:text-accent-foreground"
+                      className="inline-flex items-center justify-center text-primary/80 transition-colors hover:text-primary"
                       type="button"
                     >
-                      <TweakMetaPill>
-                        <Info className="size-3.5" />
+                      <TweakMetaPill className="text-inherit">
+                        <RotateCcw className="size-3.5" />
                       </TweakMetaPill>
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-80 text-pretty" sideOffset={8}>
-                    {t(tweak.detailDescription)}
+                  <TooltipContent sideOffset={8}>
+                    {t('tweaks.requires.restartExplorer')}
                   </TooltipContent>
                 </Tooltip>
-                {tweak.requiresAction.type === 'restart_app' && tweak.requiresAction.appName === 'Explorer' && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        className="inline-flex items-center justify-center text-primary/80 transition-colors hover:text-primary"
-                        type="button"
-                      >
-                        <TweakMetaPill className="text-inherit">
-                          <RotateCcw className="size-3.5" />
-                        </TweakMetaPill>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent sideOffset={8}>
-                      {t('tweaks.requires.restartExplorer')}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-                {tweak.requiresAction.type === 'restart_pc' && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        className="inline-flex items-center justify-center text-primary/80 transition-colors hover:text-primary"
-                        type="button"
-                      >
-                        <TweakMetaPill className="text-inherit">
-                          <Power className="size-3.5" />
-                        </TweakMetaPill>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent sideOffset={8}>
-                      {t('tweaks.requires.restartPc')}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-                {tweak.risk !== 'none' && tweak.riskDescription && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        className="inline-flex items-center justify-center text-amber-700 transition-colors hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
-                        type="button"
-                      >
-                        <TweakMetaPill className="text-inherit">
-                          <TriangleAlert className="size-3.5" />
-                        </TweakMetaPill>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-80 text-pretty whitespace-pre-line" sideOffset={8}>
-                      <Trans
-                        components={{
-                          code: (
-                            <code
-                              aria-label={t('tweaks.actions.copyCommand')}
-                              className="mt-2 block w-fit cursor-copy rounded-[4px] border border-border/70 bg-accent px-2 py-1 font-mono text-xs font-medium text-foreground shadow-xs transition-colors hover:bg-accent/80"
-                              onClick={() => {
-                                void handleCopyRiskCommand()
-                              }}
-                              onKeyDown={(event) => {
-                                if (event.key === 'Enter' || event.key === ' ') {
-                                  event.preventDefault()
-                                  void handleCopyRiskCommand()
-                                }
-                              }}
-                              role="button"
-                              tabIndex={0}
-                            />
-                          ),
-                        }}
-                        i18nKey={tweak.riskDescription}
-                      />
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-                {isUnsupported && tweak.minOsBuild && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <TweakMetaPill className="text-amber-700 dark:text-amber-300">
-                        <CircleAlert className="size-3.5" />
+              )}
+              {tweak.requiresAction.type === 'restart_pc' && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="inline-flex items-center justify-center text-primary/80 transition-colors hover:text-primary"
+                      type="button"
+                    >
+                      <TweakMetaPill className="text-inherit">
+                        <Power className="size-3.5" />
                       </TweakMetaPill>
-                    </TooltipTrigger>
-                    <TooltipContent sideOffset={8}>
-                      {t('tweaks.requires.windowsBuild', { build: minBuild })}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-              {tweak.control.kind === 'toggle' && (
-                <div className="flex shrink-0 items-center gap-3 self-start">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    {isEnabled ? t('tweaks.states.enabled') : t('tweaks.states.disabled')}
-                  </span>
-                  <Switch
-                    aria-label={t(tweak.name)}
-                    checked={isEnabled}
-                    disabled={isPending || isUnsupported}
-                    onCheckedChange={onToggle}
-                  />
-                </div>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={8}>
+                    {t('tweaks.requires.restartPc')}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {tweak.risk !== 'none' && tweak.riskDescription && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      className="inline-flex items-center justify-center text-amber-700 transition-colors hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
+                      type="button"
+                    >
+                      <TweakMetaPill className="text-inherit">
+                        <TriangleAlert className="size-3.5" />
+                      </TweakMetaPill>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-80 text-pretty whitespace-pre-line" sideOffset={8}>
+                    <Trans
+                      components={{
+                        code: (
+                          <code
+                            aria-label={t('tweaks.actions.copyCommand')}
+                            className="mt-2 block w-fit cursor-copy rounded-[4px] border border-border/70 bg-accent px-2 py-1 font-mono text-xs font-medium text-foreground shadow-xs transition-colors hover:bg-accent/80"
+                            onClick={() => {
+                              void handleCopyRiskCommand()
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault()
+                                void handleCopyRiskCommand()
+                              }
+                            }}
+                            role="button"
+                            tabIndex={0}
+                          />
+                        ),
+                      }}
+                      i18nKey={tweak.riskDescription}
+                    />
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {isUnsupported && tweak.minOsBuild && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <TweakMetaPill className="text-amber-700 dark:text-amber-300">
+                      <CircleAlert className="size-3.5" />
+                    </TweakMetaPill>
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={8}>
+                    {t('tweaks.requires.windowsBuild', { build: minBuild })}
+                  </TooltipContent>
+                </Tooltip>
               )}
             </div>
-            <p className="text-sm leading-6 text-muted-foreground">
-              {t(tweak.shortDescription)}
-            </p>
+            {tweak.control.kind === 'toggle' && (
+              <div className="flex shrink-0 items-center gap-3 self-start">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {isEnabled ? t('tweaks.states.enabled') : t('tweaks.states.disabled')}
+                </span>
+                <Switch
+                  aria-label={t(tweak.name)}
+                  checked={isEnabled}
+                  disabled={isPending || isUnsupported}
+                  onCheckedChange={onToggle}
+                />
+              </div>
+            )}
           </div>
+          <p className="text-xs leading-5 text-muted-foreground">
+            {t(tweak.shortDescription)}
+          </p>
         </div>
       </div>
     </article>

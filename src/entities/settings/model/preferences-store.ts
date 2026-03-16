@@ -1,6 +1,7 @@
 import type { AppLanguage, AppTheme } from '@/shared/config/app'
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
+import { tauriStateStorage } from '@/entities/settings/lib/tauri-storage'
 import {
   DEFAULT_LANGUAGE,
   DEFAULT_THEME,
@@ -58,6 +59,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       },
       name: 'winsentials-preferences',
       onRehydrateStorage: () => state => state?.setHasHydrated(true),
+      storage: createJSONStorage(() => tauriStateStorage),
       version: 4,
     },
   ),

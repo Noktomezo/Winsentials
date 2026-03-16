@@ -9,15 +9,12 @@ import {
   Outlet,
   useRouterState,
 } from '@tanstack/react-router'
-import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
 import { SmoothScrollArea } from '@/shared/ui/smooth-scroll-area'
 import { AppSidebar } from '@/widgets/sidebar/ui/app-sidebar'
 import { AppTitlebar } from '@/widgets/titlebar/ui/app-titlebar'
-
-const ENTER_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
 
 function AppShellLayout({
   pathname,
@@ -28,6 +25,10 @@ function AppShellLayout({
 }) {
   const { t } = useTranslation()
   const pageHeader = {
+    '/behaviour': {
+      description: t('behaviour.description'),
+      title: t('behaviour.title'),
+    },
     '/appearance': {
       description: t('appearance.description'),
       title: t('appearance.title'),
@@ -35,6 +36,10 @@ function AppShellLayout({
     '/security': {
       description: t('security.description'),
       title: t('security.title'),
+    },
+    '/network': {
+      description: t('network.description'),
+      title: t('network.title'),
     },
     '/settings': {
       description: t('settings.description'),
@@ -55,33 +60,21 @@ function AppShellLayout({
         <AppSidebar />
         <SidebarInset className="min-h-0 overflow-hidden rounded-tl-[8px] border-t border-l border-border/70 bg-background">
           <SmoothScrollArea className="h-full" ref={scrollAreaRef}>
-            <AnimatePresence initial={false} mode="wait">
-              <motion.div
-                animate={{ filter: 'blur(0px)' }}
-                className="flex min-h-full flex-col"
-                exit={{ filter: 'blur(0px)' }}
-                initial={{ filter: 'blur(10px)' }}
-                key={pathname}
-                transition={{
-                  duration: 0.26,
-                  ease: ENTER_EASE,
-                }}
-              >
-                <header className="p-4 md:p-6">
-                  <div className="space-y-0.5">
-                    <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                      {pageHeader.title}
-                    </h1>
-                    {pageHeader.description && (
-                      <p className="text-xs leading-5 text-muted-foreground">
-                        {pageHeader.description}
-                      </p>
-                    )}
-                  </div>
-                </header>
-                <Outlet />
-              </motion.div>
-            </AnimatePresence>
+            <div className="page-shell-transition flex min-h-full flex-col">
+              <header className="p-4 md:p-6">
+                <div className="space-y-0.5">
+                  <h1 className="text-xl font-semibold tracking-tight text-foreground">
+                    {pageHeader.title}
+                  </h1>
+                  {pageHeader.description && (
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      {pageHeader.description}
+                    </p>
+                  )}
+                </div>
+              </header>
+              <Outlet />
+            </div>
           </SmoothScrollArea>
         </SidebarInset>
       </div>
@@ -125,6 +118,15 @@ const appearanceRoute = createRoute({
   ),
 })
 
+const behaviourRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'behaviour',
+  component: lazyRouteComponent(
+    () => import('@/pages/behaviour/ui/behaviour-page'),
+    'BehaviourPage',
+  ),
+})
+
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'settings',
@@ -143,10 +145,21 @@ const securityRoute = createRoute({
   ),
 })
 
+const networkRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'network',
+  component: lazyRouteComponent(
+    () => import('@/pages/network/ui/network-page'),
+    'NetworkPage',
+  ),
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  behaviourRoute,
   appearanceRoute,
   securityRoute,
+  networkRoute,
   settingsRoute,
 ])
 

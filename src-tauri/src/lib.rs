@@ -5,6 +5,7 @@ pub mod shell;
 pub mod tweaks;
 
 use error::AppError;
+use rayon::prelude::*;
 use tauri::{AppHandle, Manager, Runtime};
 use tweaks::{get_windows_build_number, tweak_by_id, tweaks_for_category};
 #[cfg(target_os = "windows")]
@@ -52,7 +53,7 @@ fn set_chrome_acrylic<R: Runtime>(
 #[tauri::command]
 fn tweaks_by_category(category: String) -> Result<Vec<tweaks::TweakMeta>, AppError> {
     tweaks_for_category(&category)
-        .into_iter()
+        .into_par_iter()
         .map(|tweak| {
             let mut meta = tweak.meta().clone();
             meta.current_value = tweak.get_status()?.current_value;
@@ -100,7 +101,8 @@ fn get_windows_build() -> Result<tweaks::WindowsVersion, AppError> {
 pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_opener::init());
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_store::Builder::default().build());
 
     #[cfg(target_os = "windows")]
     let builder = builder

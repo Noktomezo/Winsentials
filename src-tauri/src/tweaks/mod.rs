@@ -1,4 +1,6 @@
 pub mod appearance;
+pub mod behaviour;
+pub mod network;
 pub mod performance;
 pub mod privacy;
 pub mod security;
@@ -98,6 +100,8 @@ const WINDOWS_VERSION_KEY: RegKey = RegKey {
 pub fn all_tweaks() -> Vec<Box<dyn Tweak>> {
     let mut tweaks = Vec::new();
     tweaks.extend(appearance::tweaks());
+    tweaks.extend(behaviour::tweaks());
+    tweaks.extend(network::tweaks());
     tweaks.extend(performance::tweaks());
     tweaks.extend(privacy::tweaks());
     tweaks.extend(security::tweaks());

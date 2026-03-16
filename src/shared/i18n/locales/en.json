@@ -3,6 +3,32 @@
     "description": "Windows optimization toolbox",
     "title": "Winsentials"
   },
+  "behaviour": {
+    "description": "Adjust how Windows behaves in everyday interactions, including default shell actions and navigation flows.",
+    "title": "Behaviour",
+    "tweaks": {
+      "openExplorerToThisPc": {
+        "detailDescription": "Changes File Explorer's default launch target. Instead of opening Home with recent files and favorites, it will open directly to the view that lists drives and network locations.",
+        "name": "Open File Explorer to This PC",
+        "shortDescription": "Open This PC instead of Home when File Explorer starts."
+      },
+      "disable8dot3NameCreation": {
+        "detailDescription": "Stops Windows from generating legacy DOS-style 8.3 short names for newly created files and folders. This reduces extra filesystem work in directories with many items, but only affects new items going forward; existing short names remain on disk. A restart is required before the change takes full effect.",
+        "name": "Disable 8.3 Name Creation",
+        "shortDescription": "Disables creation of DOS-style short file names for new files."
+      },
+      "disableRecentItemsAndFrequentPlaces": {
+        "detailDescription": "Turns off Windows tracking for recent files and frequently used folders. After enabling it, recent and frequent items stop appearing in File Explorer Quick Access, the Start menu's recommendations, and the Run dialog history.",
+        "name": "Disable Recent Items and Frequent Places",
+        "shortDescription": "Disables recent file history and frequent folder tracking across Windows."
+      },
+      "unlockLockScreenTimeoutSetting": {
+        "detailDescription": "Reveals the hidden power setting that controls how long the display stays on while Windows is locked. After enabling it, open Control Panel > Power Options > Change plan settings > Change advanced power settings and adjust Display > Console lock display off timeout to the number of minutes you want.",
+        "name": "Unlock Lock Screen Timeout Setting",
+        "shortDescription": "Shows the hidden lock screen display timeout setting in advanced power options."
+      }
+    }
+  },
   "appearance": {
     "description": "Configure the visual details of Windows, from shell behavior to interface polish.",
     "tweaks": {
@@ -36,11 +62,6 @@
         "name": "Hide \"Network\" in File Explorer",
         "shortDescription": "Removes the Network icon from the left side of File Explorer."
       },
-      "openExplorerToThisPc": {
-        "detailDescription": "Changes File Explorer's default launch target. Instead of opening Home with recent files and favorites, it will open directly to the view that lists drives and network locations.",
-        "name": "Open File Explorer to This PC",
-        "shortDescription": "Open This PC instead of Home when File Explorer starts."
-      },
       "removeShortcutArrows": {
         "detailDescription": "Changes the system shortcut overlay icon to a transparent one.",
         "name": "Remove Shortcut Arrows",
@@ -56,13 +77,44 @@
   },
   "navigation": {
     "appearance": "Appearance",
+    "behaviour": "Behaviour",
+    "network": "Network",
     "security": "Security",
     "settings": "Settings"
+  },
+  "network": {
+    "description": "Configure network adapter behavior, offloading, and TCP stack settings.",
+    "title": "Network",
+    "tweaks": {
+      "enableBbr2": {
+        "detailDescription": "Switches all TCP supplemental templates (Internet, InternetCustom, Datacenter, DatacenterCustom, Compat) from the default CUBIC congestion algorithm to BBR2. BBR2 measures actual available bandwidth instead of reacting to packet loss, which reduces bufferbloat and improves throughput on high-latency or lossy connections. LoopbackLargeMTU is disabled automatically because it is incompatible with BBR2.",
+        "name": "Enable BBR2 Congestion Control",
+        "riskDescription": "BBR2 may behave differently on some ISP networks or VPN tunnels. If you notice unstable connections after enabling, reset this tweak.",
+        "shortDescription": "Replaces CUBIC with BBR2 across all TCP templates for lower latency and better throughput."
+      },
+      "disableQosBandwidthLimit": {
+        "detailDescription": "Windows reserves a portion of your connection for system services by default. This tweak sets the QoS reservation to 0%, allowing browsers, games, and download managers to use 100% of your available bandwidth.",
+        "name": "Disable QoS Bandwidth Limit",
+        "riskDescription": "May slightly affect QoS-aware applications that rely on bandwidth reservation for prioritized traffic.",
+        "shortDescription": "Removes the 20% bandwidth reservation Windows holds back for system services."
+      },
+      "enableNetworkOffloadingRss": {
+        "detailDescription": "Enables Receive Side Scaling (RSS) and TCP Offload, moving network packet processing from the CPU to the network adapter's own controller. This frees up CPU resources and can reduce latency in games or during heavy file transfers. Also applies the change immediately via netsh so no data transfer is interrupted mid-session.",
+        "name": "Enable Network Card Offloading (RSS)",
+        "riskDescription": "Most effective on discrete network adapters (Intel, Realtek, Killer). On very old or cheap integrated adapters the effect is minimal, but the tweak is safe to enable regardless.",
+        "shortDescription": "Offloads network data processing to the network card's own processor."
+      }
+    }
   },
   "security": {
     "description": "Adjust Windows safety prompts, downloaded file handling, and related system checks.",
     "title": "Security",
     "tweaks": {
+      "disableSecurityCenterNotifications": {
+        "detailDescription": "Hides the Windows Security shield tray icon and suppresses toast notifications about antivirus, firewall, and related protection checks. The policy key is created automatically if Windows has not created it yet.",
+        "name": "Disable Security Center Notifications",
+        "shortDescription": "Disables Windows Security notifications and hides its tray icon."
+      },
       "disableOpenFileWarning": {
         "detailDescription": "Prevents adding Zone.Identifier metadata to newly downloaded files. This removes the “Are you sure you want to run this file?” prompt and the need to click Unblock in file properties.",
         "name": "Disable Open File Warning",

@@ -299,20 +299,20 @@ pub struct RestoreReport {
 ```typescript
 // entities/tweak/model/types.ts
 
-export type RiskLevel = "none" | "low" | "medium" | "high";
+export type RiskLevel = 'none' | 'low' | 'medium' | 'high'
 
 export type RequiresAction
-  = | { type: "none" }
-    | { type: "logout" }
-    | { type: "restart_pc" }
-    | { type: "restart_service", serviceName: string }
-    | { type: "restart_app", appName: string }
-    | { type: "restart_device", deviceName: string };
+  = | { type: 'none' }
+    | { type: 'logout' }
+    | { type: 'restart_pc' }
+    | { type: 'restart_service', serviceName: string }
+    | { type: 'restart_app', appName: string }
+    | { type: 'restart_device', deviceName: string }
 
 export type TweakControlType
-  = | { kind: "toggle" }
-    | { kind: "radio", options: TweakOption[] }
-    | { kind: "dropdown", options: TweakOption[] };
+  = | { kind: 'toggle' }
+    | { kind: 'radio', options: TweakOption[] }
+    | { kind: 'dropdown', options: TweakOption[] }
 
 export interface TweakOption {
   label: string // friendly label shown to user

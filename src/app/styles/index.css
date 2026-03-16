@@ -38,6 +38,7 @@
 }
 
 :root {
+  view-transition-name: none;
   --background: oklch(0.965 0.006 210);
   --foreground: oklch(0.29 0.018 220);
   --card: oklch(0.992 0.003 210);
@@ -135,6 +136,39 @@ body {
   margin: 0;
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+.page-shell-transition {
+  min-height: 100%;
+  view-transition-name: app-shell-content;
+}
+
+@keyframes winsentials-view-transition-fade-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes winsentials-view-transition-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+::view-transition-old(app-shell-content) {
+  animation: winsentials-view-transition-fade-out 120ms cubic-bezier(0.32, 0, 0.67, 0) both;
+}
+
+::view-transition-new(app-shell-content) {
+  animation: winsentials-view-transition-fade-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .emoji-flag {
