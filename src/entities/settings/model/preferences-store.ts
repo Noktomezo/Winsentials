@@ -1,4 +1,4 @@
-import type { AppLanguage, AppPalette, AppTheme } from '@/shared/config/app'
+import type { AppLanguagePreference, AppPalette, AppTheme } from '@/shared/config/app'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { tauriStateStorage } from '@/entities/settings/lib/tauri-storage'
@@ -10,7 +10,7 @@ import {
 
 interface PersistedPreferencesState {
   chromeAcrylic?: boolean
-  language?: AppLanguage
+  language?: AppLanguagePreference
   palette?: AppPalette
   sidebarAcrylic?: boolean
   theme?: AppTheme | 'acrylic'
@@ -20,14 +20,14 @@ interface PersistedPreferencesState {
 interface PreferencesState {
   chromeAcrylic: boolean
   hasHydrated: boolean
-  language: AppLanguage
+  language: AppLanguagePreference
   palette: AppPalette
   updateChecksEnabled: boolean
   setChromeAcrylic: (enabled: boolean) => void
   setHasHydrated: (hasHydrated: boolean) => void
   setPalette: (palette: AppPalette) => void
   theme: AppTheme
-  setLanguage: (language: AppLanguage) => void
+  setLanguage: (language: AppLanguagePreference) => void
   setTheme: (theme: AppTheme) => void
   setUpdateChecksEnabled: (enabled: boolean) => void
 }

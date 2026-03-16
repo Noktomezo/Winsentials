@@ -237,16 +237,31 @@ export function TweakCard({
               )}
             </div>
             {tweak.control.kind === 'toggle' && (
-              <div className="flex shrink-0 items-center gap-3 self-start">
-                <span className="text-xs font-medium text-muted-foreground">
-                  {isEnabled ? t('tweaks.states.enabled') : t('tweaks.states.disabled')}
-                </span>
+              <div className="flex shrink-0 items-center gap-2 self-start">
                 <Switch
                   aria-label={t(tweak.name)}
                   checked={isEnabled}
                   disabled={isPending || isUnsupported}
                   onCheckedChange={onToggle}
                 />
+                {isEnabled && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        aria-label={t('tweaks.actions.resetToDefault')}
+                        className="inline-flex cursor-pointer items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
+                        disabled={isPending}
+                        onClick={() => onToggle(false)}
+                        type="button"
+                      >
+                        <RotateCcw className="size-3.5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={8}>
+                      {t('tweaks.actions.resetToDefault')}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
             )}
           </div>

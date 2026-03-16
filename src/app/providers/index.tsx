@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { usePreferencesStore } from '@/entities/settings/model/preferences-store'
 import { AppUpdaterEffect } from '@/features/app-updater/ui/app-updater-effect'
 import i18n from '@/shared/i18n'
+import { resolveLanguage } from '@/shared/i18n/resolve-language'
 import { syncChromeAcrylic } from '@/shared/lib/desktop/window-effects'
 import { useResolvedTheme } from '@/shared/lib/hooks/use-resolved-theme'
 import { toast } from '@/shared/lib/toast'
@@ -68,8 +69,10 @@ function AppPreferencesEffect({ resolvedTheme }: { resolvedTheme: ResolvedTheme 
       return
     }
 
-    if (i18n.language !== language) {
-      void i18n.changeLanguage(language)
+    const resolved = resolveLanguage(language)
+
+    if (i18n.language !== resolved) {
+      void i18n.changeLanguage(resolved)
     }
   }, [hasHydrated, language])
 

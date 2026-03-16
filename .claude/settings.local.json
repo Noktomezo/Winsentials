@@ -15,7 +15,14 @@
       "Bash(cargo check:*)",
       "Bash(git add:*)",
       "Bash(xargs head:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "mcp__shadcn__get_add_command_for_items",
+      "WebSearch",
+      "mcp__plugin_context-mode_context-mode__ctx_execute_file"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "shadcn"
+  ]
 }

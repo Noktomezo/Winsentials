@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { Leaf, Waves } from 'lucide-react'
+import { Anchor, Leaf, Waves } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { usePreferencesStore } from '@/entities/settings/model/preferences-store'
 import { APP_PALETTES } from '@/shared/config/app'
@@ -7,6 +7,7 @@ import { cn } from '@/shared/lib/utils'
 import { RadioGroup, RadioGroupItem } from '@/shared/ui/radio-group'
 
 const PALETTE_ICONS: Record<(typeof APP_PALETTES)[number], LucideIcon> = {
+  abyss: Anchor,
   flexoki: Leaf,
   teal: Waves,
 }

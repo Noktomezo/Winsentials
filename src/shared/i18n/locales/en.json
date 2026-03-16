@@ -75,9 +75,49 @@
     },
     "title": "Appearance"
   },
+  "home": {
+    "activation": "Activation",
+    "activationStatus": {
+      "activated": "Activated",
+      "grace_period": "Grace Period",
+      "not_activated": "Not Activated",
+      "unknown": "Unknown"
+    },
+    "architecture": "Architecture",
+    "baseFreq": "Base clock",
+    "biosVendor": "BIOS vendor",
+    "biosVersion": "BIOS version",
+    "build": "Build",
+    "cores": "Cores",
+    "coresValue": "{{physical}}C / {{logical}}T",
+    "cpu": "Processor",
+    "description": "Hardware and operating system summary.",
+    "gpu": "Graphics",
+    "hostname": "Hostname",
+    "manufacturer": "Manufacturer",
+    "model": "Model",
+    "motherboard": "Motherboard",
+    "network": "Network",
+    "noActivity": "No active interfaces",
+    "os": "Operating System",
+    "product": "Product",
+    "ram": "Memory",
+    "slots": "Slots",
+    "speed": "Speed",
+    "storage": "Storage",
+    "title": "Overview",
+    "total": "Total",
+    "usage": "Usage",
+    "usedOf": "{{used}} / {{total}}",
+    "username": "User",
+    "vendor": "Vendor",
+    "version": "Version",
+    "vram": "VRAM"
+  },
   "navigation": {
     "appearance": "Appearance",
     "behaviour": "Behaviour",
+    "home": "Home",
     "network": "Network",
     "security": "Security",
     "settings": "Settings"
@@ -139,14 +179,17 @@
     "language": "Language",
     "languageDescription": "Choose the interface language.",
     "languages": {
+      "system": "System",
       "en": "English",
-      "ru": "Russian"
+      "ru": "Russian",
+      "ua": "Українська"
     },
     "notNow": "Not now",
     "mode": "Mode",
     "palette": "Color palette",
     "paletteDescription": "Choose the color palette applied to the selected theme.",
     "palettes": {
+      "abyss": "Abyss",
       "flexoki": "Flexoki",
       "teal": "Teal"
     },
@@ -168,9 +211,50 @@
     "updates": "Updates",
     "updatesDescription": "Manage how the app checks for updates."
   },
+  "cpu": {
+    "core": "Core",
+    "description": "Detailed processor usage and per-core breakdown.",
+    "info": "Processor info",
+    "perCore": "Per-core usage",
+    "title": "Processor"
+  },
+  "gpu": {
+    "adapter": "Graphics adapter",
+    "description": "Graphics adapter info and live utilization.",
+    "load": "GPU Load",
+    "noLiveData": "Live stats unavailable for this adapter. Only NVIDIA GPUs are supported.",
+    "temperature": "Temperature",
+    "title": "Graphics"
+  },
+  "networkStats": {
+    "adapters": "Adapters",
+    "description": "Network adapter traffic and live throughput.",
+    "download": "Download",
+    "title": "Network",
+    "upload": "Upload"
+  },
+  "ram": {
+    "description": "Memory capacity, speed, and live usage.",
+    "info": "Memory info",
+    "title": "Memory"
+  },
+  "storage": {
+    "available": "Available",
+    "description": "Disk capacity and filesystem details.",
+    "device": "Device",
+    "diskInfo": "Disk info",
+    "diskLabel": "Disk {{index}}",
+    "fileSystem": "File system",
+    "mountPoint": "Mount point",
+    "notFound": "Disk not found.",
+    "title": "Storage",
+    "type": "Type",
+    "used": "Used"
+  },
   "tweaks": {
     "actions": {
       "copyCommand": "Copy command",
+      "resetToDefault": "Reset to default",
       "later": "Later",
       "restartNow": "Restart now",
       "retry": "Retry",

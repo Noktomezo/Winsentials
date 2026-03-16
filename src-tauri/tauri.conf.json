@@ -25,7 +25,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'"
+      "csp": null
     }
   },
   "plugins": {

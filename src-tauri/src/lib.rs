@@ -2,11 +2,12 @@ pub mod backup;
 pub mod error;
 pub mod registry;
 pub mod shell;
+pub mod system_info;
 pub mod tweaks;
 
 use error::AppError;
 use rayon::prelude::*;
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Manager, Runtime, State};
 use tweaks::{get_windows_build_number, tweak_by_id, tweaks_for_category};
 #[cfg(target_os = "windows")]
 use window_vibrancy::{apply_acrylic, clear_acrylic};
@@ -97,6 +98,52 @@ fn get_windows_build() -> Result<tweaks::WindowsVersion, AppError> {
     get_windows_build_number()
 }
 
+#[tauri::command]
+fn get_static_system_info(
+    state: State<system_info::SystemInfoState>,
+) -> Result<system_info::StaticSystemInfo, AppError> {
+    let mut cache = state
+        .static_cache
+        .lock()
+        .map_err(|_| AppError::message("static_cache lock poisoned"))?;
+    if let Some(info) = cache.as_ref() {
+        return Ok(info.clone());
+    }
+    let system = state
+        .system
+        .lock()
+        .map_err(|_| AppError::message("system lock poisoned"))?;
+    let info = system_info::gather_static_info(&system)?;
+    *cache = Some(info.clone());
+    Ok(info)
+}
+
+#[tauri::command]
+fn get_live_system_info(
+    state: State<system_info::SystemInfoState>,
+) -> Result<system_info::LiveSystemInfo, AppError> {
+    let mut system = state
+        .system
+        .lock()
+        .map_err(|_| AppError::message("system lock poisoned"))?;
+    let mut networks = state
+        .networks
+        .lock()
+        .map_err(|_| AppError::message("networks lock poisoned"))?;
+    let mut prev_net = state
+        .prev_net
+        .lock()
+        .map_err(|_| AppError::message("prev_net lock poisoned"))?;
+
+    Ok(system_info::gather_live_info(
+        &mut system,
+        &mut networks,
+        &mut prev_net,
+        #[cfg(target_os = "windows")]
+        &state.nvml,
+    ))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
@@ -119,6 +166,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build());
 
     builder
+        .manage(system_info::SystemInfoState::new())
         .invoke_handler(tauri::generate_handler![
             greet,
             set_chrome_acrylic,
@@ -127,7 +175,9 @@ pub fn run() {
             tweak_reset,
             tweak_status,
             tweak_extra,
-            get_windows_build
+            get_windows_build,
+            get_static_system_info,
+            get_live_system_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

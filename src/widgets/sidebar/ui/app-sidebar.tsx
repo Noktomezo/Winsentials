@@ -1,17 +1,18 @@
 import type { MouseEvent } from 'react'
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
-import { FolderCog, Network, Palette, Settings2, Shield } from 'lucide-react'
+import { FolderCog, House, Network, Palette, Settings2, Shield } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/shared/ui/sidebar'
 
-type SidebarRoute = '/appearance' | '/behaviour' | '/security' | '/network' | '/settings'
+type SidebarRoute = '/home' | '/appearance' | '/behaviour' | '/security' | '/network' | '/settings'
 
 export function AppSidebar() {
   const { t } = useTranslation()
@@ -54,6 +55,24 @@ export function AppSidebar() {
         } as React.CSSProperties
       }
     >
+      <SidebarHeader className="border-b border-sidebar-border/70 p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="cursor-pointer"
+              isActive={pathname === '/home'}
+              onClick={event => handleMenuClick(event, '/home')}
+              onFocus={() => handlePointerIntent('/home')}
+              onMouseEnter={() => handlePointerIntent('/home')}
+              tooltip={t('navigation.home')}
+              type="button"
+            >
+              <House />
+              <span>{t('navigation.home')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>
           <SidebarMenuItem>

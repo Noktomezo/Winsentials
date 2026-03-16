@@ -25,6 +25,10 @@ function AppShellLayout({
 }) {
   const { t } = useTranslation()
   const pageHeader = {
+    '/home': {
+      description: t('home.description'),
+      title: t('home.title'),
+    },
     '/behaviour': {
       description: t('behaviour.description'),
       title: t('behaviour.title'),
@@ -45,10 +49,35 @@ function AppShellLayout({
       description: t('settings.description'),
       title: t('settings.title'),
     },
-  }[pathname] ?? {
-    description: '',
-    title: t('app.title'),
-  }
+    '/cpu': {
+      description: t('cpu.description'),
+      title: t('cpu.title'),
+    },
+    '/ram': {
+      description: t('ram.description'),
+      title: t('ram.title'),
+    },
+    '/gpu': {
+      description: t('gpu.description'),
+      title: t('gpu.title'),
+    },
+    '/storage': {
+      description: t('storage.description'),
+      title: t('storage.title'),
+    },
+    '/network-stats': {
+      description: t('networkStats.description'),
+      title: t('networkStats.title'),
+    },
+  }[pathname] ?? (pathname.startsWith('/storage/')
+    ? {
+        description: t('storage.description'),
+        title: pathname.replace('/storage/', '').toUpperCase(),
+      }
+    : {
+        description: '',
+        title: t('app.title'),
+      })
 
   return (
     <SidebarProvider
@@ -61,7 +90,7 @@ function AppShellLayout({
         <SidebarInset className="min-h-0 overflow-hidden rounded-tl-[8px] border-t border-l border-border/70 bg-background">
           <SmoothScrollArea className="h-full" ref={scrollAreaRef}>
             <div key={pathname} className="page-shell-transition flex min-h-full flex-col">
-              <header className="p-4 md:p-6">
+              <header className="px-4 pt-4 pb-3 md:px-6 md:pt-4 md:pb-4">
                 <div className="space-y-0.5">
                   <h1 className="text-xl font-semibold tracking-tight text-foreground">
                     {pageHeader.title}
@@ -96,7 +125,7 @@ function AppShell() {
 }
 
 function IndexRedirect() {
-  return <Navigate to="/appearance" replace />
+  return <Navigate to="/home" replace />
 }
 
 const rootRoute = createRootRoute({
@@ -107,6 +136,15 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: IndexRedirect,
+})
+
+const homeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'home',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/home-page'),
+    'HomePage',
+  ),
 })
 
 const appearanceRoute = createRoute({
@@ -154,13 +192,74 @@ const networkRoute = createRoute({
   ),
 })
 
+const cpuRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'cpu',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/cpu-page'),
+    'CpuPage',
+  ),
+})
+
+const ramRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'ram',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/ram-page'),
+    'RamPage',
+  ),
+})
+
+const gpuRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'gpu',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/gpu-page'),
+    'GpuPage',
+  ),
+})
+
+const storageRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'storage',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/storage-page'),
+    'StoragePage',
+  ),
+})
+
+const diskDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'storage/$disk',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/disk-detail-page'),
+    'DiskDetailPage',
+  ),
+})
+
+const networkStatsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'network-stats',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/network-stats-page'),
+    'NetworkStatsPage',
+  ),
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  homeRoute,
   behaviourRoute,
   appearanceRoute,
   securityRoute,
   networkRoute,
   settingsRoute,
+  cpuRoute,
+  ramRoute,
+  gpuRoute,
+  storageRoute,
+  diskDetailRoute,
+  networkStatsRoute,
 ])
 
 export const router = createRouter({
