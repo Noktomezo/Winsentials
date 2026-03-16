@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(git checkout:*)",
+      "Bash(bun install:*)",
+      "Bash(cd src-tauri:*)",
+      "mcp__plugin_context-mode_context-mode__ctx_batch_execute",
+      "mcp__plugin_context-mode_context-mode__ctx_fetch_and_index",
+      "mcp__plugin_context-mode_context-mode__ctx_search",
+      "mcp__plugin_context-mode_context-mode__ctx_execute",
+      "Bash(bun run:*)",
+      "Bash(cd:*)",
+      "Bash(cargo check:*)",
+      "Bash(git add:*)",
+      "Bash(xargs head:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}

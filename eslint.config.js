@@ -6,6 +6,7 @@ export default antfu({
   react: true,
   ignores: [
     'AGENTS.md',
+    'CLAUDE.md',
     'coverage',
     'dist',
     'node_modules',
