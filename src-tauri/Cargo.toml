@@ -1,6 +1,6 @@
 [package]
 name = "winsentials"
-version = "0.1.1"
+version = "0.1.2"
 description = "A sleek Windows 10/11 tweaker"
 authors = [ "Noktomezo <noktomezo@duck.com>" ]
 edition = "2024"
