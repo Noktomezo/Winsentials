@@ -100,6 +100,15 @@ fn get_windows_build() -> Result<tweaks::WindowsVersion, AppError> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
+        .plugin(
+            tauri_plugin_prevent_default::Builder::new()
+                .with_flags(if cfg!(debug_assertions) {
+                    tauri_plugin_prevent_default::Flags::empty()
+                } else {
+                    tauri_plugin_prevent_default::Flags::all()
+                })
+                .build(),
+        )
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build());

@@ -83,7 +83,6 @@ impl DisableRecentItemsAndFrequentPlacesTweak {
 
         Ok((track_docs, show_frequent, show_recent))
     }
-
 }
 
 impl Tweak for DisableRecentItemsAndFrequentPlacesTweak {
