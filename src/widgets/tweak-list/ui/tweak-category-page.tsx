@@ -95,11 +95,27 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
         })
       }
 
+      if (tweak.requiresAction.type === 'restart_app' && tweak.requiresAction.appName !== 'Explorer') {
+        toast.message(t('tweaks.prompts.restartApp', { appName: tweak.requiresAction.appName }))
+      }
+
       if (tweak.requiresAction.type === 'restart_pc') {
         toast.message(t('tweaks.prompts.restartPc'), {
           description: t('tweaks.prompts.restartPcDescription'),
           duration: 7000,
         })
+      }
+
+      if (tweak.requiresAction.type === 'logout') {
+        toast.message(t('tweaks.prompts.logout'))
+      }
+
+      if (tweak.requiresAction.type === 'restart_service') {
+        toast.message(t('tweaks.prompts.restartService', { serviceName: tweak.requiresAction.serviceName }))
+      }
+
+      if (tweak.requiresAction.type === 'restart_device') {
+        toast.message(t('tweaks.prompts.restartDevice', { deviceName: tweak.requiresAction.deviceName }))
       }
     }
     catch (applyError) {

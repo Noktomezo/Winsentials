@@ -131,6 +131,7 @@
   "settings": {
     "acrylic": "Acrylic material",
     "acrylicDescription": "Apply Windows acrylic to the sidebar and titlebar.",
+    "acrylicInfo": "More info about acrylic material",
     "acrylicUnavailable": "Acrylic material is unavailable on this system.",
     "disableUpdateChecks": "Disable update checks",
     "description": "Adjust application language and theme preferences.",
@@ -186,9 +187,13 @@
       "restartApp": "Failed to restart the required app."
     },
     "prompts": {
+      "logout": "A logout is required to apply this tweak.",
+      "restartApp": "Restart {{appName}} to apply this tweak.",
+      "restartDevice": "Restart {{deviceName}} to apply this tweak.",
       "restartExplorer": "Explorer needs to restart to apply this tweak.",
       "restartPc": "A full PC restart is required to apply this tweak.",
-      "restartPcDescription": "The change will only take effect after a full Windows reboot."
+      "restartPcDescription": "The change will only take effect after a full Windows reboot.",
+      "restartService": "Restart the {{serviceName}} service to apply this tweak."
     },
     "requires": {
       "restartExplorer": "Requires Explorer restart",

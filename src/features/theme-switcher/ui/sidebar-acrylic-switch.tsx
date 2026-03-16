@@ -16,7 +16,7 @@ export function ChromeAcrylicSwitch() {
         {t('settings.acrylic')}
         <Tooltip>
           <TooltipTrigger asChild>
-            <button className="inline-flex items-center justify-center text-muted-foreground transition-colors hover:text-accent-foreground" type="button">
+            <button aria-label={t('settings.acrylicInfo')} className="inline-flex items-center justify-center text-muted-foreground transition-colors hover:text-accent-foreground" type="button">
               <Info className="size-3.5" />
             </button>
           </TooltipTrigger>

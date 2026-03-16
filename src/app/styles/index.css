@@ -214,6 +214,7 @@ body {
 
 .page-shell-transition {
   min-height: 100%;
+  animation: page-enter 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes page-enter {
@@ -226,10 +227,6 @@ body {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.page-shell-transition {
-  animation: page-enter 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {

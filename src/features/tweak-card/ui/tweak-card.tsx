@@ -52,7 +52,7 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   disable_security_center_notifications: BellOff,
   disable_open_file_warning: ShieldOff,
   disable_user_account_control: Shield,
-  enable_bbr2: Zap,
+  enable_bbr2_congestion_control: Zap,
   disable_qos_bandwidth_limit: Gauge,
   enable_network_offloading_rss: Cpu,
 }

@@ -3,8 +3,8 @@ import { Download, Languages, Leaf, MoonStar, Palette } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { UpdateCheckSwitch } from '@/features/app-updater/ui/update-check-switch'
 import { LanguageSelect } from '@/features/language-switcher/ui/language-select'
-import { ChromeAcrylicSwitch } from '@/features/theme-switcher/ui/sidebar-acrylic-switch'
 import { PaletteSelect } from '@/features/theme-switcher/ui/palette-select'
+import { ChromeAcrylicSwitch } from '@/features/theme-switcher/ui/sidebar-acrylic-switch'
 import { ThemeSelect } from '@/features/theme-switcher/ui/theme-select'
 
 function SettingsSection({
