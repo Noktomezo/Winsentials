@@ -1,0 +1,59 @@
+fail_fast: true
+repos:
+  # Basic checks (files, YAML, TOML, JSON, etc.)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        stages: [pre-commit]
+
+      - id: end-of-file-fixer
+        stages: [pre-commit]
+
+      - id: check-yaml
+        stages: [pre-commit]
+
+      - id: check-toml
+        files: ^src-tauri/
+        stages: [pre-commit]
+
+      - id: check-json
+        stages: [pre-commit]
+
+  # Typos check
+  - repo: https://github.com/crate-ci/typos
+    rev: v1.30.2
+    hooks:
+      - id: typos
+        stages: [pre-commit]
+
+  # Rust (src-tauri)
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: cargo fmt --manifest-path=src-tauri/Cargo.toml --
+        language: system
+        pass_filenames: false
+        files: ^src-tauri/
+        stages: [pre-commit]
+
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: cargo clippy --manifest-path=src-tauri/Cargo.toml --all-targets --all-features -- -D warnings
+        language: system
+        pass_filenames: false
+        files: ^src-tauri/
+        stages: [pre-commit]
+
+  # Frontend (Eslint)
+  - repo: local
+    hooks:
+      - id: eslint
+        name: eslint
+        entry: bunx eslint --fix
+        language: system
+        pass_filenames: true
+        files: \.(js|ts|jsx|tsx|vue|svelte|json|md|yaml|yml)$
+        exclude: (?:^|/)(?:node_modules|dist|src-tauri)/
+        stages: [pre-commit]
