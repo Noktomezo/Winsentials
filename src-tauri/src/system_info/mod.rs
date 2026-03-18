@@ -536,12 +536,14 @@ fn gather_wmi_hardware() -> (MotherboardInfo, RamInfo, String, CpuExtra) {
             speed_mhz: None,
             used_slots: 0,
             total_slots: 0,
+            form_factor: None,
         },
         "unknown".to_string(),
         CpuExtra::default(),
     )
 }
 
+#[cfg(target_os = "windows")]
 fn wmi_str(row: &mut HashMap<String, wmi::Variant>, key: &str) -> String {
     match row.remove(key) {
         Some(wmi::Variant::String(s)) => s.trim().to_string(),
@@ -769,6 +771,11 @@ pub fn gather_static_info(system: &System) -> Result<StaticSystemInfo, AppError>
 }
 
 // ─── GPU live (DXGI + PDH + D3DKMT) ──────────────────────────────────────────
+
+#[cfg(not(target_os = "windows"))]
+fn enumerate_dxgi_adapters() -> Vec<(String, u32, i32, u64, u64)> {
+    vec![]
+}
 
 /// Returns `(name, luid_low, luid_high, vram_bytes, raw_dedicated_vram_bytes)` for each adapter.
 ///

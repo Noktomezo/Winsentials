@@ -93,7 +93,7 @@
     "biosVersion": "Версия BIOS",
     "build": "Сборка",
     "cores": "Ядра",
-    "coresValue": "{{physical}}Я / {{logical}}П",
+    "coresValue": "{{physical}} яд. / {{logical}} пот.",
     "cpu": "ЦП",
     "description": "Информация об оборудовании и операционной системе.",
     "gpu": "Графика",

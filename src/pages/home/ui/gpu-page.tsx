@@ -170,10 +170,8 @@ export function GpuPage() {
             : 0
           pushHistory(histDedicatedRef, dedicatedPct, setHistDedicated)
 
-          const sharedBudget = entry.vramTotalMb > 0 ? entry.vramTotalMb : entry.vramSharedMb
-          const sharedPct = sharedBudget > 0
-            ? Math.min(100, (entry.vramSharedMb / sharedBudget) * 100)
-            : 0
+          const sharedBudget = entry.vramSharedMb
+          const sharedPct = sharedBudget > 0 ? 100 : 0
           pushHistory(histSharedRef, sharedPct, setHistShared)
         })
         .catch(console.error)
@@ -243,11 +241,11 @@ export function GpuPage() {
           )}
 
           {/* Shared memory — full width */}
-          {sharedUsedMb > 0 && gpu.vramTotalMb > 0 && (
+          {sharedUsedMb > 0 && (
             <MemChart
               data={histShared}
               label={t('gpu.shared')}
-              totalMb={gpu.vramTotalMb}
+              totalMb={sharedUsedMb}
               usedMb={sharedUsedMb}
             />
           )}
@@ -274,7 +272,7 @@ export function GpuPage() {
           )}
 
           {gpu.vramTotalMb > 0 && (
-            <Row label={t('gpu.totalRam')} value={formatMbPair(dedicatedUsedMb, dedicatedBudgetMb)} />
+            <Row label={t('gpu.totalRam')} value={formatMbPair(live?.vramUsedMb ?? 0, gpu.vramTotalMb)} />
           )}
 
           {dedicatedBudgetMb > 0 && (
@@ -322,10 +320,7 @@ export function GpuPage() {
     ? staticInfo.gpus[gpuIndex] ? [{ gpu: staticInfo.gpus[gpuIndex], idx: gpuIndex }] : []
     : staticInfo.gpus.map((g, idx) => ({ gpu: g, idx }))
 
-  const primaryIdx = gpuIndex ?? 0
-  const primaryLive = liveInfo?.gpus[primaryIdx]
-  const hasAnyLiveData = (primaryLive ? gpuUsage(primaryLive) : 0) > 0
-    || primaryLive?.temperatureC != null
+  const hasAnyLiveData = liveInfo?.gpus.some(g => gpuUsage(g) > 0 || g.temperatureC != null) ?? false
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">

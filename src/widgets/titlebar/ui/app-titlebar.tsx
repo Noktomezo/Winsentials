@@ -45,11 +45,12 @@ function useBreadcrumbs(): Crumb[] {
     const param = pathname.replace('/storage/', '')
     const idx = staticInfo?.disks.findIndex(d => d.mountPoint.replace(/[:\\/]/g, '') === param) ?? -1
     const disk = idx >= 0 ? staticInfo!.disks[idx] : null
-    const label = idx >= 0 ? t('storage.diskLabel', { index: idx }) : param.toUpperCase()
+    const base = idx >= 0 ? t('storage.diskLabel', { index: idx }) : param.toUpperCase()
     const sub = disk
       ? disk.volumeLabel ? `${mountLabel(disk.mountPoint)} - ${disk.volumeLabel}` : mountLabel(disk.mountPoint)
       : null
-    return [home, { label: sub ? `${label} (${sub})` : label }]
+    const label = sub ? `${base} (${sub})` : base
+    return [home, { label }]
   }
 
   const topLevel: Record<string, string> = {
