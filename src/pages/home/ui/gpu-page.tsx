@@ -11,6 +11,8 @@ function gpuUsage(gpu: GpuInfo): number {
   return Math.max(
     gpu.util3d,
     gpu.utilCopy,
+    gpu.utilEncode,
+    gpu.utilDecode,
     gpu.utilHighPriority3d,
     gpu.utilHighPriorityCompute,
   )
@@ -133,6 +135,20 @@ export function GpuPage() {
   useEffect(() => {
     if (!staticInfo) { return }
 
+    // Reset history when the selected GPU changes
+    hist3DRef.current = []
+    histCopyRef.current = []
+    histHP3DRef.current = []
+    histHPComputeRef.current = []
+    histDedicatedRef.current = []
+    histSharedRef.current = []
+    setHist3D([])
+    setHistCopy([])
+    setHistHP3D([])
+    setHistHPCompute([])
+    setHistDedicated([])
+    setHistShared([])
+
     const tick = () => {
       getLiveSystemInfo()
         .then((live) => {
@@ -196,10 +212,7 @@ export function GpuPage() {
 
     const dedicatedBudgetMb = live ? live.vramTotalMb - live.vramReservedMb : 0
     const dedicatedUsedMb = live?.vramUsedMb ?? 0
-
-    // total GPU RAM = dedicated used + shared used shown against vramTotalMb
-    const totalUsedMb = (live?.vramUsedMb ?? 0) + (live?.vramSharedMb ?? 0)
-    const totalBudgetMb = gpu.vramTotalMb
+    const sharedUsedMb = live?.vramSharedMb ?? 0
 
     const usage = live ? gpuUsage(live) : 0
 
@@ -230,12 +243,12 @@ export function GpuPage() {
           )}
 
           {/* Shared memory — full width */}
-          {(live?.vramSharedMb ?? 0) > 0 && totalBudgetMb > 0 && (
+          {sharedUsedMb > 0 && gpu.vramTotalMb > 0 && (
             <MemChart
               data={histShared}
               label={t('gpu.shared')}
-              totalMb={totalBudgetMb}
-              usedMb={live?.vramSharedMb ?? 0}
+              totalMb={gpu.vramTotalMb}
+              usedMb={sharedUsedMb}
             />
           )}
         </div>
@@ -260,8 +273,8 @@ export function GpuPage() {
             />
           )}
 
-          {totalBudgetMb > 0 && (
-            <Row label={t('gpu.totalRam')} value={formatMbPair(totalUsedMb, totalBudgetMb)} />
+          {gpu.vramTotalMb > 0 && (
+            <Row label={t('gpu.totalRam')} value={formatMbPair(dedicatedUsedMb, dedicatedBudgetMb)} />
           )}
 
           {dedicatedBudgetMb > 0 && (

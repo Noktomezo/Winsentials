@@ -281,6 +281,7 @@
     "cached": "Cached",
     "pagedPool": "Paged pool",
     "nonPagedPool": "Non-paged pool",
+    "other": "Other",
     "formFactor": "Form factor",
     "hardwareReserved": "Hardware reserved",
     "compressed": "compressed"

@@ -3,16 +3,9 @@ import { useParams } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
+import { mountLabel, mountToParam } from '@/shared/lib/mount-utils'
 import { Progress } from '@/shared/ui/progress'
 import { Skeleton } from '@/shared/ui/skeleton'
-
-function mountToParam(mountPoint: string): string {
-  return mountPoint.replace(/[:\\/]/g, '')
-}
-
-export function mountLabel(mountPoint: string): string {
-  return mountPoint.replace(/[:\\/]/g, '').toUpperCase() || mountPoint
-}
 
 function formatBytes(bytes: number, decimals = 1): string {
   if (bytes === 0) { return '0 B' }

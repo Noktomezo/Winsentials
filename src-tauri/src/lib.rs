@@ -181,11 +181,14 @@ pub fn run() {
                     }
                     let state = handle.state::<system_info::SystemInfoState>();
 
-                    let (gpus, base_freq_mhz) = {
-                        let cache = state.static_cache.lock().unwrap();
-                        let gpus = cache.as_ref().map(|s| s.gpus.clone()).unwrap_or_default();
-                        let base_freq = cache.as_ref().map(|s| s.cpu.base_freq_mhz).unwrap_or(0);
-                        (gpus, base_freq)
+                    let (gpus, base_freq_mhz) = match state.static_cache.lock() {
+                        Ok(cache) => {
+                            let gpus = cache.as_ref().map(|s| s.gpus.clone()).unwrap_or_default();
+                            let base_freq =
+                                cache.as_ref().map(|s| s.cpu.base_freq_mhz).unwrap_or(0);
+                            (gpus, base_freq)
+                        }
+                        Err(_) => (vec![], 0),
                     };
 
                     let live = system_info::gather_live_info(
@@ -205,7 +208,9 @@ pub fn run() {
                         base_freq_mhz,
                     );
 
-                    *state.live_cache.lock().unwrap() = Some(live);
+                    if let Ok(mut cache) = state.live_cache.lock() {
+                        *cache = Some(live);
+                    }
 
                     let elapsed = start.elapsed();
                     if let Some(remaining) = Duration::from_millis(1000).checked_sub(elapsed) {

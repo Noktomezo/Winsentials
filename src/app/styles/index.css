@@ -517,3 +517,10 @@ body {
   0%, 15%   { transform: translateX(0); }
   85%, 100% { transform: translateX(var(--marquee-offset, 0px)); }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  [style*="marquee-bounce"] {
+    animation: none !important;
+    transform: none !important;
+  }
+}

@@ -1250,6 +1250,7 @@ fn get_ram_perf() -> (u64, u64, u64, u64, u64, u64) {
 /// Works on Windows 10 1607+ where the Memory Compression feature is present.
 #[cfg(target_os = "windows")]
 fn get_compressed_memory_bytes() -> u64 {
+    use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::System::Diagnostics::ToolHelp::{
         CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW,
         TH32CS_SNAPPROCESS,
@@ -1270,10 +1271,12 @@ fn get_compressed_memory_bytes() -> u64 {
         entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
 
         if Process32FirstW(snap, &mut entry).is_err() {
+            let _ = CloseHandle(snap);
             return 0;
         }
 
         let target: Vec<u16> = "MemCompression".encode_utf16().collect();
+        let mut result: u64 = 0;
 
         loop {
             let name_len = entry
@@ -1284,7 +1287,6 @@ fn get_compressed_memory_bytes() -> u64 {
             let name = &entry.szExeFile[..name_len];
 
             if name == target.as_slice() {
-                // Try with PROCESS_QUERY_INFORMATION first, fall back to LIMITED
                 let handle = OpenProcess(
                     PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
                     false,
@@ -1303,26 +1305,25 @@ fn get_compressed_memory_bytes() -> u64 {
                     mem.cb = std::mem::size_of::<PROCESS_MEMORY_COUNTERS_EX>() as u32;
                     if K32GetProcessMemoryInfo(
                         handle,
-                        // K32GetProcessMemoryInfo accepts *mut PROCESS_MEMORY_COUNTERS;
-                        // pass EX struct cast — same layout prefix, PrivateUsage appended at end.
                         &mut mem as *mut PROCESS_MEMORY_COUNTERS_EX
                             as *mut windows::Win32::System::ProcessStatus::PROCESS_MEMORY_COUNTERS,
                         mem.cb,
                     ) != false
                     {
-                        // PrivateUsage = memory exclusively owned by this process (compressed store).
-                        // WorkingSetSize = resident pages — may be 0 when compressed pages aren't paged in.
-                        return mem.PrivateUsage as u64;
+                        result = mem.PrivateUsage as u64;
                     }
+                    let _ = CloseHandle(handle);
                 }
-                return 0;
+                break;
             }
 
             if Process32NextW(snap, &mut entry).is_err() {
                 break;
             }
         }
-        0
+
+        let _ = CloseHandle(snap);
+        result
     }
 }
 

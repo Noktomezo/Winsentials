@@ -5,7 +5,7 @@ import { ChevronRight, Cpu, HardDrive, Layers, Monitor, Network, Server } from '
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getLiveSystemInfo, getStaticSystemInfo } from '@/entities/system-info/api'
-import { mountLabel } from '@/pages/home/ui/disk-detail-page'
+import { mountLabel } from '@/shared/lib/mount-utils'
 import { Skeleton } from '@/shared/ui/skeleton'
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -367,7 +367,7 @@ export function HomePage() {
               ))}
               <NetworkSummary live={liveInfo} />
               {staticInfo.gpus.map((gpu, i) => (
-                <GpuSummary gpu={gpu} gpuLive={liveInfo?.gpus[i] ?? null} index={i} key={gpu.name} />
+                <GpuSummary gpu={gpu} gpuLive={liveInfo?.gpus[i] ?? null} index={i} key={`gpu-${i}`} />
               ))}
             </div>
           )}

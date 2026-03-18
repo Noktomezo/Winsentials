@@ -5,7 +5,7 @@ import { Minus, X } from 'lucide-react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStaticInfo } from '@/app/use-page-header'
-import { mountLabel } from '@/pages/home/ui/disk-detail-page'
+import { mountLabel } from '@/shared/lib/mount-utils'
 import {
   Breadcrumb,
   BreadcrumbItem,

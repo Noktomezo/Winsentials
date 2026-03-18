@@ -60,7 +60,7 @@ function StripBar({
 
   const segments = [
     { pct: usedPct, color: 'bg-primary', label: t('ram.used'), value: toGb(usedBytes) },
-    { pct: otherPct, color: 'bg-warning/70', label: t('ram.cached'), value: toGb(otherBytes) },
+    { pct: otherPct, color: 'bg-warning/70', label: t('ram.other'), value: toGb(otherBytes) },
     { pct: availablePct, color: 'bg-muted', label: t('ram.available'), value: toGb(availableBytes) },
   ]
 

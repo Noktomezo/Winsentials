@@ -3,7 +3,7 @@ import type { StaticSystemInfo } from '@/entities/system-info/model/types'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
-import { mountLabel } from '@/pages/home/ui/disk-detail-page'
+import { mountLabel } from '@/shared/lib/mount-utils'
 
 export interface PageHeader {
   title: ReactNode
