@@ -6,12 +6,12 @@
   "packageManager": "bun@1.3.10",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "bun run typecheck && vite build",
     "format": "oxlint . --fix && eslint . --fix",
     "lint": "oxlint . && eslint .",
     "preview": "vite preview",
     "tauri": "tauri",
-    "typecheck": "tsc",
+    "typecheck": "tsc --noEmit",
     "prepare": "is-ci || bun --bun prek install",
     "updeps": "bun update --latest --force"
   },

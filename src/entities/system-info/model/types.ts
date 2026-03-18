@@ -14,12 +14,43 @@ export interface CpuInfo {
   physicalCores: number
   logicalCores: number
   baseFreqMhz: number
+  sockets: number
+  virtualization: boolean
+  l1CacheKb: number | null
+  l2CacheKb: number | null
+  l3CacheKb: number | null
+}
+
+export interface GpuProcess {
+  pid: number
+  name: string
+  dedicatedMemMb: number
 }
 
 export interface GpuInfo {
-  model: string
+  index: number
+  name: string
   vendor: string
-  vramBytes: number | null
+  isIntegrated: boolean
+  driverVersion: string | null
+  driverDate: string | null
+  directxVersion: string | null
+  vramTotalMb: number
+  vramUsedMb: number
+  vramSharedMb: number
+  vramReservedMb: number
+  temperatureC: number | null
+  powerW: number | null
+  util3d: number
+  utilCopy: number
+  utilEncode: number
+  utilDecode: number
+  utilHighPriority3d: number
+  utilHighPriorityCompute: number
+  processes: GpuProcess[]
+  pciBus: number | null
+  pciDevice: number | null
+  pciFunction: number | null
 }
 
 export interface MotherboardInfo {
@@ -36,6 +67,7 @@ export interface DiskInfo {
   availableBytes: number
   kind: string
   fileSystem: string
+  volumeLabel: string | null
 }
 
 export interface RamInfo {
@@ -43,6 +75,7 @@ export interface RamInfo {
   speedMhz: number | null
   usedSlots: number
   totalSlots: number
+  formFactor: string | null
 }
 
 export interface StaticSystemInfo {
@@ -60,16 +93,22 @@ export interface NetworkIfaceStats {
   txBytesPerSec: number
 }
 
-export interface GpuLiveStats {
-  index: number
-  usagePercent: number | null
-  temperatureCelsius: number | null
-}
-
 export interface LiveSystemInfo {
   cpuUsagePercent: number
   cpuPerCore: number[]
+  cpuCurrentFreqMhz: number
+  cpuProcessCount: number
+  cpuThreadCount: number
+  cpuHandleCount: number
+  cpuUptimeSecs: number
   ramUsedBytes: number
+  ramAvailableBytes: number
+  ramCommittedBytes: number
+  ramCommitLimitBytes: number
+  ramCachedBytes: number
+  ramCompressedBytes: number
+  ramPagedPoolBytes: number
+  ramNonpagedPoolBytes: number
   network: NetworkIfaceStats[]
-  gpuLive: GpuLiveStats[]
+  gpus: GpuInfo[]
 }

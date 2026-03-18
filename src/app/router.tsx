@@ -10,11 +10,11 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import { useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
 import { SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
 import { SmoothScrollArea } from '@/shared/ui/smooth-scroll-area'
 import { AppSidebar } from '@/widgets/sidebar/ui/app-sidebar'
 import { AppTitlebar } from '@/widgets/titlebar/ui/app-titlebar'
+import { usePageHeader } from './use-page-header'
 
 function AppShellLayout({
   pathname,
@@ -23,61 +23,7 @@ function AppShellLayout({
   pathname: string
   scrollAreaRef: RefObject<SmoothScrollAreaHandle | null>
 }) {
-  const { t } = useTranslation()
-  const pageHeader = {
-    '/home': {
-      description: t('home.description'),
-      title: t('home.title'),
-    },
-    '/behaviour': {
-      description: t('behaviour.description'),
-      title: t('behaviour.title'),
-    },
-    '/appearance': {
-      description: t('appearance.description'),
-      title: t('appearance.title'),
-    },
-    '/security': {
-      description: t('security.description'),
-      title: t('security.title'),
-    },
-    '/network': {
-      description: t('network.description'),
-      title: t('network.title'),
-    },
-    '/settings': {
-      description: t('settings.description'),
-      title: t('settings.title'),
-    },
-    '/cpu': {
-      description: t('cpu.description'),
-      title: t('cpu.title'),
-    },
-    '/ram': {
-      description: t('ram.description'),
-      title: t('ram.title'),
-    },
-    '/gpu': {
-      description: t('gpu.description'),
-      title: t('gpu.title'),
-    },
-    '/storage': {
-      description: t('storage.description'),
-      title: t('storage.title'),
-    },
-    '/network-stats': {
-      description: t('networkStats.description'),
-      title: t('networkStats.title'),
-    },
-  }[pathname] ?? (pathname.startsWith('/storage/')
-    ? {
-        description: t('storage.description'),
-        title: pathname.replace('/storage/', '').toUpperCase(),
-      }
-    : {
-        description: '',
-        title: t('app.title'),
-      })
+  const pageHeader = usePageHeader(pathname)
 
   return (
     <SidebarProvider
@@ -219,16 +165,16 @@ const gpuRoute = createRoute({
   ),
 })
 
-const storageRoute = createRoute({
+const gpuDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: 'storage',
+  path: 'gpu/$gpuIndex',
   component: lazyRouteComponent(
-    () => import('@/pages/home/ui/storage-page'),
-    'StoragePage',
+    () => import('@/pages/home/ui/gpu-page'),
+    'GpuPage',
   ),
 })
 
-const diskDetailRoute = createRoute({
+const diskRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'storage/$disk',
   component: lazyRouteComponent(
@@ -257,8 +203,8 @@ const routeTree = rootRoute.addChildren([
   cpuRoute,
   ramRoute,
   gpuRoute,
-  storageRoute,
-  diskDetailRoute,
+  gpuDetailRoute,
+  diskRoute,
   networkStatsRoute,
 ])
 

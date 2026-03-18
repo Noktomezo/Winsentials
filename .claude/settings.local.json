@@ -18,7 +18,13 @@
       "Bash(git push:*)",
       "mcp__shadcn__get_add_command_for_items",
       "WebSearch",
-      "mcp__plugin_context-mode_context-mode__ctx_execute_file"
+      "mcp__plugin_context-mode_context-mode__ctx_execute_file",
+      "mcp__plugin_context-mode_context-mode__ctx_stats",
+      "mcp__plugin_context-mode_context-mode__ctx_upgrade",
+      "Bash(node:*)",
+      "Bash(npx tsc:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo clippy:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

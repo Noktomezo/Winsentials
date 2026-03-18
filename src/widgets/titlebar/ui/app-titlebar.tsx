@@ -4,6 +4,8 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Minus, X } from 'lucide-react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStaticInfo } from '@/app/use-page-header'
+import { mountLabel } from '@/pages/home/ui/disk-detail-page'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -20,23 +22,34 @@ interface Crumb { label: string, href?: string }
 function useBreadcrumbs(): Crumb[] {
   const pathname = useRouterState({ select: s => s.location.pathname })
   const { t } = useTranslation()
+  const staticInfo = useStaticInfo()
 
   const home: Crumb = { label: t('home.title'), href: '/home' }
 
   if (pathname === '/home') { return [{ label: t('home.title') }] }
 
   const hardwareMap: Record<string, string> = {
-    '/cpu': t('cpu.title'),
-    '/ram': t('ram.title'),
-    '/gpu': t('gpu.title'),
-    '/storage': t('storage.title'),
-    '/network-stats': t('networkStats.title'),
+    '/cpu': t('home.cpu'),
+    '/ram': t('home.ram'),
+    '/gpu': t('home.gpu'),
+    '/network-stats': t('home.network'),
   }
   if (hardwareMap[pathname]) { return [home, { label: hardwareMap[pathname] }] }
 
+  if (pathname.startsWith('/gpu/')) {
+    const idx = Number(pathname.replace('/gpu/', ''))
+    return [home, { label: t('gpu.gpuLabel', { index: idx }) }]
+  }
+
   if (pathname.startsWith('/storage/')) {
-    const disk = `${pathname.replace('/storage/', '').toUpperCase()}:`
-    return [home, { label: t('storage.title'), href: '/storage' }, { label: disk }]
+    const param = pathname.replace('/storage/', '')
+    const idx = staticInfo?.disks.findIndex(d => d.mountPoint.replace(/[:\\/]/g, '') === param) ?? -1
+    const disk = idx >= 0 ? staticInfo!.disks[idx] : null
+    const label = idx >= 0 ? t('storage.diskLabel', { index: idx }) : param.toUpperCase()
+    const sub = disk
+      ? disk.volumeLabel ? `${mountLabel(disk.mountPoint)} - ${disk.volumeLabel}` : mountLabel(disk.mountPoint)
+      : null
+    return [home, { label: sub ? `${label} (${sub})` : label }]
   }
 
   const topLevel: Record<string, string> = {
@@ -69,6 +82,7 @@ function TitlebarButton({
 export function AppTitlebar() {
   const win = getCurrentWindow()
   const crumbs = useBreadcrumbs()
+  const { t } = useTranslation()
 
   const handleMinimize = async () => {
     await win.minimize()
@@ -126,7 +140,7 @@ export function AppTitlebar() {
 
       <div className="flex items-center gap-1">
         <TitlebarButton
-          aria-label="Minimize window"
+          aria-label={t('titlebar.minimize')}
           className="h-8 w-8 cursor-pointer rounded-md p-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           onClick={() => {
             void handleMinimize()
@@ -135,7 +149,7 @@ export function AppTitlebar() {
           <Minus className="size-4" />
         </TitlebarButton>
         <TitlebarButton
-          aria-label="Close window"
+          aria-label={t('titlebar.close')}
           className="h-8 w-8 cursor-pointer rounded-md p-0 text-sidebar-foreground hover:bg-destructive hover:text-white focus-visible:ring-destructive/20 dark:hover:bg-destructive/60 dark:focus-visible:ring-destructive/40"
           onClick={() => {
             void handleClose()

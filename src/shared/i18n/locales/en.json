@@ -3,6 +3,10 @@
     "description": "Windows optimization toolbox",
     "title": "Winsentials"
   },
+  "titlebar": {
+    "minimize": "Minimize window",
+    "close": "Close window"
+  },
   "behaviour": {
     "description": "Adjust how Windows behaves in everyday interactions, including default shell actions and navigation flows.",
     "title": "Behaviour",
@@ -181,8 +185,7 @@
     "languages": {
       "system": "System",
       "en": "English",
-      "ru": "Russian",
-      "ua": "Українська"
+      "ru": "Russian"
     },
     "notNow": "Not now",
     "mode": "Mode",
@@ -213,18 +216,50 @@
   },
   "cpu": {
     "core": "Core",
+    "currentFreq": "Current clock",
     "description": "Detailed processor usage and per-core breakdown.",
+    "handles": "Handles",
     "info": "Processor info",
+    "l1Cache": "L1 cache",
+    "l2Cache": "L2 cache",
+    "l3Cache": "L3 cache",
     "perCore": "Per-core usage",
-    "title": "Processor"
+    "processes": "Processes",
+    "logicalCores": "Logical cores",
+    "sockets": "Sockets",
+    "threads": "Threads",
+    "title": "Processor",
+    "uptime": "System uptime",
+    "virtualization": "Virtualization",
+    "virtualizationOff": "Disabled",
+    "virtualizationOn": "Enabled"
   },
   "gpu": {
     "adapter": "Graphics adapter",
+    "gpuLabel": "GPU {{index}}",
     "description": "Graphics adapter info and live utilization.",
     "load": "GPU Load",
     "noLiveData": "Live stats unavailable for this adapter. Only NVIDIA GPUs are supported.",
     "temperature": "Temperature",
-    "title": "Graphics"
+    "title": "Graphics",
+    "dedicated": "Dedicated memory",
+    "shared": "Shared memory",
+    "hwReserved": "HW reserved",
+    "driverVersion": "Driver version",
+    "driverDate": "Driver date",
+    "directx": "DirectX",
+    "totalRam": "GPU RAM",
+    "pciLocation": "Location",
+    "pciBus": "PCI bus",
+    "pciDevice": "device",
+    "pciFunction": "function",
+    "engine3D": "3D",
+    "engineCopy": "Copy",
+    "engineHP3D": "High Priority 3D",
+    "engineHPCompute": "High Priority Compute",
+    "engineVideoEncode": "Video Encode",
+    "engineVideoDecode": "Video Decode",
+    "engineCompute": "Compute"
   },
   "networkStats": {
     "adapters": "Adapters",
@@ -236,7 +271,19 @@
   "ram": {
     "description": "Memory capacity, speed, and live usage.",
     "info": "Memory info",
-    "title": "Memory"
+    "title": "Memory",
+    "memoryUsage": "Memory usage",
+    "seconds": "{{n}} sec",
+    "peak": "peak",
+    "used": "In use",
+    "available": "Available",
+    "committed": "Committed",
+    "cached": "Cached",
+    "pagedPool": "Paged pool",
+    "nonPagedPool": "Non-paged pool",
+    "formFactor": "Form factor",
+    "hardwareReserved": "Hardware reserved",
+    "compressed": "compressed"
   },
   "storage": {
     "available": "Available",
@@ -248,6 +295,7 @@
     "mountPoint": "Mount point",
     "notFound": "Disk not found.",
     "title": "Storage",
+    "volumeLabel": "Volume label",
     "type": "Type",
     "used": "Used"
   },

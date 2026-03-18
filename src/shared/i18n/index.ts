@@ -3,7 +3,6 @@ import { initReactI18next } from 'react-i18next'
 import { DEFAULT_LANGUAGE } from '@/shared/config/app'
 import en from './locales/en.json'
 import ru from './locales/ru.json'
-import ua from './locales/ua.json'
 
 void i18n.use(initReactI18next).init({
   resources: {
@@ -12,9 +11,6 @@ void i18n.use(initReactI18next).init({
     },
     ru: {
       translation: ru,
-    },
-    ua: {
-      translation: ua,
     },
   },
   fallbackLng: DEFAULT_LANGUAGE,

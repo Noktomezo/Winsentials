@@ -14,8 +14,8 @@
     "windows": [
       {
         "title": "Winsentials",
-        "width": 900,
-        "height": 700,
+        "width": 925,
+        "height": 715,
         "resizable": false,
         "maximizable": false,
         "transparent": true,

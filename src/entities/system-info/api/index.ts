@@ -2,7 +2,6 @@ import type {
   CpuInfo,
   DiskInfo,
   GpuInfo,
-  GpuLiveStats,
   LiveSystemInfo,
   MotherboardInfo,
   NetworkIfaceStats,
@@ -30,12 +29,37 @@ interface BackendCpuInfo {
   physical_cores: number
   logical_cores: number
   base_freq_mhz: number
+  sockets: number
+  virtualization: boolean
+  l1_cache_kb: number | null
+  l2_cache_kb: number | null
+  l3_cache_kb: number | null
 }
 
 interface BackendGpuInfo {
-  model: string
+  index: number
+  name: string
   vendor: string
-  vram_bytes: number | null
+  is_integrated: boolean
+  driver_version: string | null
+  driver_date: string | null
+  directx_version: string | null
+  vram_total_mb: number
+  vram_used_mb: number
+  vram_shared_mb: number
+  vram_reserved_mb: number
+  temperature_c: number | null
+  power_w: number | null
+  util_3d: number
+  util_copy: number
+  util_encode: number
+  util_decode: number
+  util_high_priority_3d: number
+  util_high_priority_compute: number
+  processes: Array<{ pid: number, name: string, dedicated_mem_mb: number }>
+  pci_bus: number | null
+  pci_device: number | null
+  pci_function: number | null
 }
 
 interface BackendMotherboardInfo {
@@ -52,6 +76,7 @@ interface BackendDiskInfo {
   available_bytes: number
   kind: string
   file_system: string
+  volume_label: string | null
 }
 
 interface BackendRamInfo {
@@ -59,6 +84,7 @@ interface BackendRamInfo {
   speed_mhz: number | null
   used_slots: number
   total_slots: number
+  form_factor: string | null
 }
 
 interface BackendStaticSystemInfo {
@@ -76,18 +102,24 @@ interface BackendNetworkIfaceStats {
   tx_bytes_per_sec: number
 }
 
-interface BackendGpuLiveStats {
-  index: number
-  usage_percent: number | null
-  temperature_celsius: number | null
-}
-
 interface BackendLiveSystemInfo {
   cpu_usage_percent: number
   cpu_per_core: number[]
+  cpu_current_freq_mhz: number
+  cpu_process_count: number
+  cpu_thread_count: number
+  cpu_handle_count: number
+  cpu_uptime_secs: number
   ram_used_bytes: number
+  ram_available_bytes: number
+  ram_committed_bytes: number
+  ram_commit_limit_bytes: number
+  ram_cached_bytes: number
+  ram_compressed_bytes: number
+  ram_paged_pool_bytes: number
+  ram_nonpaged_pool_bytes: number
   network: BackendNetworkIfaceStats[]
-  gpu_live: BackendGpuLiveStats[]
+  gpus: BackendGpuInfo[]
 }
 
 // ─── Mappers ─────────────────────────────────────────────────────────────────
@@ -111,11 +143,40 @@ function mapCpu(c: BackendCpuInfo): CpuInfo {
     physicalCores: c.physical_cores,
     logicalCores: c.logical_cores,
     baseFreqMhz: c.base_freq_mhz,
+    sockets: c.sockets,
+    virtualization: c.virtualization,
+    l1CacheKb: c.l1_cache_kb,
+    l2CacheKb: c.l2_cache_kb,
+    l3CacheKb: c.l3_cache_kb,
   }
 }
 
 function mapGpu(g: BackendGpuInfo): GpuInfo {
-  return { model: g.model, vendor: g.vendor, vramBytes: g.vram_bytes }
+  return {
+    index: g.index,
+    name: g.name,
+    vendor: g.vendor,
+    isIntegrated: g.is_integrated,
+    driverVersion: g.driver_version,
+    driverDate: g.driver_date,
+    directxVersion: g.directx_version,
+    vramTotalMb: g.vram_total_mb,
+    vramUsedMb: g.vram_used_mb,
+    vramSharedMb: g.vram_shared_mb,
+    vramReservedMb: g.vram_reserved_mb,
+    temperatureC: g.temperature_c,
+    powerW: g.power_w,
+    util3d: g.util_3d,
+    utilCopy: g.util_copy,
+    utilEncode: g.util_encode,
+    utilDecode: g.util_decode,
+    utilHighPriority3d: g.util_high_priority_3d,
+    utilHighPriorityCompute: g.util_high_priority_compute,
+    processes: g.processes.map(p => ({ pid: p.pid, name: p.name, dedicatedMemMb: p.dedicated_mem_mb })),
+    pciBus: g.pci_bus,
+    pciDevice: g.pci_device,
+    pciFunction: g.pci_function,
+  }
 }
 
 function mapMotherboard(m: BackendMotherboardInfo): MotherboardInfo {
@@ -135,6 +196,7 @@ function mapDisk(d: BackendDiskInfo): DiskInfo {
     availableBytes: d.available_bytes,
     kind: d.kind,
     fileSystem: d.file_system,
+    volumeLabel: d.volume_label,
   }
 }
 
@@ -144,6 +206,7 @@ function mapRam(r: BackendRamInfo): RamInfo {
     speedMhz: r.speed_mhz,
     usedSlots: r.used_slots,
     totalSlots: r.total_slots,
+    formFactor: r.form_factor,
   }
 }
 
@@ -166,21 +229,25 @@ function mapNetwork(n: BackendNetworkIfaceStats): NetworkIfaceStats {
   }
 }
 
-function mapGpuLive(g: BackendGpuLiveStats): GpuLiveStats {
-  return {
-    index: g.index,
-    usagePercent: g.usage_percent,
-    temperatureCelsius: g.temperature_celsius,
-  }
-}
-
 function mapLive(raw: BackendLiveSystemInfo): LiveSystemInfo {
   return {
     cpuUsagePercent: raw.cpu_usage_percent,
     cpuPerCore: raw.cpu_per_core,
+    cpuCurrentFreqMhz: raw.cpu_current_freq_mhz,
+    cpuProcessCount: raw.cpu_process_count,
+    cpuThreadCount: raw.cpu_thread_count,
+    cpuHandleCount: raw.cpu_handle_count,
+    cpuUptimeSecs: raw.cpu_uptime_secs,
     ramUsedBytes: raw.ram_used_bytes,
+    ramAvailableBytes: raw.ram_available_bytes,
+    ramCommittedBytes: raw.ram_committed_bytes,
+    ramCommitLimitBytes: raw.ram_commit_limit_bytes,
+    ramCachedBytes: raw.ram_cached_bytes,
+    ramCompressedBytes: raw.ram_compressed_bytes,
+    ramPagedPoolBytes: raw.ram_paged_pool_bytes,
+    ramNonpagedPoolBytes: raw.ram_nonpaged_pool_bytes,
     network: raw.network.map(mapNetwork),
-    gpuLive: raw.gpu_live.map(mapGpuLive),
+    gpus: raw.gpus.map(mapGpu),
   }
 }
 

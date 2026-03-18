@@ -15,6 +15,14 @@ const LANGUAGE_FLAGS = {
   en: '🇺🇸',
   ru: '🇷🇺',
   ua: '🇺🇦',
+  zh: '🇨🇳',
+} as const
+
+const LANGUAGE_NATIVE_NAMES = {
+  en: 'English',
+  ru: 'Русский',
+  ua: 'Українська',
+  zh: '中文',
 } as const
 
 export function LanguageSelect({ className }: { className?: string }) {
@@ -35,7 +43,7 @@ export function LanguageSelect({ className }: { className?: string }) {
                 <span className="emoji-flag text-base leading-none">
                   {LANGUAGE_FLAGS[item]}
                 </span>
-                <span>{t(`settings.languages.${item}`)}</span>
+                <span>{item === 'system' ? t('settings.languages.system') : LANGUAGE_NATIVE_NAMES[item]}</span>
               </span>
             </SelectItem>
           ))}

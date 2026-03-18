@@ -44,7 +44,7 @@ impl RegKey {
     pub fn get_binary(&self, name: &str) -> Result<Vec<u8>, AppError> {
         let key = self.open_read()?;
         key.get_raw_value(name)
-            .map(|value| value.bytes)
+            .map(|value| value.bytes.into_owned())
             .map_err(AppError::from)
     }
 
@@ -58,7 +58,7 @@ impl RegKey {
         key.set_raw_value(
             name,
             &RegValue {
-                bytes: value.to_vec(),
+                bytes: value.to_vec().into(),
                 vtype: REG_BINARY,
             },
         )

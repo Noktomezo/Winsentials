@@ -5,7 +5,14 @@ import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { Progress } from '@/shared/ui/progress'
 import { Skeleton } from '@/shared/ui/skeleton'
-import { mountToParam } from './storage-page'
+
+function mountToParam(mountPoint: string): string {
+  return mountPoint.replace(/[:\\/]/g, '')
+}
+
+export function mountLabel(mountPoint: string): string {
+  return mountPoint.replace(/[:\\/]/g, '').toUpperCase() || mountPoint
+}
 
 function formatBytes(bytes: number, decimals = 1): string {
   if (bytes === 0) { return '0 B' }
@@ -73,7 +80,10 @@ export function DiskDetailPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
           <h3 className="text-sm font-medium text-foreground">{t('storage.diskInfo')}</h3>
-          <Row label={t('storage.mountPoint')} value={disk.mountPoint} />
+          <Row label={t('storage.mountPoint')} value={mountLabel(disk.mountPoint)} />
+          {disk.volumeLabel && (
+            <Row label={t('storage.volumeLabel')} value={disk.volumeLabel} />
+          )}
           {disk.name && disk.name !== disk.mountPoint && (
             <Row label={t('storage.device')} value={disk.name} />
           )}

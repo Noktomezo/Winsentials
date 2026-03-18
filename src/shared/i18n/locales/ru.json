@@ -3,6 +3,10 @@
     "description": "Набор инструментов для оптимизации Windows",
     "title": "Winsentials"
   },
+  "titlebar": {
+    "minimize": "Свернуть окно",
+    "close": "Закрыть окно"
+  },
   "behaviour": {
     "description": "Настройка повседневного поведения Windows: действий оболочки по умолчанию и навигационных сценариев.",
     "title": "Поведение",
@@ -90,7 +94,7 @@
     "build": "Сборка",
     "cores": "Ядра",
     "coresValue": "{{physical}}Я / {{logical}}П",
-    "cpu": "Процессор",
+    "cpu": "ЦП",
     "description": "Информация об оборудовании и операционной системе.",
     "gpu": "Графика",
     "hostname": "Имя компьютера",
@@ -101,7 +105,7 @@
     "noActivity": "Нет активных интерфейсов",
     "os": "Операционная система",
     "product": "Продукт",
-    "ram": "Оперативная память",
+    "ram": "ОЗУ",
     "slots": "Слоты",
     "speed": "Частота",
     "storage": "Накопители",
@@ -181,8 +185,7 @@
     "languages": {
       "system": "Системный",
       "en": "English",
-      "ru": "Русский",
-      "ua": "Українська"
+      "ru": "Русский"
     },
     "notNow": "Не сейчас",
     "mode": "Режим",
@@ -213,18 +216,50 @@
   },
   "cpu": {
     "core": "Ядро",
+    "currentFreq": "Текущая частота",
     "description": "Детальная загрузка процессора и нагрузка по ядрам.",
+    "handles": "Дескрипторы",
     "info": "Информация о процессоре",
+    "l1Cache": "Кэш L1",
+    "l2Cache": "Кэш L2",
+    "l3Cache": "Кэш L3",
     "perCore": "Нагрузка по ядрам",
-    "title": "Процессор"
+    "processes": "Процессы",
+    "logicalCores": "Логических ядер",
+    "sockets": "Сокетов",
+    "threads": "Потоки",
+    "title": "Процессор",
+    "uptime": "Время работы",
+    "virtualization": "Виртуализация",
+    "virtualizationOff": "Выключена",
+    "virtualizationOn": "Включена"
   },
   "gpu": {
     "adapter": "Видеоадаптер",
+    "gpuLabel": "ГП {{index}}",
     "description": "Информация о видеоадаптере и нагрузка в реальном времени.",
     "load": "Нагрузка GPU",
     "noLiveData": "Мониторинг в реальном времени недоступен для этого адаптера. Поддерживаются только видеокарты NVIDIA.",
     "temperature": "Температура",
-    "title": "Графика"
+    "title": "Графика",
+    "dedicated": "Выделенная память",
+    "shared": "Общая память",
+    "hwReserved": "Зарез. (hw)",
+    "driverVersion": "Версия драйвера",
+    "driverDate": "Дата драйвера",
+    "directx": "DirectX",
+    "totalRam": "ОЗУ видеокарты",
+    "pciLocation": "Расположение",
+    "pciBus": "шина PCI",
+    "pciDevice": "устройство",
+    "pciFunction": "функция",
+    "engine3D": "3D",
+    "engineCopy": "Копирование",
+    "engineHP3D": "3D высокого приоритета",
+    "engineHPCompute": "Вычисления высокого приоритета",
+    "engineVideoEncode": "Кодирование видео",
+    "engineVideoDecode": "Декодирование видео",
+    "engineCompute": "Вычисления"
   },
   "networkStats": {
     "adapters": "Адаптеры",
@@ -236,7 +271,19 @@
   "ram": {
     "description": "Ёмкость, частота и использование оперативной памяти.",
     "info": "Информация о памяти",
-    "title": "Оперативная память"
+    "title": "Оперативная память",
+    "memoryUsage": "Использование памяти",
+    "seconds": "{{n}} сек",
+    "peak": "макс",
+    "used": "Используется",
+    "available": "Доступно",
+    "committed": "Выделено",
+    "cached": "Кэшировано",
+    "pagedPool": "Выгружаемый пул",
+    "nonPagedPool": "Невыгружаемый пул",
+    "formFactor": "Форм-фактор",
+    "hardwareReserved": "Зарезервировано аппаратно",
+    "compressed": "сжатая"
   },
   "storage": {
     "available": "Доступно",
@@ -248,13 +295,14 @@
     "mountPoint": "Точка монтирования",
     "notFound": "Диск не найден.",
     "title": "Накопители",
+    "volumeLabel": "Имя тома",
     "type": "Тип",
     "used": "Занято"
   },
   "tweaks": {
     "actions": {
       "copyCommand": "Скопировать команду",
-      "resetToDefault": "Сбросить до дефолта",
+      "resetToDefault": "Восстановить по умолчанию",
       "later": "Позже",
       "restartNow": "Перезапустить",
       "retry": "Повторить",

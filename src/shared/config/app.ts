@@ -8,7 +8,7 @@ export const APP_PALETTES = ['teal', 'flexoki', 'abyss'] as const
 export type AppPalette = (typeof APP_PALETTES)[number]
 export const DEFAULT_PALETTE: AppPalette = 'teal'
 
-export const SUPPORTED_LANGUAGES = ['en', 'ru', 'ua'] as const
+export const SUPPORTED_LANGUAGES = ['en', 'ru'] as const
 export type AppLanguage = (typeof SUPPORTED_LANGUAGES)[number]
 
 export const LANGUAGE_PREFERENCES = ['system', ...SUPPORTED_LANGUAGES] as const

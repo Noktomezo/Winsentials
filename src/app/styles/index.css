@@ -512,3 +512,8 @@ body {
     width: min(22.5rem, calc(100vw - 3rem));
   }
 }
+
+@keyframes marquee-bounce {
+  0%, 15%   { transform: translateX(0); }
+  85%, 100% { transform: translateX(var(--marquee-offset, 0px)); }
+}

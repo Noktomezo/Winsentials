@@ -122,26 +122,12 @@ fn get_static_system_info(
 fn get_live_system_info(
     state: State<system_info::SystemInfoState>,
 ) -> Result<system_info::LiveSystemInfo, AppError> {
-    let mut system = state
-        .system
+    state
+        .live_cache
         .lock()
-        .map_err(|_| AppError::message("system lock poisoned"))?;
-    let mut networks = state
-        .networks
-        .lock()
-        .map_err(|_| AppError::message("networks lock poisoned"))?;
-    let mut prev_net = state
-        .prev_net
-        .lock()
-        .map_err(|_| AppError::message("prev_net lock poisoned"))?;
-
-    Ok(system_info::gather_live_info(
-        &mut system,
-        &mut networks,
-        &mut prev_net,
-        #[cfg(target_os = "windows")]
-        &state.nvml,
-    ))
+        .map_err(|_| AppError::message("live_cache lock poisoned"))?
+        .clone()
+        .ok_or_else(|| AppError::message("live info not yet available"))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -167,6 +153,68 @@ pub fn run() {
 
     builder
         .manage(system_info::SystemInfoState::new())
+        .setup(|app| {
+            use std::time::{Duration, Instant};
+            use sysinfo::{CpuRefreshKind, MemoryRefreshKind, Networks, RefreshKind, System};
+
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                let mut bg_system = System::new_with_specifics(
+                    RefreshKind::nothing()
+                        .with_cpu(CpuRefreshKind::everything())
+                        .with_memory(MemoryRefreshKind::everything()),
+                );
+                let mut bg_networks = Networks::new_with_refreshed_list();
+                let mut bg_prev_net: Option<std::collections::HashMap<String, (u64, u64)>> = None;
+
+                #[cfg(target_os = "windows")]
+                let mut pdh = system_info::pdh_open_gpu_query();
+                #[cfg(target_os = "windows")]
+                let cpu_pdh = system_info::pdh_open_cpu_perf_query();
+
+                loop {
+                    let start = Instant::now();
+
+                    #[cfg(target_os = "windows")]
+                    if pdh.is_none() {
+                        pdh = system_info::pdh_open_gpu_query();
+                    }
+                    let state = handle.state::<system_info::SystemInfoState>();
+
+                    let (gpus, base_freq_mhz) = {
+                        let cache = state.static_cache.lock().unwrap();
+                        let gpus = cache.as_ref().map(|s| s.gpus.clone()).unwrap_or_default();
+                        let base_freq = cache.as_ref().map(|s| s.cpu.base_freq_mhz).unwrap_or(0);
+                        (gpus, base_freq)
+                    };
+
+                    let live = system_info::gather_live_info(
+                        &mut bg_system,
+                        &mut bg_networks,
+                        &mut bg_prev_net,
+                        &gpus,
+                        #[cfg(target_os = "windows")]
+                        pdh.map(|p| p.0).unwrap_or(0),
+                        #[cfg(target_os = "windows")]
+                        pdh.map(|p| p.1).unwrap_or(0),
+                        #[cfg(target_os = "windows")]
+                        cpu_pdh.map(|p| p.0).unwrap_or(0),
+                        #[cfg(target_os = "windows")]
+                        cpu_pdh.map(|p| p.1).unwrap_or(0),
+                        #[cfg(target_os = "windows")]
+                        base_freq_mhz,
+                    );
+
+                    *state.live_cache.lock().unwrap() = Some(live);
+
+                    let elapsed = start.elapsed();
+                    if let Some(remaining) = Duration::from_millis(1000).checked_sub(elapsed) {
+                        std::thread::sleep(remaining);
+                    }
+                }
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             greet,
             set_chrome_acrylic,
