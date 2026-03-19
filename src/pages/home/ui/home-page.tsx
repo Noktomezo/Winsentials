@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { useLiveHome } from '@/entities/system-info/model/live-system-store'
 import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
+import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { mountLabel, networkAdapterToParam } from '@/shared/lib/mount-utils'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
@@ -393,9 +394,9 @@ export function HomePage() {
       })
   }
 
-  useEffect(() => {
+  useMountEffect(() => {
     loadStaticInfo()
-  }, [])
+  })
 
   const networkCards = staticInfo
     ? mergeVisibleNetworkAdapters(staticInfo.networkAdapters, liveInfo)
