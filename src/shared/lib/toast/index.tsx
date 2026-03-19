@@ -24,12 +24,12 @@ export const toast = {
       duration: options.duration ?? 8000,
       action: {
         label: options.action.label as string,
-        onClick: options.action.onClick,
+        onClick: () => { void options.action.onClick() },
       },
       cancel: options.cancel
         ? {
             label: options.cancel.label as string,
-            onClick: options.cancel.onClick,
+            onClick: () => { void options.cancel!.onClick?.() },
           }
         : undefined,
     })
