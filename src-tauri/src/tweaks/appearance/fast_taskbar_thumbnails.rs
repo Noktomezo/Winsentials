@@ -1,6 +1,6 @@
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
-use crate::shell::restart_explorer;
+use crate::shell::set_mouse_hover_time;
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
 
 const ENABLED_VALUE: &str = "enabled";
@@ -40,9 +40,7 @@ impl FastTaskbarThumbnailsTweak {
                 recommended_value: DISABLED_VALUE.into(),
                 risk: RiskLevel::None,
                 risk_description: None,
-                requires_action: RequiresAction::RestartApp {
-                    app_name: "Explorer".into(),
-                },
+                requires_action: RequiresAction::None,
                 min_os_build: Some(10240),
                 min_os_ubr: None,
             },
@@ -69,7 +67,10 @@ impl Tweak for FastTaskbarThumbnailsTweak {
 
     fn apply(&self, value: &str) -> Result<(), AppError> {
         match value {
-            ENABLED_VALUE => MOUSE_KEY.set_string("MouseHoverTime", FAST_HOVER_TIME),
+            ENABLED_VALUE => {
+                MOUSE_KEY.set_string("MouseHoverTime", FAST_HOVER_TIME)?;
+                set_mouse_hover_time(100)
+            }
             DISABLED_VALUE => self.reset(),
             _ => Err(AppError::message(format!(
                 "unsupported value `{value}` for {}",
@@ -79,7 +80,8 @@ impl Tweak for FastTaskbarThumbnailsTweak {
     }
 
     fn reset(&self) -> Result<(), AppError> {
-        MOUSE_KEY.set_string("MouseHoverTime", DEFAULT_HOVER_TIME)
+        MOUSE_KEY.set_string("MouseHoverTime", DEFAULT_HOVER_TIME)?;
+        set_mouse_hover_time(400)
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {
@@ -93,9 +95,5 @@ impl Tweak for FastTaskbarThumbnailsTweak {
             },
             is_default: !is_enabled,
         })
-    }
-
-    fn extra(&self) -> Result<(), AppError> {
-        restart_explorer()
     }
 }
