@@ -6,7 +6,7 @@ export interface ChartPoint {
 
 interface LiveChartProps {
   data: ChartPoint[]
-  yDomain?: [number, number]
+  yDomain?: [number | 'auto' | 'dataMin' | 'dataMax', number | 'auto' | 'dataMin' | 'dataMax']
   unit?: string
   height?: number
 }

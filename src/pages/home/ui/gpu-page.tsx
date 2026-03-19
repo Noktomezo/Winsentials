@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { GpuInfo, LiveGpuInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useNavigate, useParams } from '@tanstack/react-router'
@@ -5,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { useLiveGpu } from '@/entities/system-info/model/live-system-store'
+import { Button } from '@/shared/ui/button'
 import { LiveChart } from '@/shared/ui/live-chart'
 import { Skeleton } from '@/shared/ui/skeleton'
 
@@ -19,22 +21,26 @@ function gpuUsage(gpu: Pick<LiveGpuInfo, 'util3d' | 'utilCopy' | 'utilEncode' | 
   )
 }
 
-/** Auto-format MB → GB when >= 1024 */
-function formatMb(mb: number): string {
-  if (mb === 0) { return '0 MB' }
-  if (mb >= 1024) { return `${(mb / 1024).toFixed(1)} GB` }
-  return `${mb} MB`
+function formatMb(mb: number, t: ReturnType<typeof useTranslation>['t']): string {
+  if (mb === 0) { return `0 ${t('format.megabyte')}` }
+  if (mb >= 1024) { return `${(mb / 1024).toFixed(1)} ${t('format.gigabyte')}` }
+  return `${mb} ${t('format.megabyte')}`
 }
 
-function formatMbPair(used: number, total: number): string {
+function formatMbPair(used: number, total: number, t: ReturnType<typeof useTranslation>['t']): string {
   const useGb = total >= 1024
   if (useGb) {
-    return `${(used / 1024).toFixed(1)} / ${(total / 1024).toFixed(1)} GB`
+    return `${(used / 1024).toFixed(1)} / ${(total / 1024).toFixed(1)} ${t('format.gigabyte')}`
   }
-  return `${used} / ${total} MB`
+  return `${used} / ${total} ${t('format.megabyte')}`
 }
 
-function Row({ label, value }: { label: string, value: React.ReactNode }) {
+interface RowProps {
+  label: string
+  value: ReactNode
+}
+
+function Row({ label, value }: RowProps) {
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-xs text-muted-foreground">{label}</span>
@@ -153,6 +159,7 @@ export function GpuPage() {
   const parsedGpuIndex = params.gpuIndex !== undefined ? Number(params.gpuIndex) : null
 
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
+  const [staticError, setStaticError] = useState(false)
   const { data: liveInfo } = useLiveGpu()
 
   const hist3DRef = useRef<ChartPoint[]>([])
@@ -173,8 +180,18 @@ export function GpuPage() {
   const [histDedicated, setHistDedicated] = useState<ChartPoint[]>([])
   const [histShared, setHistShared] = useState<ChartPoint[]>([])
 
+  const loadStaticInfo = () => {
+    setStaticError(false)
+    getStaticSystemInfo()
+      .then(setStaticInfo)
+      .catch((error) => {
+        console.error(error)
+        setStaticError(true)
+      })
+  }
+
   useEffect(() => {
-    getStaticSystemInfo().then(setStaticInfo).catch(console.error)
+    loadStaticInfo()
   }, [])
 
   const gpuIndex = staticInfo && parsedGpuIndex !== null && Number.isInteger(parsedGpuIndex) && parsedGpuIndex >= 0 && parsedGpuIndex < staticInfo.gpus.length
@@ -232,6 +249,21 @@ export function GpuPage() {
   }, [gpuIndex, isDetailView, liveInfo])
 
   if (!staticInfo) {
+    if (staticError) {
+      return (
+        <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
+          <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+            <p className="text-sm text-muted-foreground">{t('gpu.loadError')}</p>
+            <div>
+              <Button onClick={loadStaticInfo} size="sm" type="button" variant="outline">
+                {t('tweaks.actions.retry')}
+              </Button>
+            </div>
+          </section>
+        </section>
+      )
+    }
+
     return (
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
         <div className="grid grid-cols-2 gap-4">
@@ -291,7 +323,7 @@ export function GpuPage() {
             <MemChart
               data={histDedicated}
               label={t('gpu.dedicated')}
-              valueLabel={formatMbPair(dedicatedUsedMb, dedicatedBudgetMb)}
+              valueLabel={formatMbPair(dedicatedUsedMb, dedicatedBudgetMb, t)}
               yDomain={[0, 100]}
             />
           )}
@@ -301,8 +333,8 @@ export function GpuPage() {
             <MemChart
               data={histShared}
               label={t('gpu.shared')}
-              unit=" MB"
-              valueLabel={formatMb(sharedUsedMb)}
+              unit={` ${t('format.megabyte')}`}
+              valueLabel={formatMb(sharedUsedMb, t)}
             />
           )}
         </div>
@@ -328,15 +360,15 @@ export function GpuPage() {
           )}
 
           {gpu.vramTotalMb > 0 && (
-            <Row label={t('gpu.totalRam')} value={formatMbPair(live?.vramUsedMb ?? 0, gpu.vramTotalMb)} />
+            <Row label={t('gpu.totalRam')} value={formatMbPair(live?.vramUsedMb ?? 0, gpu.vramTotalMb, t)} />
           )}
 
           {dedicatedBudgetMb > 0 && (
-            <Row label={t('gpu.dedicated')} value={formatMbPair(dedicatedUsedMb, dedicatedBudgetMb)} />
+            <Row label={t('gpu.dedicated')} value={formatMbPair(dedicatedUsedMb, dedicatedBudgetMb, t)} />
           )}
 
           {(live?.vramSharedMb ?? 0) > 0 && (
-            <Row label={t('gpu.shared')} value={formatMb(live?.vramSharedMb ?? 0)} />
+            <Row label={t('gpu.shared')} value={formatMb(live?.vramSharedMb ?? 0, t)} />
           )}
 
           {live?.temperatureC != null && (
@@ -345,7 +377,8 @@ export function GpuPage() {
               value={(
                 <span className={tempColorClass(live.temperatureC)}>
                   {live.temperatureC}
-                  {' °C'}
+                  {' '}
+                  {t('format.temperatureUnit')}
                 </span>
               )}
             />
@@ -397,7 +430,7 @@ export function GpuPage() {
                 <Row label={t('home.vendor')} value={g.vendor} />
               )}
               {g.vramTotalMb > 0 && (
-                <Row label={t('home.vram')} value={formatMb(g.vramTotalMb)} />
+                <Row label={t('home.vram')} value={formatMb(g.vramTotalMb, t)} />
               )}
               {gpuLive && (
                 <Row
@@ -412,7 +445,7 @@ export function GpuPage() {
                 />
               )}
               {gpuLive?.temperatureC != null && (
-                <Row label={t('gpu.temperature')} value={`${gpuLive.temperatureC} °C`} />
+                <Row label={t('gpu.temperature')} value={`${gpuLive.temperatureC} ${t('format.temperatureUnit')}`} />
               )}
             </section>
           )

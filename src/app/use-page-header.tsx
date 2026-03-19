@@ -153,19 +153,13 @@ export function usePageHeader(pathname: string): PageHeader {
   }
 
   if (pathname.startsWith('/network-stats/')) {
-    const idx = Number(pathname.replace('/network-stats/', ''))
-    if (!Number.isInteger(idx) || idx < 0) {
-      return { title: t('home.network'), description: t('networkStats.description') }
-    }
-    if (staticInfo && idx >= staticInfo.networkAdapters.length) {
-      return { title: t('home.network'), description: t('networkStats.description') }
-    }
-    const adapter = idx < (staticInfo?.networkAdapters.length ?? 0) ? staticInfo?.networkAdapters[idx] : null
+    const adapterName = decodeURIComponent(pathname.replace('/network-stats/', ''))
+    const adapter = staticInfo?.networkAdapters.find(entry => entry.name === adapterName) ?? null
     return {
       title: adapter
         ? (
             <span className="flex items-baseline gap-1.5">
-              <span>{t('networkStats.adapterLabel', { index: idx })}</span>
+              <span>{t('home.network')}</span>
               <span className="text-base font-normal text-muted-foreground">
                 (
                 {adapter.name}
@@ -173,7 +167,7 @@ export function usePageHeader(pathname: string): PageHeader {
               </span>
             </span>
           )
-        : t('networkStats.adapterLabel', { index: idx }),
+        : t('home.network'),
       description: t('networkStats.description'),
     }
   }

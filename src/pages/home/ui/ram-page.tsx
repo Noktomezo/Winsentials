@@ -134,18 +134,35 @@ export function RamPage() {
     )
   }
 
+  if (!liveInfo) {
+    return (
+      <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
+        {[1, 2, 3].map(i => (
+          <section className="rounded-xl border border-border/70 bg-card p-4" key={i}>
+            <Skeleton className="mb-3 h-4 w-32" />
+            <div className="space-y-2.5">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-4/5" />
+              <Skeleton className="h-3 w-3/5" />
+            </div>
+          </section>
+        ))}
+      </section>
+    )
+  }
+
   const { ram } = staticInfo
   const total = ram.totalBytes
   const maxY = total / 1024 ** 3
 
-  const used = liveInfo?.ramUsedBytes ?? 0
-  const available = liveInfo?.ramAvailableBytes ?? 0
-  const committed = liveInfo?.ramCommittedBytes ?? 0
-  const commitLimit = liveInfo?.ramCommitLimitBytes ?? 0
-  const cached = liveInfo?.ramCachedBytes ?? 0
-  const compressed = liveInfo?.ramCompressedBytes ?? 0
-  const pagedPool = liveInfo?.ramPagedPoolBytes ?? 0
-  const nonPagedPool = liveInfo?.ramNonpagedPoolBytes ?? 0
+  const used = liveInfo.ramUsedBytes
+  const available = liveInfo.ramAvailableBytes
+  const committed = liveInfo.ramCommittedBytes
+  const commitLimit = liveInfo.ramCommitLimitBytes
+  const cached = liveInfo.ramCachedBytes
+  const compressed = liveInfo.ramCompressedBytes
+  const pagedPool = liveInfo.ramPagedPoolBytes
+  const nonPagedPool = liveInfo.ramNonpagedPoolBytes
 
   // Hardware reserved: physical BIOS reservation = WMI total - sysinfo (used + available)
   const sysTotal = used + available

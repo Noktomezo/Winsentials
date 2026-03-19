@@ -45,11 +45,9 @@ function useBreadcrumbs(): Crumb[] {
   }
 
   if (pathname.startsWith('/network-stats/')) {
-    const idx = Number(pathname.replace('/network-stats/', ''))
-    if (!Number.isInteger(idx) || idx < 0 || (staticInfo && idx >= staticInfo.networkAdapters.length)) {
-      return [home, { label: t('home.network') }]
-    }
-    return [home, { label: t('networkStats.adapterLabel', { index: idx }) }]
+    const adapterName = decodeURIComponent(pathname.replace('/network-stats/', ''))
+    const adapter = staticInfo?.networkAdapters.find(entry => entry.name === adapterName)
+    return [home, { label: adapter ? `${t('home.network')} (${adapter.name})` : t('home.network') }]
   }
 
   if (pathname.startsWith('/storage/')) {
@@ -117,9 +115,9 @@ export function AppTitlebar() {
 
       {/* Absolutely centred breadcrumb — independent of left/right button widths */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="pointer-events-auto">
+        <div className="pointer-events-auto max-w-[min(40rem,calc(100%-9rem))] overflow-hidden">
           <Breadcrumb>
-            <BreadcrumbList className="gap-1 text-xs sm:gap-1.5 flex-nowrap">
+            <BreadcrumbList className="max-w-full flex-nowrap gap-1 overflow-hidden text-xs sm:gap-1.5">
               {crumbs.map((crumb, i) => {
                 const isLast = i === crumbs.length - 1
                 return (
@@ -132,13 +130,13 @@ export function AppTitlebar() {
                         ? (
                             <BreadcrumbLink
                               asChild
-                              className="text-sidebar-foreground/60 hover:text-sidebar-foreground text-xs"
+                              className="max-w-full truncate text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground"
                             >
                               <Link to={crumb.href}>{crumb.label}</Link>
                             </BreadcrumbLink>
                           )
                         : (
-                            <BreadcrumbPage className="text-sidebar-foreground text-xs font-medium">
+                            <BreadcrumbPage className="max-w-full truncate text-xs font-medium text-sidebar-foreground">
                               {crumb.label}
                             </BreadcrumbPage>
                           )}

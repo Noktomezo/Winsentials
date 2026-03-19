@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { DiskInfo, DiskLiveInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useParams } from '@tanstack/react-router'
@@ -29,7 +30,12 @@ function pushHistory(
   setter([...ref.current])
 }
 
-function Row({ label, value }: { label: string, value: React.ReactNode }) {
+interface RowProps {
+  label: string
+  value: ReactNode
+}
+
+function Row({ label, value }: RowProps) {
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-xs text-muted-foreground">{label}</span>

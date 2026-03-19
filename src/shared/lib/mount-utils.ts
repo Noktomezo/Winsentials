@@ -3,5 +3,9 @@ export function mountToParam(mountPoint: string): string {
 }
 
 export function mountLabel(mountPoint: string): string {
-  return mountPoint.replace(/[:\\/]/g, '').toUpperCase() || mountPoint
+  return mountToParam(mountPoint).toUpperCase() || mountPoint
+}
+
+export function networkAdapterToParam(name: string): string {
+  return encodeURIComponent(name)
 }

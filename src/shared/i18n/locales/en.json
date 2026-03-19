@@ -242,7 +242,8 @@
     "gpuLabel": "GPU {{index}}",
     "description": "Graphics adapter info and live utilization.",
     "load": "GPU Load",
-    "noLiveData": "Live stats unavailable for this adapter. Only NVIDIA GPUs are supported.",
+    "loadError": "Failed to load graphics adapter information.",
+    "noLiveData": "Live stats unavailable for this adapter.",
     "temperature": "Temperature",
     "title": "Graphics",
     "dedicated": "Dedicated memory",
@@ -333,6 +334,7 @@
     "kilobyte": "KB",
     "megabyte": "MB",
     "perSecond": "/s",
+    "temperatureUnit": "°C",
     "terabyte": "TB"
   },
   "tweaks": {

@@ -5,7 +5,11 @@ import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES } from '@/shared/config/app'
 const NAVIGATOR_LANG_MAP: Partial<Record<string, AppLanguage>> = {}
 
 export function resolveLanguage(pref: AppLanguagePreference): AppLanguage {
-  if (pref !== 'system') { return pref }
+  if (pref !== 'system') {
+    return SUPPORTED_LANGUAGES.includes(pref as AppLanguage)
+      ? (pref as AppLanguage)
+      : DEFAULT_LANGUAGE
+  }
 
   const navLang = navigator.language.split('-')[0]
   const mapped = NAVIGATOR_LANG_MAP[navLang] ?? navLang

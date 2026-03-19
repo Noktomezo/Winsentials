@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { useLiveHome } from '@/entities/system-info/model/live-system-store'
 import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
-import { mountLabel } from '@/shared/lib/mount-utils'
+import { mountLabel, networkAdapterToParam } from '@/shared/lib/mount-utils'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
 
@@ -37,7 +37,7 @@ function mergeVisibleNetworkAdapters(
   staticAdapters: NetworkAdapterInfo[],
   live: LiveHomeInfo | null,
 ): NetworkAdapterInfo[] {
-  return (live?.network ?? []).map((entry, index) => {
+  return (live?.network ?? []).map((entry) => {
     const staticAdapter = staticAdapters.find(adapter => adapter.name === entry.name)
 
     if (staticAdapter) {
@@ -45,7 +45,7 @@ function mergeVisibleNetworkAdapters(
     }
 
     return {
-      index,
+      index: -Math.abs([...entry.name].reduce((hash, char) => ((hash * 31) + char.charCodeAt(0)) | 0, 7)) - 1,
       name: entry.name,
       adapterDescription: entry.name,
       dnsName: null,
@@ -89,7 +89,7 @@ function MarqueeText({ text, className }: { text: string, className?: string }) 
     <span ref={outerRef} className={`overflow-hidden ${className ?? ''}`}>
       <span
         ref={innerRef}
-        className="inline-block whitespace-nowrap"
+        className="marquee-bounce inline-block whitespace-nowrap"
         style={offset > 0
           ? { animation: 'marquee-bounce 4s ease-in-out infinite alternate', ['--marquee-offset' as string]: `-${offset}px` }
           : undefined}
@@ -286,7 +286,7 @@ function NetworkSummary({
   return (
     <SummaryCard
       icon={Network}
-      onNavigate={() => void navigate({ to: '/network-stats/$adapterIndex', params: { adapterIndex: String(adapter.index) } })}
+      onNavigate={() => void navigate({ to: '/network-stats/$adapterIndex', params: { adapterIndex: networkAdapterToParam(adapter.name) } })}
       stat={(
         <div className="flex gap-2">
           <span className="text-xs tabular-nums text-primary">

@@ -519,6 +519,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .marquee-bounce,
   [style*="marquee-bounce"] {
     animation: none !important;
     transform: none !important;

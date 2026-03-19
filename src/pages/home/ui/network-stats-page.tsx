@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { useLiveNetwork } from '@/entities/system-info/model/live-system-store'
 import { formatRateLocalized } from '@/shared/lib/format-size'
+import { networkAdapterToParam } from '@/shared/lib/mount-utils'
 import { Button } from '@/shared/ui/button'
 import { LiveChart } from '@/shared/ui/live-chart'
 import { Skeleton } from '@/shared/ui/skeleton'
@@ -60,10 +61,10 @@ function getVisibleAdapters(
   staticInfo: StaticSystemInfo,
   liveInfo: NetworkIfaceStats[] | null,
 ): NetworkAdapterInfo[] {
-  return (liveInfo ?? []).map((entry, index) => {
+  return (liveInfo ?? []).map((entry) => {
     const staticAdapter = staticInfo.networkAdapters.find(adapter => adapter.name === entry.name)
     return staticAdapter ?? {
-      index,
+      index: -Math.abs([...entry.name].reduce((hash, char) => ((hash * 31) + char.charCodeAt(0)) | 0, 7)) - 1,
       name: entry.name,
       adapterDescription: entry.name,
       dnsName: null,
@@ -109,7 +110,7 @@ function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
     <button
       className="flex w-full flex-col gap-3 rounded-xl border border-border/70 bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-accent/20"
       onClick={() => {
-        void navigate({ to: '/network-stats/$adapterIndex', params: { adapterIndex: String(adapter.index) } })
+        void navigate({ to: '/network-stats/$adapterIndex', params: { adapterIndex: networkAdapterToParam(adapter.name) } })
       }}
       type="button"
     >
@@ -143,7 +144,7 @@ function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
 export function NetworkStatsPage() {
   const { t, i18n } = useTranslation()
   const params = useParams({ strict: false })
-  const adapterIndex = params.adapterIndex !== undefined ? Number(params.adapterIndex) : null
+  const adapterParam = params.adapterIndex !== undefined ? decodeURIComponent(params.adapterIndex) : null
 
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [staticError, setStaticError] = useState(false)
@@ -168,13 +169,14 @@ export function NetworkStatsPage() {
   useEffect(() => {
     throughputRef.current = []
     setThroughputHistory([])
-  }, [adapterIndex])
+  }, [adapterParam])
 
   useEffect(() => {
-    if (!staticInfo || adapterIndex === null || !liveInfo) { return }
+    if (!staticInfo || adapterParam === null || !liveInfo) { return }
 
     const visibleAdapters = getVisibleAdapters(staticInfo, liveInfo)
-    const adapter = visibleAdapters.find(entry => entry.index === adapterIndex) ?? staticInfo.networkAdapters[adapterIndex]
+    const adapter = visibleAdapters.find(entry => entry.name === adapterParam)
+      ?? staticInfo.networkAdapters.find(entry => entry.name === adapterParam)
     if (!adapter) {
       return
     }
@@ -182,7 +184,7 @@ export function NetworkStatsPage() {
     const traffic = getLiveAdapter(liveInfo, adapter)
     const totalThroughput = (traffic?.rxBytesPerSec ?? 0) + (traffic?.txBytesPerSec ?? 0)
     pushHistory(throughputRef, totalThroughput, setThroughputHistory)
-  }, [adapterIndex, liveInfo, staticInfo])
+  }, [adapterParam, liveInfo, staticInfo])
 
   if (!staticInfo) {
     if (staticError) {
@@ -217,8 +219,8 @@ export function NetworkStatsPage() {
   }
 
   const adapters = getVisibleAdapters(staticInfo, liveInfo)
-  const selectedAdapter = adapterIndex !== null
-    ? adapters.find(adapter => adapter.index === adapterIndex) ?? staticInfo.networkAdapters[adapterIndex] ?? null
+  const selectedAdapter = adapterParam !== null
+    ? adapters.find(adapter => adapter.name === adapterParam) ?? staticInfo.networkAdapters.find(adapter => adapter.name === adapterParam) ?? null
     : null
 
   if (selectedAdapter) {

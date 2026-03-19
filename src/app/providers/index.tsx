@@ -69,12 +69,25 @@ function AppPreferencesEffect({ resolvedTheme }: { resolvedTheme: ResolvedTheme 
       return
     }
 
-    const resolved = resolveLanguage(language)
+    const applyResolvedLanguage = () => {
+      const resolved = resolveLanguage(language)
 
-    if (i18n.language !== resolved) {
-      void i18n.changeLanguage(resolved)
+      if (i18n.language !== resolved) {
+        void i18n.changeLanguage(resolved)
+      }
     }
-  }, [hasHydrated, language])
+
+    applyResolvedLanguage()
+
+    if (language !== 'system') {
+      return
+    }
+
+    window.addEventListener('languagechange', applyResolvedLanguage)
+    return () => {
+      window.removeEventListener('languagechange', applyResolvedLanguage)
+    }
+  }, [hasHydrated, i18n, language])
 
   return null
 }

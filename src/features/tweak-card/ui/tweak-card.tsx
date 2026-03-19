@@ -96,6 +96,7 @@ export function TweakCard({
   const { t } = useTranslation()
   const Icon = TWEAK_ICONS[tweak.id] ?? Info
   const isEnabled = tweak.currentValue === 'enabled'
+  const isDefaultEnabled = tweak.defaultValue === 'enabled'
   const isUnsupported = isBelowMinBuild(currentBuild, tweak)
   const minBuild = formatMinBuild(tweak)
   const copyableRiskCommand = COPYABLE_RISK_COMMANDS[tweak.id]
@@ -251,7 +252,7 @@ export function TweakCard({
                         aria-label={t('tweaks.actions.resetToDefault')}
                         className="inline-flex cursor-pointer items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
                         disabled={isPending}
-                        onClick={() => onToggle(false)}
+                        onClick={() => onToggle(isDefaultEnabled)}
                         type="button"
                       >
                         <RotateCcw className="size-3.5" />

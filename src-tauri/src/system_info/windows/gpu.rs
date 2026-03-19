@@ -72,6 +72,7 @@ fn gather_gpu_driver_info(
         .ok()?;
 
     let model_lower = model.to_ascii_lowercase();
+    let mut candidates = Vec::new();
 
     for key_name in class_key.enum_keys().flatten() {
         let subkey = match class_key.open_subkey(&key_name) {
@@ -90,18 +91,20 @@ fn gather_gpu_driver_info(
             continue;
         }
 
+        let device_instance_id = subkey.get_value::<String, _>("DeviceInstanceID").ok();
         let driver_version: Option<String> = subkey.get_value("DriverVersion").ok();
         let driver_date: Option<String> = subkey
             .get_value::<String, _>("DriverDate")
             .ok()
             .and_then(|s| normalise_driver_date(&s));
-        let (pci_bus, pci_device, pci_function) = subkey
-            .get_value::<String, _>("DeviceInstanceID")
-            .ok()
-            .and_then(|id| get_pci_location(&id))
+        let (pci_bus, pci_device, pci_function) = device_instance_id
+            .as_deref()
+            .and_then(get_pci_location)
             .unwrap_or((None, None, None));
 
-        return Some((
+        candidates.push((
+            desc_lower == model_lower,
+            pci_bus.is_some() || pci_device.is_some() || pci_function.is_some(),
             driver_version,
             driver_date,
             pci_bus,
@@ -109,7 +112,21 @@ fn gather_gpu_driver_info(
             pci_function,
         ));
     }
-    None
+
+    candidates
+        .into_iter()
+        .max_by_key(|(is_exact, has_pci, ..)| (*is_exact, *has_pci))
+        .map(
+            |(_, _, driver_version, driver_date, pci_bus, pci_device, pci_function)| {
+                (
+                    driver_version,
+                    driver_date,
+                    pci_bus,
+                    pci_device,
+                    pci_function,
+                )
+            },
+        )
 }
 
 #[cfg(target_os = "windows")]
