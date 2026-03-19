@@ -82,17 +82,20 @@ export function CpuPage() {
   }
 
   const cpu = staticInfo.cpu
-  const pct = liveInfo ? Math.round(liveInfo.cpuUsagePercent) : 0
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
       {/* Live chart */}
-      <section className="relative rounded-xl border border-border/70 bg-card p-4">
-        <span className="absolute left-4 top-4 text-sm font-semibold tabular-nums text-foreground">
-          {pct}
-          %
-        </span>
+      <section className="flex flex-col gap-1 rounded-xl border border-border/70 bg-card p-4">
+        <div className="flex items-baseline justify-between">
+          <span className="text-xs font-medium text-foreground">{t('home.usage')}</span>
+          <span className="text-xs tabular-nums text-muted-foreground">100%</span>
+        </div>
         <LiveChart data={history} height={96} unit="%" yDomain={[0, 100]} />
+        <div className="flex items-baseline justify-between">
+          <span className="text-xs text-muted-foreground">{t('ram.seconds', { n: 60 })}</span>
+          <span className="text-xs tabular-nums text-muted-foreground">0</span>
+        </div>
       </section>
 
       {/* CPU info */}

@@ -4,6 +4,7 @@
     "title": "Winsentials"
   },
   "titlebar": {
+    "maximize": "Maximize window",
     "minimize": "Minimize window",
     "close": "Close window"
   },
@@ -262,11 +263,23 @@
     "engineCompute": "Compute"
   },
   "networkStats": {
-    "adapters": "Adapters",
-    "description": "Network adapter traffic and live throughput.",
-    "download": "Download",
+    "adapter": "Adapter",
+    "adapterDescription": "Adapter description",
+    "adapterLabel": "Adapter {{index}}",
+    "connectionType": "Connection type",
+    "description": "Network adapters and live throughput.",
+    "dnsName": "DNS name",
+    "info": "Information",
+    "ipv4": "IPv4",
+    "ipv6": "IPv6",
+    "max60": "Max over 60 sec",
+    "openAdapter": "Open",
+    "receive": "Receive",
+    "send": "Send",
+    "signal": "Signal strength",
+    "ssid": "SSID",
     "title": "Network",
-    "upload": "Upload"
+    "throughput": "Throughput"
   },
   "ram": {
     "description": "Memory capacity, speed, and live usage.",
@@ -287,18 +300,28 @@
     "compressed": "compressed"
   },
   "storage": {
+    "activeTime": "Active time",
     "available": "Available",
+    "avgResponseTime": "Average response time",
+    "capacity": "Capacity",
     "description": "Disk capacity and filesystem details.",
     "device": "Device",
     "diskInfo": "Disk info",
     "diskLabel": "Disk {{index}}",
+    "format": "Format",
     "fileSystem": "File system",
     "mountPoint": "Mount point",
+    "no": "No",
     "notFound": "Disk not found.",
+    "pagefile": "Page file",
+    "readSpeed": "Read speed",
+    "systemDisk": "System disk",
     "title": "Storage",
     "volumeLabel": "Volume label",
     "type": "Type",
-    "used": "Used"
+    "used": "Used",
+    "writeSpeed": "Write speed",
+    "yes": "Yes"
   },
   "tweaks": {
     "actions": {

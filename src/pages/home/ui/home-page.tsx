@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import type { GpuInfo, LiveSystemInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
+import type { GpuInfo, LiveSystemInfo, NetworkAdapterInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
 import { useNavigate } from '@tanstack/react-router'
 import { ChevronRight, Cpu, HardDrive, Layers, Monitor, Network, Server } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -27,6 +27,32 @@ function formatBytes(bytes: number, decimals = 1): string {
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return `${Number.parseFloat((bytes / k ** i).toFixed(decimals))} ${sizes[i]}`
+}
+
+function mergeVisibleNetworkAdapters(
+  staticAdapters: NetworkAdapterInfo[],
+  live: LiveSystemInfo | null,
+): NetworkAdapterInfo[] {
+  return (live?.network ?? []).map((entry, index) => {
+    const staticAdapter = staticAdapters.find(adapter => adapter.name === entry.name)
+
+    if (staticAdapter) {
+      return staticAdapter
+    }
+
+    return {
+      index,
+      name: entry.name,
+      adapterDescription: entry.name,
+      dnsName: null,
+      connectionType: '-',
+      ipv4Addresses: [],
+      ipv6Addresses: [],
+      isWifi: false,
+      ssid: null,
+      signalPercent: null,
+    }
+  })
 }
 
 // ─── Marquee ──────────────────────────────────────────────────────────────────
@@ -227,30 +253,40 @@ function DiskSummary({ disk, index }: { disk: StaticSystemInfo['disks'][number],
   )
 }
 
-function NetworkSummary({ live }: { live: LiveSystemInfo | null }) {
+function NetworkSummary({
+  adapter,
+  live,
+}: {
+  adapter: NetworkAdapterInfo
+  live: LiveSystemInfo | null
+}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const ifaces = live?.network ?? []
-  const active = ifaces.find(i => i.rxBytesPerSec > 0 || i.txBytesPerSec > 0) ?? ifaces[0]
+  const traffic = live?.network.find(entry => entry.name === adapter.name)
   return (
     <SummaryCard
       icon={Network}
-      onNavigate={() => void navigate({ to: '/network-stats' })}
+      onNavigate={() => void navigate({ to: '/network-stats/$adapterIndex', params: { adapterIndex: String(adapter.index) } })}
       stat={(
         <div className="flex gap-2">
           <span className="text-xs tabular-nums text-primary">
             ↓
-            {formatBytes(active?.rxBytesPerSec ?? 0)}
+            {formatBytes(traffic?.rxBytesPerSec ?? 0)}
             /s
           </span>
           <span className="text-xs tabular-nums text-primary">
             ↑
-            {formatBytes(active?.txBytesPerSec ?? 0)}
+            {formatBytes(traffic?.txBytesPerSec ?? 0)}
             /s
           </span>
         </div>
       )}
-      title={t('home.network')}
+      title={(
+        <span className="flex min-w-0 items-baseline gap-1">
+          <span className="shrink-0">{t('home.network')}</span>
+          <MarqueeText className="font-normal text-muted-foreground" text={`(${adapter.name})`} />
+        </span>
+      )}
     />
   )
 }
@@ -351,6 +387,10 @@ export function HomePage() {
     return () => clearInterval(id)
   }, [staticInfo])
 
+  const networkCards = staticInfo
+    ? mergeVisibleNetworkAdapters(staticInfo.networkAdapters, liveInfo)
+    : []
+
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
       {!staticInfo
@@ -365,7 +405,9 @@ export function HomePage() {
               {staticInfo.disks.map((disk, i) => (
                 <DiskSummary disk={disk} index={i} key={disk.mountPoint} />
               ))}
-              <NetworkSummary live={liveInfo} />
+              {networkCards.map(adapter => (
+                <NetworkSummary adapter={adapter} key={`network-${adapter.name}`} live={liveInfo} />
+              ))}
               {staticInfo.gpus.map((gpu, i) => (
                 <GpuSummary gpu={gpu} gpuLive={liveInfo?.gpus[i] ?? null} index={i} key={`gpu-${i}`} />
               ))}

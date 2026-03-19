@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { Minus, X } from 'lucide-react'
+import { Minus, Square, X } from 'lucide-react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStaticInfo } from '@/app/use-page-header'
@@ -39,6 +39,11 @@ function useBreadcrumbs(): Crumb[] {
   if (pathname.startsWith('/gpu/')) {
     const idx = Number(pathname.replace('/gpu/', ''))
     return [home, { label: t('gpu.gpuLabel', { index: idx }) }]
+  }
+
+  if (pathname.startsWith('/network-stats/')) {
+    const idx = Number(pathname.replace('/network-stats/', ''))
+    return [home, { label: t('networkStats.adapterLabel', { index: idx }) }]
   }
 
   if (pathname.startsWith('/storage/')) {
@@ -91,6 +96,10 @@ export function AppTitlebar() {
 
   const handleClose = async () => {
     await win.close()
+  }
+
+  const handleToggleMaximize = async () => {
+    await win.toggleMaximize()
   }
 
   return (
@@ -148,6 +157,15 @@ export function AppTitlebar() {
           }}
         >
           <Minus className="size-4" />
+        </TitlebarButton>
+        <TitlebarButton
+          aria-label={t('titlebar.maximize')}
+          className="h-8 w-8 cursor-pointer rounded-md p-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          onClick={() => {
+            void handleToggleMaximize()
+          }}
+        >
+          <Square className="size-3.5" />
         </TitlebarButton>
         <TitlebarButton
           aria-label={t('titlebar.close')}

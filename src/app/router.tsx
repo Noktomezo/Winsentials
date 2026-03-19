@@ -192,6 +192,15 @@ const networkStatsRoute = createRoute({
   ),
 })
 
+const networkAdapterRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'network-stats/$adapterIndex',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/network-stats-page'),
+    'NetworkStatsPage',
+  ),
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   homeRoute,
@@ -206,6 +215,7 @@ const routeTree = rootRoute.addChildren([
   gpuDetailRoute,
   diskRoute,
   networkStatsRoute,
+  networkAdapterRoute,
 ])
 
 export const router = createRouter({

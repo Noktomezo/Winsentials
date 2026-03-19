@@ -55,6 +55,8 @@ function tempColorClass(temp: number): string {
 }
 
 function EngineChart({ label, value, data }: { label: string, value: number, data: ChartPoint[] }) {
+  const { t } = useTranslation()
+
   return (
     <section className="flex flex-col gap-2 rounded-xl border border-border/70 bg-card p-4">
       <div className="flex items-center justify-between">
@@ -65,6 +67,10 @@ function EngineChart({ label, value, data }: { label: string, value: number, dat
         </span>
       </div>
       <LiveChart data={data} height={64} unit="%" yDomain={[0, 100]} />
+      <div className="flex items-baseline justify-between">
+        <span className="text-xs text-muted-foreground">{t('ram.seconds', { n: 60 })}</span>
+        <span className="text-xs tabular-nums text-muted-foreground">0</span>
+      </div>
     </section>
   )
 }
@@ -80,6 +86,8 @@ function MemChart({
   totalMb: number
   data: ChartPoint[]
 }) {
+  const { t } = useTranslation()
+
   return (
     <section className="col-span-2 flex flex-col gap-2 rounded-xl border border-border/70 bg-card p-4">
       <div className="flex items-center justify-between">
@@ -89,6 +97,10 @@ function MemChart({
         </span>
       </div>
       <LiveChart data={data} height={64} unit="%" yDomain={[0, 100]} />
+      <div className="flex items-baseline justify-between">
+        <span className="text-xs text-muted-foreground">{t('ram.seconds', { n: 60 })}</span>
+        <span className="text-xs tabular-nums text-muted-foreground">0</span>
+      </div>
     </section>
   )
 }
@@ -103,6 +115,36 @@ function pushHistory(
   setter([...ref.current])
 }
 
+function getEngineCharts(
+  gpu: GpuInfo,
+  live: GpuInfo | undefined,
+  history: {
+    threeD: ChartPoint[]
+    copy: ChartPoint[]
+    encode: ChartPoint[]
+    decode: ChartPoint[]
+    highPriority3d: ChartPoint[]
+    highPriorityCompute: ChartPoint[]
+  },
+  t: (key: string) => string,
+) {
+  if (gpu.isIntegrated) {
+    return [
+      { key: '3d', label: t('gpu.engine3D'), value: live?.util3d ?? 0, data: history.threeD },
+      { key: 'copy', label: t('gpu.engineCopy'), value: live?.utilCopy ?? 0, data: history.copy },
+      { key: 'hp3d', label: t('gpu.engineHP3D'), value: live?.utilHighPriority3d ?? 0, data: history.highPriority3d },
+      { key: 'hpcompute', label: t('gpu.engineHPCompute'), value: live?.utilHighPriorityCompute ?? 0, data: history.highPriorityCompute },
+    ]
+  }
+
+  return [
+    { key: '3d', label: t('gpu.engine3D'), value: live?.util3d ?? 0, data: history.threeD },
+    { key: 'copy', label: t('gpu.engineCopy'), value: live?.utilCopy ?? 0, data: history.copy },
+    { key: 'encode', label: t('gpu.engineVideoEncode'), value: live?.utilEncode ?? 0, data: history.encode },
+    { key: 'decode', label: t('gpu.engineVideoDecode'), value: live?.utilDecode ?? 0, data: history.decode },
+  ]
+}
+
 export function GpuPage() {
   const { t } = useTranslation()
   const params = useParams({ strict: false })
@@ -113,6 +155,8 @@ export function GpuPage() {
 
   const hist3DRef = useRef<ChartPoint[]>([])
   const histCopyRef = useRef<ChartPoint[]>([])
+  const histEncodeRef = useRef<ChartPoint[]>([])
+  const histDecodeRef = useRef<ChartPoint[]>([])
   const histHP3DRef = useRef<ChartPoint[]>([])
   const histHPComputeRef = useRef<ChartPoint[]>([])
   const histDedicatedRef = useRef<ChartPoint[]>([])
@@ -120,6 +164,8 @@ export function GpuPage() {
 
   const [hist3D, setHist3D] = useState<ChartPoint[]>([])
   const [histCopy, setHistCopy] = useState<ChartPoint[]>([])
+  const [histEncode, setHistEncode] = useState<ChartPoint[]>([])
+  const [histDecode, setHistDecode] = useState<ChartPoint[]>([])
   const [histHP3D, setHistHP3D] = useState<ChartPoint[]>([])
   const [histHPCompute, setHistHPCompute] = useState<ChartPoint[]>([])
   const [histDedicated, setHistDedicated] = useState<ChartPoint[]>([])
@@ -138,12 +184,16 @@ export function GpuPage() {
     // Reset history when the selected GPU changes
     hist3DRef.current = []
     histCopyRef.current = []
+    histEncodeRef.current = []
+    histDecodeRef.current = []
     histHP3DRef.current = []
     histHPComputeRef.current = []
     histDedicatedRef.current = []
     histSharedRef.current = []
     setHist3D([])
     setHistCopy([])
+    setHistEncode([])
+    setHistDecode([])
     setHistHP3D([])
     setHistHPCompute([])
     setHistDedicated([])
@@ -161,6 +211,8 @@ export function GpuPage() {
 
           pushHistory(hist3DRef, entry.util3d, setHist3D)
           pushHistory(histCopyRef, entry.utilCopy, setHistCopy)
+          pushHistory(histEncodeRef, entry.utilEncode, setHistEncode)
+          pushHistory(histDecodeRef, entry.utilDecode, setHistDecode)
           pushHistory(histHP3DRef, entry.utilHighPriority3d, setHistHP3D)
           pushHistory(histHPComputeRef, entry.utilHighPriorityCompute, setHistHPCompute)
 
@@ -213,6 +265,14 @@ export function GpuPage() {
     const sharedUsedMb = live?.vramSharedMb ?? 0
 
     const usage = live ? gpuUsage(live) : 0
+    const engineCharts = getEngineCharts(gpu, live, {
+      threeD: hist3D,
+      copy: histCopy,
+      encode: histEncode,
+      decode: histDecode,
+      highPriority3d: histHP3D,
+      highPriorityCompute: histHPCompute,
+    }, t)
 
     // PCI location string
     const pciParts: string[] = []
@@ -225,10 +285,9 @@ export function GpuPage() {
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
         {/* Engine charts 2×2 */}
         <div className="grid grid-cols-2 gap-4">
-          <EngineChart data={hist3D} label={t('gpu.engine3D')} value={live?.util3d ?? 0} />
-          <EngineChart data={histCopy} label={t('gpu.engineCopy')} value={live?.utilCopy ?? 0} />
-          <EngineChart data={histHP3D} label={t('gpu.engineHP3D')} value={live?.utilHighPriority3d ?? 0} />
-          <EngineChart data={histHPCompute} label={t('gpu.engineHPCompute')} value={live?.utilHighPriorityCompute ?? 0} />
+          {engineCharts.map(engine => (
+            <EngineChart data={engine.data} key={engine.key} label={engine.label} value={engine.value} />
+          ))}
 
           {/* Dedicated memory — full width */}
           {dedicatedBudgetMb > 0 && (

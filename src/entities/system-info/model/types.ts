@@ -68,6 +68,17 @@ export interface DiskInfo {
   kind: string
   fileSystem: string
   volumeLabel: string | null
+  isSystemDisk: boolean
+  hasPagefile: boolean
+  typeLabel: string
+}
+
+export interface DiskLiveInfo {
+  mountPoint: string
+  activeTimePercent: number
+  avgResponseMs: number
+  readBytesPerSec: number
+  writeBytesPerSec: number
 }
 
 export interface RamInfo {
@@ -78,10 +89,24 @@ export interface RamInfo {
   formFactor: string | null
 }
 
+export interface NetworkAdapterInfo {
+  index: number
+  name: string
+  adapterDescription: string
+  dnsName: string | null
+  connectionType: string
+  ipv4Addresses: string[]
+  ipv6Addresses: string[]
+  isWifi: boolean
+  ssid: string | null
+  signalPercent: number | null
+}
+
 export interface StaticSystemInfo {
   windows: WindowsInfo
   cpu: CpuInfo
   ram: RamInfo
+  networkAdapters: NetworkAdapterInfo[]
   gpus: GpuInfo[]
   motherboard: MotherboardInfo
   disks: DiskInfo[]
@@ -109,6 +134,7 @@ export interface LiveSystemInfo {
   ramCompressedBytes: number
   ramPagedPoolBytes: number
   ramNonpagedPoolBytes: number
+  disks: DiskLiveInfo[]
   network: NetworkIfaceStats[]
   gpus: GpuInfo[]
 }

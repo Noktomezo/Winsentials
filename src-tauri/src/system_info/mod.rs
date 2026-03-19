@@ -14,6 +14,7 @@ pub struct StaticSystemInfo {
     pub windows: WindowsInfo,
     pub cpu: CpuInfo,
     pub ram: RamInfo,
+    pub network_adapters: Vec<NetworkAdapterInfo>,
     pub gpus: Vec<GpuInfo>,
     pub motherboard: MotherboardInfo,
     pub disks: Vec<DiskInfo>,
@@ -110,6 +111,9 @@ pub struct DiskInfo {
     pub kind: String,
     pub file_system: String,
     pub volume_label: Option<String>,
+    pub is_system_disk: bool,
+    pub has_pagefile: bool,
+    pub type_label: String,
 }
 
 // ─── Live structs ─────────────────────────────────────────────────────────────
@@ -131,8 +135,18 @@ pub struct LiveSystemInfo {
     pub ram_compressed_bytes: u64,
     pub ram_paged_pool_bytes: u64,
     pub ram_nonpaged_pool_bytes: u64,
+    pub disks: Vec<DiskLiveInfo>,
     pub network: Vec<NetworkIfaceStats>,
     pub gpus: Vec<GpuInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiskLiveInfo {
+    pub mount_point: String,
+    pub active_time_percent: u32,
+    pub avg_response_ms: f64,
+    pub read_bytes_per_sec: u64,
+    pub write_bytes_per_sec: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,6 +154,20 @@ pub struct NetworkIfaceStats {
     pub name: String,
     pub rx_bytes_per_sec: u64,
     pub tx_bytes_per_sec: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetworkAdapterInfo {
+    pub index: usize,
+    pub name: String,
+    pub adapter_description: String,
+    pub dns_name: Option<String>,
+    pub connection_type: String,
+    pub ipv4_addresses: Vec<String>,
+    pub ipv6_addresses: Vec<String>,
+    pub is_wifi: bool,
+    pub ssid: Option<String>,
+    pub signal_percent: Option<u32>,
 }
 
 // ─── Managed state ────────────────────────────────────────────────────────────
@@ -279,14 +307,153 @@ fn get_volume_label(_mount_point: &str) -> Option<String> {
     None
 }
 
+#[derive(Debug, Deserialize)]
+struct RawDiskMetadataInfo {
+    mount_point: String,
+    is_system_disk: bool,
+    has_pagefile: bool,
+    type_label: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawDiskLiveInfo {
+    mount_point: String,
+    active_time_percent: u32,
+    avg_response_ms: f64,
+    read_bytes_per_sec: u64,
+    write_bytes_per_sec: u64,
+}
+
+#[cfg(target_os = "windows")]
+fn gather_disk_metadata() -> HashMap<String, RawDiskMetadataInfo> {
+    let script = r#"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$systemDrive = (Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue).SystemDrive
+$result = @()
+
+foreach ($volume in Get-CimInstance Win32_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.DriveType -eq 3 -and $_.DeviceID }) {
+  $mount = "$($volume.DeviceID)\"
+  $partition = Get-Partition -DriveLetter $volume.DeviceID.TrimEnd(':') -ErrorAction SilentlyContinue | Select-Object -First 1
+  $disk = if ($partition) { Get-Disk -Number $partition.DiskNumber -ErrorAction SilentlyContinue | Select-Object -First 1 } else { $null }
+  $physical = if ($disk) { Get-PhysicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.DeviceId -eq $disk.Number } | Select-Object -First 1 } else { $null }
+  $mediaType = if ($physical -and $physical.MediaType) { [string]$physical.MediaType } elseif ($disk -and $disk.MediaType) { [string]$disk.MediaType } else { '' }
+  $rawBusType = if ($physical -and $physical.BusType) { [string]$physical.BusType } elseif ($disk -and $disk.BusType) { [string]$disk.BusType } else { '' }
+  $busType = switch -Regex ($rawBusType) {
+    '^NVMe$' { 'NVMe'; break }
+    '^SATA$' { 'SATA'; break }
+    '^RAID$' { 'RAID'; break }
+    '^USB$' { 'USB'; break }
+    default { if ($rawBusType) { $rawBusType.ToUpperInvariant() } else { '' } }
+  }
+  $typeLabel = if ($mediaType -match 'SSD') {
+    if ($busType) { "SSD ($busType)" } else { 'SSD' }
+  } elseif ($mediaType -match 'HDD') {
+    if ($busType) { "HDD ($busType)" } else { 'HDD' }
+  } else {
+    if ($disk -and $disk.BusType -match 'NVMe|SATA|RAID|USB') {
+      "SSD ($busType)"
+    } elseif ($busType) {
+      $busType
+    } else {
+      'Unknown'
+    }
+  }
+
+  $result += [pscustomobject]@{
+    mount_point = $mount
+    is_system_disk = $volume.DeviceID -eq $systemDrive
+    has_pagefile = Test-Path (Join-Path $mount 'pagefile.sys')
+    type_label = $typeLabel
+  }
+}
+
+@($result) | ConvertTo-Json -Depth 3 -Compress
+"#;
+
+    let Ok(output) = crate::shell::run_powershell(script) else {
+        return HashMap::new();
+    };
+    let output = output.trim();
+    if output.is_empty() {
+        return HashMap::new();
+    }
+    let Ok(raw) = serde_json::from_str::<OneOrMany<RawDiskMetadataInfo>>(output) else {
+        return HashMap::new();
+    };
+
+    raw.into_vec()
+        .into_iter()
+        .map(|entry| (entry.mount_point.clone(), entry))
+        .collect()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn gather_disk_metadata() -> HashMap<String, RawDiskMetadataInfo> {
+    HashMap::new()
+}
+
+#[cfg(target_os = "windows")]
+fn gather_disk_live() -> HashMap<String, DiskLiveInfo> {
+    let script = r#"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$result = @()
+
+foreach ($disk in Get-CimInstance Win32_PerfFormattedData_PerfDisk_LogicalDisk -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^[A-Z]:$' }) {
+  $result += [pscustomobject]@{
+    mount_point = "$($disk.Name)\"
+    active_time_percent = [uint32][math]::Min([math]::Round($disk.PercentDiskTime), 100)
+    avg_response_ms = [double]($disk.AvgDisksecPerTransfer * 1000)
+    read_bytes_per_sec = [uint64]$disk.DiskReadBytesPersec
+    write_bytes_per_sec = [uint64]$disk.DiskWriteBytesPersec
+  }
+}
+
+@($result) | ConvertTo-Json -Depth 3 -Compress
+"#;
+
+    let Ok(output) = crate::shell::run_powershell(script) else {
+        return HashMap::new();
+    };
+    let output = output.trim();
+    if output.is_empty() {
+        return HashMap::new();
+    }
+    let Ok(raw) = serde_json::from_str::<OneOrMany<RawDiskLiveInfo>>(output) else {
+        return HashMap::new();
+    };
+
+    raw.into_vec()
+        .into_iter()
+        .map(|entry| {
+            (
+                entry.mount_point.clone(),
+                DiskLiveInfo {
+                    mount_point: entry.mount_point,
+                    active_time_percent: entry.active_time_percent,
+                    avg_response_ms: entry.avg_response_ms,
+                    read_bytes_per_sec: entry.read_bytes_per_sec,
+                    write_bytes_per_sec: entry.write_bytes_per_sec,
+                },
+            )
+        })
+        .collect()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn gather_disk_live() -> HashMap<String, DiskLiveInfo> {
+    HashMap::new()
+}
+
 fn gather_disks() -> Vec<DiskInfo> {
     let disks = Disks::new_with_refreshed_list();
+    let disk_metadata = gather_disk_metadata();
     let mut result: Vec<DiskInfo> = disks
         .iter()
         .filter(|d| d.total_space() > 0)
         .map(|d| {
             let mount_point = d.mount_point().to_string_lossy().into_owned();
             let volume_label = get_volume_label(&mount_point);
+            let metadata = disk_metadata.get(&mount_point);
             DiskInfo {
                 name: d.name().to_string_lossy().into_owned(),
                 mount_point,
@@ -299,11 +466,180 @@ fn gather_disks() -> Vec<DiskInfo> {
                 },
                 file_system: d.file_system().to_string_lossy().into_owned(),
                 volume_label,
+                is_system_disk: metadata.map(|entry| entry.is_system_disk).unwrap_or(false),
+                has_pagefile: metadata.map(|entry| entry.has_pagefile).unwrap_or(false),
+                type_label: metadata
+                    .map(|entry| entry.type_label.clone())
+                    .unwrap_or_else(|| "Unknown".to_string()),
             }
         })
         .collect();
     result.sort_by(|a, b| a.mount_point.cmp(&b.mount_point));
     result
+}
+
+#[cfg(target_os = "windows")]
+#[derive(Debug, Deserialize)]
+struct RawNetworkAdapterInfo {
+    name: String,
+    adapter_description: String,
+    dns_name: Option<String>,
+    connection_type: String,
+    #[serde(default)]
+    ipv4_addresses: Vec<String>,
+    #[serde(default)]
+    ipv6_addresses: Vec<String>,
+    is_wifi: bool,
+    ssid: Option<String>,
+    signal_percent: Option<u32>,
+}
+
+#[cfg(target_os = "windows")]
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum OneOrMany<T> {
+    One(T),
+    Many(Vec<T>),
+}
+
+#[cfg(target_os = "windows")]
+impl<T> OneOrMany<T> {
+    fn into_vec(self) -> Vec<T> {
+        match self {
+            Self::One(value) => vec![value],
+            Self::Many(values) => values,
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn gather_network_adapters() -> Vec<NetworkAdapterInfo> {
+    let script = r#"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$wifiByName = @{}
+try {
+  $wifiOutput = netsh wlan show interfaces 2>$null
+  $current = @{}
+
+  foreach ($line in $wifiOutput) {
+    if ($line -match '^\s*$') {
+      if ($current.ContainsKey('name')) {
+        $wifiByName[$current.name] = [pscustomobject]$current
+      }
+      $current = @{}
+      continue
+    }
+
+    if ($line -match '^\s*Name\s*:\s*(.+)$') {
+      $current.name = $matches[1].Trim()
+      continue
+    }
+
+    if ($line -match '^\s*SSID\s*:\s*(.+)$' -and $line -notmatch 'BSSID') {
+      $current.ssid = $matches[1].Trim()
+      continue
+    }
+
+    if ($line -match '^\s*Signal\s*:\s*(\d+)%$') {
+      $current.signal_percent = [int]$matches[1]
+      continue
+    }
+
+    if ($line -match '^\s*Radio type\s*:\s*(.+)$') {
+      $current.connection_type = $matches[1].Trim()
+      continue
+    }
+  }
+
+  if ($current.ContainsKey('name')) {
+    $wifiByName[$current.name] = [pscustomobject]$current
+  }
+} catch {}
+
+$dnsByAlias = @{}
+Get-DnsClient -ErrorAction SilentlyContinue | ForEach-Object {
+  $dnsByAlias[$_.InterfaceAlias] = $_.ConnectionSpecificSuffix
+}
+
+$adapters = @(
+  Get-NetAdapter -ErrorAction SilentlyContinue |
+    Where-Object {
+      $_.Status -ne 'Not Present' -and
+      $_.PhysicalMediaType -ne 'BlueTooth' -and
+      ($_.MediaType -eq '802.3' -or $_.MediaType -eq 'Native 802.11')
+    } |
+    Sort-Object InterfaceIndex
+)
+
+$result = foreach ($adapter in $adapters) {
+  $ip = Get-NetIPConfiguration -InterfaceIndex $adapter.InterfaceIndex -ErrorAction SilentlyContinue
+  $wifiInfo = $wifiByName[$adapter.Name]
+  $ipv4Addresses = @($ip.IPv4Address | ForEach-Object { $_.IPv4Address } | Where-Object { $_ })
+  $ipv6Addresses = @($ip.IPv6Address | ForEach-Object { $_.IPv6Address } | Where-Object { $_ })
+  $hasDefaultGateway = @($ip.IPv4DefaultGateway).Count -gt 0 -or @($ip.IPv6DefaultGateway).Count -gt 0
+  $hasRoutableIpv4 = @($ipv4Addresses | Where-Object { $_ -and $_ -notlike '169.254.*' }).Count -gt 0
+  $isConnected = $adapter.Status -eq 'Up' -and ($adapter.MediaConnectionState -eq 'Connected' -or $hasDefaultGateway -or $hasRoutableIpv4)
+
+  if (-not $isConnected) {
+    continue
+  }
+
+  [pscustomobject]@{
+    name = $adapter.Name
+    adapter_description = $adapter.InterfaceDescription
+    dns_name = $dnsByAlias[$adapter.Name]
+    connection_type = if ($wifiInfo -and $wifiInfo.connection_type) {
+      $wifiInfo.connection_type
+    } elseif ($adapter.MediaType -eq 'Native 802.11') {
+      'Wi-Fi'
+    } else {
+      'Ethernet'
+    }
+    ipv4_addresses = $ipv4Addresses
+    ipv6_addresses = $ipv6Addresses
+    is_wifi = $adapter.MediaType -eq 'Native 802.11'
+    ssid = if ($wifiInfo) { $wifiInfo.ssid } else { $null }
+    signal_percent = if ($wifiInfo) { $wifiInfo.signal_percent } else { $null }
+  }
+}
+
+@($result) | ConvertTo-Json -Depth 4 -Compress
+"#;
+
+    let Ok(output) = crate::shell::run_powershell(script) else {
+        return vec![];
+    };
+
+    let output = output.trim();
+    if output.is_empty() {
+        return vec![];
+    }
+
+    let Ok(raw) = serde_json::from_str::<OneOrMany<RawNetworkAdapterInfo>>(output) else {
+        return vec![];
+    };
+
+    raw.into_vec()
+        .into_iter()
+        .enumerate()
+        .map(|(index, adapter)| NetworkAdapterInfo {
+            index,
+            name: adapter.name,
+            adapter_description: adapter.adapter_description,
+            dns_name: adapter.dns_name.filter(|value| !value.trim().is_empty()),
+            connection_type: adapter.connection_type,
+            ipv4_addresses: adapter.ipv4_addresses,
+            ipv6_addresses: adapter.ipv6_addresses,
+            is_wifi: adapter.is_wifi,
+            ssid: adapter.ssid.filter(|value| !value.trim().is_empty()),
+            signal_percent: adapter.signal_percent,
+        })
+        .collect()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn gather_network_adapters() -> Vec<NetworkAdapterInfo> {
+    vec![]
 }
 
 struct CpuExtra {
@@ -676,6 +1012,38 @@ fn directx_from_build(build: u32) -> &'static str {
     }
 }
 
+#[cfg(target_os = "windows")]
+fn classify_integrated_gpu(
+    name: &str,
+    vendor: &str,
+    raw_dedicated_bytes: u64,
+    shared_system_bytes: u64,
+) -> bool {
+    const MB: u64 = 1_048_576;
+    const GB: u64 = 1_024 * MB;
+
+    let name_upper = name.to_ascii_uppercase();
+    let generic_amd_integrated = matches!(
+        name_upper.as_str(),
+        "AMD RADEON(TM) GRAPHICS" | "AMD RADEON GRAPHICS"
+    );
+    let intel_integrated = vendor == "Intel" && name_upper.contains("GRAPHICS");
+
+    if intel_integrated || generic_amd_integrated {
+        return true;
+    }
+
+    if raw_dedicated_bytes >= 2 * GB {
+        return false;
+    }
+
+    if shared_system_bytes > 0 && raw_dedicated_bytes <= 512 * MB {
+        return true;
+    }
+
+    false
+}
+
 pub fn gather_static_info(system: &System) -> Result<StaticSystemInfo, AppError> {
     use rayon::prelude::*;
 
@@ -698,6 +1066,7 @@ pub fn gather_static_info(system: &System) -> Result<StaticSystemInfo, AppError>
     let mut windows = windows_res?;
     let (motherboard, mut ram, activation_status, cpu_extra) = wmi_res;
     windows.activation_status = activation_status;
+    let network_adapters = gather_network_adapters();
 
     // GPU list: build GpuInfo per adapter in parallel (registry scan per GPU).
     #[cfg(target_os = "windows")]
@@ -707,7 +1076,7 @@ pub fn gather_static_info(system: &System) -> Result<StaticSystemInfo, AppError>
             .into_par_iter()
             .enumerate()
             .map(
-                |(index, (name, luid_low, luid_high, vram, raw_dedicated))| {
+                |(index, (name, luid_low, luid_high, vram, raw_dedicated, shared_system))| {
                     let upper = name.to_ascii_uppercase();
                     let vendor = if upper.contains("NVIDIA") {
                         "NVIDIA".to_string()
@@ -718,7 +1087,8 @@ pub fn gather_static_info(system: &System) -> Result<StaticSystemInfo, AppError>
                     } else {
                         "Unknown".to_string()
                     };
-                    let is_integrated = raw_dedicated == 0;
+                    let is_integrated =
+                        classify_integrated_gpu(&name, &vendor, raw_dedicated, shared_system);
                     let (driver_version, driver_date, pci_bus, pci_device, pci_function) =
                         gather_gpu_driver_info(&name).unwrap_or((None, None, None, None, None));
                     let directx_version = Some(directx_from_build(build).to_string());
@@ -764,6 +1134,7 @@ pub fn gather_static_info(system: &System) -> Result<StaticSystemInfo, AppError>
         windows,
         cpu,
         ram,
+        network_adapters,
         gpus,
         motherboard,
         disks,
@@ -773,11 +1144,11 @@ pub fn gather_static_info(system: &System) -> Result<StaticSystemInfo, AppError>
 // ─── GPU live (DXGI + PDH + D3DKMT) ──────────────────────────────────────────
 
 #[cfg(not(target_os = "windows"))]
-fn enumerate_dxgi_adapters() -> Vec<(String, u32, i32, u64, u64)> {
+fn enumerate_dxgi_adapters() -> Vec<(String, u32, i32, u64, u64, u64)> {
     vec![]
 }
 
-/// Returns `(name, luid_low, luid_high, vram_bytes, raw_dedicated_vram_bytes)` for each adapter.
+/// Returns `(name, luid_low, luid_high, vram_bytes, raw_dedicated_vram_bytes, shared_system_bytes)` for each adapter.
 ///
 /// Uses `D3DKMTEnumAdapters2` (kernel-level) to enumerate ALL WDDM adapters —
 /// this includes AMD iGPU adapters that `IDXGIFactory1::EnumAdapters1` may omit.
@@ -785,7 +1156,7 @@ fn enumerate_dxgi_adapters() -> Vec<(String, u32, i32, u64, u64)> {
 /// DXGI `IDXGIFactory4::EnumAdapterByLuid` is then used to get the display name and VRAM.
 /// `raw_dedicated_vram_bytes` is the raw `DedicatedVideoMemory` (0 for iGPU).
 #[cfg(target_os = "windows")]
-fn enumerate_dxgi_adapters() -> Vec<(String, u32, i32, u64, u64)> {
+fn enumerate_dxgi_adapters() -> Vec<(String, u32, i32, u64, u64, u64)> {
     use windows::Wdk::Graphics::Direct3D::*;
     use windows::Win32::Foundation::LUID;
     use windows::Win32::Graphics::Dxgi::*;
@@ -848,12 +1219,20 @@ fn enumerate_dxgi_adapters() -> Vec<(String, u32, i32, u64, u64)> {
             // iGPU: DedicatedVideoMemory = 0; fall back to SharedSystemMemory (the system RAM
             // pool accessible to the GPU — what Task Manager shows for integrated adapters).
             let raw_dedicated = desc.DedicatedVideoMemory as u64;
+            let shared_system = desc.SharedSystemMemory as u64;
             let vram = if raw_dedicated > 0 {
                 raw_dedicated
             } else {
-                desc.SharedSystemMemory as u64
+                shared_system
             };
-            result.push((name, luid_low, luid_high, vram, raw_dedicated));
+            result.push((
+                name,
+                luid_low,
+                luid_high,
+                vram,
+                raw_dedicated,
+                shared_system,
+            ));
         }
         result
     }
@@ -1211,7 +1590,7 @@ fn get_perf_info() -> (u32, u32, u32) {
 /// `committed`    = CommitTotal * PageSize — matches Task Manager "Committed" (RAM + pagefile used).
 /// `commit_limit` = CommitLimit * PageSize — RAM + total pagefile size.
 /// `cached`       = system file cache pages.
-/// `compressed`   = 0 (not available without PDH).
+/// `compressed`   = best-effort Memory Compression working set.
 /// `paged_pool`   = paged kernel pool.
 /// `nonpaged_pool`= non-paged kernel pool.
 #[cfg(target_os = "windows")]
@@ -1252,9 +1631,10 @@ fn get_ram_perf() -> (u64, u64, u64, u64, u64, u64) {
     (0, 0, 0, 0, 0, 0)
 }
 
-/// Returns the working set size of the `MemCompression` process in bytes.
-/// This is exactly what Task Manager shows as "Compressed" memory.
-/// Works on Windows 10 1607+ where the Memory Compression feature is present.
+/// Returns a best-effort compressed memory value in bytes by reading the
+/// `Memory Compression` process working set.
+/// This avoids the previous brittle `MemCompression`-only lookup and the
+/// incorrect `PrivateUsage` metric that often produced `0`.
 #[cfg(target_os = "windows")]
 fn get_compressed_memory_bytes() -> u64 {
     use windows::Win32::Foundation::CloseHandle;
@@ -1268,6 +1648,15 @@ fn get_compressed_memory_bytes() -> u64 {
     use windows::Win32::System::Threading::{
         OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_VM_READ,
     };
+
+    fn is_memory_compression_process(name: &[u16]) -> bool {
+        let process_name = String::from_utf16_lossy(name).to_ascii_lowercase();
+        matches!(
+            process_name.as_str(),
+            "memory compression" | "memcompression"
+        )
+    }
+
     unsafe {
         let snap = match CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) {
             Ok(h) => h,
@@ -1282,7 +1671,6 @@ fn get_compressed_memory_bytes() -> u64 {
             return 0;
         }
 
-        let target: Vec<u16> = "MemCompression".encode_utf16().collect();
         let mut result: u64 = 0;
 
         loop {
@@ -1293,7 +1681,7 @@ fn get_compressed_memory_bytes() -> u64 {
                 .unwrap_or(entry.szExeFile.len());
             let name = &entry.szExeFile[..name_len];
 
-            if name == target.as_slice() {
+            if is_memory_compression_process(name) {
                 let handle = OpenProcess(
                     PROCESS_QUERY_INFORMATION | PROCESS_VM_READ,
                     false,
@@ -1317,7 +1705,7 @@ fn get_compressed_memory_bytes() -> u64 {
                         mem.cb,
                     ) != false
                     {
-                        result = mem.PrivateUsage as u64;
+                        result = mem.WorkingSetSize as u64;
                     }
                     let _ = CloseHandle(handle);
                 }
@@ -1457,6 +1845,8 @@ pub fn gather_live_info(
         })
         .collect();
 
+    let disks: Vec<DiskLiveInfo> = gather_disk_live().into_values().collect();
+
     *prev_net = Some(current_net);
 
     // GPU live stats: PDH (per-engine, all GPUs) + D3DKMT (temperature) + DXGI (memory)
@@ -1481,6 +1871,7 @@ pub fn gather_live_info(
         ram_compressed_bytes,
         ram_paged_pool_bytes,
         ram_nonpaged_pool_bytes,
+        disks,
         network,
         gpus: gpus_live,
     }

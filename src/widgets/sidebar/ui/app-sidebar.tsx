@@ -50,7 +50,7 @@ export function AppSidebar() {
       collapsible="icon"
       style={
         {
-          '--sidebar-width': '12rem',
+          '--sidebar-width': '13.44rem',
           '--sidebar-width-icon': 'calc(var(--spacing) * 12)',
         } as React.CSSProperties
       }

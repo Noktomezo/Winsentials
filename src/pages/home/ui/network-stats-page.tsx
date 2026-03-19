@@ -1,5 +1,6 @@
-import type { LiveSystemInfo } from '@/entities/system-info/model/types'
+import type { LiveSystemInfo, NetworkAdapterInfo, NetworkIfaceStats, StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
+import { useNavigate, useParams } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getLiveSystemInfo, getStaticSystemInfo } from '@/entities/system-info/api'
@@ -14,123 +15,270 @@ function formatBytes(bytes: number, decimals = 1): string {
   return `${Number.parseFloat((bytes / k ** i).toFixed(decimals))} ${sizes[i]}`
 }
 
+function formatRate(bytesPerSec: number): string {
+  return `${formatBytes(bytesPerSec)}/s`
+}
+
+function getRateUnit(bytesPerSec: number): { divisor: number, label: string } {
+  if (bytesPerSec === 0) {
+    return { divisor: 1, label: 'B/s' }
+  }
+
+  const k = 1024
+  const units = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s']
+  const index = Math.floor(Math.log(bytesPerSec) / Math.log(k))
+
+  return {
+    divisor: k ** index,
+    label: units[index],
+  }
+}
+
+function ceilToNiceNumber(value: number): number {
+  if (value <= 0) { return 0 }
+  const magnitude = 10 ** Math.floor(Math.log10(value))
+  return Math.ceil(value / magnitude) * magnitude
+}
+
+function pushHistory(
+  ref: React.MutableRefObject<ChartPoint[]>,
+  value: number,
+  setter: (v: ChartPoint[]) => void,
+): void {
+  const next = [...ref.current, { value }]
+  ref.current = next.length > 60 ? next.slice(-60) : next
+  setter([...ref.current])
+}
+
+function getLiveAdapter(liveInfo: LiveSystemInfo | null, adapter: NetworkAdapterInfo): NetworkIfaceStats | null {
+  return liveInfo?.network.find(entry => entry.name === adapter.name) ?? null
+}
+
+function getVisibleAdapters(
+  staticInfo: StaticSystemInfo,
+  liveInfo: LiveSystemInfo | null,
+): NetworkAdapterInfo[] {
+  return (liveInfo?.network ?? []).map((entry, index) => {
+    const staticAdapter = staticInfo.networkAdapters.find(adapter => adapter.name === entry.name)
+    return staticAdapter ?? {
+      index,
+      name: entry.name,
+      adapterDescription: entry.name,
+      dnsName: null,
+      connectionType: '-',
+      ipv4Addresses: [],
+      ipv6Addresses: [],
+      isWifi: false,
+      ssid: null,
+      signalPercent: null,
+    }
+  })
+}
+
+function Row({ label, value }: { label: string, value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-right text-xs font-medium text-foreground">{value}</span>
+    </div>
+  )
+}
+
+function EmptyValue() {
+  return <span className="text-muted-foreground">-</span>
+}
+
+function NetworkAdapterCard({
+  adapter,
+  traffic,
+}: {
+  adapter: NetworkAdapterInfo
+  traffic: NetworkIfaceStats | null
+}) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+
+  return (
+    <button
+      className="flex w-full flex-col gap-3 rounded-xl border border-border/70 bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-accent/20"
+      onClick={() => {
+        void navigate({ to: '/network-stats/$adapterIndex', params: { adapterIndex: String(adapter.index) } })
+      }}
+      type="button"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h3 className="text-sm font-medium text-foreground">{adapter.name}</h3>
+          <p className="text-xs text-muted-foreground">{adapter.connectionType}</p>
+          {adapter.isWifi && adapter.ssid && (
+            <p className="text-xs text-primary">{adapter.ssid}</p>
+          )}
+        </div>
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {t('networkStats.openAdapter')}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-xs">
+        <div className="space-y-1">
+          <span className="text-muted-foreground">{t('networkStats.receive')}</span>
+          <div className="font-medium text-foreground">{formatRate(traffic?.rxBytesPerSec ?? 0)}</div>
+        </div>
+        <div className="space-y-1">
+          <span className="text-muted-foreground">{t('networkStats.send')}</span>
+          <div className="font-medium text-foreground">{formatRate(traffic?.txBytesPerSec ?? 0)}</div>
+        </div>
+      </div>
+    </button>
+  )
+}
+
 export function NetworkStatsPage() {
   const { t } = useTranslation()
-  const [ready, setReady] = useState(false)
+  const params = useParams({ strict: false })
+  const adapterIndex = params.adapterIndex !== undefined ? Number(params.adapterIndex) : null
+
+  const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [liveInfo, setLiveInfo] = useState<LiveSystemInfo | null>(null)
-  const [rxHistory, setRxHistory] = useState<ChartPoint[]>([])
-  const [txHistory, setTxHistory] = useState<ChartPoint[]>([])
-  const rxRef = useRef<ChartPoint[]>([])
-  const txRef = useRef<ChartPoint[]>([])
+  const throughputRef = useRef<ChartPoint[]>([])
+  const [throughputHistory, setThroughputHistory] = useState<ChartPoint[]>([])
 
   useEffect(() => {
-    // Just need static info to prime the backend cache before live polling
-    getStaticSystemInfo()
-      .then(() => setReady(true))
-      .catch(console.error)
+    getStaticSystemInfo().then(setStaticInfo).catch(console.error)
   }, [])
 
   useEffect(() => {
-    if (!ready) { return }
+    if (!staticInfo) { return }
+
+    throughputRef.current = []
+    setThroughputHistory([])
+
     const tick = () => {
       getLiveSystemInfo()
         .then((live) => {
           setLiveInfo(live)
-          const totalRx = live.network.reduce((s, i) => s + i.rxBytesPerSec, 0)
-          const totalTx = live.network.reduce((s, i) => s + i.txBytesPerSec, 0)
 
-          const nextRx = [...rxRef.current, { value: totalRx }]
-          rxRef.current = nextRx.length > 60 ? nextRx.slice(-60) : nextRx
-          setRxHistory([...rxRef.current])
+          if (adapterIndex === null) {
+            return
+          }
 
-          const nextTx = [...txRef.current, { value: totalTx }]
-          txRef.current = nextTx.length > 60 ? nextTx.slice(-60) : nextTx
-          setTxHistory([...txRef.current])
+          const visibleAdapters = getVisibleAdapters(staticInfo, live)
+          const adapter = visibleAdapters.find(entry => entry.index === adapterIndex) ?? staticInfo.networkAdapters[adapterIndex]
+          if (!adapter) {
+            return
+          }
+
+          const traffic = getLiveAdapter(live, adapter)
+          const totalThroughput = (traffic?.rxBytesPerSec ?? 0) + (traffic?.txBytesPerSec ?? 0)
+          pushHistory(throughputRef, totalThroughput, setThroughputHistory)
         })
         .catch(console.error)
     }
+
     tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
-  }, [ready])
+  }, [adapterIndex, staticInfo])
 
-  const ifaces = liveInfo?.network ?? []
-
-  if (!ready) {
+  if (!staticInfo) {
     return (
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <section className="rounded-xl border border-border/70 bg-card p-4" key={i}>
-              <Skeleton className="mb-3 h-4 w-32" />
-              <div className="space-y-2.5">
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-4/5" />
-              </div>
-            </section>
-          ))}
-        </div>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <section className="rounded-xl border border-border/70 bg-card p-4" key={i}>
+            <Skeleton className="mb-3 h-4 w-40" />
+            <div className="space-y-2.5">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-4/5" />
+              <Skeleton className="h-3 w-3/5" />
+            </div>
+          </section>
+        ))}
+      </section>
+    )
+  }
+
+  const adapters = getVisibleAdapters(staticInfo, liveInfo)
+  const selectedAdapter = adapterIndex !== null
+    ? adapters.find(adapter => adapter.index === adapterIndex) ?? staticInfo.networkAdapters[adapterIndex] ?? null
+    : null
+
+  if (selectedAdapter) {
+    const traffic = getLiveAdapter(liveInfo, selectedAdapter)
+    const currentThroughput = (traffic?.rxBytesPerSec ?? 0) + (traffic?.txBytesPerSec ?? 0)
+    const peakBytes = Math.max(currentThroughput, ...throughputHistory.map(point => point.value))
+    const unit = getRateUnit(peakBytes)
+    const roundedPeak = ceilToNiceNumber(peakBytes / unit.divisor)
+    const chartMax = roundedPeak > 0 ? roundedPeak : 1
+    const chartData = throughputHistory.map(point => ({ value: point.value / unit.divisor }))
+
+    return (
+      <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
+        <section className="flex flex-col gap-1 rounded-xl border border-border/70 bg-card p-4">
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="text-xs font-medium text-foreground">{t('networkStats.throughput')}</span>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {t('networkStats.max60')}
+              {': '}
+              {roundedPeak > 0 ? `${roundedPeak} ${unit.label}` : '0 B/s'}
+            </span>
+          </div>
+          <LiveChart data={chartData} height={96} unit={` ${unit.label}`} yDomain={[0, chartMax]} />
+          <div className="flex items-baseline justify-between">
+            <span className="text-xs text-muted-foreground">{t('ram.seconds', { n: 60 })}</span>
+            <span className="text-xs tabular-nums text-muted-foreground">0</span>
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+          <h3 className="text-sm font-medium text-foreground">{t('networkStats.info')}</h3>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <Row label={t('networkStats.send')} value={formatRate(traffic?.txBytesPerSec ?? 0)} />
+            <Row label={t('networkStats.receive')} value={formatRate(traffic?.rxBytesPerSec ?? 0)} />
+            <Row label={t('networkStats.adapter')} value={selectedAdapter.name} />
+            <Row label={t('networkStats.dnsName')} value={selectedAdapter.dnsName ?? <EmptyValue />} />
+            <Row label={t('networkStats.connectionType')} value={selectedAdapter.connectionType} />
+            <Row
+              label={t('networkStats.ipv4')}
+              value={selectedAdapter.ipv4Addresses.length > 0 ? selectedAdapter.ipv4Addresses.join(', ') : <EmptyValue />}
+            />
+            <Row
+              label={t('networkStats.ipv6')}
+              value={selectedAdapter.ipv6Addresses.length > 0 ? selectedAdapter.ipv6Addresses.join(', ') : <EmptyValue />}
+            />
+            {selectedAdapter.isWifi && (
+              <Row label={t('networkStats.ssid')} value={selectedAdapter.ssid ?? <EmptyValue />} />
+            )}
+            {selectedAdapter.isWifi && (
+              <Row
+                label={t('networkStats.signal')}
+                value={selectedAdapter.signalPercent !== null ? `${selectedAdapter.signalPercent}%` : <EmptyValue />}
+              />
+            )}
+          </div>
+        </section>
       </section>
     )
   }
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* Download chart */}
-        <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-foreground">{t('networkStats.download')}</h3>
-            <span className="text-sm font-semibold tabular-nums text-foreground">
-              {formatBytes(liveInfo?.network.reduce((s, i) => s + i.rxBytesPerSec, 0) ?? 0)}
-              /s
-            </span>
-          </div>
-          <LiveChart data={rxHistory} height={96} />
-        </section>
-
-        {/* Upload chart */}
-        <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-foreground">{t('networkStats.upload')}</h3>
-            <span className="text-sm font-semibold tabular-nums text-foreground">
-              {formatBytes(liveInfo?.network.reduce((s, i) => s + i.txBytesPerSec, 0) ?? 0)}
-              /s
-            </span>
-          </div>
-          <LiveChart data={txHistory} height={96} />
-        </section>
-
-        {/* Per-adapter table */}
-        <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4 md:col-span-2">
-          <h3 className="text-sm font-medium text-foreground">{t('networkStats.adapters')}</h3>
-          {ifaces.length === 0
-            ? <span className="text-xs text-muted-foreground">{t('home.noActivity')}</span>
-            : (
-                <div className="space-y-3">
-                  {ifaces.map(iface => (
-                    <div className="space-y-0.5" key={iface.name}>
-                      <span className="text-xs font-medium text-foreground">{iface.name}</span>
-                      <div className="flex gap-6">
-                        <span className="text-xs tabular-nums text-muted-foreground">
-                          ↓
-                          {' '}
-                          {formatBytes(iface.rxBytesPerSec)}
-                          /s
-                        </span>
-                        <span className="text-xs tabular-nums text-muted-foreground">
-                          ↑
-                          {' '}
-                          {formatBytes(iface.txBytesPerSec)}
-                          /s
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-        </section>
-      </div>
+      {adapters.length === 0
+        ? (
+            <section className="rounded-xl border border-border/70 bg-card p-4">
+              <span className="text-xs text-muted-foreground">{t('home.noActivity')}</span>
+            </section>
+          )
+        : (
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              {adapters.map(adapter => (
+                <NetworkAdapterCard
+                  adapter={adapter}
+                  key={adapter.index}
+                  traffic={getLiveAdapter(liveInfo, adapter)}
+                />
+              ))}
+            </div>
+          )}
     </section>
   )
 }

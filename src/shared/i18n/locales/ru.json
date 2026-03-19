@@ -4,6 +4,7 @@
     "title": "Winsentials"
   },
   "titlebar": {
+    "maximize": "Развернуть окно",
     "minimize": "Свернуть окно",
     "close": "Закрыть окно"
   },
@@ -262,11 +263,23 @@
     "engineCompute": "Вычисления"
   },
   "networkStats": {
-    "adapters": "Адаптеры",
-    "description": "Трафик сетевого адаптера в реальном времени.",
-    "download": "Загрузка",
+    "adapter": "Адаптер",
+    "adapterDescription": "Описание адаптера",
+    "adapterLabel": "Адаптер {{index}}",
+    "connectionType": "Тип подключения",
+    "description": "Сетевые адаптеры и пропускная способность в реальном времени.",
+    "dnsName": "DNS имя",
+    "info": "Информация",
+    "ipv4": "IPv4",
+    "ipv6": "IPv6",
+    "max60": "Максимальная за 60 сек",
+    "openAdapter": "Открыть",
+    "receive": "Получение",
+    "send": "Отправка",
+    "signal": "Уровень сигнала",
+    "ssid": "SSID",
     "title": "Сеть",
-    "upload": "Отдача"
+    "throughput": "Пропускная способность"
   },
   "ram": {
     "description": "Ёмкость, частота и использование оперативной памяти.",
@@ -287,18 +300,28 @@
     "compressed": "сжатая"
   },
   "storage": {
+    "activeTime": "Активное время",
     "available": "Доступно",
+    "avgResponseTime": "Среднее время ответа",
+    "capacity": "Емкость",
     "description": "Ёмкость дисков и информация о файловых системах.",
     "device": "Устройство",
     "diskInfo": "Информация о диске",
     "diskLabel": "Диск {{index}}",
+    "format": "Формат",
     "fileSystem": "Файловая система",
     "mountPoint": "Точка монтирования",
+    "no": "Нет",
     "notFound": "Диск не найден.",
+    "pagefile": "Файл подкачки",
+    "readSpeed": "Скорость чтения",
+    "systemDisk": "Системный диск",
     "title": "Накопители",
     "volumeLabel": "Имя тома",
     "type": "Тип",
-    "used": "Занято"
+    "used": "Занято",
+    "writeSpeed": "Скорость записи",
+    "yes": "Да"
   },
   "tweaks": {
     "actions": {

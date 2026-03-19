@@ -132,5 +132,25 @@ export function usePageHeader(pathname: string): PageHeader {
     }
   }
 
+  if (pathname.startsWith('/network-stats/')) {
+    const idx = Number(pathname.replace('/network-stats/', ''))
+    const adapter = staticInfo?.networkAdapters[idx]
+    return {
+      title: adapter
+        ? (
+            <span className="flex items-baseline gap-1.5">
+              <span>{t('networkStats.adapterLabel', { index: idx })}</span>
+              <span className="text-base font-normal text-muted-foreground">
+                (
+                {adapter.name}
+                )
+              </span>
+            </span>
+          )
+        : t('networkStats.adapterLabel', { index: idx }),
+      description: t('networkStats.description'),
+    }
+  }
+
   return { title: t('app.title'), description: '' }
 }

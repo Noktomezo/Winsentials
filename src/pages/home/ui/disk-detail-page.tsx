@@ -1,10 +1,11 @@
-import type { DiskInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
+import type { DiskInfo, DiskLiveInfo, LiveSystemInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
+import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useParams } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getStaticSystemInfo } from '@/entities/system-info/api'
-import { mountLabel, mountToParam } from '@/shared/lib/mount-utils'
-import { Progress } from '@/shared/ui/progress'
+import { getLiveSystemInfo, getStaticSystemInfo } from '@/entities/system-info/api'
+import { mountToParam } from '@/shared/lib/mount-utils'
+import { LiveChart } from '@/shared/ui/live-chart'
 import { Skeleton } from '@/shared/ui/skeleton'
 
 function formatBytes(bytes: number, decimals = 1): string {
@@ -15,9 +16,18 @@ function formatBytes(bytes: number, decimals = 1): string {
   return `${Number.parseFloat((bytes / k ** i).toFixed(decimals))} ${sizes[i]}`
 }
 
-function usagePct(used: number, total: number): number {
-  if (total === 0) { return 0 }
-  return Math.round((used / total) * 100)
+function formatRate(bytesPerSec: number): string {
+  return `${formatBytes(bytesPerSec)}/s`
+}
+
+function pushHistory(
+  ref: React.MutableRefObject<ChartPoint[]>,
+  value: number,
+  setter: (v: ChartPoint[]) => void,
+): void {
+  const next = [...ref.current, { value }]
+  ref.current = next.length > 60 ? next.slice(-60) : next
+  setter([...ref.current])
 }
 
 function Row({ label, value }: { label: string, value: React.ReactNode }) {
@@ -29,14 +39,48 @@ function Row({ label, value }: { label: string, value: React.ReactNode }) {
   )
 }
 
+function getDiskLive(liveInfo: LiveSystemInfo | null, mountPoint: string): DiskLiveInfo | null {
+  return liveInfo?.disks.find(disk => disk.mountPoint === mountPoint) ?? null
+}
+
 export function DiskDetailPage() {
   const { t } = useTranslation()
   const { disk: diskParam } = useParams({ from: '/storage/$disk' })
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
+  const [liveInfo, setLiveInfo] = useState<LiveSystemInfo | null>(null)
+  const activeHistoryRef = useRef<ChartPoint[]>([])
+  const [activeHistory, setActiveHistory] = useState<ChartPoint[]>([])
 
   useEffect(() => {
     getStaticSystemInfo().then(setStaticInfo).catch(console.error)
   }, [])
+
+  useEffect(() => {
+    if (!staticInfo) { return }
+
+    activeHistoryRef.current = []
+    setActiveHistory([])
+
+    const tick = () => {
+      getLiveSystemInfo()
+        .then((live) => {
+          setLiveInfo(live)
+
+          const disk = staticInfo.disks.find(entry => mountToParam(entry.mountPoint) === diskParam)
+          if (!disk) {
+            return
+          }
+
+          const diskLive = getDiskLive(live, disk.mountPoint)
+          pushHistory(activeHistoryRef, diskLive?.activeTimePercent ?? 0, setActiveHistory)
+        })
+        .catch(console.error)
+    }
+
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [diskParam, staticInfo])
 
   if (!staticInfo) {
     return (
@@ -45,9 +89,8 @@ export function DiskDetailPage() {
           <Skeleton className="mb-3 h-4 w-32" />
           <div className="space-y-2.5">
             <Skeleton className="h-3 w-full" />
-            <Skeleton className="h-3 w-4/5" />
-            <Skeleton className="h-3 w-3/5" />
-            <Skeleton className="h-2 w-full rounded-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-3 w-full" />
           </div>
         </section>
       </section>
@@ -65,42 +108,36 @@ export function DiskDetailPage() {
     )
   }
 
-  const used = disk.totalBytes - disk.availableBytes
-  const pct = usagePct(used, disk.totalBytes)
+  const diskLive = getDiskLive(liveInfo, disk.mountPoint)
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
-          <h3 className="text-sm font-medium text-foreground">{t('storage.diskInfo')}</h3>
-          <Row label={t('storage.mountPoint')} value={mountLabel(disk.mountPoint)} />
-          {disk.volumeLabel && (
-            <Row label={t('storage.volumeLabel')} value={disk.volumeLabel} />
-          )}
-          {disk.name && disk.name !== disk.mountPoint && (
-            <Row label={t('storage.device')} value={disk.name} />
-          )}
-          <Row label={t('storage.type')} value={disk.kind} />
-          <Row label={t('storage.fileSystem')} value={disk.fileSystem} />
-          <Row label={t('home.total')} value={formatBytes(disk.totalBytes)} />
-          <Row label={t('storage.used')} value={formatBytes(used)} />
-          <Row label={t('storage.available')} value={formatBytes(disk.availableBytes)} />
-        </section>
+      <section className="flex flex-col gap-1 rounded-xl border border-border/70 bg-card p-4">
+        <div className="flex items-baseline justify-between">
+          <span className="text-xs font-medium text-foreground">{t('storage.activeTime')}</span>
+          <span className="text-xs tabular-nums text-muted-foreground">100%</span>
+        </div>
+        <LiveChart data={activeHistory} height={96} unit="%" yDomain={[0, 100]} />
+        <div className="flex items-baseline justify-between">
+          <span className="text-xs text-muted-foreground">{t('ram.seconds', { n: 60 })}</span>
+          <span className="text-xs tabular-nums text-muted-foreground">0</span>
+        </div>
+      </section>
 
-        <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-foreground">{t('home.usage')}</h3>
-            <span className="text-sm font-semibold tabular-nums text-foreground">
-              {pct}
-              %
-            </span>
-          </div>
-          <Progress className="h-1.5" value={pct} />
-          <p className="text-xs text-muted-foreground">
-            {t('home.usedOf', { used: formatBytes(used), total: formatBytes(disk.totalBytes) })}
-          </p>
-        </section>
-      </div>
+      <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+        <h3 className="text-sm font-medium text-foreground">{t('storage.diskInfo')}</h3>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <Row label={t('storage.activeTime')} value={`${diskLive?.activeTimePercent ?? 0}%`} />
+          <Row label={t('storage.avgResponseTime')} value={`${(diskLive?.avgResponseMs ?? 0).toFixed(1)} ms`} />
+          <Row label={t('storage.readSpeed')} value={formatRate(diskLive?.readBytesPerSec ?? 0)} />
+          <Row label={t('storage.writeSpeed')} value={formatRate(diskLive?.writeBytesPerSec ?? 0)} />
+          <Row label={t('storage.capacity')} value={formatBytes(disk.totalBytes)} />
+          <Row label={t('storage.format')} value={disk.fileSystem || '-'} />
+          <Row label={t('storage.systemDisk')} value={disk.isSystemDisk ? t('storage.yes') : t('storage.no')} />
+          <Row label={t('storage.pagefile')} value={disk.hasPagefile ? t('storage.yes') : t('storage.no')} />
+          <Row label={t('storage.type')} value={disk.typeLabel} />
+        </div>
+      </section>
     </section>
   )
 }

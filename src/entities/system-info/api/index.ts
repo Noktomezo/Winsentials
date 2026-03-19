@@ -1,9 +1,11 @@
 import type {
   CpuInfo,
   DiskInfo,
+  DiskLiveInfo,
   GpuInfo,
   LiveSystemInfo,
   MotherboardInfo,
+  NetworkAdapterInfo,
   NetworkIfaceStats,
   RamInfo,
   StaticSystemInfo,
@@ -77,6 +79,17 @@ interface BackendDiskInfo {
   kind: string
   file_system: string
   volume_label: string | null
+  is_system_disk: boolean
+  has_pagefile: boolean
+  type_label: string
+}
+
+interface BackendDiskLiveInfo {
+  mount_point: string
+  active_time_percent: number
+  avg_response_ms: number
+  read_bytes_per_sec: number
+  write_bytes_per_sec: number
 }
 
 interface BackendRamInfo {
@@ -91,9 +104,23 @@ interface BackendStaticSystemInfo {
   windows: BackendWindowsInfo
   cpu: BackendCpuInfo
   ram: BackendRamInfo
+  network_adapters: BackendNetworkAdapterInfo[]
   gpus: BackendGpuInfo[]
   motherboard: BackendMotherboardInfo
   disks: BackendDiskInfo[]
+}
+
+interface BackendNetworkAdapterInfo {
+  index: number
+  name: string
+  adapter_description: string
+  dns_name: string | null
+  connection_type: string
+  ipv4_addresses: string[]
+  ipv6_addresses: string[]
+  is_wifi: boolean
+  ssid: string | null
+  signal_percent: number | null
 }
 
 interface BackendNetworkIfaceStats {
@@ -118,6 +145,7 @@ interface BackendLiveSystemInfo {
   ram_compressed_bytes: number
   ram_paged_pool_bytes: number
   ram_nonpaged_pool_bytes: number
+  disks: BackendDiskLiveInfo[]
   network: BackendNetworkIfaceStats[]
   gpus: BackendGpuInfo[]
 }
@@ -197,6 +225,34 @@ function mapDisk(d: BackendDiskInfo): DiskInfo {
     kind: d.kind,
     fileSystem: d.file_system,
     volumeLabel: d.volume_label,
+    isSystemDisk: d.is_system_disk,
+    hasPagefile: d.has_pagefile,
+    typeLabel: d.type_label,
+  }
+}
+
+function mapDiskLive(d: BackendDiskLiveInfo): DiskLiveInfo {
+  return {
+    mountPoint: d.mount_point,
+    activeTimePercent: d.active_time_percent,
+    avgResponseMs: d.avg_response_ms,
+    readBytesPerSec: d.read_bytes_per_sec,
+    writeBytesPerSec: d.write_bytes_per_sec,
+  }
+}
+
+function mapNetworkAdapter(n: BackendNetworkAdapterInfo): NetworkAdapterInfo {
+  return {
+    index: n.index,
+    name: n.name,
+    adapterDescription: n.adapter_description,
+    dnsName: n.dns_name,
+    connectionType: n.connection_type,
+    ipv4Addresses: n.ipv4_addresses,
+    ipv6Addresses: n.ipv6_addresses,
+    isWifi: n.is_wifi,
+    ssid: n.ssid,
+    signalPercent: n.signal_percent,
   }
 }
 
@@ -215,6 +271,7 @@ function mapStatic(raw: BackendStaticSystemInfo): StaticSystemInfo {
     windows: mapWindows(raw.windows),
     cpu: mapCpu(raw.cpu),
     ram: mapRam(raw.ram),
+    networkAdapters: raw.network_adapters.map(mapNetworkAdapter),
     gpus: raw.gpus.map(mapGpu),
     motherboard: mapMotherboard(raw.motherboard),
     disks: raw.disks.map(mapDisk),
@@ -246,6 +303,7 @@ function mapLive(raw: BackendLiveSystemInfo): LiveSystemInfo {
     ramCompressedBytes: raw.ram_compressed_bytes,
     ramPagedPoolBytes: raw.ram_paged_pool_bytes,
     ramNonpagedPoolBytes: raw.ram_nonpaged_pool_bytes,
+    disks: raw.disks.map(mapDiskLive),
     network: raw.network.map(mapNetwork),
     gpus: raw.gpus.map(mapGpu),
   }
