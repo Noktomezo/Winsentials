@@ -58,4 +58,6 @@ windows = { version = "0.62", features = [
   "Win32_Storage_FileSystem",
   "Win32_Graphics_Dxgi",
   "Wdk_Graphics_Direct3D",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
 ] }
