@@ -535,8 +535,15 @@ body {
 }
 
 [data-sonner-toast] [data-buttons] {
+  display: flex !important;
+  flex-direction: row !important;
   margin-top: 8px;
-  justify-content: flex-start;
+  gap: 8px;
+}
+
+[data-sonner-toast] [data-button],
+[data-sonner-toast] [data-cancel] {
+  flex: 0 0 auto;
 }
 
 /* Light (default — inherits from :root CSS vars) */
