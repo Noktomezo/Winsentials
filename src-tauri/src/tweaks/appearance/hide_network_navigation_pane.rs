@@ -1,6 +1,6 @@
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
-use crate::shell::restart_explorer;
+use crate::shell::refresh_shell_namespace;
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
 
 const ENABLED_VALUE: &str = "enabled";
@@ -38,9 +38,7 @@ impl HideNetworkNavigationPaneTweak {
                 recommended_value: DISABLED_VALUE.into(),
                 risk: RiskLevel::None,
                 risk_description: None,
-                requires_action: RequiresAction::RestartApp {
-                    app_name: "Explorer".into(),
-                },
+                requires_action: RequiresAction::None,
                 min_os_build: Some(10240),
                 min_os_ubr: None,
             },
@@ -67,7 +65,10 @@ impl Tweak for HideNetworkNavigationPaneTweak {
 
     fn apply(&self, value: &str) -> Result<(), AppError> {
         match value {
-            ENABLED_VALUE => NETWORK_KEY.set_dword("System.IsPinnedToNameSpaceTree", 0),
+            ENABLED_VALUE => {
+                NETWORK_KEY.set_dword("System.IsPinnedToNameSpaceTree", 0)?;
+                refresh_shell_namespace()
+            }
             DISABLED_VALUE => self.reset(),
             _ => Err(AppError::message(format!(
                 "unsupported value `{value}` for {}",
@@ -77,7 +78,8 @@ impl Tweak for HideNetworkNavigationPaneTweak {
     }
 
     fn reset(&self) -> Result<(), AppError> {
-        NETWORK_KEY.set_dword("System.IsPinnedToNameSpaceTree", 1)
+        NETWORK_KEY.set_dword("System.IsPinnedToNameSpaceTree", 1)?;
+        refresh_shell_namespace()
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {
@@ -89,9 +91,5 @@ impl Tweak for HideNetworkNavigationPaneTweak {
             },
             is_default: !self.is_enabled()?,
         })
-    }
-
-    fn extra(&self) -> Result<(), AppError> {
-        restart_explorer()
     }
 }
