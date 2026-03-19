@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { StaticSystemInfo } from '@/entities/system-info/model/types'
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { mountLabel, mountToParam } from '@/shared/lib/mount-utils'
@@ -13,7 +13,7 @@ export interface PageHeader {
 // Module-level cache so the IPC call fires only once per app session.
 let staticInfoCache: StaticSystemInfo | null = null
 let staticInfoPromise: Promise<StaticSystemInfo> | null = null
-const listeners: Array<(info: StaticSystemInfo) => void> = []
+const listeners = new Set<() => void>()
 
 function loadStaticInfo(): Promise<StaticSystemInfo> {
   if (staticInfoCache) {
@@ -27,8 +27,7 @@ function loadStaticInfo(): Promise<StaticSystemInfo> {
   staticInfoPromise = getStaticSystemInfo()
     .then((info) => {
       staticInfoCache = info
-      for (const fn of listeners) { fn(info) }
-      listeners.length = 0
+      listeners.forEach(fn => fn())
       return info
     })
     .finally(() => {
@@ -38,23 +37,18 @@ function loadStaticInfo(): Promise<StaticSystemInfo> {
   return staticInfoPromise
 }
 
+function subscribeStaticInfo(callback: () => void) {
+  listeners.add(callback)
+  void loadStaticInfo()
+  return () => { listeners.delete(callback) }
+}
+
+function getStaticInfoSnapshot() {
+  return staticInfoCache
+}
+
 export function useStaticInfo(): StaticSystemInfo | null {
-  const [info, setInfo] = useState<StaticSystemInfo | null>(staticInfoCache)
-
-  useEffect(() => {
-    if (staticInfoCache) {
-      setInfo(staticInfoCache)
-      return
-    }
-    listeners.push(setInfo)
-    loadStaticInfo().catch(console.error)
-    return () => {
-      const idx = listeners.indexOf(setInfo)
-      if (idx !== -1) { listeners.splice(idx, 1) }
-    }
-  }, [])
-
-  return info
+  return useSyncExternalStore(subscribeStaticInfo, getStaticInfoSnapshot, getStaticInfoSnapshot)
 }
 
 export function usePageHeader(pathname: string): PageHeader {
