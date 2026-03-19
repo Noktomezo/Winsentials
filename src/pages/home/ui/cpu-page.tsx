@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
 import type { StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { useLiveCpu } from '@/entities/system-info/model/live-system-store'
+import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { Button } from '@/shared/ui/button'
 import { LiveChart } from '@/shared/ui/live-chart'
 import { Progress } from '@/shared/ui/progress'
@@ -48,9 +49,8 @@ export function CpuPage() {
   const { t } = useTranslation()
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [staticInfoError, setStaticInfoError] = useState(false)
-  const [history, setHistory] = useState<ChartPoint[]>([])
-  const historyRef = useRef<ChartPoint[]>([])
-  const { data: liveInfo } = useLiveCpu()
+  const { data: liveInfo, history: rawHistory } = useLiveCpu()
+  const history: ChartPoint[] = rawHistory.map(v => ({ value: v }))
 
   const loadStaticInfo = () => {
     setStaticInfoError(false)
@@ -64,16 +64,9 @@ export function CpuPage() {
       })
   }
 
-  useEffect(() => {
+  useMountEffect(() => {
     loadStaticInfo()
-  }, [])
-
-  useEffect(() => {
-    if (!liveInfo) { return }
-    const next = [...historyRef.current, { value: liveInfo.cpuUsagePercent }]
-    historyRef.current = next.length > 60 ? next.slice(-60) : next
-    setHistory([...historyRef.current])
-  }, [liveInfo])
+  })
 
   if (!staticInfo) {
     if (staticInfoError) {

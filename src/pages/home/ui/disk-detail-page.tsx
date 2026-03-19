@@ -2,11 +2,12 @@ import type { ReactNode } from 'react'
 import type { DiskInfo, DiskLiveInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useParams } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { useLiveDisks } from '@/entities/system-info/model/live-system-store'
 import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
+import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { mountToParam } from '@/shared/lib/mount-utils'
 import { Button } from '@/shared/ui/button'
 import { LiveChart } from '@/shared/ui/live-chart'
@@ -18,16 +19,6 @@ function formatBytes(bytes: number, locale: string, t: ReturnType<typeof useTran
 
 function formatRate(bytesPerSec: number, locale: string, t: ReturnType<typeof useTranslation>['t']): string {
   return formatRateLocalized(bytesPerSec, { locale, t })
-}
-
-function pushHistory(
-  ref: React.MutableRefObject<ChartPoint[]>,
-  value: number,
-  setter: (v: ChartPoint[]) => void,
-): void {
-  const next = [...ref.current, { value }]
-  ref.current = next.length > 60 ? next.slice(-60) : next
-  setter([...ref.current])
 }
 
 interface RowProps {
@@ -53,9 +44,7 @@ export function DiskDetailPage() {
   const { disk: diskParam } = useParams({ from: '/storage/$disk' })
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [staticInfoError, setStaticInfoError] = useState(false)
-  const activeHistoryRef = useRef<ChartPoint[]>([])
-  const [activeHistory, setActiveHistory] = useState<ChartPoint[]>([])
-  const { data: liveInfo } = useLiveDisks()
+  const { data: liveInfo, activeHistory: storeActiveHistory } = useLiveDisks()
 
   const loadStaticInfo = () => {
     setStaticInfoError(false)
@@ -67,26 +56,9 @@ export function DiskDetailPage() {
       })
   }
 
-  useEffect(() => {
+  useMountEffect(() => {
     loadStaticInfo()
-  }, [])
-
-  useEffect(() => {
-    activeHistoryRef.current = []
-    setActiveHistory([])
-  }, [diskParam])
-
-  useEffect(() => {
-    if (!staticInfo || !liveInfo) { return }
-
-    const disk = staticInfo.disks.find(entry => mountToParam(entry.mountPoint) === diskParam)
-    if (!disk) {
-      return
-    }
-
-    const diskLive = getDiskLive(liveInfo, disk.mountPoint)
-    pushHistory(activeHistoryRef, diskLive?.activeTimePercent ?? 0, setActiveHistory)
-  }, [diskParam, liveInfo, staticInfo])
+  })
 
   if (!staticInfo) {
     if (staticInfoError) {
@@ -130,6 +102,7 @@ export function DiskDetailPage() {
   }
 
   const diskLive = getDiskLive(liveInfo, disk.mountPoint)
+  const activeHistory: ChartPoint[] = (storeActiveHistory[disk.mountPoint] ?? []).map(v => ({ value: v }))
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">

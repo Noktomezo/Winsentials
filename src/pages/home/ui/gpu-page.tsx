@@ -2,10 +2,11 @@ import type { ReactNode } from 'react'
 import type { GpuInfo, LiveGpuInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useNavigate, useParams } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { useLiveGpu } from '@/entities/system-info/model/live-system-store'
+import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { Button } from '@/shared/ui/button'
 import { LiveChart } from '@/shared/ui/live-chart'
 import { Skeleton } from '@/shared/ui/skeleton'
@@ -112,16 +113,6 @@ function MemChart({
   )
 }
 
-function pushHistory(
-  ref: React.MutableRefObject<ChartPoint[]>,
-  value: number,
-  setter: (v: ChartPoint[]) => void,
-): void {
-  const next = [...ref.current, { value }]
-  ref.current = next.length > 60 ? next.slice(-60) : next
-  setter([...ref.current])
-}
-
 function getEngineCharts(
   gpu: GpuInfo,
   live: LiveGpuInfo | undefined,
@@ -160,25 +151,7 @@ export function GpuPage() {
 
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [staticError, setStaticError] = useState(false)
-  const { data: liveInfo } = useLiveGpu()
-
-  const hist3DRef = useRef<ChartPoint[]>([])
-  const histCopyRef = useRef<ChartPoint[]>([])
-  const histEncodeRef = useRef<ChartPoint[]>([])
-  const histDecodeRef = useRef<ChartPoint[]>([])
-  const histHP3DRef = useRef<ChartPoint[]>([])
-  const histHPComputeRef = useRef<ChartPoint[]>([])
-  const histDedicatedRef = useRef<ChartPoint[]>([])
-  const histSharedRef = useRef<ChartPoint[]>([])
-
-  const [hist3D, setHist3D] = useState<ChartPoint[]>([])
-  const [histCopy, setHistCopy] = useState<ChartPoint[]>([])
-  const [histEncode, setHistEncode] = useState<ChartPoint[]>([])
-  const [histDecode, setHistDecode] = useState<ChartPoint[]>([])
-  const [histHP3D, setHistHP3D] = useState<ChartPoint[]>([])
-  const [histHPCompute, setHistHPCompute] = useState<ChartPoint[]>([])
-  const [histDedicated, setHistDedicated] = useState<ChartPoint[]>([])
-  const [histShared, setHistShared] = useState<ChartPoint[]>([])
+  const { data: liveInfo, history: gpuHistory } = useLiveGpu()
 
   const loadStaticInfo = () => {
     setStaticError(false)
@@ -190,9 +163,9 @@ export function GpuPage() {
       })
   }
 
-  useEffect(() => {
+  useMountEffect(() => {
     loadStaticInfo()
-  }, [])
+  })
 
   const gpuIndex = staticInfo && parsedGpuIndex !== null && Number.isInteger(parsedGpuIndex) && parsedGpuIndex >= 0 && parsedGpuIndex < staticInfo.gpus.length
     ? parsedGpuIndex
@@ -206,47 +179,6 @@ export function GpuPage() {
       void navigate({ replace: true, to: '/gpu' })
     }
   }, [gpuIndex, navigate, params.gpuIndex, staticInfo])
-
-  useEffect(() => {
-    if (!staticInfo) { return }
-
-    hist3DRef.current = []
-    histCopyRef.current = []
-    histEncodeRef.current = []
-    histDecodeRef.current = []
-    histHP3DRef.current = []
-    histHPComputeRef.current = []
-    histDedicatedRef.current = []
-    histSharedRef.current = []
-    setHist3D([])
-    setHistCopy([])
-    setHistEncode([])
-    setHistDecode([])
-    setHistHP3D([])
-    setHistHPCompute([])
-    setHistDedicated([])
-    setHistShared([])
-  }, [gpuIndex, staticInfo])
-
-  useEffect(() => {
-    if (!isDetailView || gpuIndex === null || !liveInfo) { return }
-    const entry = liveInfo[gpuIndex]
-    if (!entry) { return }
-
-    pushHistory(hist3DRef, entry.util3d, setHist3D)
-    pushHistory(histCopyRef, entry.utilCopy, setHistCopy)
-    pushHistory(histEncodeRef, entry.utilEncode, setHistEncode)
-    pushHistory(histDecodeRef, entry.utilDecode, setHistDecode)
-    pushHistory(histHP3DRef, entry.utilHighPriority3d, setHistHP3D)
-    pushHistory(histHPComputeRef, entry.utilHighPriorityCompute, setHistHPCompute)
-
-    const dedicatedBudget = entry.vramTotalMb - entry.vramReservedMb
-    const dedicatedPct = dedicatedBudget > 0
-      ? Math.min(100, (entry.vramUsedMb / dedicatedBudget) * 100)
-      : 0
-    pushHistory(histDedicatedRef, dedicatedPct, setHistDedicated)
-    pushHistory(histSharedRef, entry.vramSharedMb, setHistShared)
-  }, [gpuIndex, isDetailView, liveInfo])
 
   if (!staticInfo) {
     if (staticError) {
@@ -294,6 +226,15 @@ export function GpuPage() {
     const sharedUsedMb = live?.vramSharedMb ?? 0
 
     const usage = live ? gpuUsage(live) : 0
+    const gpuHist = gpuHistory[gpuIndex]
+    const hist3D = (gpuHist?.threeD ?? []).map(v => ({ value: v }))
+    const histCopy = (gpuHist?.copy ?? []).map(v => ({ value: v }))
+    const histEncode = (gpuHist?.encode ?? []).map(v => ({ value: v }))
+    const histDecode = (gpuHist?.decode ?? []).map(v => ({ value: v }))
+    const histHP3D = (gpuHist?.highPriority3d ?? []).map(v => ({ value: v }))
+    const histHPCompute = (gpuHist?.highPriorityCompute ?? []).map(v => ({ value: v }))
+    const histDedicated = (gpuHist?.dedicatedPct ?? []).map(v => ({ value: v }))
+    const histShared = (gpuHist?.sharedMb ?? []).map(v => ({ value: v }))
     const engineCharts = getEngineCharts(gpu, live, {
       threeD: hist3D,
       copy: histCopy,

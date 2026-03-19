@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
 import type { StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { useLiveRam } from '@/entities/system-info/model/live-system-store'
 import { formatBytesLocalized } from '@/shared/lib/format-size'
+import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { LiveChart } from '@/shared/ui/live-chart'
 import { Skeleton } from '@/shared/ui/skeleton'
 
@@ -94,28 +95,13 @@ function StripBar({
 export function RamPage() {
   const { t, i18n } = useTranslation()
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
-  const [history, setHistory] = useState<ChartPoint[]>([])
-  const historyRef = useRef<ChartPoint[]>([])
-  const peakRef = useRef<number>(0)
-  const [peak, setPeak] = useState<number>(0)
-  const { data: liveInfo } = useLiveRam()
+  const { data: liveInfo, history: rawHistory } = useLiveRam()
+  const history: ChartPoint[] = rawHistory.map(v => ({ value: v }))
+  const peak = rawHistory.length > 0 ? Math.max(...rawHistory) : 0
 
-  useEffect(() => {
+  useMountEffect(() => {
     getStaticSystemInfo().then(setStaticInfo).catch(console.error)
-  }, [])
-
-  useEffect(() => {
-    if (!liveInfo) { return }
-
-    const gb = liveInfo.ramUsedBytes / 1024 ** 3
-    const next = [...historyRef.current, { value: gb }]
-    historyRef.current = next.length > 60 ? next.slice(-60) : next
-    setHistory([...historyRef.current])
-    if (gb > peakRef.current) {
-      peakRef.current = gb
-      setPeak(gb)
-    }
-  }, [liveInfo])
+  })
 
   if (!staticInfo) {
     return (

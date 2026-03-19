@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
 import type { NetworkAdapterInfo, NetworkIfaceStats, StaticSystemInfo } from '@/entities/system-info/model/types'
-import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useNavigate, useParams } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { useLiveNetwork } from '@/entities/system-info/model/live-system-store'
 import { formatRateLocalized } from '@/shared/lib/format-size'
+import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { networkAdapterToParam } from '@/shared/lib/mount-utils'
 import { Button } from '@/shared/ui/button'
 import { LiveChart } from '@/shared/ui/live-chart'
@@ -41,16 +41,6 @@ function ceilToNiceNumber(value: number): number {
   if (value <= 0) { return 0 }
   const magnitude = 10 ** Math.floor(Math.log10(value))
   return Math.ceil(value / magnitude) * magnitude
-}
-
-function pushHistory(
-  ref: React.MutableRefObject<ChartPoint[]>,
-  value: number,
-  setter: (v: ChartPoint[]) => void,
-): void {
-  const next = [...ref.current, { value }]
-  ref.current = next.length > 60 ? next.slice(-60) : next
-  setter([...ref.current])
 }
 
 function getLiveAdapter(liveInfo: NetworkIfaceStats[] | null, adapter: NetworkAdapterInfo): NetworkIfaceStats | null {
@@ -148,9 +138,7 @@ export function NetworkStatsPage() {
 
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [staticError, setStaticError] = useState(false)
-  const throughputRef = useRef<ChartPoint[]>([])
-  const [throughputHistory, setThroughputHistory] = useState<ChartPoint[]>([])
-  const { data: liveInfo } = useLiveNetwork()
+  const { data: liveInfo, throughputHistory: storeThroughput } = useLiveNetwork()
 
   const loadStaticInfo = () => {
     setStaticError(false)
@@ -162,29 +150,9 @@ export function NetworkStatsPage() {
       })
   }
 
-  useEffect(() => {
+  useMountEffect(() => {
     loadStaticInfo()
-  }, [])
-
-  useEffect(() => {
-    throughputRef.current = []
-    setThroughputHistory([])
-  }, [adapterParam])
-
-  useEffect(() => {
-    if (!staticInfo || adapterParam === null || !liveInfo) { return }
-
-    const visibleAdapters = getVisibleAdapters(staticInfo, liveInfo)
-    const adapter = visibleAdapters.find(entry => entry.name === adapterParam)
-      ?? staticInfo.networkAdapters.find(entry => entry.name === adapterParam)
-    if (!adapter) {
-      return
-    }
-
-    const traffic = getLiveAdapter(liveInfo, adapter)
-    const totalThroughput = (traffic?.rxBytesPerSec ?? 0) + (traffic?.txBytesPerSec ?? 0)
-    pushHistory(throughputRef, totalThroughput, setThroughputHistory)
-  }, [adapterParam, liveInfo, staticInfo])
+  })
 
   if (!staticInfo) {
     if (staticError) {
@@ -226,11 +194,12 @@ export function NetworkStatsPage() {
   if (selectedAdapter) {
     const traffic = getLiveAdapter(liveInfo, selectedAdapter)
     const currentThroughput = (traffic?.rxBytesPerSec ?? 0) + (traffic?.txBytesPerSec ?? 0)
-    const peakBytes = Math.max(currentThroughput, ...throughputHistory.map(point => point.value))
+    const throughputHistory = storeThroughput[selectedAdapter.name] ?? []
+    const peakBytes = Math.max(currentThroughput, ...throughputHistory)
     const unit = getRateUnit(peakBytes, t)
     const roundedPeak = ceilToNiceNumber(peakBytes / unit.divisor)
     const chartMax = roundedPeak > 0 ? roundedPeak : 1
-    const chartData = throughputHistory.map(point => ({ value: point.value / unit.divisor }))
+    const chartData = throughputHistory.map(v => ({ value: v / unit.divisor }))
 
     return (
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
