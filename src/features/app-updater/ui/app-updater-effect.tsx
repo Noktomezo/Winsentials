@@ -40,14 +40,6 @@ export function AppUpdaterEffect() {
 
     let cancelled = false
 
-    const deferPrompt = () => {
-      deferredUntilRestartRef.current = true
-      if (activeToastIdRef.current) {
-        toast.dismiss(activeToastIdRef.current)
-        activeToastIdRef.current = undefined
-      }
-    }
-
     const showUpdatePrompt = (update: Update) => {
       activeToastIdRef.current = toast.action(i18n.t('settings.updatePromptTitle'), {
         action: {
@@ -72,22 +64,15 @@ export function AppUpdaterEffect() {
           },
         },
         cancel: {
-          label: i18n.t('settings.notNow'),
-          onClick: deferPrompt,
+          label: i18n.t('settings.disableUpdateChecks'),
+          onClick: () => {
+            setUpdateChecksEnabled(false)
+            activeToastIdRef.current = undefined
+            toast.success(i18n.t('settings.updateChecksDisabled'))
+          },
         },
         description: i18n.t('settings.updatePromptDescription', { version: update.version }),
         duration: Number.POSITIVE_INFINITY,
-        extraActions: [
-          {
-            label: i18n.t('settings.disableUpdateChecks'),
-            onClick: () => {
-              setUpdateChecksEnabled(false)
-              activeToastIdRef.current = undefined
-              toast.success(i18n.t('settings.updateChecksDisabled'))
-            },
-          },
-        ],
-        onCloseButton: deferPrompt,
       }) as string
     }
 
