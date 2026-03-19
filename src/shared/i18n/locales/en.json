@@ -217,6 +217,7 @@
     "updatesDescription": "Manage how the app checks for updates."
   },
   "cpu": {
+    "loadError": "Failed to load processor information.",
     "core": "Core",
     "currentFreq": "Current clock",
     "description": "Detailed processor usage and per-core breakdown.",

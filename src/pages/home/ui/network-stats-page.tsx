@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { LiveSystemInfo, NetworkAdapterInfo, NetworkIfaceStats, StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useNavigate, useParams } from '@tanstack/react-router'
@@ -75,7 +76,17 @@ function getVisibleAdapters(
   })
 }
 
-function Row({ label, value }: { label: string, value: React.ReactNode }) {
+interface RowProps {
+  label: string
+  value: ReactNode
+}
+
+interface NetworkAdapterCardProps {
+  adapter: NetworkAdapterInfo
+  traffic: NetworkIfaceStats | null
+}
+
+function Row({ label, value }: RowProps) {
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-xs text-muted-foreground">{label}</span>
@@ -88,13 +99,7 @@ function EmptyValue() {
   return <span className="text-muted-foreground">-</span>
 }
 
-function NetworkAdapterCard({
-  adapter,
-  traffic,
-}: {
-  adapter: NetworkAdapterInfo
-  traffic: NetworkIfaceStats | null
-}) {
+function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
   const { t } = useTranslation()
   const { i18n } = useTranslation()
   const navigate = useNavigate()

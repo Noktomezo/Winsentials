@@ -220,23 +220,11 @@ const WIN_VERSION_KEY: RegKey = RegKey {
 
 // ─── Static info gathering ────────────────────────────────────────────────────
 
+#[cfg(target_os = "windows")]
 fn gather_windows_info() -> Result<WindowsInfo, AppError> {
     let hostname = std::env::var("COMPUTERNAME").unwrap_or_else(|_| "Unknown".to_string());
     let username = std::env::var("USERNAME").unwrap_or_else(|_| "Unknown".to_string());
     let architecture = std::env::consts::ARCH.to_string();
-
-    if !cfg!(target_os = "windows") {
-        return Ok(WindowsInfo {
-            product_name: "Windows".to_string(),
-            display_version: "Unknown".to_string(),
-            build: 0,
-            ubr: 0,
-            hostname,
-            username,
-            architecture,
-            activation_status: "unknown".to_string(),
-        });
-    }
 
     let product_name = WIN_VERSION_KEY
         .get_string("ProductName")
@@ -267,6 +255,20 @@ fn gather_windows_info() -> Result<WindowsInfo, AppError> {
         username,
         architecture,
         activation_status: "unknown".to_string(), // filled in by gather_static_info after WMI
+    })
+}
+
+#[cfg(not(target_os = "windows"))]
+fn gather_windows_info() -> Result<WindowsInfo, AppError> {
+    Ok(WindowsInfo {
+        product_name: "Windows".to_string(),
+        display_version: "Unknown".to_string(),
+        build: 0,
+        ubr: 0,
+        hostname: std::env::var("HOSTNAME").unwrap_or_else(|_| "Unknown".to_string()),
+        username: std::env::var("USER").unwrap_or_else(|_| "Unknown".to_string()),
+        architecture: std::env::consts::ARCH.to_string(),
+        activation_status: "unknown".to_string(),
     })
 }
 

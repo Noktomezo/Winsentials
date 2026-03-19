@@ -1,8 +1,10 @@
+import type { ReactNode } from 'react'
 import type { LiveSystemInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getLiveSystemInfo, getStaticSystemInfo } from '@/entities/system-info/api'
+import { Button } from '@/shared/ui/button'
 import { LiveChart } from '@/shared/ui/live-chart'
 import { Progress } from '@/shared/ui/progress'
 import { Skeleton } from '@/shared/ui/skeleton'
@@ -27,7 +29,12 @@ function formatUptime(secs: number): string {
   return `${dd}:${hh}:${mm}:${ss}`
 }
 
-function Row({ label, value }: { label: string, value: React.ReactNode }) {
+interface RowProps {
+  label: string
+  value: ReactNode
+}
+
+function Row({ label, value }: RowProps) {
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-xs text-muted-foreground">{label}</span>
@@ -39,12 +46,25 @@ function Row({ label, value }: { label: string, value: React.ReactNode }) {
 export function CpuPage() {
   const { t } = useTranslation()
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
+  const [staticInfoError, setStaticInfoError] = useState(false)
   const [liveInfo, setLiveInfo] = useState<LiveSystemInfo | null>(null)
   const [history, setHistory] = useState<ChartPoint[]>([])
   const historyRef = useRef<ChartPoint[]>([])
 
+  const loadStaticInfo = () => {
+    setStaticInfoError(false)
+    getStaticSystemInfo()
+      .then((info) => {
+        setStaticInfo(info)
+      })
+      .catch((error) => {
+        console.error(error)
+        setStaticInfoError(true)
+      })
+  }
+
   useEffect(() => {
-    getStaticSystemInfo().then(setStaticInfo).catch(console.error)
+    loadStaticInfo()
   }, [])
 
   useEffect(() => {
@@ -65,6 +85,21 @@ export function CpuPage() {
   }, [staticInfo])
 
   if (!staticInfo) {
+    if (staticInfoError) {
+      return (
+        <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
+          <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+            <p className="text-sm text-muted-foreground">{t('cpu.loadError')}</p>
+            <div>
+              <Button onClick={loadStaticInfo} size="sm" type="button" variant="outline">
+                {t('tweaks.actions.retry')}
+              </Button>
+            </div>
+          </section>
+        </section>
+      )
+    }
+
     return (
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
         {Array.from({ length: 3 }).map((_, i) => (

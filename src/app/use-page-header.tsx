@@ -101,7 +101,7 @@ export function usePageHeader(pathname: string): PageHeader {
     if (!Number.isInteger(idx) || idx < 0) {
       return { title: t('home.gpu'), description: t('gpu.description') }
     }
-    const isValidIdx = Number.isInteger(idx) && idx >= 0 && idx < (staticInfo?.gpus.length ?? 0)
+    const isValidIdx = idx < (staticInfo?.gpus.length ?? 0)
     if (!isValidIdx && staticInfo) {
       return { title: t('home.gpu'), description: t('gpu.description') }
     }

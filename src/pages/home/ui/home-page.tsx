@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
 import type { GpuInfo, LiveSystemInfo, NetworkAdapterInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
 import { useNavigate } from '@tanstack/react-router'
 import { ChevronRight, Cpu, HardDrive, Layers, Monitor, Network, Server } from 'lucide-react'
@@ -100,7 +101,20 @@ function MarqueeText({ text, className }: { text: string, className?: string }) 
 
 // ─── OS card (static, full-width) ─────────────────────────────────────────────
 
-function Row({ label, value }: { label: string, value: React.ReactNode }) {
+interface RowProps {
+  label: string
+  value: ReactNode
+}
+
+interface SummaryCardProps {
+  icon: LucideIcon
+  title: ReactNode
+  stat?: ReactNode
+  onNavigate: () => void
+  children?: ReactNode
+}
+
+function Row({ label, value }: RowProps) {
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-xs text-muted-foreground">{label}</span>
@@ -152,13 +166,7 @@ function SummaryCard({
   stat,
   onNavigate,
   children,
-}: {
-  icon: LucideIcon
-  title: React.ReactNode
-  stat?: React.ReactNode
-  onNavigate: () => void
-  children?: React.ReactNode
-}) {
+}: SummaryCardProps) {
   return (
     <button
       className="group flex cursor-pointer flex-col gap-3 rounded-xl border border-border/70 bg-card p-4 text-left transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

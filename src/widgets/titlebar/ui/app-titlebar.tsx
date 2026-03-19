@@ -13,9 +13,9 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '@/shared/ui/breadcrumb'
-import { Button } from '@/shared/ui/button'
-import { SidebarTrigger } from '@/shared/ui/sidebar'
+  Button,
+  SidebarTrigger,
+} from '@/shared/ui'
 
 interface Crumb { label: string, href?: string }
 
