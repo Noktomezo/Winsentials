@@ -6,7 +6,6 @@ import type {
   LiveRamInfo,
   NetworkIfaceStats,
 } from '@/entities/system-info/model/types'
-import { useEffect } from 'react'
 import { create } from 'zustand'
 import {
   getLiveCpuInfo,
@@ -16,6 +15,9 @@ import {
   getLiveNetworkInfo,
   getLiveRamInfo,
 } from '@/entities/system-info/api'
+import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
+
+const MAX_HISTORY = 60
 
 type LiveSliceKey = 'home' | 'cpu' | 'ram' | 'gpu' | 'network' | 'disks'
 
@@ -28,7 +30,26 @@ interface LiveSliceMap {
   disks: DiskLiveInfo[] | null
 }
 
-interface LiveSystemStoreState extends LiveSliceMap {
+interface GpuEngineHistory {
+  threeD: number[]
+  copy: number[]
+  encode: number[]
+  decode: number[]
+  highPriority3d: number[]
+  highPriorityCompute: number[]
+  dedicatedPct: number[]
+  sharedMb: number[]
+}
+
+interface LiveHistoryMap {
+  cpuHistory: number[]
+  ramHistory: number[]
+  gpuHistory: GpuEngineHistory[]
+  diskActiveHistory: Record<string, number[]>
+  networkThroughputHistory: Record<string, number[]>
+}
+
+interface LiveSystemStoreState extends LiveSliceMap, LiveHistoryMap {
   errors: Partial<Record<LiveSliceKey, string>>
   fetching: Partial<Record<LiveSliceKey, boolean>>
   setError: (slice: LiveSliceKey, error: string | null) => void
@@ -75,6 +96,11 @@ export const useLiveSystemStore = create<LiveSystemStoreState>()(set => ({
   disks: null,
   errors: {},
   fetching: {},
+  cpuHistory: [],
+  ramHistory: [],
+  gpuHistory: [],
+  diskActiveHistory: {},
+  networkThroughputHistory: {},
   setError: (slice, error) => {
     set(state => ({
       errors: {
@@ -92,14 +118,77 @@ export const useLiveSystemStore = create<LiveSystemStoreState>()(set => ({
     }))
   },
   setSliceData: (slice, data) => {
-    set(state => ({
-      ...state,
-      [slice]: data,
-      errors: {
-        ...state.errors,
-        [slice]: undefined,
-      },
-    }))
+    set((state) => {
+      const next: Partial<LiveHistoryMap> = {}
+
+      if (slice === 'cpu') {
+        const d = data as LiveCpuInfo
+        next.cpuHistory = [...state.cpuHistory, d.cpuUsagePercent].slice(-MAX_HISTORY)
+      }
+
+      if (slice === 'ram') {
+        const d = data as LiveRamInfo
+        const gb = d.ramUsedBytes / 1024 ** 3
+        next.ramHistory = [...state.ramHistory, gb].slice(-MAX_HISTORY)
+      }
+
+      if (slice === 'gpu') {
+        const gpus = data as LiveGpuInfo[]
+        const prevGpuHistory = state.gpuHistory
+        next.gpuHistory = gpus.map((gpu, i) => {
+          const prev: GpuEngineHistory = prevGpuHistory[i] ?? {
+            threeD: [],
+            copy: [],
+            encode: [],
+            decode: [],
+            highPriority3d: [],
+            highPriorityCompute: [],
+            dedicatedPct: [],
+            sharedMb: [],
+          }
+          const dedicatedBudget = gpu.vramTotalMb - gpu.vramReservedMb
+          const dedicatedPct = dedicatedBudget > 0
+            ? Math.min(100, (gpu.vramUsedMb / dedicatedBudget) * 100)
+            : 0
+          return {
+            threeD: [...prev.threeD, gpu.util3d].slice(-MAX_HISTORY),
+            copy: [...prev.copy, gpu.utilCopy].slice(-MAX_HISTORY),
+            encode: [...prev.encode, gpu.utilEncode].slice(-MAX_HISTORY),
+            decode: [...prev.decode, gpu.utilDecode].slice(-MAX_HISTORY),
+            highPriority3d: [...prev.highPriority3d, gpu.utilHighPriority3d].slice(-MAX_HISTORY),
+            highPriorityCompute: [...prev.highPriorityCompute, gpu.utilHighPriorityCompute].slice(-MAX_HISTORY),
+            dedicatedPct: [...prev.dedicatedPct, dedicatedPct].slice(-MAX_HISTORY),
+            sharedMb: [...prev.sharedMb, gpu.vramSharedMb].slice(-MAX_HISTORY),
+          }
+        })
+      }
+
+      if (slice === 'disks') {
+        const disks = data as DiskLiveInfo[]
+        const nextActive: Record<string, number[]> = { ...state.diskActiveHistory }
+        for (const disk of disks) {
+          nextActive[disk.mountPoint] = [...(nextActive[disk.mountPoint] ?? []), disk.activeTimePercent].slice(-MAX_HISTORY)
+        }
+        next.diskActiveHistory = nextActive
+      }
+
+      if (slice === 'network') {
+        const ifaces = data as NetworkIfaceStats[]
+        const nextThroughput: Record<string, number[]> = { ...state.networkThroughputHistory }
+        for (const iface of ifaces) {
+          const throughput = iface.rxBytesPerSec + iface.txBytesPerSec
+          nextThroughput[iface.name] = [...(nextThroughput[iface.name] ?? []), throughput].slice(-MAX_HISTORY)
+        }
+        next.networkThroughputHistory = nextThroughput
+      }
+
+      return {
+        ...state,
+        [slice]: data,
+        ...next,
+        errors: { ...state.errors, [slice]: undefined },
+      }
+    })
   },
 }))
 
@@ -179,10 +268,13 @@ function useLiveSlice<T>(slice: LiveSliceKey, selector: (state: LiveSystemStoreS
   const error = useLiveSystemStore(state => state.errors[slice] ?? null)
   const isFetching = useLiveSystemStore(state => state.fetching[slice] ?? false)
 
-  useEffect(() => {
+  // INVARIANT: `slice` must be a mount-time constant — this hook is only
+  // ever called from typed wrappers (useLiveCpu, useLiveRam, …) that always
+  // pass a literal string. Never call useLiveSlice with a dynamic variable.
+  useMountEffect(() => {
     retainSlice(slice)
     return () => releaseSlice(slice)
-  }, [slice])
+  })
 
   return {
     data,
@@ -199,21 +291,27 @@ export function useLiveHome() {
 }
 
 export function useLiveCpu() {
-  return useLiveSlice('cpu', state => state.cpu)
+  return { ...useLiveSlice('cpu', state => state.cpu), history: useLiveSystemStore(s => s.cpuHistory) }
 }
 
 export function useLiveRam() {
-  return useLiveSlice('ram', state => state.ram)
+  return { ...useLiveSlice('ram', state => state.ram), history: useLiveSystemStore(s => s.ramHistory) }
 }
 
 export function useLiveGpu() {
-  return useLiveSlice('gpu', state => state.gpu)
+  return { ...useLiveSlice('gpu', state => state.gpu), history: useLiveSystemStore(s => s.gpuHistory) }
 }
 
 export function useLiveNetwork() {
-  return useLiveSlice('network', state => state.network)
+  return {
+    ...useLiveSlice('network', state => state.network),
+    throughputHistory: useLiveSystemStore(s => s.networkThroughputHistory),
+  }
 }
 
 export function useLiveDisks() {
-  return useLiveSlice('disks', state => state.disks)
+  return {
+    ...useLiveSlice('disks', state => state.disks),
+    activeHistory: useLiveSystemStore(s => s.diskActiveHistory),
+  }
 }
