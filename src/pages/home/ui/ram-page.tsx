@@ -1,8 +1,10 @@
-import type { LiveSystemInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
+import type { ReactNode } from 'react'
+import type { StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getLiveSystemInfo, getStaticSystemInfo } from '@/entities/system-info/api'
+import { getStaticSystemInfo } from '@/entities/system-info/api'
+import { useLiveRam } from '@/entities/system-info/model/live-system-store'
 import { formatBytesLocalized } from '@/shared/lib/format-size'
 import { LiveChart } from '@/shared/ui/live-chart'
 import { Skeleton } from '@/shared/ui/skeleton'
@@ -25,7 +27,7 @@ function toGb(bytes: number, locale: string, t: ReturnType<typeof useTranslation
   return formatBytesLocalized(bytes, { decimals: 1, locale, t })
 }
 
-function Row({ label, value }: { label: string, value: React.ReactNode }) {
+function Row({ label, value }: { label: string, value: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-xs text-muted-foreground">{label}</span>
@@ -92,39 +94,28 @@ function StripBar({
 export function RamPage() {
   const { t, i18n } = useTranslation()
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
-  const [liveInfo, setLiveInfo] = useState<LiveSystemInfo | null>(null)
   const [history, setHistory] = useState<ChartPoint[]>([])
   const historyRef = useRef<ChartPoint[]>([])
   const peakRef = useRef<number>(0)
   const [peak, setPeak] = useState<number>(0)
+  const { data: liveInfo } = useLiveRam()
 
   useEffect(() => {
     getStaticSystemInfo().then(setStaticInfo).catch(console.error)
   }, [])
 
   useEffect(() => {
-    if (!staticInfo) { return }
+    if (!liveInfo) { return }
 
-    const tick = () => {
-      getLiveSystemInfo()
-        .then((live) => {
-          setLiveInfo(live)
-          const gb = live.ramUsedBytes / 1024 ** 3
-          const next = [...historyRef.current, { value: gb }]
-          historyRef.current = next.length > 60 ? next.slice(-60) : next
-          setHistory([...historyRef.current])
-          if (gb > peakRef.current) {
-            peakRef.current = gb
-            setPeak(gb)
-          }
-        })
-        .catch(console.error)
+    const gb = liveInfo.ramUsedBytes / 1024 ** 3
+    const next = [...historyRef.current, { value: gb }]
+    historyRef.current = next.length > 60 ? next.slice(-60) : next
+    setHistory([...historyRef.current])
+    if (gb > peakRef.current) {
+      peakRef.current = gb
+      setPeak(gb)
     }
-
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [staticInfo])
+  }, [liveInfo])
 
   if (!staticInfo) {
     return (

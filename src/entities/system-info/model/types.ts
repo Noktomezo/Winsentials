@@ -138,3 +138,48 @@ export interface LiveSystemInfo {
   network: NetworkIfaceStats[]
   gpus: GpuInfo[]
 }
+
+export interface LiveHomeInfo {
+  cpuUsagePercent: number
+  ramUsedBytes: number
+  network: NetworkIfaceStats[]
+  gpus: LiveGpuInfo[]
+}
+
+export interface LiveCpuInfo {
+  cpuUsagePercent: number
+  cpuPerCore: number[]
+  cpuCurrentFreqMhz: number
+  cpuProcessCount: number
+  cpuThreadCount: number
+  cpuHandleCount: number
+  cpuUptimeSecs: number
+}
+
+export interface LiveRamInfo {
+  ramUsedBytes: number
+  ramAvailableBytes: number
+  ramCommittedBytes: number
+  ramCommitLimitBytes: number
+  ramCachedBytes: number
+  ramCompressedBytes: number
+  ramPagedPoolBytes: number
+  ramNonpagedPoolBytes: number
+}
+
+export interface LiveGpuInfo {
+  index: number
+  vramTotalMb: number
+  vramUsedMb: number
+  vramSharedMb: number
+  vramReservedMb: number
+  temperatureC: number | null
+  powerW: number | null
+  util3d: number
+  utilCopy: number
+  utilEncode: number
+  utilDecode: number
+  utilHighPriority3d: number
+  utilHighPriorityCompute: number
+  processes: GpuProcess[]
+}

@@ -3,6 +3,10 @@ import type {
   DiskInfo,
   DiskLiveInfo,
   GpuInfo,
+  LiveCpuInfo,
+  LiveGpuInfo,
+  LiveHomeInfo,
+  LiveRamInfo,
   LiveSystemInfo,
   MotherboardInfo,
   NetworkAdapterInfo,
@@ -154,6 +158,51 @@ interface BackendLiveSystemInfo {
   disks: BackendDiskLiveInfo[]
   network: BackendNetworkIfaceStats[]
   gpus: BackendGpuInfo[]
+}
+
+interface BackendLiveCpuInfo {
+  cpu_usage_percent: number
+  cpu_per_core: number[]
+  cpu_current_freq_mhz: number
+  cpu_process_count: number
+  cpu_thread_count: number
+  cpu_handle_count: number
+  cpu_uptime_secs: number
+}
+
+interface BackendLiveRamInfo {
+  ram_used_bytes: number
+  ram_available_bytes: number
+  ram_committed_bytes: number
+  ram_commit_limit_bytes: number
+  ram_cached_bytes: number
+  ram_compressed_bytes: number
+  ram_paged_pool_bytes: number
+  ram_nonpaged_pool_bytes: number
+}
+
+interface BackendLiveGpuInfo {
+  index: number
+  vram_total_mb: number
+  vram_used_mb: number
+  vram_shared_mb: number
+  vram_reserved_mb: number
+  temperature_c: number | null
+  power_w: number | null
+  util_3d: number
+  util_copy: number
+  util_encode: number
+  util_decode: number
+  util_high_priority_3d: number
+  util_high_priority_compute: number
+  processes: BackendGpuProcess[]
+}
+
+interface BackendLiveHomeInfo {
+  cpu_usage_percent: number
+  ram_used_bytes: number
+  network: BackendNetworkIfaceStats[]
+  gpus: BackendLiveGpuInfo[]
 }
 
 // ─── Mappers ─────────────────────────────────────────────────────────────────
@@ -315,6 +364,59 @@ function mapLive(raw: BackendLiveSystemInfo): LiveSystemInfo {
   }
 }
 
+function mapLiveCpu(raw: BackendLiveCpuInfo): LiveCpuInfo {
+  return {
+    cpuUsagePercent: raw.cpu_usage_percent,
+    cpuPerCore: raw.cpu_per_core,
+    cpuCurrentFreqMhz: raw.cpu_current_freq_mhz,
+    cpuProcessCount: raw.cpu_process_count,
+    cpuThreadCount: raw.cpu_thread_count,
+    cpuHandleCount: raw.cpu_handle_count,
+    cpuUptimeSecs: raw.cpu_uptime_secs,
+  }
+}
+
+function mapLiveRam(raw: BackendLiveRamInfo): LiveRamInfo {
+  return {
+    ramUsedBytes: raw.ram_used_bytes,
+    ramAvailableBytes: raw.ram_available_bytes,
+    ramCommittedBytes: raw.ram_committed_bytes,
+    ramCommitLimitBytes: raw.ram_commit_limit_bytes,
+    ramCachedBytes: raw.ram_cached_bytes,
+    ramCompressedBytes: raw.ram_compressed_bytes,
+    ramPagedPoolBytes: raw.ram_paged_pool_bytes,
+    ramNonpagedPoolBytes: raw.ram_nonpaged_pool_bytes,
+  }
+}
+
+function mapLiveGpu(g: BackendLiveGpuInfo): LiveGpuInfo {
+  return {
+    index: g.index,
+    vramTotalMb: g.vram_total_mb,
+    vramUsedMb: g.vram_used_mb,
+    vramSharedMb: g.vram_shared_mb,
+    vramReservedMb: g.vram_reserved_mb,
+    temperatureC: g.temperature_c,
+    powerW: g.power_w,
+    util3d: g.util_3d,
+    utilCopy: g.util_copy,
+    utilEncode: g.util_encode,
+    utilDecode: g.util_decode,
+    utilHighPriority3d: g.util_high_priority_3d,
+    utilHighPriorityCompute: g.util_high_priority_compute,
+    processes: g.processes.map(p => ({ pid: p.pid, name: p.name, dedicatedMemMb: p.dedicated_mem_mb })),
+  }
+}
+
+function mapLiveHome(raw: BackendLiveHomeInfo): LiveHomeInfo {
+  return {
+    cpuUsagePercent: raw.cpu_usage_percent,
+    ramUsedBytes: raw.ram_used_bytes,
+    network: raw.network.map(mapNetwork),
+    gpus: raw.gpus.map(mapLiveGpu),
+  }
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function getStaticSystemInfo(): Promise<StaticSystemInfo> {
@@ -325,4 +427,34 @@ export async function getStaticSystemInfo(): Promise<StaticSystemInfo> {
 export async function getLiveSystemInfo(): Promise<LiveSystemInfo> {
   const raw = await invoke<BackendLiveSystemInfo>('get_live_system_info')
   return mapLive(raw)
+}
+
+export async function getLiveHomeInfo(): Promise<LiveHomeInfo> {
+  const raw = await invoke<BackendLiveHomeInfo>('get_live_home_info')
+  return mapLiveHome(raw)
+}
+
+export async function getLiveCpuInfo(): Promise<LiveCpuInfo> {
+  const raw = await invoke<BackendLiveCpuInfo>('get_live_cpu_info')
+  return mapLiveCpu(raw)
+}
+
+export async function getLiveRamInfo(): Promise<LiveRamInfo> {
+  const raw = await invoke<BackendLiveRamInfo>('get_live_ram_info')
+  return mapLiveRam(raw)
+}
+
+export async function getLiveDiskInfo(): Promise<DiskLiveInfo[]> {
+  const raw = await invoke<BackendDiskLiveInfo[]>('get_live_disk_info')
+  return raw.map(mapDiskLive)
+}
+
+export async function getLiveNetworkInfo(): Promise<NetworkIfaceStats[]> {
+  const raw = await invoke<BackendNetworkIfaceStats[]>('get_live_network_info')
+  return raw.map(mapNetwork)
+}
+
+export async function getLiveGpuInfo(): Promise<LiveGpuInfo[]> {
+  const raw = await invoke<BackendLiveGpuInfo[]>('get_live_gpu_info')
+  return raw.map(mapLiveGpu)
 }

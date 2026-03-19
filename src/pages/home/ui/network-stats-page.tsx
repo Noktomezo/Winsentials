@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
-import type { LiveSystemInfo, NetworkAdapterInfo, NetworkIfaceStats, StaticSystemInfo } from '@/entities/system-info/model/types'
+import type { NetworkAdapterInfo, NetworkIfaceStats, StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getLiveSystemInfo, getStaticSystemInfo } from '@/entities/system-info/api'
+import { getStaticSystemInfo } from '@/entities/system-info/api'
+import { useLiveNetwork } from '@/entities/system-info/model/live-system-store'
 import { formatRateLocalized } from '@/shared/lib/format-size'
 import { Button } from '@/shared/ui/button'
 import { LiveChart } from '@/shared/ui/live-chart'
@@ -51,15 +52,15 @@ function pushHistory(
   setter([...ref.current])
 }
 
-function getLiveAdapter(liveInfo: LiveSystemInfo | null, adapter: NetworkAdapterInfo): NetworkIfaceStats | null {
-  return liveInfo?.network.find(entry => entry.name === adapter.name) ?? null
+function getLiveAdapter(liveInfo: NetworkIfaceStats[] | null, adapter: NetworkAdapterInfo): NetworkIfaceStats | null {
+  return liveInfo?.find(entry => entry.name === adapter.name) ?? null
 }
 
 function getVisibleAdapters(
   staticInfo: StaticSystemInfo,
-  liveInfo: LiveSystemInfo | null,
+  liveInfo: NetworkIfaceStats[] | null,
 ): NetworkAdapterInfo[] {
-  return (liveInfo?.network ?? []).map((entry, index) => {
+  return (liveInfo ?? []).map((entry, index) => {
     const staticAdapter = staticInfo.networkAdapters.find(adapter => adapter.name === entry.name)
     return staticAdapter ?? {
       index,
@@ -146,9 +147,9 @@ export function NetworkStatsPage() {
 
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [staticError, setStaticError] = useState(false)
-  const [liveInfo, setLiveInfo] = useState<LiveSystemInfo | null>(null)
   const throughputRef = useRef<ChartPoint[]>([])
   const [throughputHistory, setThroughputHistory] = useState<ChartPoint[]>([])
+  const { data: liveInfo } = useLiveNetwork()
 
   const loadStaticInfo = () => {
     setStaticError(false)
@@ -165,37 +166,23 @@ export function NetworkStatsPage() {
   }, [])
 
   useEffect(() => {
-    if (!staticInfo) { return }
-
     throughputRef.current = []
     setThroughputHistory([])
+  }, [adapterIndex])
 
-    const tick = () => {
-      getLiveSystemInfo()
-        .then((live) => {
-          setLiveInfo(live)
+  useEffect(() => {
+    if (!staticInfo || adapterIndex === null || !liveInfo) { return }
 
-          if (adapterIndex === null) {
-            return
-          }
-
-          const visibleAdapters = getVisibleAdapters(staticInfo, live)
-          const adapter = visibleAdapters.find(entry => entry.index === adapterIndex) ?? staticInfo.networkAdapters[adapterIndex]
-          if (!adapter) {
-            return
-          }
-
-          const traffic = getLiveAdapter(live, adapter)
-          const totalThroughput = (traffic?.rxBytesPerSec ?? 0) + (traffic?.txBytesPerSec ?? 0)
-          pushHistory(throughputRef, totalThroughput, setThroughputHistory)
-        })
-        .catch(console.error)
+    const visibleAdapters = getVisibleAdapters(staticInfo, liveInfo)
+    const adapter = visibleAdapters.find(entry => entry.index === adapterIndex) ?? staticInfo.networkAdapters[adapterIndex]
+    if (!adapter) {
+      return
     }
 
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [adapterIndex, staticInfo])
+    const traffic = getLiveAdapter(liveInfo, adapter)
+    const totalThroughput = (traffic?.rxBytesPerSec ?? 0) + (traffic?.txBytesPerSec ?? 0)
+    pushHistory(throughputRef, totalThroughput, setThroughputHistory)
+  }, [adapterIndex, liveInfo, staticInfo])
 
   if (!staticInfo) {
     if (staticError) {

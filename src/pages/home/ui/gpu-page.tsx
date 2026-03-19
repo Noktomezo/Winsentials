@@ -1,13 +1,14 @@
-import type { GpuInfo, LiveSystemInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
+import type { GpuInfo, LiveGpuInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getLiveSystemInfo, getStaticSystemInfo } from '@/entities/system-info/api'
+import { getStaticSystemInfo } from '@/entities/system-info/api'
+import { useLiveGpu } from '@/entities/system-info/model/live-system-store'
 import { LiveChart } from '@/shared/ui/live-chart'
 import { Skeleton } from '@/shared/ui/skeleton'
 
-function gpuUsage(gpu: GpuInfo): number {
+function gpuUsage(gpu: Pick<LiveGpuInfo, 'util3d' | 'utilCopy' | 'utilEncode' | 'utilDecode' | 'utilHighPriority3d' | 'utilHighPriorityCompute'>): number {
   return Math.max(
     gpu.util3d,
     gpu.utilCopy,
@@ -117,7 +118,7 @@ function pushHistory(
 
 function getEngineCharts(
   gpu: GpuInfo,
-  live: GpuInfo | undefined,
+  live: LiveGpuInfo | undefined,
   history: {
     threeD: ChartPoint[]
     copy: ChartPoint[]
@@ -152,7 +153,7 @@ export function GpuPage() {
   const parsedGpuIndex = params.gpuIndex !== undefined ? Number(params.gpuIndex) : null
 
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
-  const [liveInfo, setLiveInfo] = useState<LiveSystemInfo | null>(null)
+  const { data: liveInfo } = useLiveGpu()
 
   const hist3DRef = useRef<ChartPoint[]>([])
   const histCopyRef = useRef<ChartPoint[]>([])
@@ -192,7 +193,6 @@ export function GpuPage() {
   useEffect(() => {
     if (!staticInfo) { return }
 
-    // Reset history when the selected GPU changes
     hist3DRef.current = []
     histCopyRef.current = []
     histEncodeRef.current = []
@@ -209,40 +209,27 @@ export function GpuPage() {
     setHistHPCompute([])
     setHistDedicated([])
     setHistShared([])
+  }, [gpuIndex, staticInfo])
 
-    const tick = () => {
-      getLiveSystemInfo()
-        .then((live) => {
-          setLiveInfo(live)
-          if (!isDetailView) { return }
+  useEffect(() => {
+    if (!isDetailView || gpuIndex === null || !liveInfo) { return }
+    const entry = liveInfo[gpuIndex]
+    if (!entry) { return }
 
-          const idx = gpuIndex
-          if (idx === null) { return }
-          const entry = live.gpus[idx]
-          if (!entry) { return }
+    pushHistory(hist3DRef, entry.util3d, setHist3D)
+    pushHistory(histCopyRef, entry.utilCopy, setHistCopy)
+    pushHistory(histEncodeRef, entry.utilEncode, setHistEncode)
+    pushHistory(histDecodeRef, entry.utilDecode, setHistDecode)
+    pushHistory(histHP3DRef, entry.utilHighPriority3d, setHistHP3D)
+    pushHistory(histHPComputeRef, entry.utilHighPriorityCompute, setHistHPCompute)
 
-          pushHistory(hist3DRef, entry.util3d, setHist3D)
-          pushHistory(histCopyRef, entry.utilCopy, setHistCopy)
-          pushHistory(histEncodeRef, entry.utilEncode, setHistEncode)
-          pushHistory(histDecodeRef, entry.utilDecode, setHistDecode)
-          pushHistory(histHP3DRef, entry.utilHighPriority3d, setHistHP3D)
-          pushHistory(histHPComputeRef, entry.utilHighPriorityCompute, setHistHPCompute)
-
-          const dedicatedBudget = entry.vramTotalMb - entry.vramReservedMb
-          const dedicatedPct = dedicatedBudget > 0
-            ? Math.min(100, (entry.vramUsedMb / dedicatedBudget) * 100)
-            : 0
-          pushHistory(histDedicatedRef, dedicatedPct, setHistDedicated)
-
-          pushHistory(histSharedRef, entry.vramSharedMb, setHistShared)
-        })
-        .catch(console.error)
-    }
-
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [staticInfo, gpuIndex, isDetailView])
+    const dedicatedBudget = entry.vramTotalMb - entry.vramReservedMb
+    const dedicatedPct = dedicatedBudget > 0
+      ? Math.min(100, (entry.vramUsedMb / dedicatedBudget) * 100)
+      : 0
+    pushHistory(histDedicatedRef, dedicatedPct, setHistDedicated)
+    pushHistory(histSharedRef, entry.vramSharedMb, setHistShared)
+  }, [gpuIndex, isDetailView, liveInfo])
 
   if (!staticInfo) {
     return (
@@ -268,7 +255,7 @@ export function GpuPage() {
 
   // ── Detail view ──────────────────────────────────────────────────────────────
   if (isDetailView && gpu && gpuIndex !== null) {
-    const live = liveInfo?.gpus[gpuIndex]
+    const live = liveInfo?.[gpuIndex]
 
     const dedicatedBudgetMb = live ? live.vramTotalMb - live.vramReservedMb : 0
     const dedicatedUsedMb = live?.vramUsedMb ?? 0
@@ -389,13 +376,13 @@ export function GpuPage() {
     ? staticInfo.gpus[gpuIndex] ? [{ gpu: staticInfo.gpus[gpuIndex], idx: gpuIndex }] : []
     : staticInfo.gpus.map((g, idx) => ({ gpu: g, idx }))
 
-  const hasAnyLiveData = liveInfo?.gpus.some(g => gpuUsage(g) > 0 || g.temperatureC != null) ?? false
+  const hasAnyLiveData = liveInfo?.some(g => gpuUsage(g) > 0 || g.temperatureC != null) ?? false
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {gpusToShow.map(({ gpu: g, idx }) => {
-          const gpuLive = liveInfo?.gpus[idx]
+          const gpuLive = liveInfo?.[idx]
           const liveUsage = gpuLive ? gpuUsage(gpuLive) : 0
           return (
             <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4" key={idx}>

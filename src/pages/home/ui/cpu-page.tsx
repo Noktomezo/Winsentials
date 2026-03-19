@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
-import type { LiveSystemInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
+import type { StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getLiveSystemInfo, getStaticSystemInfo } from '@/entities/system-info/api'
+import { getStaticSystemInfo } from '@/entities/system-info/api'
+import { useLiveCpu } from '@/entities/system-info/model/live-system-store'
 import { Button } from '@/shared/ui/button'
 import { LiveChart } from '@/shared/ui/live-chart'
 import { Progress } from '@/shared/ui/progress'
@@ -47,9 +48,9 @@ export function CpuPage() {
   const { t } = useTranslation()
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [staticInfoError, setStaticInfoError] = useState(false)
-  const [liveInfo, setLiveInfo] = useState<LiveSystemInfo | null>(null)
   const [history, setHistory] = useState<ChartPoint[]>([])
   const historyRef = useRef<ChartPoint[]>([])
+  const { data: liveInfo } = useLiveCpu()
 
   const loadStaticInfo = () => {
     setStaticInfoError(false)
@@ -68,21 +69,11 @@ export function CpuPage() {
   }, [])
 
   useEffect(() => {
-    if (!staticInfo) { return }
-    const tick = () => {
-      getLiveSystemInfo()
-        .then((live) => {
-          setLiveInfo(live)
-          const next = [...historyRef.current, { value: live.cpuUsagePercent }]
-          historyRef.current = next.length > 60 ? next.slice(-60) : next
-          setHistory([...historyRef.current])
-        })
-        .catch(console.error)
-    }
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [staticInfo])
+    if (!liveInfo) { return }
+    const next = [...historyRef.current, { value: liveInfo.cpuUsagePercent }]
+    historyRef.current = next.length > 60 ? next.slice(-60) : next
+    setHistory([...historyRef.current])
+  }, [liveInfo])
 
   if (!staticInfo) {
     if (staticInfoError) {

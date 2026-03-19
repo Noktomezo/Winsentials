@@ -1,11 +1,12 @@
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
-import type { GpuInfo, LiveSystemInfo, NetworkAdapterInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
+import type { GpuInfo, LiveGpuInfo, LiveHomeInfo, NetworkAdapterInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
 import { useNavigate } from '@tanstack/react-router'
 import { ChevronRight, Cpu, HardDrive, Layers, Monitor, Network, Server } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getLiveSystemInfo, getStaticSystemInfo } from '@/entities/system-info/api'
+import { getStaticSystemInfo } from '@/entities/system-info/api'
+import { useLiveHome } from '@/entities/system-info/model/live-system-store'
 import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
 import { mountLabel } from '@/shared/lib/mount-utils'
 import { Button } from '@/shared/ui/button'
@@ -34,7 +35,7 @@ function formatRate(bytes: number, t: ReturnType<typeof useTranslation>['t'], lo
 
 function mergeVisibleNetworkAdapters(
   staticAdapters: NetworkAdapterInfo[],
-  live: LiveSystemInfo | null,
+  live: LiveHomeInfo | null,
 ): NetworkAdapterInfo[] {
   return (live?.network ?? []).map((entry, index) => {
     const staticAdapter = staticAdapters.find(adapter => adapter.name === entry.name)
@@ -190,7 +191,7 @@ function SummaryCard({
   )
 }
 
-function CpuSummary({ live, s }: { live: LiveSystemInfo | null, s: StaticSystemInfo }) {
+function CpuSummary({ live, s }: { live: LiveHomeInfo | null, s: StaticSystemInfo }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const pct = live ? Math.round(live.cpuUsagePercent) : 0
@@ -214,7 +215,7 @@ function CpuSummary({ live, s }: { live: LiveSystemInfo | null, s: StaticSystemI
   )
 }
 
-function RamSummary({ live, s }: { live: LiveSystemInfo | null, s: StaticSystemInfo }) {
+function RamSummary({ live, s }: { live: LiveHomeInfo | null, s: StaticSystemInfo }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { i18n } = useTranslation()
@@ -276,7 +277,7 @@ function NetworkSummary({
   live,
 }: {
   adapter: NetworkAdapterInfo
-  live: LiveSystemInfo | null
+  live: LiveHomeInfo | null
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -308,18 +309,14 @@ function NetworkSummary({
   )
 }
 
-function gpuUsage(gpu: GpuInfo): number {
+function gpuUsage(gpu: Pick<LiveGpuInfo, 'util3d' | 'utilCopy' | 'utilEncode' | 'utilDecode' | 'utilHighPriority3d' | 'utilHighPriorityCompute'>): number {
   return Math.max(gpu.util3d, gpu.utilCopy, gpu.utilEncode, gpu.utilDecode, gpu.utilHighPriority3d, gpu.utilHighPriorityCompute)
 }
 
-function GpuSummary({
-  gpu,
-  index,
-  gpuLive,
-}: {
+function GpuSummary({ gpu, index, gpuLive }: {
   gpu: GpuInfo
   index: number
-  gpuLive: GpuInfo | null
+  gpuLive: LiveGpuInfo | null
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -384,7 +381,7 @@ export function HomePage() {
   const { t } = useTranslation()
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [staticInfoError, setStaticInfoError] = useState(false)
-  const [liveInfo, setLiveInfo] = useState<LiveSystemInfo | null>(null)
+  const { data: liveInfo } = useLiveHome()
 
   const loadStaticInfo = () => {
     setStaticInfoError(false)
@@ -399,20 +396,6 @@ export function HomePage() {
   useEffect(() => {
     loadStaticInfo()
   }, [])
-
-  useEffect(() => {
-    if (!staticInfo) { return }
-
-    const tick = () => {
-      getLiveSystemInfo()
-        .then(setLiveInfo)
-        .catch(console.error)
-    }
-
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [staticInfo])
 
   const networkCards = staticInfo
     ? mergeVisibleNetworkAdapters(staticInfo.networkAdapters, liveInfo)

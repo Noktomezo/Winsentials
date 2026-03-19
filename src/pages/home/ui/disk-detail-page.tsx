@@ -1,9 +1,10 @@
-import type { DiskInfo, DiskLiveInfo, LiveSystemInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
+import type { DiskInfo, DiskLiveInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useParams } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getLiveSystemInfo, getStaticSystemInfo } from '@/entities/system-info/api'
+import { getStaticSystemInfo } from '@/entities/system-info/api'
+import { useLiveDisks } from '@/entities/system-info/model/live-system-store'
 import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
 import { mountToParam } from '@/shared/lib/mount-utils'
 import { Button } from '@/shared/ui/button'
@@ -37,8 +38,8 @@ function Row({ label, value }: { label: string, value: React.ReactNode }) {
   )
 }
 
-function getDiskLive(liveInfo: LiveSystemInfo | null, mountPoint: string): DiskLiveInfo | null {
-  return liveInfo?.disks.find(disk => disk.mountPoint === mountPoint) ?? null
+function getDiskLive(liveInfo: DiskLiveInfo[] | null, mountPoint: string): DiskLiveInfo | null {
+  return liveInfo?.find(disk => disk.mountPoint === mountPoint) ?? null
 }
 
 export function DiskDetailPage() {
@@ -46,9 +47,9 @@ export function DiskDetailPage() {
   const { disk: diskParam } = useParams({ from: '/storage/$disk' })
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [staticInfoError, setStaticInfoError] = useState(false)
-  const [liveInfo, setLiveInfo] = useState<LiveSystemInfo | null>(null)
   const activeHistoryRef = useRef<ChartPoint[]>([])
   const [activeHistory, setActiveHistory] = useState<ChartPoint[]>([])
+  const { data: liveInfo } = useLiveDisks()
 
   const loadStaticInfo = () => {
     setStaticInfoError(false)
@@ -65,31 +66,21 @@ export function DiskDetailPage() {
   }, [])
 
   useEffect(() => {
-    if (!staticInfo) { return }
-
     activeHistoryRef.current = []
     setActiveHistory([])
+  }, [diskParam])
 
-    const tick = () => {
-      getLiveSystemInfo()
-        .then((live) => {
-          setLiveInfo(live)
+  useEffect(() => {
+    if (!staticInfo || !liveInfo) { return }
 
-          const disk = staticInfo.disks.find(entry => mountToParam(entry.mountPoint) === diskParam)
-          if (!disk) {
-            return
-          }
-
-          const diskLive = getDiskLive(live, disk.mountPoint)
-          pushHistory(activeHistoryRef, diskLive?.activeTimePercent ?? 0, setActiveHistory)
-        })
-        .catch(console.error)
+    const disk = staticInfo.disks.find(entry => mountToParam(entry.mountPoint) === diskParam)
+    if (!disk) {
+      return
     }
 
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [diskParam, staticInfo])
+    const diskLive = getDiskLive(liveInfo, disk.mountPoint)
+    pushHistory(activeHistoryRef, diskLive?.activeTimePercent ?? 0, setActiveHistory)
+  }, [diskParam, liveInfo, staticInfo])
 
   if (!staticInfo) {
     if (staticInfoError) {
