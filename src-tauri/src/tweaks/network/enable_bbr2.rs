@@ -1,5 +1,6 @@
 use crate::error::AppError;
 use crate::shell::run_netsh;
+use crate::tweaks::network::native::{TcpCongestionProvider, tcp_congestion_provider};
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
 
 const ENABLED_VALUE: &str = "enabled";
@@ -103,11 +104,9 @@ impl Tweak for EnableBbr2Tweak {
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {
-        // Checking the Internet template is a fast proxy for the whole set —
-        // we always apply/reset all templates together so they stay in sync.
-        // "bbr2" / "BBR2" — case varies by locale; normalise before check.
-        let output = run_netsh(&["int", "tcp", "show", "supplemental", "template=Internet"])?;
-        let enabled = output.to_ascii_uppercase().contains("BBR2");
+        let enabled = tcp_congestion_provider("Internet")?
+            .map(|provider| provider == TcpCongestionProvider::Bbr2)
+            .unwrap_or(false);
         Ok(TweakStatus {
             current_value: if enabled {
                 ENABLED_VALUE.into()

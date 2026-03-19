@@ -530,20 +530,32 @@ body {
 
 /* Layout — buttons below content */
 [data-sonner-toast] {
-  flex-direction: column !important;
-  align-items: stretch !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: start !important;
+  gap: 8px;
 }
 
-[data-sonner-toast] [data-buttons] {
-  display: flex !important;
-  flex-direction: row !important;
-  margin-top: 8px;
-  gap: 8px;
+[data-sonner-toast] [data-content] {
+  grid-column: 1 / -1;
+  min-width: 0;
 }
 
 [data-sonner-toast] [data-button],
 [data-sonner-toast] [data-cancel] {
   flex: 0 0 auto;
+  margin: 0 !important;
+  align-self: end;
+}
+
+[data-sonner-toast] [data-button] {
+  grid-column: 1;
+  justify-self: start;
+}
+
+[data-sonner-toast] [data-cancel] {
+  grid-column: 2;
+  justify-self: start;
 }
 
 /* Light (default — inherits from :root CSS vars) */
