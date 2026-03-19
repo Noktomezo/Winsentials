@@ -7,6 +7,7 @@ pub mod system_info;
 pub mod tweaks;
 
 use crate::commands::app::greet;
+use crate::commands::system::restart_pc;
 use crate::commands::system_info::{
     get_live_cpu_info, get_live_disk_info, get_live_gpu_info, get_live_home_info,
     get_live_network_info, get_live_ram_info, get_live_system_info, get_static_system_info,
@@ -143,6 +144,7 @@ pub fn run() {
             get_live_disk_info,
             get_live_network_info,
             get_live_gpu_info,
+            restart_pc,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

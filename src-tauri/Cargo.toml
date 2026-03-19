@@ -40,6 +40,7 @@ sysinfo = "0.38"
 tauri-plugin-devtools = "2.0.0"
 
 [target."cfg(windows)".dependencies]
+system_shutdown = "4"
 tauri-plugin-process = "2"
 tauri-plugin-updater = "2"
 wmi = "0.18"

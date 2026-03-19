@@ -116,3 +116,7 @@ export async function runTweakExtra(id: string) {
 export async function getWindowsBuild() {
   return invoke<WindowsVersion>('get_windows_build')
 }
+
+export async function restartPc(): Promise<void> {
+  await invoke('restart_pc')
+}
