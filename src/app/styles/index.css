@@ -528,6 +528,17 @@ body {
 
 /* ─── Sonner Toast Theme ────────────────────────────────────────────────── */
 
+/* Layout — buttons below content */
+[data-sonner-toast] {
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+[data-sonner-toast] [data-buttons] {
+  margin-top: 8px;
+  justify-content: flex-start;
+}
+
 /* Light (default — inherits from :root CSS vars) */
 [data-sonner-toaster] {
   --normal-bg: var(--card);
