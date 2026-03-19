@@ -165,7 +165,7 @@ pub fn run() {
                         .with_memory(MemoryRefreshKind::everything()),
                 );
                 let mut bg_networks = Networks::new_with_refreshed_list();
-                let mut bg_prev_net: Option<std::collections::HashMap<String, (u64, u64)>> = None;
+                let mut bg_prev_net: Option<system_info::PreviousNetSnapshot> = None;
 
                 #[cfg(target_os = "windows")]
                 let mut pdh = system_info::pdh_open_gpu_query();

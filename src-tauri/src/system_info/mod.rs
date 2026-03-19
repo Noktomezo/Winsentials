@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock, RwLock};
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 use sysinfo::{CpuRefreshKind, DiskKind, Disks, MemoryRefreshKind, Networks, RefreshKind, System};
@@ -175,9 +176,15 @@ pub struct NetworkAdapterInfo {
 pub struct SystemInfoState {
     pub system: Mutex<System>,
     pub networks: Mutex<Networks>,
-    pub prev_net: Mutex<Option<HashMap<String, (u64, u64)>>>,
+    pub prev_net: Mutex<Option<PreviousNetSnapshot>>,
     pub static_cache: Mutex<Option<StaticSystemInfo>>,
     pub live_cache: Mutex<Option<LiveSystemInfo>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PreviousNetSnapshot {
+    pub captured_at: Instant,
+    pub totals: HashMap<String, (u64, u64)>,
 }
 
 impl Default for SystemInfoState {
@@ -214,6 +221,23 @@ const WIN_VERSION_KEY: RegKey = RegKey {
 // ─── Static info gathering ────────────────────────────────────────────────────
 
 fn gather_windows_info() -> Result<WindowsInfo, AppError> {
+    let hostname = std::env::var("COMPUTERNAME").unwrap_or_else(|_| "Unknown".to_string());
+    let username = std::env::var("USERNAME").unwrap_or_else(|_| "Unknown".to_string());
+    let architecture = std::env::consts::ARCH.to_string();
+
+    if !cfg!(target_os = "windows") {
+        return Ok(WindowsInfo {
+            product_name: "Windows".to_string(),
+            display_version: "Unknown".to_string(),
+            build: 0,
+            ubr: 0,
+            hostname,
+            username,
+            architecture,
+            activation_status: "unknown".to_string(),
+        });
+    }
+
     let product_name = WIN_VERSION_KEY
         .get_string("ProductName")
         .unwrap_or_else(|_| "Windows".to_string());
@@ -233,10 +257,6 @@ fn gather_windows_info() -> Result<WindowsInfo, AppError> {
     } else {
         product_name
     };
-
-    let hostname = std::env::var("COMPUTERNAME").unwrap_or_else(|_| "Unknown".to_string());
-    let username = std::env::var("USERNAME").unwrap_or_else(|_| "Unknown".to_string());
-    let architecture = std::env::consts::ARCH.to_string();
 
     Ok(WindowsInfo {
         product_name,
@@ -324,6 +344,14 @@ struct RawDiskLiveInfo {
     write_bytes_per_sec: u64,
 }
 
+const DISK_LIVE_CACHE_INTERVAL: Duration = Duration::from_secs(3);
+type DiskLiveCache = RwLock<Option<(Instant, HashMap<String, DiskLiveInfo>)>>;
+
+fn disk_live_cache() -> &'static DiskLiveCache {
+    static DISK_LIVE_CACHE: OnceLock<DiskLiveCache> = OnceLock::new();
+    DISK_LIVE_CACHE.get_or_init(|| RwLock::new(None))
+}
+
 #[cfg(target_os = "windows")]
 fn gather_disk_metadata() -> HashMap<String, RawDiskMetadataInfo> {
     let script = r#"
@@ -393,7 +421,7 @@ fn gather_disk_metadata() -> HashMap<String, RawDiskMetadataInfo> {
 }
 
 #[cfg(target_os = "windows")]
-fn gather_disk_live() -> HashMap<String, DiskLiveInfo> {
+fn refresh_disk_live() -> HashMap<String, DiskLiveInfo> {
     let script = r#"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $result = @()
@@ -437,6 +465,24 @@ foreach ($disk in Get-CimInstance Win32_PerfFormattedData_PerfDisk_LogicalDisk -
             )
         })
         .collect()
+}
+
+#[cfg(target_os = "windows")]
+fn gather_disk_live() -> HashMap<String, DiskLiveInfo> {
+    let now = Instant::now();
+
+    if let Ok(cache) = disk_live_cache().read()
+        && let Some((cached_at, disks)) = cache.as_ref()
+        && now.duration_since(*cached_at) < DISK_LIVE_CACHE_INTERVAL
+    {
+        return disks.clone();
+    }
+
+    let disks = refresh_disk_live();
+    if let Ok(mut cache) = disk_live_cache().write() {
+        *cache = Some((now, disks.clone()));
+    }
+    disks
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -1773,7 +1819,7 @@ fn pdh_collect_cpu_perf_pct(query_raw: isize, counter_raw: isize) -> Option<f64>
 pub fn gather_live_info(
     system: &mut System,
     networks: &mut Networks,
-    prev_net: &mut Option<HashMap<String, (u64, u64)>>,
+    prev_net: &mut Option<PreviousNetSnapshot>,
     gpus: &[GpuInfo],
     #[cfg(target_os = "windows")] pdh_query: isize,
     #[cfg(target_os = "windows")] pdh_counter: isize,
@@ -1819,9 +1865,11 @@ pub fn gather_live_info(
             )
         })
         .collect();
+    let now = Instant::now();
 
     // Keep only real adapters (have ever sent/received bytes, not loopback).
-    // On the first call prev_net is None — deltas will be 0 B/s, which is correct.
+    // Normalize deltas by actual elapsed wall time so bytes/sec stays correct even
+    // when collection drifts from the target 1s cadence.
     let network: Vec<NetworkIfaceStats> = current_net
         .iter()
         .filter(|(name, _)| {
@@ -1832,22 +1880,29 @@ pub fn gather_live_info(
                     .unwrap_or(false)
         })
         .map(|(name, &(rx, tx))| {
-            let (prev_rx, prev_tx) = prev_net
+            let previous = prev_net
                 .as_ref()
-                .and_then(|p| p.get(name))
-                .copied()
-                .unwrap_or((rx, tx));
+                .and_then(|snapshot| snapshot.totals.get(name).copied());
+            let elapsed_secs = prev_net
+                .as_ref()
+                .map(|snapshot| now.duration_since(snapshot.captured_at).as_secs_f64())
+                .filter(|elapsed| *elapsed > 0.0)
+                .unwrap_or(1.0);
+            let (prev_rx, prev_tx) = previous.unwrap_or((rx, tx));
             NetworkIfaceStats {
                 name: name.clone(),
-                rx_bytes_per_sec: rx.saturating_sub(prev_rx),
-                tx_bytes_per_sec: tx.saturating_sub(prev_tx),
+                rx_bytes_per_sec: (rx.saturating_sub(prev_rx) as f64 / elapsed_secs).round() as u64,
+                tx_bytes_per_sec: (tx.saturating_sub(prev_tx) as f64 / elapsed_secs).round() as u64,
             }
         })
         .collect();
 
     let disks: Vec<DiskLiveInfo> = gather_disk_live().into_values().collect();
 
-    *prev_net = Some(current_net);
+    *prev_net = Some(PreviousNetSnapshot {
+        captured_at: now,
+        totals: current_net,
+    });
 
     // GPU live stats: PDH (per-engine, all GPUs) + D3DKMT (temperature) + DXGI (memory)
     #[cfg(target_os = "windows")]

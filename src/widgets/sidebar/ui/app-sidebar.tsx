@@ -44,6 +44,13 @@ export function AppSidebar() {
     handleNavigate(to)
   }
 
+  const isHomeRoute = pathname === '/home'
+    || pathname === '/cpu'
+    || pathname === '/ram'
+    || pathname.startsWith('/gpu')
+    || pathname.startsWith('/storage')
+    || pathname.startsWith('/network-stats')
+
   return (
     <Sidebar
       className="h-full min-h-0 shrink-0 [&>[data-slot=sidebar-inner]]:bg-transparent"
@@ -60,7 +67,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               className="cursor-pointer"
-              isActive={pathname === '/home'}
+              isActive={isHomeRoute}
               onClick={event => handleMenuClick(event, '/home')}
               onFocus={() => handlePointerIntent('/home')}
               onMouseEnter={() => handlePointerIntent('/home')}

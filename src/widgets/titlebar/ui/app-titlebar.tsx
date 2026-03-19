@@ -5,7 +5,7 @@ import { Minus, Square, X } from 'lucide-react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStaticInfo } from '@/app/use-page-header'
-import { mountLabel } from '@/shared/lib/mount-utils'
+import { mountLabel, mountToParam } from '@/shared/lib/mount-utils'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -38,17 +38,23 @@ function useBreadcrumbs(): Crumb[] {
 
   if (pathname.startsWith('/gpu/')) {
     const idx = Number(pathname.replace('/gpu/', ''))
+    if (!Number.isInteger(idx) || idx < 0 || (staticInfo && idx >= staticInfo.gpus.length)) {
+      return [home, { label: t('home.gpu') }]
+    }
     return [home, { label: t('gpu.gpuLabel', { index: idx }) }]
   }
 
   if (pathname.startsWith('/network-stats/')) {
     const idx = Number(pathname.replace('/network-stats/', ''))
+    if (!Number.isInteger(idx) || idx < 0 || (staticInfo && idx >= staticInfo.networkAdapters.length)) {
+      return [home, { label: t('home.network') }]
+    }
     return [home, { label: t('networkStats.adapterLabel', { index: idx }) }]
   }
 
   if (pathname.startsWith('/storage/')) {
     const param = pathname.replace('/storage/', '')
-    const idx = staticInfo?.disks.findIndex(d => d.mountPoint.replace(/[:\\/]/g, '') === param) ?? -1
+    const idx = staticInfo?.disks.findIndex(d => mountToParam(d.mountPoint) === param) ?? -1
     const disk = idx >= 0 ? staticInfo!.disks[idx] : null
     const base = idx >= 0 ? t('storage.diskLabel', { index: idx }) : param.toUpperCase()
     const sub = disk

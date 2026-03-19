@@ -58,10 +58,16 @@ interface BackendGpuInfo {
   util_decode: number
   util_high_priority_3d: number
   util_high_priority_compute: number
-  processes: Array<{ pid: number, name: string, dedicated_mem_mb: number }>
+  processes: BackendGpuProcess[]
   pci_bus: number | null
   pci_device: number | null
   pci_function: number | null
+}
+
+interface BackendGpuProcess {
+  pid: number
+  name: string
+  dedicated_mem_mb: number
 }
 
 interface BackendMotherboardInfo {

@@ -81,6 +81,7 @@
     "title": "Appearance"
   },
   "home": {
+    "loadError": "Failed to load system information.",
     "activation": "Activation",
     "activationStatus": {
       "activated": "Activated",
@@ -272,6 +273,7 @@
     "info": "Information",
     "ipv4": "IPv4",
     "ipv6": "IPv6",
+    "loadError": "Failed to load network adapter information.",
     "max60": "Max over 60 sec",
     "openAdapter": "Open",
     "receive": "Receive",
@@ -310,6 +312,7 @@
     "diskLabel": "Disk {{index}}",
     "format": "Format",
     "fileSystem": "File system",
+    "loadError": "Failed to load disk information.",
     "mountPoint": "Mount point",
     "no": "No",
     "notFound": "Disk not found.",
@@ -322,6 +325,14 @@
     "used": "Used",
     "writeSpeed": "Write speed",
     "yes": "Yes"
+  },
+  "format": {
+    "byte": "B",
+    "gigabyte": "GB",
+    "kilobyte": "KB",
+    "megabyte": "MB",
+    "perSecond": "/s",
+    "terabyte": "TB"
   },
   "tweaks": {
     "actions": {

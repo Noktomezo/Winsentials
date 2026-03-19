@@ -4,20 +4,18 @@ import { useParams } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getLiveSystemInfo, getStaticSystemInfo } from '@/entities/system-info/api'
+import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
 import { mountToParam } from '@/shared/lib/mount-utils'
+import { Button } from '@/shared/ui/button'
 import { LiveChart } from '@/shared/ui/live-chart'
 import { Skeleton } from '@/shared/ui/skeleton'
 
-function formatBytes(bytes: number, decimals = 1): string {
-  if (bytes === 0) { return '0 B' }
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${Number.parseFloat((bytes / k ** i).toFixed(decimals))} ${sizes[i]}`
+function formatBytes(bytes: number, locale: string, t: ReturnType<typeof useTranslation>['t'], decimals = 1): string {
+  return formatBytesLocalized(bytes, { decimals, locale, t })
 }
 
-function formatRate(bytesPerSec: number): string {
-  return `${formatBytes(bytesPerSec)}/s`
+function formatRate(bytesPerSec: number, locale: string, t: ReturnType<typeof useTranslation>['t']): string {
+  return formatRateLocalized(bytesPerSec, { locale, t })
 }
 
 function pushHistory(
@@ -44,15 +42,26 @@ function getDiskLive(liveInfo: LiveSystemInfo | null, mountPoint: string): DiskL
 }
 
 export function DiskDetailPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { disk: diskParam } = useParams({ from: '/storage/$disk' })
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
+  const [staticInfoError, setStaticInfoError] = useState(false)
   const [liveInfo, setLiveInfo] = useState<LiveSystemInfo | null>(null)
   const activeHistoryRef = useRef<ChartPoint[]>([])
   const [activeHistory, setActiveHistory] = useState<ChartPoint[]>([])
 
+  const loadStaticInfo = () => {
+    setStaticInfoError(false)
+    getStaticSystemInfo()
+      .then(setStaticInfo)
+      .catch((error) => {
+        console.error(error)
+        setStaticInfoError(true)
+      })
+  }
+
   useEffect(() => {
-    getStaticSystemInfo().then(setStaticInfo).catch(console.error)
+    loadStaticInfo()
   }, [])
 
   useEffect(() => {
@@ -83,6 +92,21 @@ export function DiskDetailPage() {
   }, [diskParam, staticInfo])
 
   if (!staticInfo) {
+    if (staticInfoError) {
+      return (
+        <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
+          <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+            <p className="text-sm text-muted-foreground">{t('storage.loadError')}</p>
+            <div>
+              <Button onClick={loadStaticInfo} size="sm" type="button" variant="outline">
+                {t('tweaks.actions.retry')}
+              </Button>
+            </div>
+          </section>
+        </section>
+      )
+    }
+
     return (
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
         <section className="rounded-xl border border-border/70 bg-card p-4">
@@ -129,9 +153,9 @@ export function DiskDetailPage() {
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Row label={t('storage.activeTime')} value={`${diskLive?.activeTimePercent ?? 0}%`} />
           <Row label={t('storage.avgResponseTime')} value={`${(diskLive?.avgResponseMs ?? 0).toFixed(1)} ms`} />
-          <Row label={t('storage.readSpeed')} value={formatRate(diskLive?.readBytesPerSec ?? 0)} />
-          <Row label={t('storage.writeSpeed')} value={formatRate(diskLive?.writeBytesPerSec ?? 0)} />
-          <Row label={t('storage.capacity')} value={formatBytes(disk.totalBytes)} />
+          <Row label={t('storage.readSpeed')} value={formatRate(diskLive?.readBytesPerSec ?? 0, i18n.language, t)} />
+          <Row label={t('storage.writeSpeed')} value={formatRate(diskLive?.writeBytesPerSec ?? 0, i18n.language, t)} />
+          <Row label={t('storage.capacity')} value={formatBytes(disk.totalBytes, i18n.language, t)} />
           <Row label={t('storage.format')} value={disk.fileSystem || '-'} />
           <Row label={t('storage.systemDisk')} value={disk.isSystemDisk ? t('storage.yes') : t('storage.no')} />
           <Row label={t('storage.pagefile')} value={disk.hasPagefile ? t('storage.yes') : t('storage.no')} />

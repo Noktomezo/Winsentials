@@ -4,28 +4,28 @@ import { useNavigate, useParams } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getLiveSystemInfo, getStaticSystemInfo } from '@/entities/system-info/api'
+import { formatRateLocalized } from '@/shared/lib/format-size'
+import { Button } from '@/shared/ui/button'
 import { LiveChart } from '@/shared/ui/live-chart'
 import { Skeleton } from '@/shared/ui/skeleton'
 
-function formatBytes(bytes: number, decimals = 1): string {
-  if (bytes === 0) { return '0 B' }
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${Number.parseFloat((bytes / k ** i).toFixed(decimals))} ${sizes[i]}`
+function formatRate(bytesPerSec: number, locale: string, t: ReturnType<typeof useTranslation>['t']): string {
+  return formatRateLocalized(bytesPerSec, { locale, t })
 }
 
-function formatRate(bytesPerSec: number): string {
-  return `${formatBytes(bytesPerSec)}/s`
-}
-
-function getRateUnit(bytesPerSec: number): { divisor: number, label: string } {
+function getRateUnit(bytesPerSec: number, t: ReturnType<typeof useTranslation>['t']): { divisor: number, label: string } {
   if (bytesPerSec === 0) {
-    return { divisor: 1, label: 'B/s' }
+    return { divisor: 1, label: `${t('format.byte')}${t('format.perSecond')}` }
   }
 
   const k = 1024
-  const units = ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s']
+  const units = [
+    `${t('format.byte')}${t('format.perSecond')}`,
+    `${t('format.kilobyte')}${t('format.perSecond')}`,
+    `${t('format.megabyte')}${t('format.perSecond')}`,
+    `${t('format.gigabyte')}${t('format.perSecond')}`,
+    `${t('format.terabyte')}${t('format.perSecond')}`,
+  ]
   const index = Math.floor(Math.log(bytesPerSec) / Math.log(k))
 
   return {
@@ -96,6 +96,7 @@ function NetworkAdapterCard({
   traffic: NetworkIfaceStats | null
 }) {
   const { t } = useTranslation()
+  const { i18n } = useTranslation()
   const navigate = useNavigate()
 
   return (
@@ -122,11 +123,11 @@ function NetworkAdapterCard({
       <div className="grid grid-cols-2 gap-3 text-xs">
         <div className="space-y-1">
           <span className="text-muted-foreground">{t('networkStats.receive')}</span>
-          <div className="font-medium text-foreground">{formatRate(traffic?.rxBytesPerSec ?? 0)}</div>
+          <div className="font-medium text-foreground">{formatRate(traffic?.rxBytesPerSec ?? 0, i18n.language, t)}</div>
         </div>
         <div className="space-y-1">
           <span className="text-muted-foreground">{t('networkStats.send')}</span>
-          <div className="font-medium text-foreground">{formatRate(traffic?.txBytesPerSec ?? 0)}</div>
+          <div className="font-medium text-foreground">{formatRate(traffic?.txBytesPerSec ?? 0, i18n.language, t)}</div>
         </div>
       </div>
     </button>
@@ -134,17 +135,28 @@ function NetworkAdapterCard({
 }
 
 export function NetworkStatsPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const params = useParams({ strict: false })
   const adapterIndex = params.adapterIndex !== undefined ? Number(params.adapterIndex) : null
 
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
+  const [staticError, setStaticError] = useState(false)
   const [liveInfo, setLiveInfo] = useState<LiveSystemInfo | null>(null)
   const throughputRef = useRef<ChartPoint[]>([])
   const [throughputHistory, setThroughputHistory] = useState<ChartPoint[]>([])
 
+  const loadStaticInfo = () => {
+    setStaticError(false)
+    getStaticSystemInfo()
+      .then(setStaticInfo)
+      .catch((error) => {
+        console.error(error)
+        setStaticError(true)
+      })
+  }
+
   useEffect(() => {
-    getStaticSystemInfo().then(setStaticInfo).catch(console.error)
+    loadStaticInfo()
   }, [])
 
   useEffect(() => {
@@ -181,6 +193,21 @@ export function NetworkStatsPage() {
   }, [adapterIndex, staticInfo])
 
   if (!staticInfo) {
+    if (staticError) {
+      return (
+        <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
+          <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+            <p className="text-sm text-muted-foreground">{t('networkStats.loadError')}</p>
+            <div>
+              <Button onClick={loadStaticInfo} size="sm" type="button" variant="outline">
+                {t('tweaks.actions.retry')}
+              </Button>
+            </div>
+          </section>
+        </section>
+      )
+    }
+
     return (
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
         {Array.from({ length: 3 }).map((_, i) => (
@@ -206,7 +233,7 @@ export function NetworkStatsPage() {
     const traffic = getLiveAdapter(liveInfo, selectedAdapter)
     const currentThroughput = (traffic?.rxBytesPerSec ?? 0) + (traffic?.txBytesPerSec ?? 0)
     const peakBytes = Math.max(currentThroughput, ...throughputHistory.map(point => point.value))
-    const unit = getRateUnit(peakBytes)
+    const unit = getRateUnit(peakBytes, t)
     const roundedPeak = ceilToNiceNumber(peakBytes / unit.divisor)
     const chartMax = roundedPeak > 0 ? roundedPeak : 1
     const chartData = throughputHistory.map(point => ({ value: point.value / unit.divisor }))
@@ -219,7 +246,7 @@ export function NetworkStatsPage() {
             <span className="text-xs tabular-nums text-muted-foreground">
               {t('networkStats.max60')}
               {': '}
-              {roundedPeak > 0 ? `${roundedPeak} ${unit.label}` : '0 B/s'}
+              {roundedPeak > 0 ? `${roundedPeak} ${unit.label}` : formatRate(0, i18n.language, t)}
             </span>
           </div>
           <LiveChart data={chartData} height={96} unit={` ${unit.label}`} yDomain={[0, chartMax]} />
@@ -232,8 +259,8 @@ export function NetworkStatsPage() {
         <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
           <h3 className="text-sm font-medium text-foreground">{t('networkStats.info')}</h3>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Row label={t('networkStats.send')} value={formatRate(traffic?.txBytesPerSec ?? 0)} />
-            <Row label={t('networkStats.receive')} value={formatRate(traffic?.rxBytesPerSec ?? 0)} />
+            <Row label={t('networkStats.send')} value={formatRate(traffic?.txBytesPerSec ?? 0, i18n.language, t)} />
+            <Row label={t('networkStats.receive')} value={formatRate(traffic?.rxBytesPerSec ?? 0, i18n.language, t)} />
             <Row label={t('networkStats.adapter')} value={selectedAdapter.name} />
             <Row label={t('networkStats.dnsName')} value={selectedAdapter.dnsName ?? <EmptyValue />} />
             <Row label={t('networkStats.connectionType')} value={selectedAdapter.connectionType} />

@@ -3,17 +3,14 @@ import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getLiveSystemInfo, getStaticSystemInfo } from '@/entities/system-info/api'
+import { formatBytesLocalized } from '@/shared/lib/format-size'
 import { LiveChart } from '@/shared/ui/live-chart'
 import { Skeleton } from '@/shared/ui/skeleton'
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
-function formatBytes(bytes: number, decimals = 1): string {
-  if (bytes === 0) { return '0 B' }
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${Number.parseFloat((bytes / k ** i).toFixed(decimals))} ${sizes[i]}`
+function formatBytes(bytes: number, locale: string, t: ReturnType<typeof useTranslation>['t'], decimals = 1): string {
+  return formatBytesLocalized(bytes, { decimals, locale, t })
 }
 
 /** Format `bytes` as a plain number in the same unit as `reference`, no unit suffix. */
@@ -24,8 +21,8 @@ function formatBytesNumberOnly(bytes: number, reference: number): string {
   return Number.parseFloat((bytes / k ** i).toFixed(2)).toString()
 }
 
-function toGb(bytes: number): string {
-  return `${(bytes / 1024 ** 3).toFixed(1)} GB`
+function toGb(bytes: number, locale: string, t: ReturnType<typeof useTranslation>['t']): string {
+  return formatBytesLocalized(bytes, { decimals: 1, locale, t })
 }
 
 function Row({ label, value }: { label: string, value: React.ReactNode }) {
@@ -48,7 +45,7 @@ function StripBar({
   availableBytes: number
   totalBytes: number
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   if (totalBytes === 0) { return null }
 
   // "Other" = neither used nor available (kernel, cache, hardware reserved etc.)
@@ -59,9 +56,9 @@ function StripBar({
   const otherPct = Math.max(0, 100 - usedPct - availablePct)
 
   const segments = [
-    { pct: usedPct, color: 'bg-primary', label: t('ram.used'), value: toGb(usedBytes) },
-    { pct: otherPct, color: 'bg-warning/70', label: t('ram.other'), value: toGb(otherBytes) },
-    { pct: availablePct, color: 'bg-muted', label: t('ram.available'), value: toGb(availableBytes) },
+    { pct: usedPct, color: 'bg-primary', label: t('ram.used'), value: toGb(usedBytes, i18n.language, t) },
+    { pct: otherPct, color: 'bg-warning/70', label: t('ram.other'), value: toGb(otherBytes, i18n.language, t) },
+    { pct: availablePct, color: 'bg-muted', label: t('ram.available'), value: toGb(availableBytes, i18n.language, t) },
   ]
 
   return (
@@ -93,7 +90,7 @@ function StripBar({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function RamPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [liveInfo, setLiveInfo] = useState<LiveSystemInfo | null>(null)
   const [history, setHistory] = useState<ChartPoint[]>([])
@@ -163,8 +160,6 @@ export function RamPage() {
   const sysTotal = used + available
   const hwReserved = sysTotal > 0 ? Math.max(0, total - sysTotal) : 0
 
-  const currentGb = used / 1024 ** 3
-
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
 
@@ -175,12 +170,12 @@ export function RamPage() {
             {t('ram.memoryUsage')}
           </span>
           <span className="text-xs tabular-nums text-muted-foreground">
-            {currentGb.toFixed(1)}
-            {' GB ('}
+            {toGb(used, i18n.language, t)}
+            {' ('}
             {t('ram.peak')}
             {': '}
-            {peak.toFixed(1)}
-            {' GB)'}
+            {toGb(Math.round(peak * 1024 ** 3), i18n.language, t)}
+            )
           </span>
         </div>
         <LiveChart data={history} height={96} unit=" GB" yDomain={[0, maxY]} />
@@ -201,7 +196,7 @@ export function RamPage() {
             label={t('ram.used')}
             value={(
               <span className="tabular-nums">
-                {formatBytes(used)}
+                {formatBytes(used, i18n.language, t)}
                 <span className="ml-1 font-normal text-muted-foreground">
                   (
                   {formatBytesNumberOnly(compressed, used)}
@@ -214,29 +209,29 @@ export function RamPage() {
           />
           <Row
             label={t('ram.available')}
-            value={<span className="tabular-nums">{formatBytes(available)}</span>}
+            value={<span className="tabular-nums">{formatBytes(available, i18n.language, t)}</span>}
           />
           <Row
             label={t('ram.committed')}
             value={(
               <span className="tabular-nums">
-                {formatBytes(committed)}
+                {formatBytes(committed, i18n.language, t)}
                 {' / '}
-                {formatBytes(commitLimit > 0 ? commitLimit : total)}
+                {formatBytes(commitLimit > 0 ? commitLimit : total, i18n.language, t)}
               </span>
             )}
           />
           <Row
             label={t('ram.cached')}
-            value={<span className="tabular-nums">{formatBytes(cached)}</span>}
+            value={<span className="tabular-nums">{formatBytes(cached, i18n.language, t)}</span>}
           />
           <Row
             label={t('ram.pagedPool')}
-            value={<span className="tabular-nums">{formatBytes(pagedPool)}</span>}
+            value={<span className="tabular-nums">{formatBytes(pagedPool, i18n.language, t)}</span>}
           />
           <Row
             label={t('ram.nonPagedPool')}
-            value={<span className="tabular-nums">{formatBytes(nonPagedPool)}</span>}
+            value={<span className="tabular-nums">{formatBytes(nonPagedPool, i18n.language, t)}</span>}
           />
           {ram.speedMhz != null && (
             <Row label={t('home.speed')} value={`${ram.speedMhz} MHz`} />
@@ -249,7 +244,7 @@ export function RamPage() {
           )}
           <Row
             label={t('ram.hardwareReserved')}
-            value={<span className="tabular-nums">{formatBytes(hwReserved)}</span>}
+            value={<span className="tabular-nums">{formatBytes(hwReserved, i18n.language, t)}</span>}
           />
         </div>
       </section>

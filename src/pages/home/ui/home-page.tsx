@@ -5,7 +5,9 @@ import { ChevronRight, Cpu, HardDrive, Layers, Monitor, Network, Server } from '
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getLiveSystemInfo, getStaticSystemInfo } from '@/entities/system-info/api'
+import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
 import { mountLabel } from '@/shared/lib/mount-utils'
+import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -21,12 +23,12 @@ function usagePct(used: number, total: number): number {
   return Math.round((used / total) * 100)
 }
 
-function formatBytes(bytes: number, decimals = 1): string {
-  if (bytes === 0) { return '0 B' }
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${Number.parseFloat((bytes / k ** i).toFixed(decimals))} ${sizes[i]}`
+function formatBytes(bytes: number, t: ReturnType<typeof useTranslation>['t'], locale: string, decimals = 1): string {
+  return formatBytesLocalized(bytes, { decimals, locale, t })
+}
+
+function formatRate(bytes: number, t: ReturnType<typeof useTranslation>['t'], locale: string): string {
+  return formatRateLocalized(bytes, { locale, t })
 }
 
 function mergeVisibleNetworkAdapters(
@@ -207,6 +209,7 @@ function CpuSummary({ live, s }: { live: LiveSystemInfo | null, s: StaticSystemI
 function RamSummary({ live, s }: { live: LiveSystemInfo | null, s: StaticSystemInfo }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { i18n } = useTranslation()
   const total = s.ram.totalBytes
   const used = live?.ramUsedBytes ?? 0
   const pct = usagePct(used, total)
@@ -216,7 +219,10 @@ function RamSummary({ live, s }: { live: LiveSystemInfo | null, s: StaticSystemI
       onNavigate={() => void navigate({ to: '/ram' })}
       stat={(
         <span className={`text-xs font-medium tabular-nums ${live ? loadColor(pct) : 'text-primary'}`}>
-          {t('home.usedOf', { used: formatBytes(used), total: formatBytes(total) })}
+          {t('home.usedOf', {
+            used: formatBytes(used, t, i18n.language),
+            total: formatBytes(total, t, i18n.language),
+          })}
         </span>
       )}
       title={t('home.ram')}
@@ -227,6 +233,7 @@ function RamSummary({ live, s }: { live: LiveSystemInfo | null, s: StaticSystemI
 function DiskSummary({ disk, index }: { disk: StaticSystemInfo['disks'][number], index: number }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { i18n } = useTranslation()
   const used = disk.totalBytes - disk.availableBytes
   const param = disk.mountPoint.replace(/[:\\/]/g, '')
   return (
@@ -235,7 +242,10 @@ function DiskSummary({ disk, index }: { disk: StaticSystemInfo['disks'][number],
       onNavigate={() => void navigate({ to: '/storage/$disk', params: { disk: param } })}
       stat={(
         <span className={`text-xs font-medium tabular-nums ${loadColor(usagePct(used, disk.totalBytes))}`}>
-          {t('home.usedOf', { used: formatBytes(used), total: formatBytes(disk.totalBytes) })}
+          {t('home.usedOf', {
+            used: formatBytes(used, t, i18n.language),
+            total: formatBytes(disk.totalBytes, t, i18n.language),
+          })}
         </span>
       )}
       title={(
@@ -262,6 +272,7 @@ function NetworkSummary({
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { i18n } = useTranslation()
   const traffic = live?.network.find(entry => entry.name === adapter.name)
   return (
     <SummaryCard
@@ -271,13 +282,11 @@ function NetworkSummary({
         <div className="flex gap-2">
           <span className="text-xs tabular-nums text-primary">
             ↓
-            {formatBytes(traffic?.rxBytesPerSec ?? 0)}
-            /s
+            {formatRate(traffic?.rxBytesPerSec ?? 0, t, i18n.language)}
           </span>
           <span className="text-xs tabular-nums text-primary">
             ↑
-            {formatBytes(traffic?.txBytesPerSec ?? 0)}
-            /s
+            {formatRate(traffic?.txBytesPerSec ?? 0, t, i18n.language)}
           </span>
         </div>
       )}
@@ -364,13 +373,23 @@ function HomeSkeleton() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function HomePage() {
+  const { t } = useTranslation()
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
+  const [staticInfoError, setStaticInfoError] = useState(false)
   const [liveInfo, setLiveInfo] = useState<LiveSystemInfo | null>(null)
 
-  useEffect(() => {
+  const loadStaticInfo = () => {
+    setStaticInfoError(false)
     getStaticSystemInfo()
       .then(setStaticInfo)
-      .catch(console.error)
+      .catch((error) => {
+        console.error(error)
+        setStaticInfoError(true)
+      })
+  }
+
+  useEffect(() => {
+    loadStaticInfo()
   }, [])
 
   useEffect(() => {
@@ -393,26 +412,37 @@ export function HomePage() {
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-      {!staticInfo
+      {staticInfoError
         ? (
-            <HomeSkeleton />
+            <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+              <p className="text-sm text-muted-foreground">{t('home.loadError')}</p>
+              <div>
+                <Button onClick={loadStaticInfo} size="sm" type="button" variant="outline">
+                  {t('tweaks.actions.retry')}
+                </Button>
+              </div>
+            </section>
           )
-        : (
-            <div className="grid grid-cols-2 gap-4">
-              <WindowsCard s={staticInfo} />
-              <CpuSummary live={liveInfo} s={staticInfo} />
-              <RamSummary live={liveInfo} s={staticInfo} />
-              {staticInfo.disks.map((disk, i) => (
-                <DiskSummary disk={disk} index={i} key={disk.mountPoint} />
-              ))}
-              {networkCards.map(adapter => (
-                <NetworkSummary adapter={adapter} key={`network-${adapter.name}`} live={liveInfo} />
-              ))}
-              {staticInfo.gpus.map((gpu, i) => (
-                <GpuSummary gpu={gpu} gpuLive={liveInfo?.gpus[i] ?? null} index={i} key={`gpu-${i}`} />
-              ))}
-            </div>
-          )}
+        : !staticInfo
+            ? (
+                <HomeSkeleton />
+              )
+            : (
+                <div className="grid grid-cols-2 gap-4">
+                  <WindowsCard s={staticInfo} />
+                  <CpuSummary live={liveInfo} s={staticInfo} />
+                  <RamSummary live={liveInfo} s={staticInfo} />
+                  {staticInfo.disks.map((disk, i) => (
+                    <DiskSummary disk={disk} index={i} key={disk.mountPoint} />
+                  ))}
+                  {networkCards.map(adapter => (
+                    <NetworkSummary adapter={adapter} key={`network-${adapter.name}`} live={liveInfo} />
+                  ))}
+                  {staticInfo.gpus.map((gpu, i) => (
+                    <GpuSummary gpu={gpu} gpuLive={liveInfo?.gpus[i] ?? null} index={i} key={`gpu-${i}`} />
+                  ))}
+                </div>
+              )}
     </section>
   )
 }

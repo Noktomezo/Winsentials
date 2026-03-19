@@ -3,7 +3,7 @@ import type { StaticSystemInfo } from '@/entities/system-info/model/types'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
-import { mountLabel } from '@/shared/lib/mount-utils'
+import { mountLabel, mountToParam } from '@/shared/lib/mount-utils'
 
 export interface PageHeader {
   title: ReactNode
@@ -12,17 +12,30 @@ export interface PageHeader {
 
 // Module-level cache so the IPC call fires only once per app session.
 let staticInfoCache: StaticSystemInfo | null = null
+let staticInfoPromise: Promise<StaticSystemInfo> | null = null
 const listeners: Array<(info: StaticSystemInfo) => void> = []
 
-function loadStaticInfo(): void {
-  if (staticInfoCache) { return }
-  getStaticSystemInfo()
+function loadStaticInfo(): Promise<StaticSystemInfo> {
+  if (staticInfoCache) {
+    return Promise.resolve(staticInfoCache)
+  }
+
+  if (staticInfoPromise) {
+    return staticInfoPromise
+  }
+
+  staticInfoPromise = getStaticSystemInfo()
     .then((info) => {
       staticInfoCache = info
       for (const fn of listeners) { fn(info) }
       listeners.length = 0
+      return info
     })
-    .catch(console.error)
+    .finally(() => {
+      staticInfoPromise = null
+    })
+
+  return staticInfoPromise
 }
 
 export function useStaticInfo(): StaticSystemInfo | null {
@@ -34,7 +47,7 @@ export function useStaticInfo(): StaticSystemInfo | null {
       return
     }
     listeners.push(setInfo)
-    loadStaticInfo()
+    loadStaticInfo().catch(console.error)
     return () => {
       const idx = listeners.indexOf(setInfo)
       if (idx !== -1) { listeners.splice(idx, 1) }
@@ -85,7 +98,14 @@ export function usePageHeader(pathname: string): PageHeader {
   // ── GPU detail: /gpu/0, /gpu/1 … ────────────────────────────────────────────
   if (pathname.startsWith('/gpu/')) {
     const idx = Number(pathname.replace('/gpu/', ''))
-    const gpu = staticInfo?.gpus[idx]
+    if (!Number.isInteger(idx) || idx < 0) {
+      return { title: t('home.gpu'), description: t('gpu.description') }
+    }
+    const isValidIdx = Number.isInteger(idx) && idx >= 0 && idx < (staticInfo?.gpus.length ?? 0)
+    if (!isValidIdx && staticInfo) {
+      return { title: t('home.gpu'), description: t('gpu.description') }
+    }
+    const gpu = isValidIdx ? staticInfo?.gpus[idx] : null
     const label = t('gpu.gpuLabel', { index: idx })
     return {
       title: gpu
@@ -107,8 +127,8 @@ export function usePageHeader(pathname: string): PageHeader {
   // ── Disk detail: /storage/C … ────────────────────────────────────────────────
   if (pathname.startsWith('/storage/')) {
     const param = pathname.replace('/storage/', '')
-    const disk = staticInfo?.disks.find(d => d.mountPoint.replace(/[:\\/]/g, '') === param)
-    const idx = staticInfo?.disks.findIndex(d => d.mountPoint.replace(/[:\\/]/g, '') === param) ?? -1
+    const disk = staticInfo?.disks.find(d => mountToParam(d.mountPoint) === param)
+    const idx = staticInfo?.disks.findIndex(d => mountToParam(d.mountPoint) === param) ?? -1
     const diskLabel = idx >= 0 ? t('storage.diskLabel', { index: idx }) : param.toUpperCase()
     const diskSub = disk
       ? disk.volumeLabel
@@ -134,7 +154,13 @@ export function usePageHeader(pathname: string): PageHeader {
 
   if (pathname.startsWith('/network-stats/')) {
     const idx = Number(pathname.replace('/network-stats/', ''))
-    const adapter = staticInfo?.networkAdapters[idx]
+    if (!Number.isInteger(idx) || idx < 0) {
+      return { title: t('home.network'), description: t('networkStats.description') }
+    }
+    if (staticInfo && idx >= staticInfo.networkAdapters.length) {
+      return { title: t('home.network'), description: t('networkStats.description') }
+    }
+    const adapter = idx < (staticInfo?.networkAdapters.length ?? 0) ? staticInfo?.networkAdapters[idx] : null
     return {
       title: adapter
         ? (

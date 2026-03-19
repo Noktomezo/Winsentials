@@ -81,6 +81,7 @@
     "title": "Внешний вид"
   },
   "home": {
+    "loadError": "Не удалось загрузить сведения о системе.",
     "activation": "Активация",
     "activationStatus": {
       "activated": "Активирована",
@@ -272,6 +273,7 @@
     "info": "Информация",
     "ipv4": "IPv4",
     "ipv6": "IPv6",
+    "loadError": "Не удалось загрузить сведения о сетевых адаптерах.",
     "max60": "Максимальная за 60 сек",
     "openAdapter": "Открыть",
     "receive": "Получение",
@@ -310,6 +312,7 @@
     "diskLabel": "Диск {{index}}",
     "format": "Формат",
     "fileSystem": "Файловая система",
+    "loadError": "Не удалось загрузить сведения о диске.",
     "mountPoint": "Точка монтирования",
     "no": "Нет",
     "notFound": "Диск не найден.",
@@ -322,6 +325,14 @@
     "used": "Занято",
     "writeSpeed": "Скорость записи",
     "yes": "Да"
+  },
+  "format": {
+    "byte": "Б",
+    "gigabyte": "ГБ",
+    "kilobyte": "КБ",
+    "megabyte": "МБ",
+    "perSecond": "/с",
+    "terabyte": "ТБ"
   },
   "tweaks": {
     "actions": {

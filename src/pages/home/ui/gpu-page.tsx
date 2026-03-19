@@ -1,6 +1,6 @@
 import type { GpuInfo, LiveSystemInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
-import { useParams } from '@tanstack/react-router'
+import { useNavigate, useParams } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getLiveSystemInfo, getStaticSystemInfo } from '@/entities/system-info/api'
@@ -77,14 +77,16 @@ function EngineChart({ label, value, data }: { label: string, value: number, dat
 
 function MemChart({
   label,
-  usedMb,
-  totalMb,
+  valueLabel,
   data,
+  unit = '%',
+  yDomain,
 }: {
   label: string
-  usedMb: number
-  totalMb: number
+  valueLabel: string
   data: ChartPoint[]
+  unit?: string
+  yDomain?: [number, number]
 }) {
   const { t } = useTranslation()
 
@@ -92,11 +94,9 @@ function MemChart({
     <section className="col-span-2 flex flex-col gap-2 rounded-xl border border-border/70 bg-card p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
-        <span className="text-xs font-semibold tabular-nums text-foreground">
-          {formatMbPair(usedMb, totalMb)}
-        </span>
+        <span className="text-xs font-semibold tabular-nums text-foreground">{valueLabel}</span>
       </div>
-      <LiveChart data={data} height={64} unit="%" yDomain={[0, 100]} />
+      <LiveChart data={data} height={64} unit={unit} yDomain={yDomain} />
       <div className="flex items-baseline justify-between">
         <span className="text-xs text-muted-foreground">{t('ram.seconds', { n: 60 })}</span>
         <span className="text-xs tabular-nums text-muted-foreground">0</span>
@@ -147,8 +147,9 @@ function getEngineCharts(
 
 export function GpuPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const params = useParams({ strict: false })
-  const gpuIndex = params.gpuIndex !== undefined ? Number(params.gpuIndex) : null
+  const parsedGpuIndex = params.gpuIndex !== undefined ? Number(params.gpuIndex) : null
 
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [liveInfo, setLiveInfo] = useState<LiveSystemInfo | null>(null)
@@ -175,8 +176,18 @@ export function GpuPage() {
     getStaticSystemInfo().then(setStaticInfo).catch(console.error)
   }, [])
 
+  const gpuIndex = staticInfo && parsedGpuIndex !== null && Number.isInteger(parsedGpuIndex) && parsedGpuIndex >= 0 && parsedGpuIndex < staticInfo.gpus.length
+    ? parsedGpuIndex
+    : null
   const gpu = staticInfo && gpuIndex !== null ? staticInfo.gpus[gpuIndex] : null
   const isDetailView = gpuIndex !== null && gpu != null
+
+  useEffect(() => {
+    if (!staticInfo || params.gpuIndex === undefined) { return }
+    if (gpuIndex === null) {
+      void navigate({ replace: true, to: '/gpu' })
+    }
+  }, [gpuIndex, navigate, params.gpuIndex, staticInfo])
 
   useEffect(() => {
     if (!staticInfo) { return }
@@ -205,7 +216,8 @@ export function GpuPage() {
           setLiveInfo(live)
           if (!isDetailView) { return }
 
-          const idx = gpuIndex ?? 0
+          const idx = gpuIndex
+          if (idx === null) { return }
           const entry = live.gpus[idx]
           if (!entry) { return }
 
@@ -222,9 +234,7 @@ export function GpuPage() {
             : 0
           pushHistory(histDedicatedRef, dedicatedPct, setHistDedicated)
 
-          const sharedBudget = entry.vramSharedMb
-          const sharedPct = sharedBudget > 0 ? 100 : 0
-          pushHistory(histSharedRef, sharedPct, setHistShared)
+          pushHistory(histSharedRef, entry.vramSharedMb, setHistShared)
         })
         .catch(console.error)
     }
@@ -294,8 +304,8 @@ export function GpuPage() {
             <MemChart
               data={histDedicated}
               label={t('gpu.dedicated')}
-              totalMb={dedicatedBudgetMb}
-              usedMb={dedicatedUsedMb}
+              valueLabel={formatMbPair(dedicatedUsedMb, dedicatedBudgetMb)}
+              yDomain={[0, 100]}
             />
           )}
 
@@ -304,8 +314,8 @@ export function GpuPage() {
             <MemChart
               data={histShared}
               label={t('gpu.shared')}
-              totalMb={sharedUsedMb}
-              usedMb={sharedUsedMb}
+              unit=" MB"
+              valueLabel={formatMb(sharedUsedMb)}
             />
           )}
         </div>
