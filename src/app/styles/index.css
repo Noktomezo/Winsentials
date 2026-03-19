@@ -525,3 +525,40 @@ body {
     transform: none !important;
   }
 }
+
+/* ─── Sonner Toast Theme ────────────────────────────────────────────────── */
+
+/* Light (default — inherits from :root CSS vars) */
+[data-sonner-toaster] {
+  --normal-bg: var(--card);
+  --normal-text: var(--card-foreground);
+  --normal-border: var(--border);
+  --success-bg: var(--card);
+  --success-text: var(--success);
+  --success-border: var(--border);
+  --error-bg: var(--card);
+  --error-text: var(--destructive);
+  --error-border: var(--border);
+  --warning-bg: var(--card);
+  --warning-text: var(--warning);
+  --warning-border: var(--border);
+  --info-bg: var(--card);
+  --info-text: var(--card-foreground);
+  --info-border: var(--border);
+}
+
+/* Acrylic light — frosted glass */
+[data-chrome-material="acrylic"] [data-sonner-toaster] [data-sonner-toast] {
+  background: oklch(0.99 0.003 210 / 0.55) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-color: oklch(0.855 0.008 214 / 0.5) !important;
+}
+
+/* Acrylic dark — frosted glass */
+[data-chrome-material="acrylic"][data-theme="dark"] [data-sonner-toaster] [data-sonner-toast] {
+  background: oklch(0.22 0.012 228 / 0.55) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-color: oklch(0.37 0.012 226 / 0.5) !important;
+}
