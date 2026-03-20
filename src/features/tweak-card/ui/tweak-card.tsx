@@ -97,6 +97,7 @@ export function TweakCard({
   const Icon = TWEAK_ICONS[tweak.id] ?? Info
   const isEnabled = tweak.currentValue === 'enabled'
   const isDefaultEnabled = tweak.defaultValue === 'enabled'
+  const isAtDefault = tweak.currentValue === tweak.defaultValue
   const isUnsupported = isBelowMinBuild(currentBuild, tweak)
   const minBuild = formatMinBuild(tweak)
   const copyableRiskCommand = COPYABLE_RISK_COMMANDS[tweak.id]
@@ -245,24 +246,22 @@ export function TweakCard({
                   disabled={isPending || isUnsupported}
                   onCheckedChange={onToggle}
                 />
-                {isEnabled && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        aria-label={t('tweaks.actions.resetToDefault')}
-                        className="inline-flex cursor-pointer items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
-                        disabled={isPending}
-                        onClick={() => onToggle(isDefaultEnabled)}
-                        type="button"
-                      >
-                        <RotateCcw className="size-3.5" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent sideOffset={8}>
-                      {t('tweaks.actions.resetToDefault')}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      aria-label={t('tweaks.actions.resetToDefault')}
+                      className="inline-flex cursor-pointer items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
+                      disabled={isPending || isAtDefault || isUnsupported}
+                      onClick={() => onToggle(isDefaultEnabled)}
+                      type="button"
+                    >
+                      <RotateCcw className="size-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={8}>
+                    {t('tweaks.actions.resetToDefault')}
+                  </TooltipContent>
+                </Tooltip>
               </div>
             )}
           </div>
