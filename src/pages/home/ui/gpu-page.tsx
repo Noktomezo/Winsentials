@@ -144,6 +144,45 @@ function getEngineCharts(
   ]
 }
 
+function LiveGpuLoadingState() {
+  return (
+    <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
+      <div className="grid grid-cols-2 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <section className="rounded-xl border border-border/70 bg-card p-4" key={i}>
+            <Skeleton className="mb-3 h-3 w-24" />
+            <Skeleton className="h-16 w-full" />
+          </section>
+        ))}
+        <section className="col-span-2 rounded-xl border border-border/70 bg-card p-4">
+          <div className="space-y-2.5">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton className="h-3 w-full" key={i} />
+            ))}
+          </div>
+        </section>
+      </div>
+    </section>
+  )
+}
+
+function LiveGpuErrorState({ message, onRetry }: { message: string, onRetry: () => void }) {
+  const { t } = useTranslation()
+
+  return (
+    <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
+      <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+        <p className="text-sm text-muted-foreground">{message}</p>
+        <div>
+          <Button onClick={onRetry} size="sm" type="button" variant="outline">
+            {t('tweaks.actions.retry')}
+          </Button>
+        </div>
+      </section>
+    </section>
+  )
+}
+
 export function GpuPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -152,7 +191,7 @@ export function GpuPage() {
 
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [staticError, setStaticError] = useState(false)
-  const { data: liveInfo, history: gpuHistory } = useLiveGpu()
+  const { data: liveInfo, error: liveError, history: gpuHistory, isFetching, retry } = useLiveGpu()
 
   const loadStaticInfo = () => {
     setStaticError(false)
@@ -222,7 +261,24 @@ export function GpuPage() {
 
   // ── Detail view ──────────────────────────────────────────────────────────────
   if (isDetailView && gpu && gpuIndex !== null) {
+    if (liveInfo === null && isFetching) {
+      return <LiveGpuLoadingState />
+    }
+
+    if (liveInfo === null && liveError) {
+      return <LiveGpuErrorState message={t('gpu.liveLoadError')} onRetry={retry} />
+    }
+
     const live = liveByIndex[gpuIndex]
+    if (!live) {
+      return (
+        <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
+          <section className="rounded-xl border border-border/70 bg-card p-4">
+            <p className="text-sm text-muted-foreground">{t('gpu.noLiveData')}</p>
+          </section>
+        </section>
+      )
+    }
 
     const dedicatedBudgetMb = live ? live.vramTotalMb - live.vramReservedMb : 0
     const dedicatedUsedMb = live?.vramUsedMb ?? 0
@@ -352,6 +408,14 @@ export function GpuPage() {
   const gpusToShow = gpuIndex !== null
     ? staticInfo.gpus[gpuIndex] ? [{ gpu: staticInfo.gpus[gpuIndex], idx: gpuIndex }] : []
     : staticInfo.gpus.map((g, idx) => ({ gpu: g, idx }))
+
+  if (liveInfo === null && isFetching) {
+    return <LiveGpuLoadingState />
+  }
+
+  if (liveInfo === null && liveError) {
+    return <LiveGpuErrorState message={t('gpu.liveLoadError')} onRetry={retry} />
+  }
 
   const hasAnyLiveData = liveInfo?.some(g => gpuUsage(g) > 0 || g.temperatureC != null) ?? false
 

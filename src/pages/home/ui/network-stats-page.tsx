@@ -8,9 +8,8 @@ import { useLiveNetwork } from '@/entities/system-info/model/live-system-store'
 import { formatRateLocalized } from '@/shared/lib/format-size'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { networkAdapterToParam } from '@/shared/lib/mount-utils'
-import { Button } from '@/shared/ui/button'
+import { Button, Skeleton } from '@/shared/ui'
 import { LiveChart } from '@/shared/ui/live-chart'
-import { Skeleton } from '@/shared/ui/skeleton'
 
 function formatRate(bytesPerSec: number, locale: string, t: ReturnType<typeof useTranslation>['t']): string {
   return formatRateLocalized(bytesPerSec, { locale, t })
@@ -91,6 +90,40 @@ function EmptyValue() {
   return <span className="text-muted-foreground">-</span>
 }
 
+function LiveNetworkLoadingState() {
+  return (
+    <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <section className="rounded-xl border border-border/70 bg-card p-4" key={i}>
+          <Skeleton className="mb-3 h-4 w-40" />
+          <div className="space-y-2.5">
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-4/5" />
+            <Skeleton className="h-3 w-3/5" />
+          </div>
+        </section>
+      ))}
+    </section>
+  )
+}
+
+function LiveNetworkErrorState({ message, onRetry }: { message: string, onRetry: () => void }) {
+  const { t } = useTranslation()
+
+  return (
+    <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
+      <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+        <p className="text-sm text-muted-foreground">{message}</p>
+        <div>
+          <Button onClick={onRetry} size="sm" type="button" variant="outline">
+            {t('tweaks.actions.retry')}
+          </Button>
+        </div>
+      </section>
+    </section>
+  )
+}
+
 function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
@@ -137,7 +170,7 @@ export function NetworkStatsPage() {
 
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [staticError, setStaticError] = useState(false)
-  const { data: liveInfo, throughputHistory: storeThroughput } = useLiveNetwork()
+  const { data: liveInfo, error: liveError, isFetching, retry, throughputHistory: storeThroughput } = useLiveNetwork()
 
   const loadStaticInfo = () => {
     setStaticError(false)
@@ -189,6 +222,14 @@ export function NetworkStatsPage() {
   const selectedAdapter = adapterParam !== null
     ? adapters.find(adapter => adapter.name === adapterParam) ?? staticInfo.networkAdapters.find(adapter => adapter.name === adapterParam) ?? null
     : null
+
+  if (liveInfo === null && isFetching) {
+    return <LiveNetworkLoadingState />
+  }
+
+  if (liveInfo === null && liveError) {
+    return <LiveNetworkErrorState message={t('networkStats.liveLoadError')} onRetry={retry} />
+  }
 
   if (selectedAdapter) {
     const traffic = getLiveAdapter(liveInfo, selectedAdapter)

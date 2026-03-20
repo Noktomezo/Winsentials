@@ -132,8 +132,8 @@ export function usePageHeader(pathname: string): PageHeader {
   // ── Disk detail: /storage/C … ────────────────────────────────────────────────
   if (pathname.startsWith('/storage/')) {
     const param = pathname.replace('/storage/', '')
-    const disk = staticInfo?.disks.find(d => mountToParam(d.mountPoint) === param)
     const idx = staticInfo?.disks.findIndex(d => mountToParam(d.mountPoint) === param) ?? -1
+    const disk = idx >= 0 ? staticInfo?.disks[idx] ?? null : null
     const diskLabel = idx >= 0 ? t('storage.diskLabel', { index: idx }) : param.toUpperCase()
     const diskSub = disk
       ? disk.volumeLabel

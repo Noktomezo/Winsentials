@@ -249,19 +249,14 @@ pub fn pdh_open_disk_query() -> Option<(isize, isize, isize, isize, isize)> {
 }
 
 #[cfg(target_os = "windows")]
-fn pdh_collect_disk_counter_array(query_raw: isize, counter_raw: isize) -> HashMap<String, f64> {
+fn pdh_collect_disk_counter_array(counter_raw: isize) -> HashMap<String, f64> {
     use windows::Win32::System::Performance::*;
     const PDH_CSTATUS_NEW_DATA: u32 = 0x00000001;
     const PDH_CSTATUS_VALID_DATA: u32 = 0x00000000;
     const PDH_MORE_DATA: u32 = 0x800007D2;
 
     unsafe {
-        let query = PDH_HQUERY(query_raw as *mut _);
         let counter = PDH_HCOUNTER(counter_raw as *mut _);
-        if PdhCollectQueryData(query) != 0 {
-            return HashMap::new();
-        }
-
         let mut buf_size = 0u32;
         let mut item_count = 0u32;
         let result = PdhGetFormattedCounterArrayW(
@@ -292,6 +287,8 @@ fn pdh_collect_disk_counter_array(query_raw: isize, counter_raw: isize) -> HashM
             return HashMap::new();
         }
         buffer.set_len(item_count as usize);
+        let buffer_start = buffer.as_ptr().cast::<u8>();
+        let buffer_end = buffer_start.add(buf_size as usize);
 
         buffer
             .iter()
@@ -306,7 +303,15 @@ fn pdh_collect_disk_counter_array(query_raw: isize, counter_raw: isize) -> HashM
                     return None;
                 }
 
-                let max_u16_len = (buf_size as usize).div_ceil(std::mem::size_of::<u16>());
+                let ptr_bytes = ptr.cast_const().cast::<u8>();
+                if ptr_bytes < buffer_start || ptr_bytes >= buffer_end {
+                    return None;
+                }
+
+                let original_max_u16_len = (buf_size as usize).div_ceil(std::mem::size_of::<u16>());
+                let remaining_bytes = buffer_end.offset_from(ptr_bytes) as usize;
+                let remaining_u16_len = remaining_bytes / std::mem::size_of::<u16>();
+                let max_u16_len = original_max_u16_len.min(remaining_u16_len);
                 let len = (0usize..max_u16_len)
                     .take_while(|&j| *ptr.add(j) != 0)
                     .count();
@@ -322,7 +327,7 @@ fn pdh_collect_disk_counter_array(query_raw: isize, counter_raw: isize) -> HashM
 }
 
 #[cfg(not(target_os = "windows"))]
-fn pdh_collect_disk_counter_array(_query_raw: isize, _counter_raw: isize) -> HashMap<String, f64> {
+fn pdh_collect_disk_counter_array(_counter_raw: isize) -> HashMap<String, f64> {
     HashMap::new()
 }
 
@@ -334,14 +339,23 @@ pub fn gather_disk_live(
     read_counter_raw: isize,
     write_counter_raw: isize,
 ) -> HashMap<String, DiskLiveInfo> {
+    use windows::Win32::System::Performance::{PDH_HQUERY, PdhCollectQueryData};
+
     if query_raw == 0 {
         return HashMap::new();
     }
 
-    let active = pdh_collect_disk_counter_array(query_raw, active_counter_raw);
-    let response = pdh_collect_disk_counter_array(query_raw, response_counter_raw);
-    let read = pdh_collect_disk_counter_array(query_raw, read_counter_raw);
-    let write = pdh_collect_disk_counter_array(query_raw, write_counter_raw);
+    unsafe {
+        let query = PDH_HQUERY(query_raw as *mut _);
+        if PdhCollectQueryData(query) != 0 {
+            return HashMap::new();
+        }
+    }
+
+    let active = pdh_collect_disk_counter_array(active_counter_raw);
+    let response = pdh_collect_disk_counter_array(response_counter_raw);
+    let read = pdh_collect_disk_counter_array(read_counter_raw);
+    let write = pdh_collect_disk_counter_array(write_counter_raw);
 
     let mut mounts = HashMap::new();
     for mount in active

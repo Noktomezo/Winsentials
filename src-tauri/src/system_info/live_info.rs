@@ -40,6 +40,7 @@ pub fn gather_live_info(
         cpu_per_core.iter().copied().sum::<f32>() / cpu_per_core.len().max(1) as f32;
     #[cfg(target_os = "windows")]
     let cpu_current_freq_mhz = pdh_collect_cpu_perf_pct(pdh.cpu_query, pdh.cpu_counter)
+        .filter(|_| pdh.base_freq_mhz > 0)
         .map(|pct| (pdh.base_freq_mhz as f64 * pct / 100.0).round() as u64)
         .or_else(|| cpus.first().map(|c| c.frequency()))
         .unwrap_or(0);
