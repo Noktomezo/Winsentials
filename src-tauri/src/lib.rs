@@ -64,9 +64,9 @@ pub fn run() {
                 #[cfg(target_os = "windows")]
                 let mut pdh = system_info::pdh_open_gpu_query();
                 #[cfg(target_os = "windows")]
-                let disk_pdh = system_info::pdh_open_disk_query();
+                let mut disk_pdh = system_info::pdh_open_disk_query();
                 #[cfg(target_os = "windows")]
-                let cpu_pdh = system_info::pdh_open_cpu_perf_query();
+                let mut cpu_pdh = system_info::pdh_open_cpu_perf_query();
 
                 loop {
                     let start = Instant::now();
@@ -74,6 +74,14 @@ pub fn run() {
                     #[cfg(target_os = "windows")]
                     if pdh.is_none() {
                         pdh = system_info::pdh_open_gpu_query();
+                    }
+                    #[cfg(target_os = "windows")]
+                    if disk_pdh.is_none() {
+                        disk_pdh = system_info::pdh_open_disk_query();
+                    }
+                    #[cfg(target_os = "windows")]
+                    if cpu_pdh.is_none() {
+                        cpu_pdh = system_info::pdh_open_cpu_perf_query();
                     }
                     let state: tauri::State<'_, system_info::SystemInfoState> =
                         handle.state::<system_info::SystemInfoState>();
@@ -94,25 +102,18 @@ pub fn run() {
                         &mut bg_prev_net,
                         &gpus,
                         #[cfg(target_os = "windows")]
-                        pdh.map(|p| p.0).unwrap_or(0),
-                        #[cfg(target_os = "windows")]
-                        pdh.map(|p| p.1).unwrap_or(0),
-                        #[cfg(target_os = "windows")]
-                        disk_pdh.map(|p| p.0).unwrap_or(0),
-                        #[cfg(target_os = "windows")]
-                        disk_pdh.map(|p| p.1).unwrap_or(0),
-                        #[cfg(target_os = "windows")]
-                        disk_pdh.map(|p| p.2).unwrap_or(0),
-                        #[cfg(target_os = "windows")]
-                        disk_pdh.map(|p| p.3).unwrap_or(0),
-                        #[cfg(target_os = "windows")]
-                        disk_pdh.map(|p| p.4).unwrap_or(0),
-                        #[cfg(target_os = "windows")]
-                        cpu_pdh.map(|p| p.0).unwrap_or(0),
-                        #[cfg(target_os = "windows")]
-                        cpu_pdh.map(|p| p.1).unwrap_or(0),
-                        #[cfg(target_os = "windows")]
-                        base_freq_mhz,
+                        system_info::PdhHandles {
+                            gpu_query: pdh.map(|p| p.0).unwrap_or(0),
+                            gpu_counter: pdh.map(|p| p.1).unwrap_or(0),
+                            disk_query: disk_pdh.map(|p| p.0).unwrap_or(0),
+                            disk_active_counter: disk_pdh.map(|p| p.1).unwrap_or(0),
+                            disk_response_counter: disk_pdh.map(|p| p.2).unwrap_or(0),
+                            disk_read_counter: disk_pdh.map(|p| p.3).unwrap_or(0),
+                            disk_write_counter: disk_pdh.map(|p| p.4).unwrap_or(0),
+                            cpu_query: cpu_pdh.map(|p| p.0).unwrap_or(0),
+                            cpu_counter: cpu_pdh.map(|p| p.1).unwrap_or(0),
+                            base_freq_mhz,
+                        },
                     );
 
                     if let Ok(mut cache) = state.live_cache.lock() {

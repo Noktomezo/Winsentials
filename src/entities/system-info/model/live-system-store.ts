@@ -44,7 +44,7 @@ interface GpuEngineHistory {
 interface LiveHistoryMap {
   cpuHistory: number[]
   ramHistory: number[]
-  gpuHistory: GpuEngineHistory[]
+  gpuHistory: Record<number, GpuEngineHistory>
   diskActiveHistory: Record<string, number[]>
   networkThroughputHistory: Record<string, number[]>
 }
@@ -98,7 +98,7 @@ export const useLiveSystemStore = create<LiveSystemStoreState>()(set => ({
   fetching: {},
   cpuHistory: [],
   ramHistory: [],
-  gpuHistory: [],
+  gpuHistory: {},
   diskActiveHistory: {},
   networkThroughputHistory: {},
   setError: (slice, error) => {
@@ -135,8 +135,8 @@ export const useLiveSystemStore = create<LiveSystemStoreState>()(set => ({
       if (slice === 'gpu') {
         const gpus = data as LiveGpuInfo[]
         const prevGpuHistory = state.gpuHistory
-        next.gpuHistory = gpus.map((gpu, i) => {
-          const prev: GpuEngineHistory = prevGpuHistory[i] ?? {
+        next.gpuHistory = Object.fromEntries(gpus.map((gpu) => {
+          const prev: GpuEngineHistory = prevGpuHistory[gpu.index] ?? {
             threeD: [],
             copy: [],
             encode: [],
@@ -150,7 +150,7 @@ export const useLiveSystemStore = create<LiveSystemStoreState>()(set => ({
           const dedicatedPct = dedicatedBudget > 0
             ? Math.min(100, (gpu.vramUsedMb / dedicatedBudget) * 100)
             : 0
-          return {
+          return [gpu.index, {
             threeD: [...prev.threeD, gpu.util3d].slice(-MAX_HISTORY),
             copy: [...prev.copy, gpu.utilCopy].slice(-MAX_HISTORY),
             encode: [...prev.encode, gpu.utilEncode].slice(-MAX_HISTORY),
@@ -159,8 +159,8 @@ export const useLiveSystemStore = create<LiveSystemStoreState>()(set => ({
             highPriorityCompute: [...prev.highPriorityCompute, gpu.utilHighPriorityCompute].slice(-MAX_HISTORY),
             dedicatedPct: [...prev.dedicatedPct, dedicatedPct].slice(-MAX_HISTORY),
             sharedMb: [...prev.sharedMb, gpu.vramSharedMb].slice(-MAX_HISTORY),
-          }
-        })
+          }]
+        }))
       }
 
       if (slice === 'disks') {

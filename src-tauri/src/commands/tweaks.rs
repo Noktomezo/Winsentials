@@ -7,23 +7,30 @@ use rayon::prelude::*;
 
 #[tauri::command]
 pub fn tweaks_by_category(category: String) -> Result<Vec<TweakMeta>, AppError> {
-    tweaks_for_category(&category)
+    Ok(tweaks_for_category(&category)
         .into_par_iter()
         .map(|tweak| {
             let mut meta = tweak.meta().clone();
-            meta.current_value = tweak.get_status()?.current_value;
-            Ok(meta)
+            if let Ok(status) = tweak.get_status() {
+                meta.current_value = status.current_value;
+            }
+            meta
         })
-        .collect()
+        .collect())
 }
 
 #[tauri::command]
 pub fn tweak_apply(id: String, value: String) -> Result<TweakResult, AppError> {
     let tweak = tweak_by_id(&id)?;
     tweak.apply(&value)?;
-    tweak.get_status().map(|status| TweakResult {
+    let current_value = tweak
+        .get_status()
+        .ok()
+        .map(|status| status.current_value)
+        .unwrap_or_else(|| value.clone());
+    Ok(TweakResult {
         success: true,
-        current_value: status.current_value,
+        current_value,
     })
 }
 
@@ -31,9 +38,14 @@ pub fn tweak_apply(id: String, value: String) -> Result<TweakResult, AppError> {
 pub fn tweak_reset(id: String) -> Result<TweakResult, AppError> {
     let tweak = tweak_by_id(&id)?;
     tweak.reset()?;
-    tweak.get_status().map(|status| TweakResult {
+    let current_value = tweak
+        .get_status()
+        .ok()
+        .map(|status| status.current_value)
+        .unwrap_or_else(|| tweak.meta().default_value.clone());
+    Ok(TweakResult {
         success: true,
-        current_value: status.current_value,
+        current_value,
     })
 }
 

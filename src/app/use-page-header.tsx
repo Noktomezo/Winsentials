@@ -13,6 +13,7 @@ export interface PageHeader {
 // Module-level cache so the IPC call fires only once per app session.
 let staticInfoCache: StaticSystemInfo | null = null
 let staticInfoPromise: Promise<StaticSystemInfo> | null = null
+let staticInfoError: unknown = null
 const listeners = new Set<() => void>()
 
 function loadStaticInfo(): Promise<StaticSystemInfo> {
@@ -27,8 +28,14 @@ function loadStaticInfo(): Promise<StaticSystemInfo> {
   staticInfoPromise = getStaticSystemInfo()
     .then((info) => {
       staticInfoCache = info
+      staticInfoError = null
       listeners.forEach(fn => fn())
       return info
+    })
+    .catch((error) => {
+      staticInfoError = error
+      listeners.forEach(fn => fn())
+      throw error
     })
     .finally(() => {
       staticInfoPromise = null
@@ -49,6 +56,10 @@ function getStaticInfoSnapshot() {
 
 export function useStaticInfo(): StaticSystemInfo | null {
   return useSyncExternalStore(subscribeStaticInfo, getStaticInfoSnapshot, getStaticInfoSnapshot)
+}
+
+export function getStaticInfoErrorSnapshot() {
+  return staticInfoError
 }
 
 export function usePageHeader(pathname: string): PageHeader {

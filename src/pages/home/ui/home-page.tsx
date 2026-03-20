@@ -10,8 +10,7 @@ import { useLiveHome } from '@/entities/system-info/model/live-system-store'
 import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { mountLabel, networkAdapterToParam } from '@/shared/lib/mount-utils'
-import { Button } from '@/shared/ui/button'
-import { Skeleton } from '@/shared/ui/skeleton'
+import { Button, Skeleton } from '@/shared/ui'
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -217,9 +216,8 @@ function CpuSummary({ live, s }: { live: LiveHomeInfo | null, s: StaticSystemInf
 }
 
 function RamSummary({ live, s }: { live: LiveHomeInfo | null, s: StaticSystemInfo }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { i18n } = useTranslation()
   const total = s.ram.totalBytes
   const used = live?.ramUsedBytes ?? 0
   const pct = usagePct(used, total)
@@ -241,9 +239,8 @@ function RamSummary({ live, s }: { live: LiveHomeInfo | null, s: StaticSystemInf
 }
 
 function DiskSummary({ disk, index }: { disk: StaticSystemInfo['disks'][number], index: number }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { i18n } = useTranslation()
   const used = disk.totalBytes - disk.availableBytes
   const param = disk.mountPoint.replace(/[:\\/]/g, '')
   return (
@@ -280,9 +277,8 @@ function NetworkSummary({
   adapter: NetworkAdapterInfo
   live: LiveHomeInfo | null
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { i18n } = useTranslation()
   const traffic = live?.network.find(entry => entry.name === adapter.name)
   return (
     <SummaryCard

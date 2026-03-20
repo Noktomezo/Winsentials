@@ -29,7 +29,7 @@ function getRateUnit(bytesPerSec: number, t: ReturnType<typeof useTranslation>['
     `${t('format.gigabyte')}${t('format.perSecond')}`,
     `${t('format.terabyte')}${t('format.perSecond')}`,
   ]
-  const index = Math.floor(Math.log(bytesPerSec) / Math.log(k))
+  const index = Math.min(Math.floor(Math.log(bytesPerSec) / Math.log(k)), units.length - 1)
 
   return {
     divisor: k ** index,
@@ -92,8 +92,7 @@ function EmptyValue() {
 }
 
 function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
-  const { t } = useTranslation()
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
 
   return (

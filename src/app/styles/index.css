@@ -582,16 +582,16 @@ body {
 
 /* Acrylic light — frosted glass */
 [data-chrome-material="acrylic"] [data-sonner-toaster] [data-sonner-toast] {
-  background: oklch(0.99 0.003 210 / 0.55) !important;
+  background: var(--card) !important;
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-color: oklch(0.855 0.008 214 / 0.5) !important;
+  border-color: var(--border) !important;
 }
 
 /* Acrylic dark — frosted glass */
 [data-chrome-material="acrylic"][data-theme="dark"] [data-sonner-toaster] [data-sonner-toast] {
-  background: oklch(0.22 0.012 228 / 0.55) !important;
+  background: var(--card) !important;
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-color: oklch(0.37 0.012 226 / 0.5) !important;
+  border-color: var(--border) !important;
 }

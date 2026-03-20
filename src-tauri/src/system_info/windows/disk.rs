@@ -251,6 +251,8 @@ pub fn pdh_open_disk_query() -> Option<(isize, isize, isize, isize, isize)> {
 #[cfg(target_os = "windows")]
 fn pdh_collect_disk_counter_array(query_raw: isize, counter_raw: isize) -> HashMap<String, f64> {
     use windows::Win32::System::Performance::*;
+    const PDH_CSTATUS_NEW_DATA: u32 = 0x00000001;
+    const PDH_CSTATUS_VALID_DATA: u32 = 0x00000000;
     const PDH_MORE_DATA: u32 = 0x800007D2;
 
     unsafe {
@@ -276,32 +278,38 @@ fn pdh_collect_disk_counter_array(query_raw: isize, counter_raw: isize) -> HashM
             return HashMap::new();
         }
 
-        let mut buffer = vec![0u8; buf_size as usize];
+        let item_capacity =
+            (buf_size as usize).div_ceil(std::mem::size_of::<PDH_FMT_COUNTERVALUE_ITEM_W>());
+        let mut buffer: Vec<PDH_FMT_COUNTERVALUE_ITEM_W> = Vec::with_capacity(item_capacity);
         let result = PdhGetFormattedCounterArrayW(
             counter,
             PDH_FMT_DOUBLE,
             &mut buf_size,
             &mut item_count,
-            Some(buffer.as_mut_ptr() as *mut PDH_FMT_COUNTERVALUE_ITEM_W),
+            Some(buffer.as_mut_ptr()),
         );
         if result != 0 {
             return HashMap::new();
         }
+        buffer.set_len(item_count as usize);
 
-        let items = std::slice::from_raw_parts(
-            buffer.as_ptr() as *const PDH_FMT_COUNTERVALUE_ITEM_W,
-            item_count as usize,
-        );
-
-        items
+        buffer
             .iter()
             .filter_map(|item| {
+                if item.FmtValue.CStatus != PDH_CSTATUS_VALID_DATA
+                    && item.FmtValue.CStatus != PDH_CSTATUS_NEW_DATA
+                {
+                    return None;
+                }
                 let ptr = item.szName.0;
                 if ptr.is_null() {
                     return None;
                 }
 
-                let len = (0usize..).take_while(|&j| *ptr.add(j) != 0).count();
+                let max_u16_len = (buf_size as usize).div_ceil(std::mem::size_of::<u16>());
+                let len = (0usize..max_u16_len)
+                    .take_while(|&j| *ptr.add(j) != 0)
+                    .count();
                 let instance = String::from_utf16_lossy(std::slice::from_raw_parts(ptr, len));
                 if instance == "_Total" || !instance.ends_with(':') {
                     return None;

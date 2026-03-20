@@ -7,9 +7,22 @@ import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { useLiveGpu } from '@/entities/system-info/model/live-system-store'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
-import { Button } from '@/shared/ui/button'
+import { Button, Skeleton } from '@/shared/ui'
 import { LiveChart } from '@/shared/ui/live-chart'
-import { Skeleton } from '@/shared/ui/skeleton'
+
+interface EngineChartProps {
+  label: string
+  value: number
+  data: ChartPoint[]
+}
+
+interface MemChartProps {
+  label: string
+  valueLabel: string
+  data: ChartPoint[]
+  unit?: string
+  yDomain?: [number, number]
+}
 
 function gpuUsage(gpu: Pick<LiveGpuInfo, 'util3d' | 'utilCopy' | 'utilEncode' | 'utilDecode' | 'utilHighPriority3d' | 'utilHighPriorityCompute'>): number {
   return Math.max(
@@ -62,7 +75,7 @@ function tempColorClass(temp: number): string {
   return 'text-success'
 }
 
-function EngineChart({ label, value, data }: { label: string, value: number, data: ChartPoint[] }) {
+function EngineChart({ label, value, data }: EngineChartProps) {
   const { t } = useTranslation()
 
   return (
@@ -83,19 +96,7 @@ function EngineChart({ label, value, data }: { label: string, value: number, dat
   )
 }
 
-function MemChart({
-  label,
-  valueLabel,
-  data,
-  unit = '%',
-  yDomain,
-}: {
-  label: string
-  valueLabel: string
-  data: ChartPoint[]
-  unit?: string
-  yDomain?: [number, number]
-}) {
+function MemChart({ label, valueLabel, data, unit = '%', yDomain }: MemChartProps) {
   const { t } = useTranslation()
 
   return (
@@ -172,6 +173,8 @@ export function GpuPage() {
     : null
   const gpu = staticInfo && gpuIndex !== null ? staticInfo.gpus[gpuIndex] : null
   const isDetailView = gpuIndex !== null && gpu != null
+  const liveByIndex = Object.fromEntries((liveInfo ?? []).map(sample => [sample.index, sample]))
+  const historyByIndex = gpuHistory
 
   useEffect(() => {
     if (!staticInfo || params.gpuIndex === undefined) { return }
@@ -219,22 +222,22 @@ export function GpuPage() {
 
   // ── Detail view ──────────────────────────────────────────────────────────────
   if (isDetailView && gpu && gpuIndex !== null) {
-    const live = liveInfo?.[gpuIndex]
+    const live = liveByIndex[gpuIndex]
 
     const dedicatedBudgetMb = live ? live.vramTotalMb - live.vramReservedMb : 0
     const dedicatedUsedMb = live?.vramUsedMb ?? 0
     const sharedUsedMb = live?.vramSharedMb ?? 0
 
     const usage = live ? gpuUsage(live) : 0
-    const gpuHist = gpuHistory[gpuIndex]
-    const hist3D = (gpuHist?.threeD ?? []).map(v => ({ value: v }))
-    const histCopy = (gpuHist?.copy ?? []).map(v => ({ value: v }))
-    const histEncode = (gpuHist?.encode ?? []).map(v => ({ value: v }))
-    const histDecode = (gpuHist?.decode ?? []).map(v => ({ value: v }))
-    const histHP3D = (gpuHist?.highPriority3d ?? []).map(v => ({ value: v }))
-    const histHPCompute = (gpuHist?.highPriorityCompute ?? []).map(v => ({ value: v }))
-    const histDedicated = (gpuHist?.dedicatedPct ?? []).map(v => ({ value: v }))
-    const histShared = (gpuHist?.sharedMb ?? []).map(v => ({ value: v }))
+    const gpuHist = historyByIndex[gpuIndex]
+    const hist3D = (gpuHist?.threeD ?? []).map((v: number) => ({ value: v }))
+    const histCopy = (gpuHist?.copy ?? []).map((v: number) => ({ value: v }))
+    const histEncode = (gpuHist?.encode ?? []).map((v: number) => ({ value: v }))
+    const histDecode = (gpuHist?.decode ?? []).map((v: number) => ({ value: v }))
+    const histHP3D = (gpuHist?.highPriority3d ?? []).map((v: number) => ({ value: v }))
+    const histHPCompute = (gpuHist?.highPriorityCompute ?? []).map((v: number) => ({ value: v }))
+    const histDedicated = (gpuHist?.dedicatedPct ?? []).map((v: number) => ({ value: v }))
+    const histShared = (gpuHist?.sharedMb ?? []).map((v: number) => ({ value: v }))
     const engineCharts = getEngineCharts(gpu, live, {
       threeD: hist3D,
       copy: histCopy,
@@ -356,7 +359,7 @@ export function GpuPage() {
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {gpusToShow.map(({ gpu: g, idx }) => {
-          const gpuLive = liveInfo?.[idx]
+          const gpuLive = liveByIndex[idx]
           const liveUsage = gpuLive ? gpuUsage(gpuLive) : 0
           return (
             <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4" key={idx}>

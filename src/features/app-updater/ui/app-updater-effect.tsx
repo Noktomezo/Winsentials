@@ -13,7 +13,6 @@ export function AppUpdaterEffect() {
   const setUpdateChecksEnabled = usePreferencesStore(state => state.setUpdateChecksEnabled)
   const updateChecksEnabled = usePreferencesStore(state => state.updateChecksEnabled)
   const activeToastIdRef = useRef<string | undefined>(undefined)
-  const deferredUntilRestartRef = useRef(false)
   const isCheckingRef = useRef(false)
   const isInstallingRef = useRef(false)
   const promptedVersionRef = useRef<string | null>(null)
@@ -79,7 +78,6 @@ export function AppUpdaterEffect() {
     const runCheck = async () => {
       if (
         cancelled
-        || deferredUntilRestartRef.current
         || isCheckingRef.current
         || isInstallingRef.current
       ) {

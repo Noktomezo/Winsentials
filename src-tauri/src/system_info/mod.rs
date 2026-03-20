@@ -4,6 +4,8 @@ mod static_info;
 mod types;
 mod windows;
 
+#[cfg(target_os = "windows")]
+pub use live_info::PdhHandles;
 pub use live_info::gather_live_info;
 pub use state::{PreviousNetSnapshot, SystemInfoState};
 pub use static_info::gather_static_info;

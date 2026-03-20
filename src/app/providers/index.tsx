@@ -87,7 +87,7 @@ function AppPreferencesEffect({ resolvedTheme }: { resolvedTheme: ResolvedTheme 
     return () => {
       window.removeEventListener('languagechange', applyResolvedLanguage)
     }
-  }, [hasHydrated, i18n, language])
+  }, [hasHydrated, language])
 
   return null
 }

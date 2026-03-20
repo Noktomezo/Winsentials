@@ -19,14 +19,16 @@ export function formatBytesLocalized(bytes: number, { decimals = 1, locale, t }:
     return `0 ${t('format.byte')}`
   }
 
+  const isNegative = bytes < 0
+  const absBytes = Math.abs(bytes)
   const k = 1024
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), UNIT_KEYS.length - 1)
-  const value = bytes / k ** index
+  const index = Math.min(Math.floor(Math.log(absBytes) / Math.log(k)), UNIT_KEYS.length - 1)
+  const value = absBytes / k ** index
   const formatted = new Intl.NumberFormat(locale, {
     maximumFractionDigits: decimals,
   }).format(value)
 
-  return `${formatted} ${t(UNIT_KEYS[index])}`
+  return `${isNegative ? '-' : ''}${formatted} ${t(UNIT_KEYS[index])}`
 }
 
 export function formatRateLocalized(bytesPerSec: number, options: FormatBytesOptions): string {

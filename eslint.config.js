@@ -9,8 +9,7 @@ export default antfu({
     'coverage',
     'dist',
     'node_modules',
-    'src-tauri/gen/schemas',
-    'src-tauri/target',
+    'src-tauri',
   ],
   lessOpinionated: true,
 })

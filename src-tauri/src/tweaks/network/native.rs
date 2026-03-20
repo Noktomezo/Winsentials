@@ -1,3 +1,4 @@
+#[cfg(target_os = "windows")]
 use std::collections::HashMap;
 
 use crate::error::AppError;
@@ -47,10 +48,11 @@ pub fn tcp_congestion_provider(
 
     let wmi = WMIConnection::with_namespace_path("ROOT\\StandardCimv2")
         .map_err(|error| AppError::message(error.to_string()))?;
+    let sanitized_setting_name = setting_name.replace('"', "").replace('\'', "''");
 
     let query = format!(
         "SELECT SettingName, CongestionProvider FROM MSFT_NetTCPSetting WHERE SettingName='{}'",
-        setting_name.replace('"', "")
+        sanitized_setting_name
     );
 
     let rows: Vec<HashMap<String, wmi::Variant>> = wmi

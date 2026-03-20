@@ -10,22 +10,26 @@ use crate::system_info::windows::disk::gather_disk_live;
 use crate::system_info::windows::gpu::gather_gpu_live;
 use crate::system_info::windows::ram::get_ram_perf;
 
-#[allow(clippy::too_many_arguments)]
+#[cfg(target_os = "windows")]
+pub struct PdhHandles {
+    pub gpu_query: isize,
+    pub gpu_counter: isize,
+    pub disk_query: isize,
+    pub disk_active_counter: isize,
+    pub disk_response_counter: isize,
+    pub disk_read_counter: isize,
+    pub disk_write_counter: isize,
+    pub cpu_query: isize,
+    pub cpu_counter: isize,
+    pub base_freq_mhz: u64,
+}
+
 pub fn gather_live_info(
     system: &mut System,
     networks: &mut Networks,
     prev_net: &mut Option<PreviousNetSnapshot>,
     gpus: &[GpuInfo],
-    #[cfg(target_os = "windows")] pdh_query: isize,
-    #[cfg(target_os = "windows")] pdh_counter: isize,
-    #[cfg(target_os = "windows")] disk_pdh_query: isize,
-    #[cfg(target_os = "windows")] disk_active_counter: isize,
-    #[cfg(target_os = "windows")] disk_response_counter: isize,
-    #[cfg(target_os = "windows")] disk_read_counter: isize,
-    #[cfg(target_os = "windows")] disk_write_counter: isize,
-    #[cfg(target_os = "windows")] cpu_pdh_query: isize,
-    #[cfg(target_os = "windows")] cpu_pdh_counter: isize,
-    #[cfg(target_os = "windows")] base_freq_mhz: u64,
+    #[cfg(target_os = "windows")] pdh: PdhHandles,
 ) -> LiveSystemInfo {
     system.refresh_cpu_specifics(CpuRefreshKind::everything());
     system.refresh_memory();
@@ -35,8 +39,8 @@ pub fn gather_live_info(
     let cpu_usage_percent =
         cpu_per_core.iter().copied().sum::<f32>() / cpu_per_core.len().max(1) as f32;
     #[cfg(target_os = "windows")]
-    let cpu_current_freq_mhz = pdh_collect_cpu_perf_pct(cpu_pdh_query, cpu_pdh_counter)
-        .map(|pct| (base_freq_mhz as f64 * pct / 100.0).round() as u64)
+    let cpu_current_freq_mhz = pdh_collect_cpu_perf_pct(pdh.cpu_query, pdh.cpu_counter)
+        .map(|pct| (pdh.base_freq_mhz as f64 * pct / 100.0).round() as u64)
         .or_else(|| cpus.first().map(|c| c.frequency()))
         .unwrap_or(0);
     #[cfg(not(target_os = "windows"))]
@@ -96,11 +100,11 @@ pub fn gather_live_info(
 
     #[cfg(target_os = "windows")]
     let disks: Vec<DiskLiveInfo> = gather_disk_live(
-        disk_pdh_query,
-        disk_active_counter,
-        disk_response_counter,
-        disk_read_counter,
-        disk_write_counter,
+        pdh.disk_query,
+        pdh.disk_active_counter,
+        pdh.disk_response_counter,
+        pdh.disk_read_counter,
+        pdh.disk_write_counter,
     )
     .into_values()
     .collect();
@@ -113,7 +117,7 @@ pub fn gather_live_info(
     });
 
     #[cfg(target_os = "windows")]
-    let gpus_live = gather_gpu_live(gpus, pdh_query, pdh_counter);
+    let gpus_live = gather_gpu_live(gpus, pdh.gpu_query, pdh.gpu_counter);
     #[cfg(not(target_os = "windows"))]
     let gpus_live = gather_gpu_live(gpus, 0, 0);
 

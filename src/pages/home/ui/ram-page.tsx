@@ -28,7 +28,12 @@ function toGb(bytes: number, locale: string, t: ReturnType<typeof useTranslation
   return formatBytesLocalized(bytes, { decimals: 1, locale, t })
 }
 
-function Row({ label, value }: { label: string, value: ReactNode }) {
+interface RowProps {
+  label: string
+  value: ReactNode
+}
+
+function Row({ label, value }: RowProps) {
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-xs text-muted-foreground">{label}</span>

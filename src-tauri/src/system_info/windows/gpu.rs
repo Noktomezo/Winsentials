@@ -55,6 +55,8 @@ fn get_pci_location(device_instance_id: &str) -> Option<(Option<u32>, Option<u32
 #[allow(clippy::type_complexity)]
 fn gather_gpu_driver_info(
     model: &str,
+    _luid_low: u32,
+    _luid_high: i32,
 ) -> Option<(
     Option<String>,
     Option<String>,
@@ -273,7 +275,8 @@ pub fn build_static_gpus(
                 let is_integrated =
                     classify_integrated_gpu(&name, &vendor, raw_dedicated, shared_system);
                 let (driver_version, driver_date, pci_bus, pci_device, pci_function) =
-                    gather_gpu_driver_info(&name).unwrap_or((None, None, None, None, None));
+                    gather_gpu_driver_info(&name, luid_low, luid_high)
+                        .unwrap_or((None, None, None, None, None));
                 let directx_version = Some(directx_from_build(build).to_string());
                 GpuInfo {
                     index,
@@ -413,6 +416,8 @@ fn pdh_collect_gpu_usage(
     counter_raw: isize,
 ) -> HashMap<String, HashMap<String, f32>> {
     use windows::Win32::System::Performance::*;
+    const PDH_CSTATUS_NEW_DATA: u32 = 0x00000001;
+    const PDH_CSTATUS_VALID_DATA: u32 = 0x00000000;
     const PDH_MORE_DATA: u32 = 0x800007D2;
     unsafe {
         let query = PDH_HQUERY(query_raw as *mut _);
@@ -435,16 +440,18 @@ fn pdh_collect_gpu_usage(
         if buf_size == 0 {
             return HashMap::new();
         }
-        let raw_buf: Vec<u8>;
+        let typed_buf: Vec<PDH_FMT_COUNTERVALUE_ITEM_W>;
         let mut attempts = 0u32;
         loop {
-            let mut buf: Vec<u8> = vec![0u8; buf_size as usize];
+            let item_capacity =
+                (buf_size as usize).div_ceil(std::mem::size_of::<PDH_FMT_COUNTERVALUE_ITEM_W>());
+            let mut buf: Vec<PDH_FMT_COUNTERVALUE_ITEM_W> = Vec::with_capacity(item_capacity);
             let r2 = PdhGetFormattedCounterArrayW(
                 counter,
                 PDH_FMT_DOUBLE,
                 &mut buf_size,
                 &mut item_count,
-                Some(buf.as_mut_ptr() as *mut PDH_FMT_COUNTERVALUE_ITEM_W),
+                Some(buf.as_mut_ptr()),
             );
             if r2 == PDH_MORE_DATA && attempts < 3 {
                 attempts += 1;
@@ -453,20 +460,25 @@ fn pdh_collect_gpu_usage(
             if r2 != 0 {
                 return HashMap::new();
             }
-            raw_buf = buf;
+            buf.set_len(item_count as usize);
+            typed_buf = buf;
             break;
         }
-        let items = std::slice::from_raw_parts(
-            raw_buf.as_ptr() as *const PDH_FMT_COUNTERVALUE_ITEM_W,
-            item_count as usize,
-        );
         let mut result: HashMap<String, HashMap<String, f32>> = HashMap::new();
-        for item in items {
+        for item in &typed_buf {
+            if item.FmtValue.CStatus != PDH_CSTATUS_VALID_DATA
+                && item.FmtValue.CStatus != PDH_CSTATUS_NEW_DATA
+            {
+                continue;
+            }
             let ptr = item.szName.0;
             if ptr.is_null() {
                 continue;
             }
-            let len = (0usize..).take_while(|&j| *ptr.add(j) != 0).count();
+            let max_u16_len = (buf_size as usize).div_ceil(std::mem::size_of::<u16>());
+            let len = (0usize..max_u16_len)
+                .take_while(|&j| *ptr.add(j) != 0)
+                .count();
             let name = String::from_utf16_lossy(std::slice::from_raw_parts(ptr, len));
             let value = (item.FmtValue.Anonymous.doubleValue as f32).max(0.0);
             let luid_prefix = if let Some(start) = name.find("luid_") {
@@ -566,8 +578,8 @@ pub fn gather_gpu_live(gpus: &[GpuInfo], pdh_query: isize, pdh_counter: isize) -
                             } else {
                                 0
                             };
-                            let reserved = if local_ok && gpu.vram_total_mb > 0 {
-                                gpu.vram_total_mb.saturating_sub(local.Budget / 1_048_576)
+                            let reserved = if local_ok {
+                                local.CurrentReservation / 1_048_576
                             } else {
                                 0
                             };

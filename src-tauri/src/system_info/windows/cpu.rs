@@ -3,7 +3,7 @@ pub fn get_perf_info() -> (u32, u32, u32) {
     use windows::Win32::System::ProcessStatus::{K32GetPerformanceInfo, PERFORMANCE_INFORMATION};
     let mut info: PERFORMANCE_INFORMATION = unsafe { std::mem::zeroed() };
     info.cb = std::mem::size_of::<PERFORMANCE_INFORMATION>() as u32;
-    if unsafe { K32GetPerformanceInfo(&mut info, info.cb) } != false {
+    if unsafe { K32GetPerformanceInfo(&mut info, info.cb).as_bool() } {
         (info.ProcessCount, info.ThreadCount, info.HandleCount)
     } else {
         (0, 0, 0)
@@ -59,6 +59,3 @@ pub fn pdh_collect_cpu_perf_pct(query_raw: isize, counter_raw: isize) -> Option<
 pub fn pdh_collect_cpu_perf_pct(_query_raw: isize, _counter_raw: isize) -> Option<f64> {
     None
 }
-
-#[cfg(not(target_os = "windows"))]
-pub fn _keep_gpu_import(_gpus: &[GpuInfo]) {}

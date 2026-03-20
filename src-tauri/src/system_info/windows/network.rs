@@ -1,4 +1,7 @@
-use std::collections::{BTreeSet, HashMap};
+use std::collections::BTreeSet;
+
+#[cfg(target_os = "windows")]
+use std::collections::HashMap;
 
 use crate::system_info::types::NetworkAdapterInfo;
 
@@ -69,7 +72,7 @@ pub fn gather_network_adapters() -> Vec<NetworkAdapterInfo> {
         if len == 0 || len > ssid.len() {
             return None;
         }
-        Some(String::from_utf8_lossy(&ssid[..len]).trim().to_string()).filter(|v| !v.is_empty())
+        Some(String::from_utf8_lossy(&ssid[..len]).to_string()).filter(|v| !v.is_empty())
     }
 
     fn phy_type_to_label(phy_type: u32) -> Option<String> {

@@ -39,7 +39,9 @@ impl DisableRecentItemsAndFrequentPlacesTweak {
                 recommended_value: ENABLED_VALUE.into(),
                 risk: RiskLevel::None,
                 risk_description: None,
-                requires_action: RequiresAction::None,
+                requires_action: RequiresAction::RestartApp {
+                    app_name: "explorer.exe".to_string(),
+                },
                 min_os_build: Some(10240),
                 min_os_ubr: None,
             },

@@ -4,6 +4,14 @@ import * as React from 'react'
 
 import { cn } from '@/shared/lib/utils'
 
+interface BreadcrumbLinkProps extends React.ComponentProps<'a'> {
+  asChild?: boolean
+}
+
+interface BreadcrumbEllipsisProps extends React.ComponentProps<'span'> {
+  label?: string
+}
+
 function Breadcrumb({ ...props }: React.ComponentProps<'nav'>) {
   return <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />
 }
@@ -35,9 +43,7 @@ function BreadcrumbLink({
   asChild,
   className,
   ...props
-}: React.ComponentProps<'a'> & {
-  asChild?: boolean
-}) {
+}: BreadcrumbLinkProps) {
   const Comp = asChild ? Slot.Root : 'a'
 
   return (
@@ -53,11 +59,9 @@ function BreadcrumbPage({ className, ...props }: React.ComponentProps<'span'>) {
   return (
     <span
       data-slot="breadcrumb-page"
-      role="link"
-      aria-disabled="true"
+      {...props}
       aria-current="page"
       className={cn('font-normal text-foreground', className)}
-      {...props}
     />
   )
 }
@@ -83,17 +87,15 @@ function BreadcrumbSeparator({
 function BreadcrumbEllipsis({
   className,
   ...props
-}: React.ComponentProps<'span'>) {
+}: BreadcrumbEllipsisProps) {
   return (
     <span
       data-slot="breadcrumb-ellipsis"
       role="presentation"
-      aria-hidden="true"
       className={cn('flex size-9 items-center justify-center', className)}
       {...props}
     >
-      <MoreHorizontal className="size-4" />
-      <span className="sr-only">More</span>
+      <MoreHorizontal aria-hidden="true" className="size-4" />
     </span>
   )
 }
