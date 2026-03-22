@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use windows::Win32::Foundation::VARIANT_BOOL;
+use windows::Win32::Foundation::{RPC_E_CHANGED_MODE, VARIANT_BOOL};
 use windows::Win32::System::Com::{
     CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx, CoUninitialize,
 };
@@ -146,21 +146,32 @@ impl TaskSchedulerSession {
     }
 }
 
-struct ComGuard;
+struct ComGuard {
+    owned: bool,
+}
 
 impl ComGuard {
     fn new() -> Result<Self, AppError> {
-        unsafe {
-            CoInitializeEx(None, COINIT_MULTITHREADED).ok()?;
+        let status = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
+        if status.is_ok() {
+            return Ok(Self { owned: true });
         }
-        Ok(Self)
+
+        if status == RPC_E_CHANGED_MODE {
+            return Ok(Self { owned: false });
+        }
+
+        status.ok()?;
+        unreachable!("successful COM initialization should have returned earlier")
     }
 }
 
 impl Drop for ComGuard {
     fn drop(&mut self) {
-        unsafe {
-            CoUninitialize();
+        if self.owned {
+            unsafe {
+                CoUninitialize();
+            }
         }
     }
 }

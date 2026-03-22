@@ -22,7 +22,7 @@ pub fn gather_static_info(system: &System) -> Result<StaticSystemInfo, AppError>
     let network_adapters = gather_network_adapters();
 
     #[cfg(target_os = "windows")]
-    let gpus: Vec<GpuInfo> = build_static_gpus(windows.build, dxgi_adapters);
+    let gpus: Vec<GpuInfo> = build_static_gpus(dxgi_adapters);
     #[cfg(not(target_os = "windows"))]
     let gpus: Vec<GpuInfo> = {
         let _ = dxgi_adapters;

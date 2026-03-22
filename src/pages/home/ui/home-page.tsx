@@ -5,7 +5,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { ChevronRight, Cpu, HardDrive, Layers, Monitor, Network, Server } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDeviceInventory, useLiveHome } from '@/entities/system-info/model/live-system-store'
+import { useLiveHome } from '@/entities/system-info/model/live-system-store'
 import { useStaticSystemInfo } from '@/entities/system-info/model/static-system-info'
 import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
 import { mountLabel, mountToParam, networkAdapterToParam } from '@/shared/lib/mount-utils'
@@ -181,17 +181,19 @@ function SummaryCard({
 function CpuSummary({ live, s }: { live: LiveHomeInfo | null, s: StaticSystemInfo }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const pct = live ? Math.round(live.cpuUsagePercent) : 0
+  const pct = live ? Math.round(live.cpuUsagePercent) : null
   return (
     <SummaryCard
       icon={Cpu}
       onNavigate={() => void navigate({ to: '/cpu' })}
-      stat={(
-        <span className={`text-xs font-medium tabular-nums ${loadColor(pct)}`}>
-          {pct}
-          %
-        </span>
-      )}
+      stat={pct === null
+        ? <span className="text-xs font-medium text-muted-foreground">{t('home.livePending')}</span>
+        : (
+            <span className={`text-xs font-medium tabular-nums ${loadColor(pct)}`}>
+              {pct}
+              %
+            </span>
+          )}
       title={(
         <span className="flex min-w-0 items-baseline gap-1">
           <span className="shrink-0">{t('home.cpu')}</span>
@@ -206,20 +208,22 @@ function RamSummary({ live, s }: { live: LiveHomeInfo | null, s: StaticSystemInf
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const total = s.ram.totalBytes
-  const used = live?.ramUsedBytes ?? 0
-  const pct = usagePct(used, total)
+  const used = live?.ramUsedBytes ?? null
+  const pct = used === null ? null : usagePct(used, total)
   return (
     <SummaryCard
       icon={Server}
       onNavigate={() => void navigate({ to: '/ram' })}
-      stat={(
-        <span className={`text-xs font-medium tabular-nums ${live ? loadColor(pct) : 'text-primary'}`}>
-          {t('home.usedOf', {
-            used: formatBytes(used, t, i18n.language),
-            total: formatBytes(total, t, i18n.language),
-          })}
-        </span>
-      )}
+      stat={used === null || pct === null
+        ? <span className="text-xs font-medium text-muted-foreground">{t('home.livePending')}</span>
+        : (
+            <span className={`text-xs font-medium tabular-nums ${loadColor(pct)}`}>
+              {t('home.usedOf', {
+                used: formatBytes(used, t, i18n.language),
+                total: formatBytes(total, t, i18n.language),
+              })}
+            </span>
+          )}
       title={t('home.ram')}
     />
   )
@@ -370,12 +374,11 @@ export function HomePage() {
     retry: retryStaticInfo,
   } = useStaticSystemInfo()
   const { data: liveInfo } = useLiveHome()
-  const { data: deviceInventory } = useDeviceInventory()
 
-  const networkCards = deviceInventory
-    ? mergeVisibleNetworkAdapters(deviceInventory.networkAdapters, liveInfo)
+  const networkCards = staticInfo
+    ? mergeVisibleNetworkAdapters(staticInfo.networkAdapters, liveInfo)
     : []
-  const disks = deviceInventory?.disks ?? []
+  const disks = staticInfo?.disks ?? []
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">

@@ -102,7 +102,7 @@ pub fn run() {
                         Err(_) => (vec![], 0),
                     };
 
-                    let live = system_info::gather_live_info(
+                    let (live, gpu_pdh_failed) = system_info::gather_live_info(
                         &mut bg_system,
                         &mut bg_networks,
                         &mut bg_prev_net,
@@ -124,6 +124,14 @@ pub fn run() {
 
                     if let Ok(mut cache) = state.live_cache.lock() {
                         *cache = Some(live);
+                    }
+
+                    #[cfg(target_os = "windows")]
+                    if gpu_pdh_failed {
+                        if let Some(handles) = pdh.take() {
+                            system_info::pdh_close_gpu_query(handles);
+                        }
+                        pdh = system_info::pdh_open_gpu_query();
                     }
 
                     let elapsed = start.elapsed();

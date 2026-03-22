@@ -20,26 +20,32 @@ import { useStartupStore } from '@/entities/startup/model/startup-store'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { toast } from '@/shared/lib/toast'
 import { cn } from '@/shared/lib/utils'
-import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/ui'
 import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu'
-import { Input } from '@/shared/ui/input'
-import {
+  Input,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/ui/select'
-import { Separator } from '@/shared/ui/separator'
-import { Skeleton } from '@/shared/ui/skeleton'
-import { Switch } from '@/shared/ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
+  Separator,
+  Skeleton,
+  Switch,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/ui'
 
 const startupSources: StartupSource[] = ['registry', 'startup_folder', 'scheduled_task']
 

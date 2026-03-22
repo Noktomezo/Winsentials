@@ -6,6 +6,7 @@
   "titlebar": {
     "maximize": "Maximize window",
     "minimize": "Minimize window",
+    "restore": "Restore window",
     "close": "Close window"
   },
   "behaviour": {
@@ -74,7 +75,7 @@
       "removeShortcutArrows": {
         "detailDescription": "Changes the system shortcut overlay icon to a transparent one.",
         "conflicts": {
-          "windhawkTransparentWindows": "Conflicts with the Windhawk transparent windows mod. On some shortcuts, black squares may appear instead of removing the arrow overlay."
+          "windhawkTransparentWindows": "May conflict with any modifications that affect DWM and system window effects."
         },
         "name": "Remove Shortcut Arrows",
         "shortDescription": "Removes the small arrows from shortcut icons on the desktop."
@@ -110,6 +111,7 @@
     "manufacturer": "Manufacturer",
     "model": "Model",
     "motherboard": "Motherboard",
+    "livePending": "Waiting for live data",
     "network": "Network",
     "noActivity": "No active interfaces",
     "os": "Operating System",

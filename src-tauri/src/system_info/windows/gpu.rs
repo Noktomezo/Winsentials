@@ -5,6 +5,9 @@ use rayon::prelude::*;
 use crate::system_info::types::{GpuInfo, LiveGpuMetrics};
 
 #[cfg(target_os = "windows")]
+type DxgiAdapterSnapshot = (String, u32, i32, u64, u64, u64, Option<String>);
+
+#[cfg(target_os = "windows")]
 fn normalise_driver_date(s: &str) -> Option<String> {
     let parts: Vec<&str> = s.split('-').collect();
     if parts.len() == 3 {
@@ -18,37 +21,160 @@ fn normalise_driver_date(s: &str) -> Option<String> {
 }
 
 #[cfg(target_os = "windows")]
-fn parse_pci_location(location: &str) -> (Option<u32>, Option<u32>, Option<u32>) {
-    let lower = location.to_ascii_lowercase();
-    (
-        extract_pci_number(&lower, "bus"),
-        extract_pci_number(&lower, "device"),
-        extract_pci_number(&lower, "function"),
+fn read_pci_location(
+    device_info_set: windows::Win32::Devices::DeviceAndDriverInstallation::HDEVINFO,
+    device_info: &windows::Win32::Devices::DeviceAndDriverInstallation::SP_DEVINFO_DATA,
+) -> (Option<u32>, Option<u32>, Option<u32>) {
+    use std::mem::size_of;
+
+    use windows::Win32::Devices::DeviceAndDriverInstallation::{
+        SETUP_DI_REGISTRY_PROPERTY, SPDRP_ADDRESS, SPDRP_BUSNUMBER,
+        SetupDiGetDeviceRegistryPropertyW,
+    };
+
+    fn read_u32_property(
+        device_info_set: windows::Win32::Devices::DeviceAndDriverInstallation::HDEVINFO,
+        device_info: &windows::Win32::Devices::DeviceAndDriverInstallation::SP_DEVINFO_DATA,
+        property: SETUP_DI_REGISTRY_PROPERTY,
+    ) -> Option<u32> {
+        let mut property_type = 0u32;
+        let mut buffer = [0u8; size_of::<u32>()];
+
+        unsafe {
+            SetupDiGetDeviceRegistryPropertyW(
+                device_info_set,
+                device_info,
+                property,
+                Some(&mut property_type),
+                Some(&mut buffer),
+                None,
+            )
+            .ok()?;
+        }
+
+        Some(u32::from_le_bytes(buffer))
+    }
+
+    let bus = read_u32_property(device_info_set, device_info, SPDRP_BUSNUMBER);
+    let address = read_u32_property(device_info_set, device_info, SPDRP_ADDRESS);
+    let device = address.map(|value| (value >> 16) & 0xFFFF);
+    let function = address.map(|value| value & 0xFFFF);
+
+    (bus, device, function)
+}
+
+#[cfg(target_os = "windows")]
+fn directx_version_for_adapter(
+    adapter: &windows::Win32::Graphics::Dxgi::IDXGIAdapter1,
+) -> Option<String> {
+    use windows::Win32::Foundation::HMODULE;
+    use windows::Win32::Graphics::Direct3D::{
+        D3D_DRIVER_TYPE_UNKNOWN, D3D_FEATURE_LEVEL, D3D_FEATURE_LEVEL_9_1, D3D_FEATURE_LEVEL_9_2,
+        D3D_FEATURE_LEVEL_9_3, D3D_FEATURE_LEVEL_10_0, D3D_FEATURE_LEVEL_10_1,
+        D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_12_0,
+        D3D_FEATURE_LEVEL_12_1, D3D_FEATURE_LEVEL_12_2,
+    };
+    use windows::Win32::Graphics::Direct3D11::{
+        D3D11_CREATE_DEVICE_FLAG, D3D11_SDK_VERSION, D3D11CreateDevice,
+    };
+    use windows::Win32::Graphics::Direct3D12::{D3D12CreateDevice, ID3D12Device};
+    use windows::Win32::Graphics::Dxgi::IDXGIAdapter;
+    use windows::core::Interface;
+
+    let adapter = adapter.cast::<IDXGIAdapter>().ok()?;
+
+    for feature_level in [
+        D3D_FEATURE_LEVEL_12_2,
+        D3D_FEATURE_LEVEL_12_1,
+        D3D_FEATURE_LEVEL_12_0,
+    ] {
+        let mut device: Option<ID3D12Device> = None;
+        if unsafe { D3D12CreateDevice(&adapter, feature_level, &mut device) }.is_ok() {
+            return Some("12.x".to_string());
+        }
+    }
+
+    fn probe_d3d11_feature_level(
+        adapter: &IDXGIAdapter,
+        feature_levels: &[D3D_FEATURE_LEVEL],
+    ) -> Option<D3D_FEATURE_LEVEL> {
+        let mut selected = D3D_FEATURE_LEVEL(0);
+        unsafe {
+            D3D11CreateDevice(
+                adapter,
+                D3D_DRIVER_TYPE_UNKNOWN,
+                HMODULE::default(),
+                D3D11_CREATE_DEVICE_FLAG(0),
+                Some(feature_levels),
+                D3D11_SDK_VERSION,
+                None,
+                Some(&mut selected),
+                None,
+            )
+            .ok()?;
+        }
+        Some(selected)
+    }
+
+    let feature_level = probe_d3d11_feature_level(
+        &adapter,
+        &[
+            D3D_FEATURE_LEVEL_11_1,
+            D3D_FEATURE_LEVEL_11_0,
+            D3D_FEATURE_LEVEL_10_1,
+            D3D_FEATURE_LEVEL_10_0,
+            D3D_FEATURE_LEVEL_9_3,
+            D3D_FEATURE_LEVEL_9_2,
+            D3D_FEATURE_LEVEL_9_1,
+        ],
     )
+    .or_else(|| {
+        probe_d3d11_feature_level(
+            &adapter,
+            &[
+                D3D_FEATURE_LEVEL_11_0,
+                D3D_FEATURE_LEVEL_10_1,
+                D3D_FEATURE_LEVEL_10_0,
+                D3D_FEATURE_LEVEL_9_3,
+                D3D_FEATURE_LEVEL_9_2,
+                D3D_FEATURE_LEVEL_9_1,
+            ],
+        )
+    })?;
+
+    let version = if feature_level == D3D_FEATURE_LEVEL_11_1 {
+        "11.1"
+    } else if feature_level == D3D_FEATURE_LEVEL_11_0 {
+        "11.0"
+    } else if feature_level == D3D_FEATURE_LEVEL_10_1 {
+        "10.1"
+    } else if feature_level == D3D_FEATURE_LEVEL_10_0 {
+        "10.0"
+    } else if feature_level == D3D_FEATURE_LEVEL_9_3 {
+        "9.3"
+    } else if feature_level == D3D_FEATURE_LEVEL_9_2 {
+        "9.2"
+    } else {
+        "9.1"
+    };
+
+    Some(version.to_string())
 }
 
 #[cfg(target_os = "windows")]
-fn extract_pci_number(s: &str, keyword: &str) -> Option<u32> {
-    let pos = s.find(keyword)?;
-    let rest = &s[pos + keyword.len()..];
-    let start = rest.find(|c: char| c.is_ascii_digit())?;
-    rest[start..]
-        .chars()
-        .take_while(|c| c.is_ascii_digit())
-        .collect::<String>()
-        .parse()
-        .ok()
+#[derive(Debug, Clone, Copy)]
+pub enum PdhGpuUsageError {
+    CollectQueryData(u32),
+    GetFormattedCounterArray(u32),
 }
 
 #[cfg(target_os = "windows")]
-fn get_pci_location(device_instance_id: &str) -> Option<(Option<u32>, Option<u32>, Option<u32>)> {
-    use winreg::RegKey as WinRegKey;
-    use winreg::enums::HKEY_LOCAL_MACHINE;
-    let hklm = WinRegKey::predef(HKEY_LOCAL_MACHINE);
-    let path = format!(r"SYSTEM\CurrentControlSet\Enum\{}", device_instance_id);
-    let key = hklm.open_subkey(path).ok()?;
-    let location: String = key.get_value("LocationInformation").ok()?;
-    Some(parse_pci_location(&location))
+impl PdhGpuUsageError {
+    pub fn status_code(self) -> u32 {
+        match self {
+            Self::CollectQueryData(code) | Self::GetFormattedCounterArray(code) => code,
+        }
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -83,7 +209,7 @@ fn gather_gpu_driver_info(
         pid: 2,
     };
 
-    let target_device_instance_id = unsafe {
+    let (target_device_instance_id, pci_bus, pci_device, pci_function) = unsafe {
         let device_info_set = SetupDiGetClassDevsW(
             Some(&GUID_DEVCLASS_DISPLAY),
             PCWSTR::null(),
@@ -92,7 +218,7 @@ fn gather_gpu_driver_info(
         )
         .ok()?;
 
-        let mut match_id = None;
+        let mut match_data = None;
         let mut index = 0;
 
         loop {
@@ -128,6 +254,9 @@ fn gather_gpu_driver_info(
                 continue;
             }
 
+            let (pci_bus, pci_device, pci_function) =
+                read_pci_location(device_info_set, &device_info);
+
             let mut required_len = 0;
             if CM_Get_Device_ID_Size(&mut required_len, device_info.DevInst, 0) != CR_SUCCESS {
                 break;
@@ -139,13 +268,18 @@ fn gather_gpu_driver_info(
                     .iter()
                     .position(|value| *value == 0)
                     .unwrap_or(device_id.len());
-                match_id = Some(String::from_utf16_lossy(&device_id[..end]));
+                match_data = Some((
+                    String::from_utf16_lossy(&device_id[..end]),
+                    pci_bus,
+                    pci_device,
+                    pci_function,
+                ));
             }
             break;
         }
 
         let _ = SetupDiDestroyDeviceInfoList(device_info_set);
-        match_id
+        match_data
     }?;
 
     let hklm = WinRegKey::predef(HKEY_LOCAL_MACHINE);
@@ -161,19 +295,17 @@ fn gather_gpu_driver_info(
             Err(_) => continue,
         };
 
-        let device_instance_id = match subkey.get_value::<String, _>("DeviceInstanceID") {
-            Ok(value) if value.eq_ignore_ascii_case(&target_device_instance_id) => value,
-            _ => continue,
-        };
+        if !matches!(
+            subkey.get_value::<String, _>("DeviceInstanceID"),
+            Ok(value) if value.eq_ignore_ascii_case(&target_device_instance_id)
+        ) {
+            continue;
+        }
         let driver_version: Option<String> = subkey.get_value("DriverVersion").ok();
         let driver_date: Option<String> = subkey
             .get_value::<String, _>("DriverDate")
             .ok()
             .and_then(|s| normalise_driver_date(&s));
-        let (pci_bus, pci_device, pci_function) = Some(device_instance_id.as_str())
-            .and_then(get_pci_location)
-            .unwrap_or((None, None, None));
-
         return Some((
             driver_version,
             driver_date,
@@ -184,17 +316,6 @@ fn gather_gpu_driver_info(
     }
 
     None
-}
-
-#[cfg(target_os = "windows")]
-fn directx_from_build(build: u32) -> &'static str {
-    if build >= 10240 {
-        "12.0"
-    } else if build >= 9600 {
-        "11.1"
-    } else {
-        "11.0"
-    }
 }
 
 #[cfg(target_os = "windows")]
@@ -228,12 +349,12 @@ fn classify_integrated_gpu(
 }
 
 #[cfg(not(target_os = "windows"))]
-pub fn enumerate_dxgi_adapters() -> Vec<(String, u32, i32, u64, u64, u64)> {
+pub fn enumerate_dxgi_adapters() -> Vec<DxgiAdapterSnapshot> {
     vec![]
 }
 
 #[cfg(target_os = "windows")]
-pub fn enumerate_dxgi_adapters() -> Vec<(String, u32, i32, u64, u64, u64)> {
+pub fn enumerate_dxgi_adapters() -> Vec<DxgiAdapterSnapshot> {
     use windows::Wdk::Graphics::Direct3D::*;
     use windows::Win32::Foundation::LUID;
     use windows::Win32::Graphics::Dxgi::*;
@@ -294,6 +415,7 @@ pub fn enumerate_dxgi_adapters() -> Vec<(String, u32, i32, u64, u64, u64)> {
             } else {
                 shared_system
             };
+            let directx_version = directx_version_for_adapter(&adapter);
             result.push((
                 name,
                 luid_low,
@@ -301,6 +423,7 @@ pub fn enumerate_dxgi_adapters() -> Vec<(String, u32, i32, u64, u64, u64)> {
                 vram,
                 raw_dedicated,
                 shared_system,
+                directx_version,
             ));
         }
         result
@@ -308,15 +431,15 @@ pub fn enumerate_dxgi_adapters() -> Vec<(String, u32, i32, u64, u64, u64)> {
 }
 
 #[cfg(target_os = "windows")]
-pub fn build_static_gpus(
-    build: u32,
-    adapters: Vec<(String, u32, i32, u64, u64, u64)>,
-) -> Vec<GpuInfo> {
+pub fn build_static_gpus(adapters: Vec<DxgiAdapterSnapshot>) -> Vec<GpuInfo> {
     adapters
         .into_par_iter()
         .enumerate()
         .map(
-            |(index, (name, luid_low, luid_high, vram, raw_dedicated, shared_system))| {
+            |(
+                index,
+                (name, luid_low, luid_high, vram, raw_dedicated, shared_system, directx_version),
+            )| {
                 let upper = name.to_ascii_uppercase();
                 let vendor = if upper.contains("NVIDIA") {
                     "NVIDIA".to_string()
@@ -332,7 +455,6 @@ pub fn build_static_gpus(
                 let (driver_version, driver_date, pci_bus, pci_device, pci_function) =
                     gather_gpu_driver_info(&name, luid_low, luid_high)
                         .unwrap_or((None, None, None, None, None));
-                let directx_version = Some(directx_from_build(build).to_string());
                 GpuInfo {
                     index,
                     name,
@@ -355,10 +477,7 @@ pub fn build_static_gpus(
 }
 
 #[cfg(not(target_os = "windows"))]
-pub fn build_static_gpus(
-    _build: u32,
-    _adapters: Vec<(String, u32, i32, u64, u64, u64)>,
-) -> Vec<GpuInfo> {
+pub fn build_static_gpus(_adapters: Vec<DxgiAdapterSnapshot>) -> Vec<GpuInfo> {
     vec![]
 }
 
@@ -436,6 +555,18 @@ pub fn pdh_open_gpu_query() -> Option<(isize, isize)> {
     }
 }
 
+#[cfg(target_os = "windows")]
+pub fn pdh_close_gpu_query(handles: (isize, isize)) {
+    use windows::Win32::System::Performance::{PDH_HQUERY, PdhCloseQuery};
+
+    unsafe {
+        let _ = PdhCloseQuery(PDH_HQUERY(handles.0 as *mut _));
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn pdh_close_gpu_query(_handles: (isize, isize)) {}
+
 #[cfg(not(target_os = "windows"))]
 pub fn pdh_open_gpu_query() -> Option<(isize, isize)> {
     None
@@ -469,7 +600,7 @@ fn engine_type_from_name(instance: &str) -> Option<&'static str> {
 fn pdh_collect_gpu_usage(
     query_raw: isize,
     counter_raw: isize,
-) -> HashMap<String, HashMap<String, f32>> {
+) -> Result<HashMap<String, HashMap<String, f32>>, PdhGpuUsageError> {
     use windows::Win32::System::Performance::*;
     const PDH_CSTATUS_NEW_DATA: u32 = 0x00000001;
     const PDH_CSTATUS_VALID_DATA: u32 = 0x00000000;
@@ -477,8 +608,9 @@ fn pdh_collect_gpu_usage(
     unsafe {
         let query = PDH_HQUERY(query_raw as *mut _);
         let counter = PDH_HCOUNTER(counter_raw as *mut _);
-        if PdhCollectQueryData(query) != 0 {
-            return HashMap::new();
+        let collect_status = PdhCollectQueryData(query);
+        if collect_status != 0 {
+            return Err(PdhGpuUsageError::CollectQueryData(collect_status));
         }
         let mut buf_size: u32 = 0;
         let mut item_count: u32 = 0;
@@ -490,10 +622,10 @@ fn pdh_collect_gpu_usage(
             None,
         );
         if r != PDH_MORE_DATA && r != 0 {
-            return HashMap::new();
+            return Err(PdhGpuUsageError::GetFormattedCounterArray(r));
         }
         if buf_size == 0 {
-            return HashMap::new();
+            return Ok(HashMap::new());
         }
         let typed_buf: Vec<PDH_FMT_COUNTERVALUE_ITEM_W>;
         let mut attempts = 0u32;
@@ -513,7 +645,7 @@ fn pdh_collect_gpu_usage(
                 continue;
             }
             if r2 != 0 {
-                return HashMap::new();
+                return Err(PdhGpuUsageError::GetFormattedCounterArray(r2));
             }
             buf.set_len(item_count as usize);
             typed_buf = buf;
@@ -557,7 +689,7 @@ fn pdh_collect_gpu_usage(
                 *v = v.min(100.0);
             }
         }
-        result
+        Ok(result)
     }
 }
 
@@ -566,7 +698,7 @@ pub fn gather_gpu_live(
     gpus: &[GpuInfo],
     pdh_query: isize,
     pdh_counter: isize,
-) -> Vec<LiveGpuMetrics> {
+) -> Result<Vec<LiveGpuMetrics>, PdhGpuUsageError> {
     use windows::Win32::Foundation::LUID;
     use windows::Win32::Graphics::Dxgi::{
         CreateDXGIFactory1, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL,
@@ -576,7 +708,7 @@ pub fn gather_gpu_live(
 
     let pdh_open = pdh_query != 0;
     let usage_by_luid: HashMap<String, HashMap<String, f32>> = if pdh_open {
-        pdh_collect_gpu_usage(pdh_query, pdh_counter)
+        pdh_collect_gpu_usage(pdh_query, pdh_counter)?
     } else {
         HashMap::new()
     };
@@ -592,7 +724,8 @@ pub fn gather_gpu_live(
             .and_then(|f| f.cast::<IDXGIFactory4>().ok())
     };
 
-    gpus.iter()
+    Ok(gpus
+        .iter()
         .zip(temperatures)
         .map(|(gpu, temperature_c)| {
             let (low, high) = (gpu.luid_low, gpu.luid_high);
@@ -672,7 +805,7 @@ pub fn gather_gpu_live(
                 processes: vec![],
             }
         })
-        .collect()
+        .collect())
 }
 
 #[cfg(not(target_os = "windows"))]

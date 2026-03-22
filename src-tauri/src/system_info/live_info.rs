@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
+use log::warn;
 use sysinfo::{CpuRefreshKind, Networks, System};
 
 use crate::system_info::is_hidden_virtual_adapter_label;
@@ -33,7 +34,7 @@ pub fn gather_live_info(
     prev_net: &mut Option<PreviousNetSnapshot>,
     gpus: &[GpuInfo],
     #[cfg(target_os = "windows")] pdh: PdhHandles,
-) -> LiveSystemInfo {
+) -> (LiveSystemInfo, bool) {
     system.refresh_cpu_specifics(CpuRefreshKind::everything());
     system.refresh_memory();
 
@@ -122,28 +123,43 @@ pub fn gather_live_info(
     });
 
     #[cfg(target_os = "windows")]
-    let gpus_live: Vec<LiveGpuMetrics> = gather_gpu_live(gpus, pdh.gpu_query, pdh.gpu_counter);
+    let (gpus_live, gpu_pdh_failed): (Vec<LiveGpuMetrics>, bool) =
+        match gather_gpu_live(gpus, pdh.gpu_query, pdh.gpu_counter) {
+            Ok(samples) => (samples, false),
+            Err(error) => {
+                warn!(
+                    "gpu PDH query failed with status code {}",
+                    error.status_code()
+                );
+                (gather_gpu_live(gpus, 0, 0).unwrap_or_default(), true)
+            }
+        };
     #[cfg(not(target_os = "windows"))]
     let gpus_live: Vec<LiveGpuMetrics> = gather_gpu_live(gpus, 0, 0);
+    #[cfg(not(target_os = "windows"))]
+    let gpu_pdh_failed = false;
 
-    LiveSystemInfo {
-        cpu_usage_percent,
-        cpu_per_core,
-        cpu_current_freq_mhz,
-        cpu_process_count,
-        cpu_thread_count,
-        cpu_handle_count,
-        cpu_uptime_secs,
-        ram_used_bytes,
-        ram_available_bytes,
-        ram_committed_bytes,
-        ram_commit_limit_bytes,
-        ram_cached_bytes,
-        ram_compressed_bytes,
-        ram_paged_pool_bytes,
-        ram_nonpaged_pool_bytes,
-        disks,
-        network,
-        gpus: gpus_live,
-    }
+    (
+        LiveSystemInfo {
+            cpu_usage_percent,
+            cpu_per_core,
+            cpu_current_freq_mhz,
+            cpu_process_count,
+            cpu_thread_count,
+            cpu_handle_count,
+            cpu_uptime_secs,
+            ram_used_bytes,
+            ram_available_bytes,
+            ram_committed_bytes,
+            ram_commit_limit_bytes,
+            ram_cached_bytes,
+            ram_compressed_bytes,
+            ram_paged_pool_bytes,
+            ram_nonpaged_pool_bytes,
+            disks,
+            network,
+            gpus: gpus_live,
+        },
+        gpu_pdh_failed,
+    )
 }

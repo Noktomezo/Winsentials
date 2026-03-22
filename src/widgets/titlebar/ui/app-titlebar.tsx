@@ -1,10 +1,11 @@
 import type { ComponentProps } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { Minus, Square, X } from 'lucide-react'
-import { Fragment } from 'react'
+import { Copy as CopyIcon, Minus, Square, X } from 'lucide-react'
+import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStaticInfo } from '@/entities/system-info/model/static-system-info'
+import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { mountLabel, mountToParam } from '@/shared/lib/mount-utils'
 import {
   Breadcrumb,
@@ -95,6 +96,33 @@ export function AppTitlebar() {
   const win = getCurrentWindow()
   const crumbs = useBreadcrumbs()
   const { t } = useTranslation()
+  const [isMaximized, setIsMaximized] = useState(false)
+
+  const syncMaximizedState = async () => {
+    setIsMaximized(await win.isMaximized())
+  }
+
+  useMountEffect(() => {
+    let disposed = false
+
+    const syncIfMounted = async () => {
+      const maximized = await win.isMaximized()
+      if (!disposed) {
+        setIsMaximized(maximized)
+      }
+    }
+
+    void syncIfMounted()
+
+    const unlistenPromise = win.listen('tauri://resize', () => {
+      void syncIfMounted()
+    })
+
+    return () => {
+      disposed = true
+      void unlistenPromise.then(unlisten => unlisten())
+    }
+  })
 
   const handleMinimize = async () => {
     await win.minimize()
@@ -106,6 +134,7 @@ export function AppTitlebar() {
 
   const handleToggleMaximize = async () => {
     await win.toggleMaximize()
+    await syncMaximizedState()
   }
 
   return (
@@ -165,13 +194,13 @@ export function AppTitlebar() {
           <Minus className="size-4" />
         </TitlebarButton>
         <TitlebarButton
-          aria-label={t('titlebar.maximize')}
+          aria-label={isMaximized ? t('titlebar.restore') : t('titlebar.maximize')}
           className="h-8 w-8 cursor-pointer rounded-md p-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           onClick={() => {
             void handleToggleMaximize()
           }}
         >
-          <Square className="size-3.5" />
+          {isMaximized ? <CopyIcon className="size-3.5" /> : <Square className="size-3.5" />}
         </TitlebarButton>
         <TitlebarButton
           aria-label={t('titlebar.close')}

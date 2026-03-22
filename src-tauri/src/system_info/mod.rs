@@ -19,5 +19,6 @@ pub use types::{
 pub use windows::cpu::pdh_open_cpu_perf_query;
 pub use windows::disk::gather_disks;
 pub use windows::disk::pdh_open_disk_query;
+pub use windows::gpu::pdh_close_gpu_query;
 pub use windows::gpu::pdh_open_gpu_query;
 pub use windows::network::gather_network_adapters;
