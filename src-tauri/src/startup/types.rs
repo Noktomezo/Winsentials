@@ -1,4 +1,7 @@
 use serde::{Deserialize, Serialize};
+use winreg::RegValue;
+use winreg::enums::RegType;
+use winreg::types::{FromRegValue, ToRegValue};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -13,6 +16,46 @@ pub enum StartupSource {
 pub enum StartupScope {
     CurrentUser,
     AllUsers,
+}
+
+impl StartupScope {
+    fn as_serialized(&self) -> &'static str {
+        match self {
+            Self::CurrentUser => "current_user",
+            Self::AllUsers => "all_users",
+        }
+    }
+}
+
+impl ToRegValue for StartupScope {
+    fn to_reg_value(&self) -> RegValue<'_> {
+        let mut bytes = Vec::with_capacity((self.as_serialized().len() + 1) * 2);
+        for code_unit in self
+            .as_serialized()
+            .encode_utf16()
+            .chain(std::iter::once(0))
+        {
+            bytes.extend_from_slice(&code_unit.to_le_bytes());
+        }
+
+        RegValue {
+            bytes: bytes.into(),
+            vtype: RegType::REG_SZ,
+        }
+    }
+}
+
+impl FromRegValue for StartupScope {
+    fn from_reg_value(value: &RegValue) -> std::io::Result<Self> {
+        match String::from_reg_value(value)?.as_str() {
+            "current_user" => Ok(Self::CurrentUser),
+            "all_users" => Ok(Self::AllUsers),
+            other => Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("invalid startup scope: {other}"),
+            )),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]

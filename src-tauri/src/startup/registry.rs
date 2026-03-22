@@ -5,8 +5,7 @@ use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
 
 use crate::error::AppError;
 use crate::startup::disabled_store::{
-    DisabledRegistryRecord, HKCU_DISABLED_REGISTRY_PATH, HKLM_DISABLED_REGISTRY_PATH, decode_scope,
-    hex_encode,
+    DisabledRegistryRecord, HKCU_DISABLED_REGISTRY_PATH, HKLM_DISABLED_REGISTRY_PATH, hex_encode,
 };
 use crate::startup::presentation::registry_presentation;
 use crate::startup::types::{
@@ -101,7 +100,7 @@ pub fn disable_entry(id: &str) -> Result<StartupEntry, AppError> {
         value_name: value_name.clone(),
         command: command.clone(),
         run_once: location.run_once,
-        scope: scope_label(location.scope).to_string(),
+        scope: location.scope,
         disabled_at: "now".to_string(),
         source_kind: "registry".to_string(),
     };
@@ -257,7 +256,7 @@ fn entry_from_record(
         id: record.id,
         name: record.value_name,
         command: Some(record.command),
-        scope: decode_scope(&record.scope),
+        scope: record.scope,
         status,
         run_once: record.run_once,
         location_label: format!(
@@ -457,13 +456,6 @@ fn format_registry_location_label(location: RegistryLocation) -> String {
         location.hive.to_ascii_uppercase(),
         if location.run_once { "RunOnce" } else { "Run" }
     )
-}
-
-fn scope_label(scope: StartupScope) -> &'static str {
-    match scope {
-        StartupScope::CurrentUser => "current_user",
-        StartupScope::AllUsers => "all_users",
-    }
 }
 
 fn is_system_command(command: &str) -> bool {

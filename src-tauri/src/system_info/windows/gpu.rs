@@ -54,9 +54,9 @@ fn get_pci_location(device_instance_id: &str) -> Option<(Option<u32>, Option<u32
 #[cfg(target_os = "windows")]
 #[allow(clippy::type_complexity)]
 fn gather_gpu_driver_info(
-    model: &str,
-    _luid_low: u32,
-    _luid_high: i32,
+    _model: &str,
+    luid_low: u32,
+    luid_high: i32,
 ) -> Option<(
     Option<String>,
     Option<String>,
@@ -64,8 +64,90 @@ fn gather_gpu_driver_info(
     Option<u32>,
     Option<u32>,
 )> {
+    use std::mem::size_of;
+    use std::ptr::read_unaligned;
+
+    use windows::Win32::Devices::DeviceAndDriverInstallation::{
+        CM_Get_Device_ID_Size, CM_Get_Device_IDW, CR_SUCCESS, DIGCF_PRESENT, GUID_DEVCLASS_DISPLAY,
+        SP_DEVINFO_DATA, SetupDiDestroyDeviceInfoList, SetupDiEnumDeviceInfo, SetupDiGetClassDevsW,
+        SetupDiGetDevicePropertyW,
+    };
+    use windows::Win32::Devices::Properties::{DEVPROP_TYPE_UINT64, DEVPROPTYPE};
+    use windows::Win32::Foundation::{DEVPROPKEY, LUID};
+    use windows::core::{GUID, PCWSTR};
     use winreg::RegKey as WinRegKey;
     use winreg::enums::HKEY_LOCAL_MACHINE;
+
+    const DEVPKEY_DISPLAY_ADAPTER_LUID: DEVPROPKEY = DEVPROPKEY {
+        fmtid: GUID::from_u128(0x60b193cb_5276_4d0f_96fc_f173abad3ec6),
+        pid: 2,
+    };
+
+    let target_device_instance_id = unsafe {
+        let device_info_set = SetupDiGetClassDevsW(
+            Some(&GUID_DEVCLASS_DISPLAY),
+            PCWSTR::null(),
+            None,
+            DIGCF_PRESENT,
+        )
+        .ok()?;
+
+        let mut match_id = None;
+        let mut index = 0;
+
+        loop {
+            let mut device_info = SP_DEVINFO_DATA {
+                cbSize: size_of::<SP_DEVINFO_DATA>() as u32,
+                ..Default::default()
+            };
+
+            if SetupDiEnumDeviceInfo(device_info_set, index, &mut device_info).is_err() {
+                break;
+            }
+            index += 1;
+
+            let mut property_type = DEVPROPTYPE::default();
+            let mut luid_buffer = [0u8; size_of::<LUID>()];
+            if SetupDiGetDevicePropertyW(
+                device_info_set,
+                &device_info,
+                &DEVPKEY_DISPLAY_ADAPTER_LUID,
+                &mut property_type,
+                Some(&mut luid_buffer),
+                None,
+                0,
+            )
+            .is_err()
+                || property_type != DEVPROP_TYPE_UINT64
+            {
+                continue;
+            }
+
+            let adapter_luid = read_unaligned(luid_buffer.as_ptr() as *const LUID);
+            if adapter_luid.LowPart != luid_low || adapter_luid.HighPart != luid_high {
+                continue;
+            }
+
+            let mut required_len = 0;
+            if CM_Get_Device_ID_Size(&mut required_len, device_info.DevInst, 0) != CR_SUCCESS {
+                break;
+            }
+
+            let mut device_id = vec![0u16; required_len as usize + 1];
+            if CM_Get_Device_IDW(device_info.DevInst, &mut device_id, 0) == CR_SUCCESS {
+                let end = device_id
+                    .iter()
+                    .position(|value| *value == 0)
+                    .unwrap_or(device_id.len());
+                match_id = Some(String::from_utf16_lossy(&device_id[..end]));
+            }
+            break;
+        }
+
+        let _ = SetupDiDestroyDeviceInfoList(device_info_set);
+        match_id
+    }?;
+
     let hklm = WinRegKey::predef(HKEY_LOCAL_MACHINE);
     let class_key = hklm
         .open_subkey(
@@ -73,40 +155,26 @@ fn gather_gpu_driver_info(
         )
         .ok()?;
 
-    let model_lower = model.to_ascii_lowercase();
-    let mut candidates = Vec::new();
-
     for key_name in class_key.enum_keys().flatten() {
         let subkey = match class_key.open_subkey(&key_name) {
             Ok(k) => k,
             Err(_) => continue,
         };
-        let driver_desc: String = match subkey.get_value("DriverDesc") {
-            Ok(v) => v,
-            Err(_) => continue,
-        };
-        let desc_lower = driver_desc.to_ascii_lowercase();
-        if desc_lower != model_lower
-            && !desc_lower.contains(&model_lower)
-            && !model_lower.contains(&desc_lower)
-        {
-            continue;
-        }
 
-        let device_instance_id = subkey.get_value::<String, _>("DeviceInstanceID").ok();
+        let device_instance_id = match subkey.get_value::<String, _>("DeviceInstanceID") {
+            Ok(value) if value.eq_ignore_ascii_case(&target_device_instance_id) => value,
+            _ => continue,
+        };
         let driver_version: Option<String> = subkey.get_value("DriverVersion").ok();
         let driver_date: Option<String> = subkey
             .get_value::<String, _>("DriverDate")
             .ok()
             .and_then(|s| normalise_driver_date(&s));
-        let (pci_bus, pci_device, pci_function) = device_instance_id
-            .as_deref()
+        let (pci_bus, pci_device, pci_function) = Some(device_instance_id.as_str())
             .and_then(get_pci_location)
             .unwrap_or((None, None, None));
 
-        candidates.push((
-            desc_lower == model_lower,
-            pci_bus.is_some() || pci_device.is_some() || pci_function.is_some(),
+        return Some((
             driver_version,
             driver_date,
             pci_bus,
@@ -115,20 +183,7 @@ fn gather_gpu_driver_info(
         ));
     }
 
-    candidates
-        .into_iter()
-        .max_by_key(|(is_exact, has_pci, ..)| (*is_exact, *has_pci))
-        .map(
-            |(_, _, driver_version, driver_date, pci_bus, pci_device, pci_function)| {
-                (
-                    driver_version,
-                    driver_date,
-                    pci_bus,
-                    pci_device,
-                    pci_function,
-                )
-            },
-        )
+    None
 }
 
 #[cfg(target_os = "windows")]

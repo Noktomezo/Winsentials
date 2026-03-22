@@ -31,6 +31,11 @@ function DialogClose({
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
 }
 
+interface DialogContentProps extends React.ComponentProps<typeof DialogPrimitive.Content> {
+  showCloseButton?: boolean
+  closeLabel?: string
+}
+
 function DialogOverlay({
   className,
   ...props
@@ -53,10 +58,7 @@ function DialogContent({
   showCloseButton = true,
   closeLabel,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & {
-  showCloseButton?: boolean
-  closeLabel?: string
-}) {
+}: DialogContentProps) {
   const { t } = useTranslation()
   const resolvedCloseLabel = closeLabel ?? t('dialog.close')
 
@@ -136,6 +138,9 @@ export {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogPortal,
   DialogTitle,
   DialogTrigger,
 }
+
+export type { DialogContentProps }

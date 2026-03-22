@@ -20,15 +20,7 @@ import { useStartupStore } from '@/entities/startup/model/startup-store'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { toast } from '@/shared/lib/toast'
 import { cn } from '@/shared/lib/utils'
-import { Button } from '@/shared/ui'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog'
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/ui'
 import {
   DropdownMenu,
   DropdownMenuContent,

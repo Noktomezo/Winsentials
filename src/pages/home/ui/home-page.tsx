@@ -5,11 +5,10 @@ import { useNavigate } from '@tanstack/react-router'
 import { ChevronRight, Cpu, HardDrive, Layers, Monitor, Network, Server } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { useDeviceInventory, useLiveHome } from '@/entities/system-info/model/live-system-store'
+import { useStaticSystemInfo } from '@/entities/system-info/model/static-system-info'
 import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
-import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
-import { mountLabel, networkAdapterToParam } from '@/shared/lib/mount-utils'
+import { mountLabel, mountToParam, networkAdapterToParam } from '@/shared/lib/mount-utils'
 import { Button, Skeleton } from '@/shared/ui'
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -230,7 +229,7 @@ function DiskSummary({ disk, index }: { disk: StaticSystemInfo['disks'][number],
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const used = disk.totalBytes - disk.availableBytes
-  const param = disk.mountPoint.replace(/[:\\/]/g, '')
+  const param = mountToParam(disk.mountPoint)
   return (
     <SummaryCard
       icon={HardDrive}
@@ -364,24 +363,14 @@ function HomeSkeleton() {
 
 export function HomePage() {
   const { t } = useTranslation()
-  const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
-  const [staticInfoError, setStaticInfoError] = useState(false)
+  const {
+    info: staticInfo,
+    error: staticInfoError,
+    isLoading: staticInfoLoading,
+    retry: retryStaticInfo,
+  } = useStaticSystemInfo()
   const { data: liveInfo } = useLiveHome()
   const { data: deviceInventory } = useDeviceInventory()
-
-  const loadStaticInfo = () => {
-    setStaticInfoError(false)
-    getStaticSystemInfo()
-      .then(setStaticInfo)
-      .catch((error) => {
-        console.error(error)
-        setStaticInfoError(true)
-      })
-  }
-
-  useMountEffect(() => {
-    loadStaticInfo()
-  })
 
   const networkCards = deviceInventory
     ? mergeVisibleNetworkAdapters(deviceInventory.networkAdapters, liveInfo)
@@ -395,32 +384,32 @@ export function HomePage() {
             <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
               <p className="text-sm text-muted-foreground">{t('home.loadError')}</p>
               <div>
-                <Button onClick={loadStaticInfo} size="sm" type="button" variant="outline">
+                <Button onClick={retryStaticInfo} size="sm" type="button" variant="outline">
                   {t('tweaks.actions.retry')}
                 </Button>
               </div>
             </section>
           )
-        : !staticInfo
-            ? (
-                <HomeSkeleton />
-              )
-            : (
-                <div className="grid grid-cols-2 gap-4">
-                  <WindowsCard s={staticInfo} />
-                  <CpuSummary live={liveInfo} s={staticInfo} />
-                  <RamSummary live={liveInfo} s={staticInfo} />
-                  {disks.map((disk, i) => (
-                    <DiskSummary disk={disk} index={i} key={disk.mountPoint} />
-                  ))}
-                  {networkCards.map(adapter => (
-                    <NetworkSummary adapter={adapter} key={`network-${adapter.name}`} live={liveInfo} />
-                  ))}
-                  {staticInfo.gpus.map((gpu, i) => (
-                    <GpuSummary gpu={gpu} gpuLive={liveInfo?.gpus[i] ?? null} index={i} key={`gpu-${i}`} />
-                  ))}
-                </div>
-              )}
+        : staticInfoLoading || !staticInfo
+          ? (
+              <HomeSkeleton />
+            )
+          : (
+              <div className="grid grid-cols-2 gap-4">
+                <WindowsCard s={staticInfo} />
+                <CpuSummary live={liveInfo} s={staticInfo} />
+                <RamSummary live={liveInfo} s={staticInfo} />
+                {disks.map((disk, i) => (
+                  <DiskSummary disk={disk} index={i} key={disk.mountPoint} />
+                ))}
+                {networkCards.map(adapter => (
+                  <NetworkSummary adapter={adapter} key={`network-${adapter.name}`} live={liveInfo} />
+                ))}
+                {staticInfo.gpus.map((gpu, i) => (
+                  <GpuSummary gpu={gpu} gpuLive={liveInfo?.gpus[i] ?? null} index={i} key={`gpu-${i}`} />
+                ))}
+              </div>
+            )}
     </section>
   )
 }

@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use windows::Win32::Foundation::VARIANT_BOOL;
 use windows::Win32::System::Com::{
     CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx, CoUninitialize,
@@ -32,6 +34,7 @@ pub fn enable_entry(id: &str) -> Result<StartupEntry, AppError> {
     let full_path = task_full_path_from_id(id)?;
     let session = TaskSchedulerSession::connect()?;
     let task = session.get_task(&full_path)?;
+    ensure_task_is_visible(&task, &full_path)?;
     unsafe {
         task.SetEnabled(VARIANT_BOOL(1))?;
     }
@@ -46,6 +49,7 @@ pub fn disable_entry(id: &str) -> Result<StartupEntry, AppError> {
     let full_path = task_full_path_from_id(id)?;
     let session = TaskSchedulerSession::connect()?;
     let task = session.get_task(&full_path)?;
+    ensure_task_is_visible(&task, &full_path)?;
     unsafe {
         task.SetEnabled(VARIANT_BOOL(0))?;
     }
@@ -59,6 +63,8 @@ pub fn disable_entry(id: &str) -> Result<StartupEntry, AppError> {
 pub fn delete_entry(id: &str) -> Result<(), AppError> {
     let full_path = task_full_path_from_id(id)?;
     let session = TaskSchedulerSession::connect()?;
+    let task = session.get_task(&full_path)?;
+    ensure_task_is_visible(&task, &full_path)?;
     let (folder_path, task_name) = split_task_identity(&full_path);
     let folder = session.folder(&folder_path)?;
     unsafe {
@@ -275,13 +281,12 @@ fn task_to_entry(task: &IRegisteredTask) -> Result<Option<StartupEntry>, AppErro
         arguments.as_deref(),
         working_directory.as_deref(),
     );
-    let is_system = metadata
-        .author
-        .as_deref()
-        .map(|value| value.to_ascii_lowercase().contains("microsoft"))
-        .unwrap_or(false)
-        || full_path.to_ascii_lowercase().starts_with(r"\microsoft\")
-        || command.as_deref().map(is_system_command).unwrap_or(false);
+    let is_system = is_system_task(
+        &metadata,
+        &full_path,
+        command.as_deref(),
+        presentation.target_path.as_deref(),
+    );
 
     if is_system {
         return Ok(None);
@@ -311,6 +316,54 @@ fn task_to_entry(task: &IRegisteredTask) -> Result<Option<StartupEntry>, AppErro
         task_path: Some(full_path),
         last_error: None,
     }))
+}
+
+fn ensure_task_is_visible(task: &IRegisteredTask, full_path: &str) -> Result<(), AppError> {
+    task_to_entry(task)?.map(|_| ()).ok_or_else(|| {
+        AppError::message(format!(
+            "scheduled task is filtered from startup list: {full_path}"
+        ))
+    })
+}
+
+fn is_system_task(
+    metadata: &TaskMetadata,
+    full_path: &str,
+    command: Option<&str>,
+    target_path: Option<&str>,
+) -> bool {
+    metadata
+        .author
+        .as_deref()
+        .map(|value| value.to_ascii_lowercase().contains("microsoft"))
+        .unwrap_or(false)
+        || full_path.to_ascii_lowercase().starts_with(r"\microsoft\")
+        || target_path
+            .filter(|value| !is_shell_host_path(value))
+            .map(is_system_command)
+            .unwrap_or(false)
+        || (target_path.is_none()
+            && command
+                .filter(|value| !is_shell_host_path(value))
+                .map(is_system_command)
+                .unwrap_or(false))
+}
+
+fn is_shell_host_path(path: &str) -> bool {
+    const HOSTS: &[&str] = &[
+        "powershell.exe",
+        "pwsh.exe",
+        "cmd.exe",
+        "wscript.exe",
+        "cscript.exe",
+        "mshta.exe",
+    ];
+
+    Path::new(path)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .map(|value| HOSTS.contains(&value.to_ascii_lowercase().as_str()))
+        .unwrap_or(false)
 }
 
 unsafe fn collect_action_info(

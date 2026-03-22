@@ -148,6 +148,7 @@ async function refreshSource(
   }
 
   let requestId = 0
+  const previousHasLoaded = state.hasLoadedSource[source]
   set(current => ({
     ...current,
     error: null,
@@ -171,10 +172,6 @@ async function refreshSource(
       return {
         ...current,
         ...applySourceResponse(current.entriesBySource, response),
-        sourceLoading: {
-          ...current.sourceLoading,
-          [source]: false,
-        },
         sourceErrors: {
           ...current.sourceErrors,
           [source]: response.error,
@@ -194,19 +191,30 @@ async function refreshSource(
 
       return {
         ...current,
-        sourceLoading: {
-          ...current.sourceLoading,
-          [source]: false,
-        },
         sourceErrors: {
           ...current.sourceErrors,
           [source]: error instanceof Error ? error.message : 'Unknown startup source error.',
         },
         hasLoadedSource: {
           ...current.hasLoadedSource,
-          [source]: true,
+          [source]: previousHasLoaded,
         },
         error: error instanceof Error ? error.message : 'Failed to load startup entries.',
+      }
+    })
+  }
+  finally {
+    set((current) => {
+      if (current.sourceRequestIds[source] !== requestId) {
+        return current
+      }
+
+      return {
+        ...current,
+        sourceLoading: {
+          ...current.sourceLoading,
+          [source]: false,
+        },
       }
     })
   }

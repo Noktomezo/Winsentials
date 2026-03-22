@@ -42,6 +42,7 @@ base64 = "0.22.1"
 png = "0.18.1"
 regex = "1.12.3"
 log = "0.4.29"
+windows = { version = "0.62", features = ["Win32_Devices_DeviceAndDriverInstallation", "Win32_Devices_Properties"] }
 
 [target."cfg(windows)".dependencies]
 system_shutdown = "4"

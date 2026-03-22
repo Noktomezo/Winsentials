@@ -39,7 +39,7 @@ pub fn disable_entry(id: &str) -> Result<StartupEntry, AppError> {
         id: id.to_string(),
         original_path: original_path.to_string_lossy().into_owned(),
         disabled_file_path: disabled_file_path.to_string_lossy().into_owned(),
-        scope: scope_label(scope).to_string(),
+        scope,
         disabled_at: "now".to_string(),
         source_kind: "startup_folder".to_string(),
     };
@@ -358,12 +358,7 @@ fn startup_folder_id(scope: StartupScope, path: &Path) -> String {
 fn validate_metadata_paths(
     metadata: &DisabledStartupFileMetadata,
 ) -> Result<(StartupScope, PathBuf, PathBuf), AppError> {
-    let scope = parse_scope(&metadata.scope).ok_or_else(|| {
-        AppError::message(format!(
-            "unsupported startup folder scope in disabled metadata: {}",
-            metadata.scope
-        ))
-    })?;
+    let scope = metadata.scope;
     let original_path = PathBuf::from(&metadata.original_path);
     let disabled_file_path = PathBuf::from(&metadata.disabled_file_path);
     let expected_startup_dir = startup_dir(scope)?;
@@ -399,18 +394,6 @@ fn scope_label(scope: StartupScope) -> &'static str {
         StartupScope::CurrentUser => "current_user",
         StartupScope::AllUsers => "all_users",
     }
-}
-
-fn parse_scope(scope: &str) -> Option<StartupScope> {
-    if scope.eq_ignore_ascii_case("all_users") {
-        return Some(StartupScope::AllUsers);
-    }
-
-    if scope.eq_ignore_ascii_case("current_user") {
-        return Some(StartupScope::CurrentUser);
-    }
-
-    None
 }
 
 fn unique_disabled_path(disabled_dir: &Path, file_name: &str, id: &str) -> PathBuf {

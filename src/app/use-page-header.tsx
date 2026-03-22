@@ -1,65 +1,12 @@
 import type { ReactNode } from 'react'
-import type { StaticSystemInfo } from '@/entities/system-info/model/types'
-import { useMemo, useSyncExternalStore } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getStaticSystemInfo } from '@/entities/system-info/api'
+import { useStaticInfo } from '@/entities/system-info/model/static-system-info'
 import { mountLabel, mountToParam } from '@/shared/lib/mount-utils'
 
 export interface PageHeader {
   title: ReactNode
   description: string
-}
-
-// Module-level cache so the IPC call fires only once per app session.
-let staticInfoCache: StaticSystemInfo | null = null
-let staticInfoPromise: Promise<StaticSystemInfo> | null = null
-let staticInfoError: unknown = null
-const listeners = new Set<() => void>()
-
-function loadStaticInfo(): Promise<StaticSystemInfo> {
-  if (staticInfoCache) {
-    return Promise.resolve(staticInfoCache)
-  }
-
-  if (staticInfoPromise) {
-    return staticInfoPromise
-  }
-
-  staticInfoPromise = getStaticSystemInfo()
-    .then((info) => {
-      staticInfoCache = info
-      staticInfoError = null
-      listeners.forEach(fn => fn())
-      return info
-    })
-    .catch((error) => {
-      staticInfoError = error
-      listeners.forEach(fn => fn())
-      throw error
-    })
-    .finally(() => {
-      staticInfoPromise = null
-    })
-
-  return staticInfoPromise
-}
-
-function subscribeStaticInfo(callback: () => void) {
-  listeners.add(callback)
-  void loadStaticInfo()
-  return () => { listeners.delete(callback) }
-}
-
-function getStaticInfoSnapshot() {
-  return staticInfoCache
-}
-
-export function useStaticInfo(): StaticSystemInfo | null {
-  return useSyncExternalStore(subscribeStaticInfo, getStaticInfoSnapshot, getStaticInfoSnapshot)
-}
-
-export function getStaticInfoErrorSnapshot() {
-  return staticInfoError
 }
 
 export function usePageHeader(pathname: string): PageHeader {

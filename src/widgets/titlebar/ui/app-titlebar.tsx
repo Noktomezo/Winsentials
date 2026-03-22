@@ -4,7 +4,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Minus, Square, X } from 'lucide-react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStaticInfo } from '@/app/use-page-header'
+import { useStaticInfo } from '@/entities/system-info/model/static-system-info'
 import { mountLabel, mountToParam } from '@/shared/lib/mount-utils'
 import {
   Breadcrumb,
