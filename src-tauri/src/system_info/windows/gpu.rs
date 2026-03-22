@@ -5,7 +5,15 @@ use rayon::prelude::*;
 use crate::system_info::types::{GpuInfo, LiveGpuMetrics};
 
 #[cfg(target_os = "windows")]
-type DxgiAdapterSnapshot = (String, u32, i32, u64, u64, u64, Option<String>);
+pub(crate) struct DxgiAdapterSnapshot {
+    name: String,
+    luid_low: u32,
+    luid_high: i32,
+    vram: u64,
+    raw_dedicated: u64,
+    shared_system: u64,
+    directx_version: Option<String>,
+}
 
 #[cfg(target_os = "windows")]
 fn normalise_driver_date(s: &str) -> Option<String> {
@@ -180,7 +188,6 @@ impl PdhGpuUsageError {
 #[cfg(target_os = "windows")]
 #[allow(clippy::type_complexity)]
 fn gather_gpu_driver_info(
-    _model: &str,
     luid_low: u32,
     luid_high: i32,
 ) -> Option<(
@@ -402,7 +409,7 @@ pub fn enumerate_dxgi_adapters() -> Vec<DxgiAdapterSnapshot> {
                 Ok(d) => d,
                 Err(_) => continue,
             };
-            if desc.Flags & 2 != 0 {
+            if desc.Flags & (DXGI_ADAPTER_FLAG_SOFTWARE.0 as u32) != 0 {
                 continue;
             }
 
@@ -416,7 +423,7 @@ pub fn enumerate_dxgi_adapters() -> Vec<DxgiAdapterSnapshot> {
                 shared_system
             };
             let directx_version = directx_version_for_adapter(&adapter);
-            result.push((
+            result.push(DxgiAdapterSnapshot {
                 name,
                 luid_low,
                 luid_high,
@@ -424,7 +431,7 @@ pub fn enumerate_dxgi_adapters() -> Vec<DxgiAdapterSnapshot> {
                 raw_dedicated,
                 shared_system,
                 directx_version,
-            ));
+            });
         }
         result
     }
@@ -435,44 +442,49 @@ pub fn build_static_gpus(adapters: Vec<DxgiAdapterSnapshot>) -> Vec<GpuInfo> {
     adapters
         .into_par_iter()
         .enumerate()
-        .map(
-            |(
+        .map(|(index, adapter)| {
+            let DxgiAdapterSnapshot {
+                name,
+                luid_low,
+                luid_high,
+                vram,
+                raw_dedicated,
+                shared_system,
+                directx_version,
+            } = adapter;
+
+            let upper = name.to_ascii_uppercase();
+            let vendor = if upper.contains("NVIDIA") {
+                "NVIDIA".to_string()
+            } else if upper.contains("AMD") || upper.contains("RADEON") {
+                "AMD".to_string()
+            } else if upper.contains("INTEL") {
+                "Intel".to_string()
+            } else {
+                "Unknown".to_string()
+            };
+            let is_integrated =
+                classify_integrated_gpu(&name, &vendor, raw_dedicated, shared_system);
+            let (driver_version, driver_date, pci_bus, pci_device, pci_function) =
+                gather_gpu_driver_info(luid_low, luid_high)
+                    .unwrap_or((None, None, None, None, None));
+            GpuInfo {
                 index,
-                (name, luid_low, luid_high, vram, raw_dedicated, shared_system, directx_version),
-            )| {
-                let upper = name.to_ascii_uppercase();
-                let vendor = if upper.contains("NVIDIA") {
-                    "NVIDIA".to_string()
-                } else if upper.contains("AMD") || upper.contains("RADEON") {
-                    "AMD".to_string()
-                } else if upper.contains("INTEL") {
-                    "Intel".to_string()
-                } else {
-                    "Unknown".to_string()
-                };
-                let is_integrated =
-                    classify_integrated_gpu(&name, &vendor, raw_dedicated, shared_system);
-                let (driver_version, driver_date, pci_bus, pci_device, pci_function) =
-                    gather_gpu_driver_info(&name, luid_low, luid_high)
-                        .unwrap_or((None, None, None, None, None));
-                GpuInfo {
-                    index,
-                    name,
-                    vendor,
-                    is_integrated,
-                    driver_version,
-                    driver_date,
-                    directx_version,
-                    vram_total_mb: vram / 1_048_576,
-                    pci_bus,
-                    pci_device,
-                    pci_function,
-                    luid_low,
-                    luid_high,
-                    ..Default::default()
-                }
-            },
-        )
+                name,
+                vendor,
+                is_integrated,
+                driver_version,
+                driver_date,
+                directx_version,
+                vram_total_mb: vram / 1_048_576,
+                pci_bus,
+                pci_device,
+                pci_function,
+                luid_low,
+                luid_high,
+                ..Default::default()
+            }
+        })
         .collect()
 }
 

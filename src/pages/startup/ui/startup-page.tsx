@@ -107,6 +107,17 @@ function publisherSummary(entry: StartupEntry, t: ReturnType<typeof useTranslati
   return entry.publisher?.trim() || t('startup.publishers.unknown')
 }
 
+interface StartupCardProps {
+  entry: StartupEntry
+  isPending: boolean
+  onDelete: () => void
+  onDisable: () => void
+  onEnable: () => void
+  onCopy: (value: string | null | undefined, successKey: string) => void
+  onOpenLocation: (path: string | null | undefined) => void
+  onReveal: (path: string | null | undefined) => void
+}
+
 const StartupCard = memo(({
   entry,
   isPending,
@@ -116,16 +127,7 @@ const StartupCard = memo(({
   onCopy,
   onOpenLocation,
   onReveal,
-}: {
-  entry: StartupEntry
-  isPending: boolean
-  onDelete: () => void
-  onDisable: () => void
-  onEnable: () => void
-  onCopy: (value: string | null | undefined, successKey: string) => void
-  onOpenLocation: (path: string | null | undefined) => void
-  onReveal: (path: string | null | undefined) => void
-}) => {
+}: StartupCardProps) => {
   const { t } = useTranslation()
   const Icon = sourceIcon(entry.source)
   const ScopeIcon = scopeBadgeIcon(entry.scope)
