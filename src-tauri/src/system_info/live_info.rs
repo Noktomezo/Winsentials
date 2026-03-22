@@ -3,6 +3,7 @@ use std::time::Instant;
 
 use sysinfo::{CpuRefreshKind, Networks, System};
 
+use crate::system_info::is_hidden_virtual_adapter_label;
 use crate::system_info::state::PreviousNetSnapshot;
 use crate::system_info::types::{DiskLiveInfo, GpuInfo, LiveSystemInfo, NetworkIfaceStats};
 use crate::system_info::windows::cpu::{get_perf_info, pdh_collect_cpu_perf_pct};
@@ -76,6 +77,7 @@ pub fn gather_live_info(
         .iter()
         .filter(|(name, _)| {
             !name.starts_with("Loopback")
+                && !is_hidden_virtual_adapter_label(name)
                 && networks
                     .get(name.as_str())
                     .map(|d| d.total_received() > 0 || d.total_transmitted() > 0)

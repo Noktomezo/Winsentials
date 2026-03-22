@@ -112,6 +112,11 @@ export interface StaticSystemInfo {
   disks: DiskInfo[]
 }
 
+export interface DeviceInventoryInfo {
+  networkAdapters: NetworkAdapterInfo[]
+  disks: DiskInfo[]
+}
+
 export interface NetworkIfaceStats {
   name: string
   rxBytesPerSec: number

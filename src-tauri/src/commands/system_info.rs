@@ -1,7 +1,8 @@
 use crate::error::AppError;
 use crate::system_info::{
-    DiskLiveInfo, LiveCpuInfo, LiveGpuMetrics, LiveHomeInfo, LiveRamInfo, LiveSystemInfo,
-    NetworkIfaceStats, StaticSystemInfo, SystemInfoState, gather_static_info,
+    DeviceInventoryInfo, DiskLiveInfo, LiveCpuInfo, LiveGpuMetrics, LiveHomeInfo, LiveRamInfo,
+    LiveSystemInfo, NetworkIfaceStats, StaticSystemInfo, SystemInfoState, gather_disks,
+    gather_network_adapters, gather_static_info,
 };
 use tauri::State;
 
@@ -21,6 +22,14 @@ pub fn get_static_system_info(state: State<SystemInfoState>) -> Result<StaticSys
     let info = gather_static_info(&system)?;
     *cache = Some(info.clone());
     Ok(info)
+}
+
+#[tauri::command]
+pub fn get_device_inventory_info() -> Result<DeviceInventoryInfo, AppError> {
+    Ok(DeviceInventoryInfo {
+        network_adapters: gather_network_adapters(),
+        disks: gather_disks(),
+    })
 }
 
 #[tauri::command]

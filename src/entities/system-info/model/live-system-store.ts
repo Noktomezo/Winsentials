@@ -1,4 +1,5 @@
 import type {
+  DeviceInventoryInfo,
   DiskLiveInfo,
   LiveCpuInfo,
   LiveGpuInfo,
@@ -8,6 +9,7 @@ import type {
 } from '@/entities/system-info/model/types'
 import { create } from 'zustand'
 import {
+  getDeviceInventoryInfo,
   getLiveCpuInfo,
   getLiveDiskInfo,
   getLiveGpuInfo,
@@ -19,7 +21,7 @@ import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 
 const MAX_HISTORY = 60
 
-type LiveSliceKey = 'home' | 'cpu' | 'ram' | 'gpu' | 'network' | 'disks'
+type LiveSliceKey = 'home' | 'cpu' | 'ram' | 'gpu' | 'network' | 'disks' | 'deviceInventory'
 
 interface LiveSliceMap {
   home: LiveHomeInfo | null
@@ -28,6 +30,7 @@ interface LiveSliceMap {
   gpu: LiveGpuInfo[] | null
   network: NetworkIfaceStats[] | null
   disks: DiskLiveInfo[] | null
+  deviceInventory: DeviceInventoryInfo | null
 }
 
 interface GpuEngineHistory {
@@ -73,6 +76,7 @@ const subscribers: Record<LiveSliceKey, number> = {
   gpu: 0,
   network: 0,
   disks: 0,
+  deviceInventory: 0,
 }
 
 const timers: Partial<Record<LiveSliceKey, ReturnType<typeof setInterval>>> = {}
@@ -85,6 +89,7 @@ const fetchers: Record<LiveSliceKey, () => Promise<unknown>> = {
   gpu: getLiveGpuInfo,
   network: getLiveNetworkInfo,
   disks: getLiveDiskInfo,
+  deviceInventory: getDeviceInventoryInfo,
 }
 
 export const useLiveSystemStore = create<LiveSystemStoreState>()(set => ({
@@ -94,6 +99,7 @@ export const useLiveSystemStore = create<LiveSystemStoreState>()(set => ({
   gpu: null,
   network: null,
   disks: null,
+  deviceInventory: null,
   errors: {},
   fetching: {},
   cpuHistory: [],
@@ -314,4 +320,8 @@ export function useLiveDisks() {
     ...useLiveSlice('disks', state => state.disks),
     activeHistory: useLiveSystemStore(s => s.diskActiveHistory),
   }
+}
+
+export function useDeviceInventory() {
+  return useLiveSlice('deviceInventory', state => state.deviceInventory)
 }

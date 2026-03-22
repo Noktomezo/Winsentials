@@ -40,6 +40,7 @@ impl EnableBbr2Tweak {
                 recommended_value: ENABLED_VALUE.into(),
                 risk: RiskLevel::Low,
                 risk_description: Some("network.tweaks.enableBbr2.riskDescription".into()),
+                conflicts: None,
                 requires_action: RequiresAction::RestartPc,
                 min_os_build: Some(19041),
                 min_os_ubr: None,

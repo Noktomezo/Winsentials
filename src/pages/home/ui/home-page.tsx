@@ -6,7 +6,7 @@ import { ChevronRight, Cpu, HardDrive, Layers, Monitor, Network, Server } from '
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
-import { useLiveHome } from '@/entities/system-info/model/live-system-store'
+import { useDeviceInventory, useLiveHome } from '@/entities/system-info/model/live-system-store'
 import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { mountLabel, networkAdapterToParam } from '@/shared/lib/mount-utils'
@@ -86,13 +86,18 @@ function MarqueeText({ text, className }: { text: string, className?: string }) 
   }, [text])
 
   return (
-    <span ref={outerRef} className={`overflow-hidden ${className ?? ''}`}>
+    <span
+      className={`overflow-hidden ${className ?? ''}`}
+      data-overflow={offset > 0 ? 'true' : 'false'}
+      ref={outerRef}
+    >
       <span
+        data-marquee-inner="true"
         ref={innerRef}
-        className="marquee-bounce inline-block whitespace-nowrap"
-        style={offset > 0
-          ? { animation: 'marquee-bounce 4s ease-in-out infinite alternate', ['--marquee-offset' as string]: `-${offset}px` }
-          : undefined}
+        className={offset > 0
+          ? 'inline-block whitespace-nowrap transition-transform duration-700 ease-out will-change-transform motion-reduce:transition-none'
+          : 'inline-block whitespace-nowrap'}
+        style={offset > 0 ? { ['--marquee-offset' as string]: `-${offset}px` } : undefined}
       >
         {text}
       </span>
@@ -170,7 +175,7 @@ function SummaryCard({
 }: SummaryCardProps) {
   return (
     <button
-      className="group flex cursor-pointer flex-col gap-3 rounded-xl border border-border/70 bg-card p-4 text-left transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group/summary flex cursor-pointer flex-col gap-3 rounded-xl border border-border/70 bg-card p-4 text-left transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       onClick={onNavigate}
       type="button"
     >
@@ -183,7 +188,7 @@ function SummaryCard({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {stat}
-          <ChevronRight className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+          <ChevronRight className="size-3.5 text-muted-foreground transition-transform group-hover/summary:translate-x-0.5" />
         </div>
       </div>
       {children}
@@ -379,6 +384,7 @@ export function HomePage() {
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [staticInfoError, setStaticInfoError] = useState(false)
   const { data: liveInfo } = useLiveHome()
+  const { data: deviceInventory } = useDeviceInventory()
 
   const loadStaticInfo = () => {
     setStaticInfoError(false)
@@ -394,9 +400,10 @@ export function HomePage() {
     loadStaticInfo()
   })
 
-  const networkCards = staticInfo
-    ? mergeVisibleNetworkAdapters(staticInfo.networkAdapters, liveInfo)
+  const networkCards = deviceInventory
+    ? mergeVisibleNetworkAdapters(deviceInventory.networkAdapters, liveInfo)
     : []
+  const disks = deviceInventory?.disks ?? []
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
@@ -420,7 +427,7 @@ export function HomePage() {
                   <WindowsCard s={staticInfo} />
                   <CpuSummary live={liveInfo} s={staticInfo} />
                   <RamSummary live={liveInfo} s={staticInfo} />
-                  {staticInfo.disks.map((disk, i) => (
+                  {disks.map((disk, i) => (
                     <DiskSummary disk={disk} index={i} key={disk.mountPoint} />
                   ))}
                   {networkCards.map(adapter => (

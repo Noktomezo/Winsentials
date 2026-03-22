@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 #[cfg(target_os = "windows")]
 use std::collections::HashMap;
 
+use crate::system_info::is_hidden_virtual_adapter_name;
 use crate::system_info::types::NetworkAdapterInfo;
 
 #[cfg(target_os = "windows")]
@@ -235,6 +236,7 @@ pub fn gather_network_adapters() -> Vec<NetworkAdapterInfo> {
                         .to_ascii_lowercase()
                         .contains("bluetooth")
                         || name.to_ascii_lowercase().contains("bluetooth")
+                        || is_hidden_virtual_adapter_name(&name, &adapter_description)
                     {
                         current = adapter.Next;
                         continue;

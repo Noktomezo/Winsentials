@@ -24,6 +24,11 @@ interface MemChartProps {
   yDomain?: [number, number]
 }
 
+interface LiveGpuErrorStateProps {
+  message: string
+  onRetry: () => void
+}
+
 function gpuUsage(gpu: Pick<LiveGpuInfo, 'util3d' | 'utilCopy' | 'utilEncode' | 'utilDecode' | 'utilHighPriority3d' | 'utilHighPriorityCompute'>): number {
   return Math.max(
     gpu.util3d,
@@ -166,7 +171,7 @@ function LiveGpuLoadingState() {
   )
 }
 
-function LiveGpuErrorState({ message, onRetry }: { message: string, onRetry: () => void }) {
+function LiveGpuErrorState({ message, onRetry }: LiveGpuErrorStateProps) {
   const { t } = useTranslation()
 
   return (

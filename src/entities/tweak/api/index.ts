@@ -1,5 +1,6 @@
 import type {
   RequiresAction,
+  TweakConflict,
   TweakControlType,
   TweakMeta,
   TweakResult,
@@ -10,6 +11,7 @@ import { invoke } from '@tauri-apps/api/core'
 
 interface BackendTweakMeta {
   category: string
+  conflicts?: BackendTweakConflict[]
   control: TweakControlType
   current_value: string
   default_value: string
@@ -23,6 +25,10 @@ interface BackendTweakMeta {
   risk: TweakMeta['risk']
   risk_description?: string
   short_description: string
+}
+
+interface BackendTweakConflict {
+  description: TweakConflict['description']
 }
 
 type BackendRequiresAction
@@ -59,6 +65,7 @@ function mapRequiresAction(action: BackendRequiresAction): RequiresAction {
 function mapTweakMeta(meta: BackendTweakMeta): TweakMeta {
   return {
     category: meta.category,
+    conflicts: meta.conflicts,
     control: meta.control,
     currentValue: meta.current_value,
     defaultValue: meta.default_value,

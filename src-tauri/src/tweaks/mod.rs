@@ -30,6 +30,11 @@ pub struct TweakOption {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TweakConflict {
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TweakControlType {
     Toggle,
@@ -61,6 +66,7 @@ pub struct TweakMeta {
     pub recommended_value: String,
     pub risk: RiskLevel,
     pub risk_description: Option<String>,
+    pub conflicts: Option<Vec<TweakConflict>>,
     pub requires_action: RequiresAction,
     pub min_os_build: Option<u32>,
     pub min_os_ubr: Option<u32>,

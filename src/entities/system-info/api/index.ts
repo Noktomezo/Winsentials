@@ -1,5 +1,6 @@
 import type {
   CpuInfo,
+  DeviceInventoryInfo,
   DiskInfo,
   DiskLiveInfo,
   GpuInfo,
@@ -117,6 +118,11 @@ interface BackendStaticSystemInfo {
   network_adapters: BackendNetworkAdapterInfo[]
   gpus: BackendGpuInfo[]
   motherboard: BackendMotherboardInfo
+  disks: BackendDiskInfo[]
+}
+
+interface BackendDeviceInventoryInfo {
+  network_adapters: BackendNetworkAdapterInfo[]
   disks: BackendDiskInfo[]
 }
 
@@ -364,6 +370,13 @@ function mapLive(raw: BackendLiveSystemInfo): LiveSystemInfo {
   }
 }
 
+function mapDeviceInventory(raw: BackendDeviceInventoryInfo): DeviceInventoryInfo {
+  return {
+    networkAdapters: raw.network_adapters.map(mapNetworkAdapter),
+    disks: raw.disks.map(mapDisk),
+  }
+}
+
 function mapLiveCpu(raw: BackendLiveCpuInfo): LiveCpuInfo {
   return {
     cpuUsagePercent: raw.cpu_usage_percent,
@@ -422,6 +435,11 @@ function mapLiveHome(raw: BackendLiveHomeInfo): LiveHomeInfo {
 export async function getStaticSystemInfo(): Promise<StaticSystemInfo> {
   const raw = await invoke<BackendStaticSystemInfo>('get_static_system_info')
   return mapStatic(raw)
+}
+
+export async function getDeviceInventoryInfo(): Promise<DeviceInventoryInfo> {
+  const raw = await invoke<BackendDeviceInventoryInfo>('get_device_inventory_info')
+  return mapDeviceInventory(raw)
 }
 
 export async function getLiveSystemInfo(): Promise<LiveSystemInfo> {

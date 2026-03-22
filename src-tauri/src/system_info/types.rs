@@ -12,6 +12,12 @@ pub struct StaticSystemInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceInventoryInfo {
+    pub network_adapters: Vec<NetworkAdapterInfo>,
+    pub disks: Vec<DiskInfo>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RamInfo {
     pub total_bytes: u64,
     pub speed_mhz: Option<u32>,

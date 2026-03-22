@@ -39,6 +39,10 @@
     "tweaks": {
       "classicContextMenu": {
         "detailDescription": "Disables the simplified Windows 11 context menu and restores the classic Windows 10 menu without requiring the Show more options step.",
+        "conflicts": {
+          "startAllBack": "May conflict with StartAllBack, StartIsBack, or similar shell customization tools that modify the same context menu behavior outside the registry path used by Winsentials.",
+          "windhawk": "May conflict with Windhawk mods or similar tools that restore the classic context menu by patching themes or system files instead of using the registry key managed by Winsentials."
+        },
         "name": "Classic Context Menu",
         "shortDescription": "Restores the classic context menu layout in Windows 11."
       },
@@ -69,6 +73,9 @@
       },
       "removeShortcutArrows": {
         "detailDescription": "Changes the system shortcut overlay icon to a transparent one.",
+        "conflicts": {
+          "windhawkTransparentWindows": "Conflicts with the Windhawk transparent windows mod. On some shortcuts, black squares may appear instead of removing the arrow overlay."
+        },
         "name": "Remove Shortcut Arrows",
         "shortDescription": "Removes the small arrows from shortcut icons on the desktop."
       },
@@ -126,6 +133,7 @@
     "home": "Home",
     "network": "Network",
     "security": "Security",
+    "startup": "Startup",
     "settings": "Settings"
   },
   "network": {
@@ -216,6 +224,108 @@
     "updates": "Updates",
     "updatesDescription": "Manage how the app checks for updates."
   },
+  "startup": {
+    "title": "Startup Apps",
+    "description": "Manage Windows startup entries across the registry, startup folders, and scheduled tasks.",
+    "searchPlaceholder": "Search startup entries",
+    "filters": {
+      "source": "Source",
+      "status": "Status",
+      "allSources": "All sources",
+      "allStatuses": "All statuses"
+    },
+    "summary": {
+      "total": "Visible",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "sections": {
+      "summary": "Summary"
+    },
+    "sources": {
+      "registry": "Registry",
+      "startupFolder": "Startup Folder",
+      "scheduledTask": "Scheduled Task"
+    },
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "scope": {
+      "currentUser": "Current User",
+      "allUsers": "All Users"
+    },
+    "badges": {
+      "runOnce": "Run once"
+    },
+    "publishers": {
+      "unknown": "Unknown publisher"
+    },
+    "fields": {
+      "source": "Source",
+      "scope": "Scope",
+      "status": "Status",
+      "location": "Location",
+      "command": "Command",
+      "targetPath": "Target path",
+      "registryHive": "Registry hive",
+      "registryPath": "Registry path",
+      "registryValueName": "Value name",
+      "startupFolderPath": "Startup folder",
+      "startupFilePath": "Startup file",
+      "taskPath": "Task path",
+      "taskAuthor": "Author",
+      "taskDescription": "Description",
+      "taskTriggers": "Triggers",
+      "taskActions": "Actions"
+    },
+    "actions": {
+      "enable": "Enable",
+      "disable": "Disable",
+      "delete": "Delete",
+      "details": "Details",
+      "more": "More actions",
+      "copyCommand": "Copy command",
+      "copyRegistryPath": "Copy registry path",
+      "copyTaskPath": "Copy task path",
+      "copyPath": "Copy path",
+      "copyLocation": "Copy location",
+      "openContainingFolder": "Open containing folder",
+      "openLocation": "Open location"
+    },
+    "confirm": {
+      "deleteTitle": "Delete startup entry",
+      "deleteDescription": "Delete \"{{name}}\" from startup?"
+    },
+    "empty": {
+      "title": "No startup entries",
+      "description": "No items match the current search and filters."
+    },
+    "errors": {
+      "load": "Failed to load startup entries.",
+      "partial": "Some startup sources could not be read.",
+      "enable": "Failed to enable the startup entry.",
+      "disable": "Failed to disable the startup entry.",
+      "delete": "Failed to delete the startup entry.",
+      "copy": "Failed to copy the value.",
+      "openFolder": "Failed to open the containing folder."
+    },
+    "success": {
+      "enabled": "Startup entry enabled.",
+      "disabled": "Startup entry disabled.",
+      "deleted": "Startup entry deleted.",
+      "copyCommand": "Command copied to clipboard.",
+      "copyRegistryPath": "Registry path copied to clipboard.",
+      "copyTaskPath": "Task path copied to clipboard.",
+      "copyPath": "Path copied to clipboard."
+    },
+    "states": {
+      "idle": "Waiting to load.",
+      "loaded": "Loaded.",
+      "loading": "Loading...",
+      "loadingDescription": "Sources are still loading. Entries will appear progressively."
+    }
+  },
   "cpu": {
     "loadError": "Failed to load processor information.",
     "core": "Core",
@@ -278,6 +388,7 @@
     "ipv6": "IPv6",
     "liveLoadError": "Failed to load live network telemetry.",
     "loadError": "Failed to load network adapter information.",
+    "adapterUnavailable": "This network adapter is no longer available.",
     "max60": "Max over 60 sec",
     "openAdapter": "Open",
     "receive": "Receive",
@@ -317,6 +428,7 @@
     "format": "Format",
     "fileSystem": "File system",
     "loadError": "Failed to load disk information.",
+    "diskUnavailable": "This disk is no longer available.",
     "mountPoint": "Mount point",
     "no": "No",
     "notFound": "Disk not found.",
@@ -347,6 +459,7 @@
       "restartNow": "Restart now",
       "retry": "Retry",
       "showDetails": "Show details",
+      "showConflictDetails": "Show conflict details",
       "showRiskDetails": "Show risk details"
     },
     "apps": {

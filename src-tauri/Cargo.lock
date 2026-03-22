@@ -6653,7 +6653,10 @@ dependencies = [
 name = "winsentials"
 version = "0.1.2"
 dependencies = [
+ "base64 0.22.1",
+ "png 0.18.1",
  "rayon",
+ "regex",
  "serde",
  "serde_json",
  "sysinfo",

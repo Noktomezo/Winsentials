@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { TweakMeta, WindowsVersion } from '@/entities/tweak/model/types'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
-import { BellOff, CircleAlert, Clock3, Cpu, ExternalLink, FileType, Gauge, HardDrive, History, House, Images, Info, Menu, Network, PanelsTopLeft, Power, RotateCcw, Shield, ShieldOff, TextCursor, TriangleAlert, Type, Zap } from 'lucide-react'
+import { ArrowLeftRight, BellOff, CircleAlert, Clock3, Cpu, ExternalLink, FileType, Gauge, HardDrive, History, House, Images, Info, Menu, Network, PanelsTopLeft, Power, RotateCcw, Shield, ShieldOff, TextCursor, TriangleAlert, Type, Zap } from 'lucide-react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/shared/lib/toast'
 import { cn } from '@/shared/lib/utils'
@@ -101,6 +101,7 @@ export function TweakCard({
   const isUnsupported = isBelowMinBuild(currentBuild, tweak)
   const minBuild = formatMinBuild(tweak)
   const copyableRiskCommand = COPYABLE_RISK_COMMANDS[tweak.id]
+  const conflicts = tweak.conflicts ?? []
 
   const handleCopyRiskCommand = async () => {
     if (!copyableRiskCommand) {
@@ -216,6 +217,32 @@ export function TweakCard({
                       }}
                       i18nKey={tweak.riskDescription}
                     />
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {conflicts.length > 0 && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      aria-label={t('tweaks.actions.showConflictDetails')}
+                      className="inline-flex items-center justify-center text-amber-700 transition-colors hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
+                      type="button"
+                    >
+                      <TweakMetaPill className="text-inherit">
+                        <ArrowLeftRight aria-hidden className="size-3.5" />
+                      </TweakMetaPill>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-80 text-pretty whitespace-pre-line" sideOffset={8}>
+                    {conflicts.length === 1
+                      ? <p>{t(conflicts[0].description)}</p>
+                      : (
+                          <ul className="list-disc space-y-1 pl-4">
+                            {conflicts.map(conflict => (
+                              <li key={conflict.description}>{t(conflict.description)}</li>
+                            ))}
+                          </ul>
+                        )}
                   </TooltipContent>
                 </Tooltip>
               )}

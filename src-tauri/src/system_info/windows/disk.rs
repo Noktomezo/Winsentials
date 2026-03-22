@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+#[cfg(target_os = "windows")]
+use std::ptr;
 
 use sysinfo::{DiskKind, Disks};
 
@@ -152,8 +154,10 @@ fn query_disk_type_label(mount_point: &str, fallback_kind: &str) -> String {
                 None,
             )
             .is_ok()
+                && bytes_returned as usize >= std::mem::size_of::<STORAGE_DEVICE_DESCRIPTOR>()
             {
-                let descriptor = &*(buffer.as_ptr() as *const STORAGE_DEVICE_DESCRIPTOR);
+                let descriptor =
+                    ptr::read_unaligned(buffer.as_ptr() as *const STORAGE_DEVICE_DESCRIPTOR);
                 let bus_label = normalize_bus_label(descriptor.BusType.0 as u32);
 
                 let mut seek_query = STORAGE_PROPERTY_QUERY {
@@ -162,7 +166,7 @@ fn query_disk_type_label(mount_point: &str, fallback_kind: &str) -> String {
                     AdditionalParameters: [0],
                 };
                 let mut seek = DEVICE_SEEK_PENALTY_DESCRIPTOR::default();
-                let has_seek_penalty = DeviceIoControl(
+                let has_seek_penalty = if DeviceIoControl(
                     handle,
                     IOCTL_STORAGE_QUERY_PROPERTY,
                     Some(&mut seek_query as *mut _ as *mut c_void),
@@ -173,13 +177,18 @@ fn query_disk_type_label(mount_point: &str, fallback_kind: &str) -> String {
                     None,
                 )
                 .is_ok()
-                    && seek.IncursSeekPenalty;
+                {
+                    Some(seek.IncursSeekPenalty)
+                } else {
+                    None
+                };
 
                 type_label = match (fallback_kind, bus_label, has_seek_penalty) {
                     ("SSD", Some(bus), _) => format!("SSD ({bus})"),
                     ("HDD", Some(bus), _) => format!("HDD ({bus})"),
-                    ("unknown", Some(bus), true) => format!("HDD ({bus})"),
-                    ("unknown", Some(bus), false) => format!("SSD ({bus})"),
+                    ("unknown", Some(bus), Some(true)) => format!("HDD ({bus})"),
+                    ("unknown", Some(bus), Some(false)) => format!("SSD ({bus})"),
+                    ("unknown", Some(_), None) => default_disk_type_label("unknown"),
                     (kind, _, _) => default_disk_type_label(kind),
                 };
             }
@@ -411,7 +420,9 @@ pub fn gather_disks() -> Vec<DiskInfo> {
                 DiskKind::Unknown(_) => "unknown".to_string(),
             };
             let metadata = DiskMetadataInfo {
-                is_system_disk: system_drive_root.as_deref() == Some(mount_point.as_str()),
+                is_system_disk: system_drive_root
+                    .as_deref()
+                    .is_some_and(|value| value.eq_ignore_ascii_case(mount_point.as_str())),
                 has_pagefile: disk_has_pagefile(&mount_point),
                 type_label: query_disk_type_label(&mount_point, &kind),
             };

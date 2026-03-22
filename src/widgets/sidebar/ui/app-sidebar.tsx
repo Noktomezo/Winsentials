@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
-import { FolderCog, House, Network, Palette, Settings2, Shield } from 'lucide-react'
+import { FolderCog, House, Network, Palette, Rocket, Settings2, Shield } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   Sidebar,
@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
 } from '@/shared/ui/sidebar'
 
-type SidebarRoute = '/home' | '/appearance' | '/behaviour' | '/security' | '/network' | '/settings'
+type SidebarRoute = '/home' | '/appearance' | '/behaviour' | '/security' | '/network' | '/startup' | '/settings'
 
 export function AppSidebar() {
   const { t } = useTranslation()
@@ -142,6 +142,20 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border/70 p-2">
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="cursor-pointer"
+              isActive={pathname === '/startup'}
+              onClick={event => handleMenuClick(event, '/startup')}
+              onFocus={() => handlePointerIntent('/startup')}
+              onMouseEnter={() => handlePointerIntent('/startup')}
+              tooltip={t('navigation.startup')}
+              type="button"
+            >
+              <Rocket />
+              <span>{t('navigation.startup')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               className="cursor-pointer"

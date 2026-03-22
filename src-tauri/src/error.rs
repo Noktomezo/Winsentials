@@ -8,7 +8,12 @@ pub enum AppError {
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
+    Json(#[from] serde_json::Error),
+    #[error(transparent)]
     Utf8(#[from] std::string::FromUtf8Error),
+    #[cfg(target_os = "windows")]
+    #[error(transparent)]
+    Windows(#[from] windows::core::Error),
     #[error("command `{command}` failed: {stderr}")]
     CommandFailed { command: String, stderr: String },
 }

@@ -1,12 +1,9 @@
 import type { ReactNode } from 'react'
-import type { NetworkAdapterInfo, NetworkIfaceStats, StaticSystemInfo } from '@/entities/system-info/model/types'
+import type { NetworkAdapterInfo, NetworkIfaceStats } from '@/entities/system-info/model/types'
 import { useNavigate, useParams } from '@tanstack/react-router'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getStaticSystemInfo } from '@/entities/system-info/api'
-import { useLiveNetwork } from '@/entities/system-info/model/live-system-store'
+import { useDeviceInventory, useLiveNetwork } from '@/entities/system-info/model/live-system-store'
 import { formatRateLocalized } from '@/shared/lib/format-size'
-import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { networkAdapterToParam } from '@/shared/lib/mount-utils'
 import { Button, Skeleton } from '@/shared/ui'
 import { LiveChart } from '@/shared/ui/live-chart'
@@ -42,29 +39,13 @@ function ceilToNiceNumber(value: number): number {
   return Math.ceil(value / magnitude) * magnitude
 }
 
-function getLiveAdapter(liveInfo: NetworkIfaceStats[] | null, adapter: NetworkAdapterInfo): NetworkIfaceStats | null {
-  return liveInfo?.find(entry => entry.name === adapter.name) ?? null
+interface LiveNetworkErrorStateProps {
+  message: string
+  onRetry: () => void
 }
 
-function getVisibleAdapters(
-  staticInfo: StaticSystemInfo,
-  liveInfo: NetworkIfaceStats[] | null,
-): NetworkAdapterInfo[] {
-  return (liveInfo ?? []).map((entry) => {
-    const staticAdapter = staticInfo.networkAdapters.find(adapter => adapter.name === entry.name)
-    return staticAdapter ?? {
-      index: -Math.abs([...entry.name].reduce((hash, char) => ((hash * 31) + char.charCodeAt(0)) | 0, 7)) - 1,
-      name: entry.name,
-      adapterDescription: entry.name,
-      dnsName: null,
-      connectionType: '-',
-      ipv4Addresses: [],
-      ipv6Addresses: [],
-      isWifi: false,
-      ssid: null,
-      signalPercent: null,
-    }
-  })
+function getLiveAdapter(liveInfo: NetworkIfaceStats[] | null, adapter: NetworkAdapterInfo): NetworkIfaceStats | null {
+  return liveInfo?.find(entry => entry.name === adapter.name) ?? null
 }
 
 interface RowProps {
@@ -107,7 +88,7 @@ function LiveNetworkLoadingState() {
   )
 }
 
-function LiveNetworkErrorState({ message, onRetry }: { message: string, onRetry: () => void }) {
+function LiveNetworkErrorState({ message, onRetry }: LiveNetworkErrorStateProps) {
   const { t } = useTranslation()
 
   return (
@@ -167,33 +148,22 @@ export function NetworkStatsPage() {
   const { t, i18n } = useTranslation()
   const params = useParams({ strict: false })
   const adapterParam = params.adapterIndex !== undefined ? decodeURIComponent(params.adapterIndex) : null
-
-  const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
-  const [staticError, setStaticError] = useState(false)
   const { data: liveInfo, error: liveError, isFetching, retry, throughputHistory: storeThroughput } = useLiveNetwork()
+  const {
+    data: deviceInventory,
+    error: inventoryError,
+    isFetching: inventoryFetching,
+    retry: retryInventory,
+  } = useDeviceInventory()
 
-  const loadStaticInfo = () => {
-    setStaticError(false)
-    getStaticSystemInfo()
-      .then(setStaticInfo)
-      .catch((error) => {
-        console.error(error)
-        setStaticError(true)
-      })
-  }
-
-  useMountEffect(() => {
-    loadStaticInfo()
-  })
-
-  if (!staticInfo) {
-    if (staticError) {
+  if (deviceInventory === null) {
+    if (inventoryError) {
       return (
         <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
           <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
             <p className="text-sm text-muted-foreground">{t('networkStats.loadError')}</p>
             <div>
-              <Button onClick={loadStaticInfo} size="sm" type="button" variant="outline">
+              <Button onClick={retryInventory} size="sm" type="button" variant="outline">
                 {t('tweaks.actions.retry')}
               </Button>
             </div>
@@ -202,25 +172,27 @@ export function NetworkStatsPage() {
       )
     }
 
-    return (
-      <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <section className="rounded-xl border border-border/70 bg-card p-4" key={i}>
-            <Skeleton className="mb-3 h-4 w-40" />
-            <div className="space-y-2.5">
-              <Skeleton className="h-3 w-full" />
-              <Skeleton className="h-3 w-4/5" />
-              <Skeleton className="h-3 w-3/5" />
-            </div>
-          </section>
-        ))}
-      </section>
-    )
+    if (inventoryFetching) {
+      return (
+        <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <section className="rounded-xl border border-border/70 bg-card p-4" key={i}>
+              <Skeleton className="mb-3 h-4 w-40" />
+              <div className="space-y-2.5">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-4/5" />
+                <Skeleton className="h-3 w-3/5" />
+              </div>
+            </section>
+          ))}
+        </section>
+      )
+    }
   }
 
-  const adapters = getVisibleAdapters(staticInfo, liveInfo)
+  const adapters = deviceInventory?.networkAdapters ?? []
   const selectedAdapter = adapterParam !== null
-    ? adapters.find(adapter => adapter.name === adapterParam) ?? staticInfo.networkAdapters.find(adapter => adapter.name === adapterParam) ?? null
+    ? adapters.find(adapter => adapter.name === adapterParam) ?? null
     : null
 
   if (liveInfo === null && isFetching) {
@@ -229,6 +201,16 @@ export function NetworkStatsPage() {
 
   if (liveInfo === null && liveError) {
     return <LiveNetworkErrorState message={t('networkStats.liveLoadError')} onRetry={retry} />
+  }
+
+  if (adapterParam !== null && deviceInventory !== null && !selectedAdapter) {
+    return (
+      <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
+        <section className="rounded-xl border border-border/70 bg-card p-4">
+          <span className="text-xs text-muted-foreground">{t('networkStats.adapterUnavailable')}</span>
+        </section>
+      </section>
+    )
   }
 
   if (selectedAdapter) {

@@ -3,14 +3,20 @@ pub mod commands;
 pub mod error;
 pub mod registry;
 pub mod shell;
+pub mod startup;
 pub mod system_info;
 pub mod tweaks;
 
 use crate::commands::app::greet;
+use crate::commands::startup::{
+    startup_delete, startup_details, startup_disable, startup_enable, startup_list_registry,
+    startup_list_scheduled_tasks, startup_list_startup_folder,
+};
 use crate::commands::system::restart_pc;
 use crate::commands::system_info::{
-    get_live_cpu_info, get_live_disk_info, get_live_gpu_info, get_live_home_info,
-    get_live_network_info, get_live_ram_info, get_live_system_info, get_static_system_info,
+    get_device_inventory_info, get_live_cpu_info, get_live_disk_info, get_live_gpu_info,
+    get_live_home_info, get_live_network_info, get_live_ram_info, get_live_system_info,
+    get_static_system_info,
 };
 use crate::commands::tweaks::{
     get_windows_build, tweak_apply, tweak_extra, tweak_reset, tweak_status, tweaks_by_category,
@@ -138,6 +144,14 @@ pub fn run() {
             tweak_extra,
             get_windows_build,
             get_static_system_info,
+            get_device_inventory_info,
+            startup_list_registry,
+            startup_list_startup_folder,
+            startup_list_scheduled_tasks,
+            startup_enable,
+            startup_disable,
+            startup_delete,
+            startup_details,
             get_live_system_info,
             get_live_home_info,
             get_live_cpu_info,

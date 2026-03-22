@@ -39,6 +39,7 @@ impl Disable8dot3NameCreationTweak {
                 recommended_value: ENABLED_VALUE.into(),
                 risk: RiskLevel::None,
                 risk_description: None,
+                conflicts: None,
                 requires_action: RequiresAction::RestartPc,
                 min_os_build: Some(10240),
                 min_os_ubr: None,

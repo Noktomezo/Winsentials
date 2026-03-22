@@ -1,7 +1,9 @@
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
 use crate::shell::restart_explorer;
-use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
+use crate::tweaks::{
+    RequiresAction, RiskLevel, Tweak, TweakConflict, TweakControlType, TweakMeta, TweakStatus,
+};
 
 const ENABLED_VALUE: &str = "enabled";
 const DISABLED_VALUE: &str = "disabled";
@@ -38,6 +40,11 @@ impl RemoveShortcutArrowsTweak {
                 recommended_value: DISABLED_VALUE.into(),
                 risk: RiskLevel::None,
                 risk_description: None,
+                conflicts: Some(vec![TweakConflict {
+                    description:
+                        "appearance.tweaks.removeShortcutArrows.conflicts.windhawkTransparentWindows"
+                            .into(),
+                }]),
                 requires_action: RequiresAction::RestartApp {
                     app_name: "Explorer".into(),
                 },

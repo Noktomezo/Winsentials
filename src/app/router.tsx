@@ -192,6 +192,15 @@ const networkStatsRoute = createRoute({
   ),
 })
 
+const startupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'startup',
+  component: lazyRouteComponent(
+    () => import('@/pages/startup/ui/startup-page'),
+    'StartupPage',
+  ),
+})
+
 const networkAdapterRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'network-stats/$adapterIndex',
@@ -208,6 +217,7 @@ const routeTree = rootRoute.addChildren([
   appearanceRoute,
   securityRoute,
   networkRoute,
+  startupRoute,
   settingsRoute,
   cpuRoute,
   ramRoute,

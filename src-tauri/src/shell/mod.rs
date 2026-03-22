@@ -38,8 +38,15 @@ pub fn run_netsh(args: &[&str]) -> Result<String, AppError> {
 }
 
 pub fn run_powershell(script: &str) -> Result<String, AppError> {
+    let wrapped_script = format!(
+        "[Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false); \
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); \
+$OutputEncoding = [Console]::OutputEncoding; \
+{}",
+        script
+    );
     let mut cmd = Command::new("powershell");
-    cmd.args(["-NoProfile", "-NonInteractive", "-Command", script]);
+    cmd.args(["-NoProfile", "-NonInteractive", "-Command", &wrapped_script]);
 
     #[cfg(target_os = "windows")]
     cmd.creation_flags(CREATE_NO_WINDOW);

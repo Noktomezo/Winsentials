@@ -72,6 +72,7 @@ export function usePageHeader(pathname: string): PageHeader {
     '/ram': { title: t('home.ram'), description: t('ram.description') },
     '/gpu': { title: t('home.gpu'), description: t('gpu.description') },
     '/network-stats': { title: t('home.network'), description: t('networkStats.description') },
+    '/startup': { title: t('startup.title'), description: t('startup.description') },
     '/behaviour': { title: t('behaviour.title'), description: t('behaviour.description') },
     '/appearance': { title: t('appearance.title'), description: t('appearance.description') },
     '/security': { title: t('security.title'), description: t('security.description') },

@@ -38,6 +38,7 @@ impl DisableSecurityCenterNotificationsTweak {
                 recommended_value: DISABLED_VALUE.into(),
                 risk: RiskLevel::None,
                 risk_description: None,
+                conflicts: None,
                 requires_action: RequiresAction::RestartPc,
                 min_os_build: Some(MIN_WINDOWS_10_CREATORS_UPDATE_BUILD),
                 min_os_ubr: None,

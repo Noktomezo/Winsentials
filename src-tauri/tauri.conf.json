@@ -16,6 +16,8 @@
         "title": "Winsentials",
         "width": 925,
         "height": 715,
+        "minWidth": 925,
+        "minHeight": 715,
         "resizable": true,
         "maximizable": true,
         "transparent": true,

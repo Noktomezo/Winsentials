@@ -1,13 +1,10 @@
 import type { ReactNode } from 'react'
-import type { DiskInfo, DiskLiveInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
+import type { DiskInfo, DiskLiveInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useParams } from '@tanstack/react-router'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getStaticSystemInfo } from '@/entities/system-info/api'
-import { useLiveDisks } from '@/entities/system-info/model/live-system-store'
+import { useDeviceInventory, useLiveDisks } from '@/entities/system-info/model/live-system-store'
 import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
-import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { mountToParam } from '@/shared/lib/mount-utils'
 import { Button } from '@/shared/ui/button'
 import { LiveChart } from '@/shared/ui/live-chart'
@@ -42,32 +39,22 @@ function getDiskLive(liveInfo: DiskLiveInfo[] | null, mountPoint: string): DiskL
 export function DiskDetailPage() {
   const { t, i18n } = useTranslation()
   const { disk: diskParam } = useParams({ from: '/storage/$disk' })
-  const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
-  const [staticInfoError, setStaticInfoError] = useState(false)
   const { data: liveInfo, activeHistory: storeActiveHistory } = useLiveDisks()
+  const {
+    data: deviceInventory,
+    error: inventoryError,
+    isFetching: inventoryFetching,
+    retry: retryInventory,
+  } = useDeviceInventory()
 
-  const loadStaticInfo = () => {
-    setStaticInfoError(false)
-    getStaticSystemInfo()
-      .then(setStaticInfo)
-      .catch((error) => {
-        console.error(error)
-        setStaticInfoError(true)
-      })
-  }
-
-  useMountEffect(() => {
-    loadStaticInfo()
-  })
-
-  if (!staticInfo) {
-    if (staticInfoError) {
+  if (deviceInventory === null) {
+    if (inventoryError) {
       return (
         <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
           <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
             <p className="text-sm text-muted-foreground">{t('storage.loadError')}</p>
             <div>
-              <Button onClick={loadStaticInfo} size="sm" type="button" variant="outline">
+              <Button onClick={retryInventory} size="sm" type="button" variant="outline">
                 {t('tweaks.actions.retry')}
               </Button>
             </div>
@@ -76,29 +63,34 @@ export function DiskDetailPage() {
       )
     }
 
+    if (inventoryFetching) {
+      return (
+        <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
+          <section className="rounded-xl border border-border/70 bg-card p-4">
+            <Skeleton className="mb-3 h-4 w-32" />
+            <div className="space-y-2.5">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-3 w-full" />
+            </div>
+          </section>
+        </section>
+      )
+    }
+  }
+
+  const disk: DiskInfo | undefined = deviceInventory?.disks.find(d => mountToParam(d.mountPoint) === diskParam)
+
+  if (deviceInventory !== null && !disk) {
     return (
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-        <section className="rounded-xl border border-border/70 bg-card p-4">
-          <Skeleton className="mb-3 h-4 w-32" />
-          <div className="space-y-2.5">
-            <Skeleton className="h-3 w-full" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-3 w-full" />
-          </div>
-        </section>
+        <p className="text-xs text-muted-foreground">{t('storage.diskUnavailable')}</p>
       </section>
     )
   }
 
-  const diskIndex = staticInfo.disks.findIndex(d => mountToParam(d.mountPoint) === diskParam)
-  const disk: DiskInfo | undefined = staticInfo.disks[diskIndex]
-
   if (!disk) {
-    return (
-      <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-        <p className="text-xs text-muted-foreground">{t('storage.notFound')}</p>
-      </section>
-    )
+    return null
   }
 
   const diskLive = getDiskLive(liveInfo, disk.mountPoint)

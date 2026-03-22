@@ -513,52 +513,44 @@ body {
   }
 }
 
-@keyframes marquee-bounce {
-  0%, 15%   { transform: translateX(0); }
-  85%, 100% { transform: translateX(var(--marquee-offset, 0px)); }
+[data-overflow='true'] [data-marquee-inner='true'] {
+  transform: translateX(0);
+}
+
+.group\/summary:hover [data-overflow='true'] [data-marquee-inner='true'],
+.group\/summary:focus-within [data-overflow='true'] [data-marquee-inner='true'] {
+  transform: translateX(var(--marquee-offset, 0px));
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .marquee-bounce,
-  [style*="marquee-bounce"] {
-    animation: none !important;
+  [data-marquee-inner='true'] {
+    transition: none !important;
     transform: none !important;
   }
 }
 
 /* ─── Sonner Toast Theme ────────────────────────────────────────────────── */
 
-/* Layout — buttons below content */
-[data-sonner-toast] {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: start !important;
-  column-gap: 8px;
-  row-gap: 12px;
+/* Sonner layout — stay close to the library defaults so icon/content keep their native flow */
+[data-sonner-toast][data-styled='true'] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px;
 }
 
-[data-sonner-toast] [data-content] {
-  grid-column: 1 / -1;
+[data-sonner-toast][data-styled='true'] [data-content] {
   min-width: 0;
+  flex: 1;
 }
 
-[data-sonner-toast] [data-button],
-[data-sonner-toast] [data-cancel] {
-  flex: 0 0 auto;
-  margin: 8px 0 0 !important;
-  align-self: end;
+[data-sonner-toast][data-styled='true'] [data-icon] {
+  align-self: flex-start;
+  margin-top: 0.125rem;
 }
 
-[data-sonner-toast] [data-action] {
-  grid-row: 2;
-  grid-column: 1;
-  justify-self: start;
-}
-
-[data-sonner-toast] [data-cancel] {
-  grid-row: 2;
-  grid-column: 2;
-  justify-self: start;
+[data-sonner-toast][data-styled='true'] [data-button],
+[data-sonner-toast][data-styled='true'] [data-cancel] {
+  margin-top: 0 !important;
 }
 
 /* Light (default — inherits from :root CSS vars) */

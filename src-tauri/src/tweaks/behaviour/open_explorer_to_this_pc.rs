@@ -36,6 +36,7 @@ impl OpenExplorerToThisPcTweak {
                 recommended_value: DISABLED_VALUE.into(),
                 risk: RiskLevel::None,
                 risk_description: None,
+                conflicts: None,
                 requires_action: RequiresAction::None,
                 min_os_build: Some(10240),
                 min_os_ubr: None,
