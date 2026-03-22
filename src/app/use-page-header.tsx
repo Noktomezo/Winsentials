@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { StaticSystemInfo } from '@/entities/system-info/model/types'
-import { useSyncExternalStore } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { mountLabel, mountToParam } from '@/shared/lib/mount-utils'
@@ -67,7 +67,7 @@ export function usePageHeader(pathname: string): PageHeader {
   const staticInfo = useStaticInfo()
 
   // ── Static pages ────────────────────────────────────────────────────────────
-  const staticMap: Record<string, PageHeader> = {
+  const staticMap: Record<string, PageHeader> = useMemo(() => ({
     '/home': { title: t('home.title'), description: t('home.description') },
     '/ram': { title: t('home.ram'), description: t('ram.description') },
     '/gpu': { title: t('home.gpu'), description: t('gpu.description') },
@@ -78,7 +78,7 @@ export function usePageHeader(pathname: string): PageHeader {
     '/security': { title: t('security.title'), description: t('security.description') },
     '/network': { title: t('network.title'), description: t('network.description') },
     '/settings': { title: t('settings.title'), description: t('settings.description') },
-  }
+  }), [t])
   if (staticMap[pathname]) { return staticMap[pathname] }
 
   // ── CPU: /cpu ────────────────────────────────────────────────────────────────

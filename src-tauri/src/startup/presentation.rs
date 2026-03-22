@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 use base64::Engine;
 use png::{BitDepth, ColorType, Encoder};
 use regex::Regex;
-use windows::Win32::Foundation::MAX_PATH;
+use windows::Win32::Foundation::{MAX_PATH, RPC_E_CHANGED_MODE};
 use windows::Win32::Graphics::Gdi::{
     BI_RGB, BITMAPINFO, BITMAPINFOHEADER, CreateCompatibleDC, CreateDIBSection, DIB_RGB_COLORS,
     DeleteDC, DeleteObject, GetDIBits, HGDIOBJ, SelectObject,
@@ -85,7 +85,7 @@ pub fn registry_presentation(raw_name: &str, command: Option<&str>) -> StartupPr
         icon_data_url: resolve_icon_data_url(executable),
         target_path: executable.map(path_to_string),
         arguments: parsed.arguments,
-        working_directory: executable.and_then(Path::parent).map(path_to_string),
+        working_directory: None,
     }
 }
 
@@ -166,10 +166,19 @@ fn parse_quoted_command(raw: &str) -> Option<ParsedCommand> {
 fn parse_unquoted_command(raw: &str) -> Option<ParsedCommand> {
     let lower = raw.to_ascii_lowercase();
     for extension in command_extensions() {
-        if let Some(index) = lower.find(extension) {
+        let mut search_start = 0;
+        while let Some(relative_index) = lower[search_start..].find(extension) {
+            let index = search_start + relative_index;
             let end = index + extension.len();
+            let after = raw[end..].chars().next();
+            if after.is_some_and(|value| !value.is_whitespace()) {
+                search_start = end;
+                continue;
+            }
+
             let executable = raw[..end].trim();
             if executable.is_empty() {
+                search_start = end;
                 continue;
             }
 
@@ -667,10 +676,17 @@ struct ComGuard {
 
 impl ComGuard {
     fn new() -> windows::core::Result<Self> {
-        unsafe {
-            CoInitializeEx(None, COINIT_MULTITHREADED).ok()?;
+        let status = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
+        if status.is_ok() {
+            return Ok(Self { initialized: true });
         }
-        Ok(Self { initialized: true })
+
+        if status == RPC_E_CHANGED_MODE {
+            return Ok(Self { initialized: false });
+        }
+
+        status.ok()?;
+        unreachable!("successful COM initialization should have returned earlier")
     }
 }
 

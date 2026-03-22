@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use rayon::prelude::*;
 
-use crate::system_info::types::GpuInfo;
+use crate::system_info::types::{GpuInfo, LiveGpuMetrics};
 
 #[cfg(target_os = "windows")]
 fn normalise_driver_date(s: &str) -> Option<String> {
@@ -507,7 +507,11 @@ fn pdh_collect_gpu_usage(
 }
 
 #[cfg(target_os = "windows")]
-pub fn gather_gpu_live(gpus: &[GpuInfo], pdh_query: isize, pdh_counter: isize) -> Vec<GpuInfo> {
+pub fn gather_gpu_live(
+    gpus: &[GpuInfo],
+    pdh_query: isize,
+    pdh_counter: isize,
+) -> Vec<LiveGpuMetrics> {
     use windows::Win32::Foundation::LUID;
     use windows::Win32::Graphics::Dxgi::{
         CreateDXGIFactory1, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL,
@@ -596,14 +600,8 @@ pub fn gather_gpu_live(gpus: &[GpuInfo], pdh_query: isize, pdh_counter: isize) -
                 None => (0, 0, 0),
             };
 
-            GpuInfo {
+            LiveGpuMetrics {
                 index: gpu.index,
-                name: gpu.name.clone(),
-                vendor: gpu.vendor.clone(),
-                is_integrated: gpu.is_integrated,
-                driver_version: gpu.driver_version.clone(),
-                driver_date: gpu.driver_date.clone(),
-                directx_version: gpu.directx_version.clone(),
                 vram_total_mb: gpu.vram_total_mb,
                 vram_used_mb,
                 vram_shared_mb,
@@ -617,17 +615,16 @@ pub fn gather_gpu_live(gpus: &[GpuInfo], pdh_query: isize, pdh_counter: isize) -
                 util_high_priority_3d: get_eng("HighPriority3D"),
                 util_high_priority_compute: get_eng("HighPriorityCompute"),
                 processes: vec![],
-                pci_bus: gpu.pci_bus,
-                pci_device: gpu.pci_device,
-                pci_function: gpu.pci_function,
-                luid_low: low,
-                luid_high: high,
             }
         })
         .collect()
 }
 
 #[cfg(not(target_os = "windows"))]
-pub fn gather_gpu_live(_gpus: &[GpuInfo], _pdh_query: isize, _pdh_counter: isize) -> Vec<GpuInfo> {
+pub fn gather_gpu_live(
+    _gpus: &[GpuInfo],
+    _pdh_query: isize,
+    _pdh_counter: isize,
+) -> Vec<LiveGpuMetrics> {
     vec![]
 }

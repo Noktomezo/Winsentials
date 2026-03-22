@@ -141,7 +141,7 @@ export interface LiveSystemInfo {
   ramNonpagedPoolBytes: number
   disks: DiskLiveInfo[]
   network: NetworkIfaceStats[]
-  gpus: GpuInfo[]
+  gpus: LiveGpuInfo[]
 }
 
 export interface LiveHomeInfo {

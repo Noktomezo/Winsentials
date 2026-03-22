@@ -37,26 +37,9 @@ function mergeVisibleNetworkAdapters(
   staticAdapters: NetworkAdapterInfo[],
   live: LiveHomeInfo | null,
 ): NetworkAdapterInfo[] {
-  return (live?.network ?? []).map((entry) => {
-    const staticAdapter = staticAdapters.find(adapter => adapter.name === entry.name)
-
-    if (staticAdapter) {
-      return staticAdapter
-    }
-
-    return {
-      index: -Math.abs([...entry.name].reduce((hash, char) => ((hash * 31) + char.charCodeAt(0)) | 0, 7)) - 1,
-      name: entry.name,
-      adapterDescription: entry.name,
-      dnsName: null,
-      connectionType: '-',
-      ipv4Addresses: [],
-      ipv6Addresses: [],
-      isWifi: false,
-      ssid: null,
-      signalPercent: null,
-    }
-  })
+  return (live?.network ?? [])
+    .map(entry => staticAdapters.find(adapter => adapter.name === entry.name) ?? null)
+    .filter((adapter): adapter is NetworkAdapterInfo => adapter !== null)
 }
 
 // ─── Marquee ──────────────────────────────────────────────────────────────────
@@ -288,7 +271,7 @@ function NetworkSummary({
   return (
     <SummaryCard
       icon={Network}
-      onNavigate={() => void navigate({ to: '/network-stats/$adapterIndex', params: { adapterIndex: networkAdapterToParam(adapter.name) } })}
+      onNavigate={() => void navigate({ to: '/network-stats/$adapterName', params: { adapterName: networkAdapterToParam(adapter.name) } })}
       stat={(
         <div className="flex gap-2">
           <span className="text-xs tabular-nums text-primary">

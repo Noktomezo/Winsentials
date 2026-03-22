@@ -163,7 +163,7 @@ interface BackendLiveSystemInfo {
   ram_nonpaged_pool_bytes: number
   disks: BackendDiskLiveInfo[]
   network: BackendNetworkIfaceStats[]
-  gpus: BackendGpuInfo[]
+  gpus: BackendLiveGpuInfo[]
 }
 
 interface BackendLiveCpuInfo {
@@ -366,7 +366,7 @@ function mapLive(raw: BackendLiveSystemInfo): LiveSystemInfo {
     ramNonpagedPoolBytes: raw.ram_nonpaged_pool_bytes,
     disks: raw.disks.map(mapDiskLive),
     network: raw.network.map(mapNetwork),
-    gpus: raw.gpus.map(mapGpu),
+    gpus: raw.gpus.map(mapLiveGpu),
   }
 }
 

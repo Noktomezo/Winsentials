@@ -113,7 +113,7 @@ function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
     <button
       className="flex w-full flex-col gap-3 rounded-xl border border-border/70 bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-accent/20"
       onClick={() => {
-        void navigate({ to: '/network-stats/$adapterIndex', params: { adapterIndex: networkAdapterToParam(adapter.name) } })
+        void navigate({ to: '/network-stats/$adapterName', params: { adapterName: networkAdapterToParam(adapter.name) } })
       }}
       type="button"
     >
@@ -147,7 +147,7 @@ function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
 export function NetworkStatsPage() {
   const { t, i18n } = useTranslation()
   const params = useParams({ strict: false })
-  const adapterParam = params.adapterIndex !== undefined ? decodeURIComponent(params.adapterIndex) : null
+  const adapterParam = params.adapterName !== undefined ? decodeURIComponent(params.adapterName) : null
   const { data: liveInfo, error: liveError, isFetching, retry, throughputHistory: storeThroughput } = useLiveNetwork()
   const {
     data: deviceInventory,

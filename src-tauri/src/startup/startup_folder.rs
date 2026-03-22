@@ -34,7 +34,6 @@ pub fn disable_entry(id: &str) -> Result<StartupEntry, AppError> {
         .and_then(|value| value.to_str())
         .ok_or_else(|| AppError::message("startup file has no valid name"))?;
     let disabled_file_path = unique_disabled_path(&disabled_dir, file_name, id);
-    fs::rename(&original_path, &disabled_file_path)?;
 
     let metadata = DisabledStartupFileMetadata {
         id: id.to_string(),
@@ -44,10 +43,20 @@ pub fn disable_entry(id: &str) -> Result<StartupEntry, AppError> {
         disabled_at: "now".to_string(),
         source_kind: "startup_folder".to_string(),
     };
-    fs::write(
-        startup_sidecar_path(&disabled_file_path),
-        serde_json::to_vec_pretty(&metadata)?,
-    )?;
+    let sidecar_path = startup_sidecar_path(&disabled_file_path);
+    let metadata_bytes = serde_json::to_vec_pretty(&metadata)?;
+
+    fs::rename(&original_path, &disabled_file_path)?;
+
+    if let Err(error) = fs::write(&sidecar_path, &metadata_bytes) {
+        let _ = fs::remove_file(&sidecar_path);
+        return match fs::rename(&disabled_file_path, &original_path) {
+            Ok(()) => Err(AppError::from(error)),
+            Err(restore_error) => Err(AppError::message(format!(
+                "failed to write startup metadata and restore startup entry: {error}; restore error: {restore_error}"
+            ))),
+        };
+    }
 
     build_entry_from_path(
         disabled_file_path,
@@ -60,8 +69,7 @@ pub fn disable_entry(id: &str) -> Result<StartupEntry, AppError> {
 
 pub fn enable_entry(id: &str) -> Result<StartupEntry, AppError> {
     let metadata = read_disabled_metadata(id)?;
-    let original_path = PathBuf::from(&metadata.original_path);
-    let disabled_file_path = PathBuf::from(&metadata.disabled_file_path);
+    let (scope, original_path, disabled_file_path) = validate_metadata_paths(&metadata)?;
     if let Some(parent) = original_path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -70,7 +78,7 @@ pub fn enable_entry(id: &str) -> Result<StartupEntry, AppError> {
 
     build_entry_from_path(
         original_path,
-        parse_scope(&metadata.scope),
+        scope,
         StartupStatus::Enabled,
         false,
         Some(metadata.id),
@@ -84,7 +92,7 @@ pub fn delete_entry(id: &str) -> Result<(), AppError> {
     }
 
     let metadata = read_disabled_metadata(id)?;
-    let disabled_file_path = PathBuf::from(&metadata.disabled_file_path);
+    let (_, _, disabled_file_path) = validate_metadata_paths(&metadata)?;
     if disabled_file_path.exists() {
         fs::remove_file(&disabled_file_path)?;
     }
@@ -104,19 +112,15 @@ pub fn entry_details(id: &str) -> Result<StartupEntryDetails, AppError> {
     }
 
     let metadata = read_disabled_metadata(id)?;
-    let disabled_file_path = PathBuf::from(&metadata.disabled_file_path);
+    let (scope, _, disabled_file_path) = validate_metadata_paths(&metadata)?;
     let entry = build_entry_from_path(
         disabled_file_path.clone(),
-        parse_scope(&metadata.scope),
+        scope,
         StartupStatus::Disabled,
         false,
         Some(metadata.id),
     )?;
-    Ok(build_details(
-        entry,
-        parse_scope(&metadata.scope),
-        disabled_file_path,
-    ))
+    Ok(build_details(entry, scope, disabled_file_path))
 }
 
 fn list_active_entries(scope: StartupScope) -> Result<Vec<StartupEntry>, AppError> {
@@ -165,7 +169,12 @@ fn list_disabled_entries(scope: StartupScope) -> Result<Vec<StartupEntry>, AppEr
         }
 
         let metadata: DisabledStartupFileMetadata = serde_json::from_slice(&fs::read(&path)?)?;
-        let disabled_file_path = PathBuf::from(&metadata.disabled_file_path);
+        let Ok((metadata_scope, _, disabled_file_path)) = validate_metadata_paths(&metadata) else {
+            continue;
+        };
+        if metadata_scope != scope {
+            continue;
+        }
         if !disabled_file_path.exists() {
             continue;
         }
@@ -346,6 +355,45 @@ fn startup_folder_id(scope: StartupScope, path: &Path) -> String {
     )
 }
 
+fn validate_metadata_paths(
+    metadata: &DisabledStartupFileMetadata,
+) -> Result<(StartupScope, PathBuf, PathBuf), AppError> {
+    let scope = parse_scope(&metadata.scope).ok_or_else(|| {
+        AppError::message(format!(
+            "unsupported startup folder scope in disabled metadata: {}",
+            metadata.scope
+        ))
+    })?;
+    let original_path = PathBuf::from(&metadata.original_path);
+    let disabled_file_path = PathBuf::from(&metadata.disabled_file_path);
+    let expected_startup_dir = startup_dir(scope)?;
+    let expected_disabled_dir = startup_disabled_dir(scope)?;
+
+    if original_path.parent() != Some(expected_startup_dir.as_path()) {
+        return Err(AppError::message(format!(
+            "disabled startup metadata points outside startup folder: {}",
+            metadata.original_path
+        )));
+    }
+
+    if disabled_file_path.parent() != Some(expected_disabled_dir.as_path()) {
+        return Err(AppError::message(format!(
+            "disabled startup metadata points outside disabled startup folder: {}",
+            metadata.disabled_file_path
+        )));
+    }
+
+    let expected_id = startup_folder_id(scope, &original_path);
+    if metadata.id != expected_id {
+        return Err(AppError::message(format!(
+            "disabled startup metadata id does not match managed path: {}",
+            metadata.id
+        )));
+    }
+
+    Ok((scope, original_path, disabled_file_path))
+}
+
 fn scope_label(scope: StartupScope) -> &'static str {
     match scope {
         StartupScope::CurrentUser => "current_user",
@@ -353,12 +401,16 @@ fn scope_label(scope: StartupScope) -> &'static str {
     }
 }
 
-fn parse_scope(scope: &str) -> StartupScope {
+fn parse_scope(scope: &str) -> Option<StartupScope> {
     if scope.eq_ignore_ascii_case("all_users") {
-        StartupScope::AllUsers
-    } else {
-        StartupScope::CurrentUser
+        return Some(StartupScope::AllUsers);
     }
+
+    if scope.eq_ignore_ascii_case("current_user") {
+        return Some(StartupScope::CurrentUser);
+    }
+
+    None
 }
 
 fn unique_disabled_path(disabled_dir: &Path, file_name: &str, id: &str) -> PathBuf {

@@ -203,7 +203,7 @@ const startupRoute = createRoute({
 
 const networkAdapterRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: 'network-stats/$adapterIndex',
+  path: 'network-stats/$adapterName',
   component: lazyRouteComponent(
     () => import('@/pages/home/ui/network-stats-page'),
     'NetworkStatsPage',

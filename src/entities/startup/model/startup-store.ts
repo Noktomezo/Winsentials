@@ -21,6 +21,7 @@ interface StartupStoreState {
   sourceLoading: Record<StartupSource, boolean>
   sourceErrors: Record<StartupSource, string | null>
   hasLoadedSource: Record<StartupSource, boolean>
+  sourceRequestIds: Record<StartupSource, number>
   search: string
   sourceFilter: StartupSourceFilter
   statusFilter: StartupStatusFilter
@@ -68,6 +69,12 @@ const emptyLoadedState: Record<StartupSource, boolean> = {
   registry: false,
   startup_folder: false,
   scheduled_task: false,
+}
+
+const emptySourceRequestIds: Record<StartupSource, number> = {
+  registry: 0,
+  startup_folder: 0,
+  scheduled_task: 0,
 }
 
 function pushPending(current: string[], id: string) {
@@ -140,6 +147,7 @@ async function refreshSource(
     return
   }
 
+  let requestId = 0
   set(current => ({
     ...current,
     error: null,
@@ -147,44 +155,60 @@ async function refreshSource(
       ...current.sourceLoading,
       [source]: true,
     },
+    sourceRequestIds: {
+      ...current.sourceRequestIds,
+      [source]: (requestId = current.sourceRequestIds[source] + 1),
+    },
   }))
 
   try {
     const response = await fetchSource(source)
-    set(current => ({
-      ...current,
-      ...applySourceResponse(current.entriesBySource, response),
-      sourceLoading: {
-        ...current.sourceLoading,
-        [source]: false,
-      },
-      sourceErrors: {
-        ...current.sourceErrors,
-        [source]: response.error,
-      },
-      hasLoadedSource: {
-        ...current.hasLoadedSource,
-        [source]: true,
-      },
-    }))
+    set((current) => {
+      if (current.sourceRequestIds[source] !== requestId) {
+        return current
+      }
+
+      return {
+        ...current,
+        ...applySourceResponse(current.entriesBySource, response),
+        sourceLoading: {
+          ...current.sourceLoading,
+          [source]: false,
+        },
+        sourceErrors: {
+          ...current.sourceErrors,
+          [source]: response.error,
+        },
+        hasLoadedSource: {
+          ...current.hasLoadedSource,
+          [source]: true,
+        },
+      }
+    })
   }
   catch (error) {
-    set(current => ({
-      ...current,
-      sourceLoading: {
-        ...current.sourceLoading,
-        [source]: false,
-      },
-      sourceErrors: {
-        ...current.sourceErrors,
-        [source]: error instanceof Error ? error.message : 'Unknown startup source error.',
-      },
-      hasLoadedSource: {
-        ...current.hasLoadedSource,
-        [source]: true,
-      },
-      error: error instanceof Error ? error.message : 'Failed to load startup entries.',
-    }))
+    set((current) => {
+      if (current.sourceRequestIds[source] !== requestId) {
+        return current
+      }
+
+      return {
+        ...current,
+        sourceLoading: {
+          ...current.sourceLoading,
+          [source]: false,
+        },
+        sourceErrors: {
+          ...current.sourceErrors,
+          [source]: error instanceof Error ? error.message : 'Unknown startup source error.',
+        },
+        hasLoadedSource: {
+          ...current.hasLoadedSource,
+          [source]: true,
+        },
+        error: error instanceof Error ? error.message : 'Failed to load startup entries.',
+      }
+    })
   }
 }
 
@@ -205,6 +229,7 @@ export const useStartupStore = create<StartupStoreState>()((set, get) => ({
   sourceLoading: emptySourceLoading,
   sourceErrors: emptySourceErrors,
   hasLoadedSource: emptyLoadedState,
+  sourceRequestIds: emptySourceRequestIds,
   search: '',
   sourceFilter: 'all',
   statusFilter: 'all',

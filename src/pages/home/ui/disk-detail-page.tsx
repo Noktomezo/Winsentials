@@ -95,6 +95,11 @@ export function DiskDetailPage() {
 
   const diskLive = getDiskLive(liveInfo, disk.mountPoint)
   const activeHistory: ChartPoint[] = (storeActiveHistory[disk.mountPoint] ?? []).map(v => ({ value: v }))
+  const avgResponseTime = new Intl.NumberFormat(i18n.language, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(diskLive?.avgResponseMs ?? 0)
+  const diskType = t(`storage.types.${disk.kind.toLowerCase()}`, { defaultValue: disk.typeLabel })
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
@@ -114,14 +119,14 @@ export function DiskDetailPage() {
         <h3 className="text-sm font-medium text-foreground">{t('storage.diskInfo')}</h3>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Row label={t('storage.activeTime')} value={`${diskLive?.activeTimePercent ?? 0}%`} />
-          <Row label={t('storage.avgResponseTime')} value={`${(diskLive?.avgResponseMs ?? 0).toFixed(1)} ms`} />
+          <Row label={t('storage.avgResponseTime')} value={`${avgResponseTime} ms`} />
           <Row label={t('storage.readSpeed')} value={formatRate(diskLive?.readBytesPerSec ?? 0, i18n.language, t)} />
           <Row label={t('storage.writeSpeed')} value={formatRate(diskLive?.writeBytesPerSec ?? 0, i18n.language, t)} />
           <Row label={t('storage.capacity')} value={formatBytes(disk.totalBytes, i18n.language, t)} />
           <Row label={t('storage.format')} value={disk.fileSystem || '-'} />
           <Row label={t('storage.systemDisk')} value={disk.isSystemDisk ? t('storage.yes') : t('storage.no')} />
           <Row label={t('storage.pagefile')} value={disk.hasPagefile ? t('storage.yes') : t('storage.no')} />
-          <Row label={t('storage.type')} value={disk.typeLabel} />
+          <Row label={t('storage.type')} value={diskType} />
         </div>
       </section>
     </section>

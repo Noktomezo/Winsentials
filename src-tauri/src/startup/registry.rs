@@ -365,14 +365,24 @@ fn write_disabled_record(key: &RegKey, record: &DisabledRegistryRecord) -> Resul
 }
 
 fn read_disabled_record(id: &str) -> Result<DisabledRegistryRecord, AppError> {
-    let hive = if id.contains("reg:hklm:") {
-        "hklm"
-    } else {
-        "hkcu"
-    };
+    let hive = disabled_record_hive_from_id(id)?;
     let store = ensure_disabled_store_read(hive)?;
     let subkey = store.open_subkey(hex_encode(id)).map_err(AppError::from)?;
     read_disabled_record_from_key(&subkey)
+}
+
+fn disabled_record_hive_from_id(id: &str) -> Result<&'static str, AppError> {
+    if id.starts_with("reg:hklm:") {
+        return Ok("hklm");
+    }
+
+    if id.starts_with("reg:hkcu:") {
+        return Ok("hkcu");
+    }
+
+    Err(AppError::message(format!(
+        "unsupported registry startup entry id: {id}"
+    )))
 }
 
 fn read_disabled_record_from_key(key: &RegKey) -> Result<DisabledRegistryRecord, AppError> {

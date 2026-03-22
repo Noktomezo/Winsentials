@@ -8,18 +8,30 @@ use tauri::State;
 
 #[tauri::command]
 pub fn get_static_system_info(state: State<SystemInfoState>) -> Result<StaticSystemInfo, AppError> {
-    let mut cache = state
+    let cache = state
         .static_cache
         .lock()
         .map_err(|_| AppError::message("static_cache lock poisoned"))?;
     if let Some(info) = cache.as_ref() {
         return Ok(info.clone());
     }
-    let system = state
-        .system
+    drop(cache);
+
+    let info = {
+        let system = state
+            .system
+            .lock()
+            .map_err(|_| AppError::message("system lock poisoned"))?;
+        gather_static_info(&system)?
+    };
+
+    let mut cache = state
+        .static_cache
         .lock()
-        .map_err(|_| AppError::message("system lock poisoned"))?;
-    let info = gather_static_info(&system)?;
+        .map_err(|_| AppError::message("static_cache lock poisoned"))?;
+    if let Some(cached) = cache.as_ref() {
+        return Ok(cached.clone());
+    }
     *cache = Some(info.clone());
     Ok(info)
 }

@@ -5,7 +5,9 @@ use sysinfo::{CpuRefreshKind, Networks, System};
 
 use crate::system_info::is_hidden_virtual_adapter_label;
 use crate::system_info::state::PreviousNetSnapshot;
-use crate::system_info::types::{DiskLiveInfo, GpuInfo, LiveSystemInfo, NetworkIfaceStats};
+use crate::system_info::types::{
+    DiskLiveInfo, GpuInfo, LiveGpuMetrics, LiveSystemInfo, NetworkIfaceStats,
+};
 use crate::system_info::windows::cpu::{get_perf_info, pdh_collect_cpu_perf_pct};
 use crate::system_info::windows::disk::gather_disk_live;
 use crate::system_info::windows::gpu::gather_gpu_live;
@@ -120,9 +122,9 @@ pub fn gather_live_info(
     });
 
     #[cfg(target_os = "windows")]
-    let gpus_live = gather_gpu_live(gpus, pdh.gpu_query, pdh.gpu_counter);
+    let gpus_live: Vec<LiveGpuMetrics> = gather_gpu_live(gpus, pdh.gpu_query, pdh.gpu_counter);
     #[cfg(not(target_os = "windows"))]
-    let gpus_live = gather_gpu_live(gpus, 0, 0);
+    let gpus_live: Vec<LiveGpuMetrics> = gather_gpu_live(gpus, 0, 0);
 
     LiveSystemInfo {
         cpu_usage_percent,

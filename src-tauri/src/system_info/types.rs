@@ -130,7 +130,7 @@ pub struct LiveSystemInfo {
     pub ram_nonpaged_pool_bytes: u64,
     pub disks: Vec<DiskLiveInfo>,
     pub network: Vec<NetworkIfaceStats>,
-    pub gpus: Vec<GpuInfo>,
+    pub gpus: Vec<LiveGpuMetrics>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -239,7 +239,7 @@ impl LiveSystemInfo {
     }
 
     pub fn to_live_gpu_info(&self) -> Vec<LiveGpuMetrics> {
-        self.gpus.iter().map(LiveGpuMetrics::from).collect()
+        self.gpus.clone()
     }
 
     pub fn to_live_home_info(&self) -> LiveHomeInfo {

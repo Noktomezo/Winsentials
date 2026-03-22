@@ -391,6 +391,7 @@ fn split_task_identity(full_path: &str) -> (String, String) {
 
 fn task_full_path_from_id(id: &str) -> Result<String, AppError> {
     id.strip_prefix("task:")
+        .filter(|value| !value.is_empty() && value.starts_with('\\'))
         .map(|value| value.to_string())
         .ok_or_else(|| AppError::message(format!("invalid scheduled task id: {id}")))
 }

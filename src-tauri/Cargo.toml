@@ -41,6 +41,7 @@ tauri-plugin-devtools = "2.0.0"
 base64 = "0.22.1"
 png = "0.18.1"
 regex = "1.12.3"
+log = "0.4.29"
 
 [target."cfg(windows)".dependencies]
 system_shutdown = "4"

@@ -74,7 +74,13 @@ pub fn startup_sidecar_path(disabled_file_path: &Path) -> PathBuf {
     let file_name = disabled_file_path
         .file_name()
         .and_then(|value| value.to_str())
-        .unwrap_or("startup-item");
+        .unwrap_or_else(|| {
+            log::warn!(
+                "startup_sidecar_path fallback used because file_name() returned None for {}",
+                disabled_file_path.display()
+            );
+            "startup-item"
+        });
 
     disabled_file_path.with_file_name(format!("{file_name}.winsentials.json"))
 }

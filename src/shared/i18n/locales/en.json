@@ -436,11 +436,19 @@
     "readSpeed": "Read speed",
     "systemDisk": "System disk",
     "title": "Storage",
+    "types": {
+      "hdd": "Hard disk drive",
+      "ssd": "Solid-state drive",
+      "unknown": "Unknown"
+    },
     "volumeLabel": "Volume label",
     "type": "Type",
     "used": "Used",
     "writeSpeed": "Write speed",
     "yes": "Yes"
+  },
+  "dialog": {
+    "close": "Close"
   },
   "format": {
     "byte": "B",
