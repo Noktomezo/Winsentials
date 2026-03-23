@@ -1,12 +1,13 @@
 import type { TweakMeta } from '@/entities/tweak/model/types'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { applyTweak, runTweakExtra } from '@/entities/tweak/api'
+import { applyTweak, restartPc, runTweakExtra } from '@/entities/tweak/api'
 import { EMPTY_CATEGORY, useTweakCacheStore } from '@/entities/tweak/model/tweak-cache-store'
 import {
   TweakCard,
   TweakCardSkeleton,
 } from '@/features/tweak-card/ui/tweak-card'
+import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { toast } from '@/shared/lib/toast'
 import { Button } from '@/shared/ui/button'
 
@@ -36,7 +37,7 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
   const [pendingIds, setPendingIds] = useState<string[]>([])
   const categoryState = cachedCategory ?? EMPTY_CATEGORY
 
-  useEffect(() => {
+  useMountEffect(() => {
     const cached = useTweakCacheStore.getState().categories[category]
 
     if (cached?.hasLoaded) {
@@ -45,7 +46,7 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
     }
 
     void ensureCategory(category)
-  }, [category, ensureCategory, revalidateCategory])
+  })
 
   const setPending = (id: string, pending: boolean) => {
     setPendingIds(current =>
@@ -100,9 +101,16 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
       }
 
       if (tweak.requiresAction.type === 'restart_pc') {
-        toast.message(t('tweaks.prompts.restartPc'), {
+        toast.action(t('tweaks.prompts.restartPc'), {
           description: t('tweaks.prompts.restartPcDescription'),
-          duration: 7000,
+          action: {
+            label: t('tweaks.actions.restartNow'),
+            onClick: () => { void restartPc() },
+          },
+          cancel: {
+            label: t('tweaks.actions.later'),
+          },
+          duration: Number.POSITIVE_INFINITY,
         })
       }
 

@@ -14,10 +14,12 @@
     "windows": [
       {
         "title": "Winsentials",
-        "width": 900,
-        "height": 700,
-        "resizable": false,
-        "maximizable": false,
+        "width": 925,
+        "height": 715,
+        "minWidth": 925,
+        "minHeight": 715,
+        "resizable": true,
+        "maximizable": true,
         "transparent": true,
         "decorations": false,
         "zoomHotkeysEnabled": false,
@@ -25,7 +27,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'"
+      "csp": null
     }
   },
   "plugins": {

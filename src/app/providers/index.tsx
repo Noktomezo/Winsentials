@@ -4,10 +4,11 @@ import { useEffect } from 'react'
 import { usePreferencesStore } from '@/entities/settings/model/preferences-store'
 import { AppUpdaterEffect } from '@/features/app-updater/ui/app-updater-effect'
 import i18n from '@/shared/i18n'
+import { resolveLanguage } from '@/shared/i18n/resolve-language'
 import { syncChromeAcrylic } from '@/shared/lib/desktop/window-effects'
 import { useResolvedTheme } from '@/shared/lib/hooks/use-resolved-theme'
 import { toast } from '@/shared/lib/toast'
-import { AppToastProvider } from '@/shared/lib/toast/toast-provider'
+import { Toaster } from '@/shared/ui/sonner'
 import { TooltipProvider } from '@/shared/ui/tooltip'
 
 function AppPreferencesEffect({ resolvedTheme }: { resolvedTheme: ResolvedTheme }) {
@@ -68,8 +69,23 @@ function AppPreferencesEffect({ resolvedTheme }: { resolvedTheme: ResolvedTheme 
       return
     }
 
-    if (i18n.language !== language) {
-      void i18n.changeLanguage(language)
+    const applyResolvedLanguage = () => {
+      const resolved = resolveLanguage(language)
+
+      if (i18n.language !== resolved) {
+        void i18n.changeLanguage(resolved)
+      }
+    }
+
+    applyResolvedLanguage()
+
+    if (language !== 'system') {
+      return
+    }
+
+    window.addEventListener('languagechange', applyResolvedLanguage)
+    return () => {
+      window.removeEventListener('languagechange', applyResolvedLanguage)
     }
   }, [hasHydrated, language])
 
@@ -84,7 +100,7 @@ export function AppProviders({ children }: PropsWithChildren) {
       <AppPreferencesEffect resolvedTheme={resolvedTheme} />
       <AppUpdaterEffect />
       {children}
-      <AppToastProvider resolvedTheme={resolvedTheme} />
+      <Toaster resolvedTheme={resolvedTheme} />
     </TooltipProvider>
   )
 }

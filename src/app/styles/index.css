@@ -20,6 +20,8 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -54,6 +56,8 @@
   --accent: oklch(0.915 0.016 196);
   --accent-foreground: oklch(0.285 0.02 220);
   --destructive: oklch(0.58 0.22 27.33);
+  --success: oklch(0.52 0.20 145);
+  --warning: oklch(0.56 0.18 68);
   --border: oklch(0.855 0.008 214);
   --input: oklch(0.855 0.008 214);
   --ring: oklch(0.54 0.11 198);
@@ -69,14 +73,14 @@
 }
 
 [data-theme="dark"] {
-  --background: oklch(0.23 0.012 230);
+  --background: oklch(0.18 0.012 230);
   --foreground: oklch(0.955 0.004 210);
-  --card: oklch(0.275 0.012 228);
+  --card: oklch(0.22 0.012 228);
   --card-foreground: oklch(0.955 0.004 210);
-  --popover: oklch(0.275 0.012 228);
+  --popover: oklch(0.22 0.012 228);
   --popover-foreground: oklch(0.955 0.004 210);
-  --primary: oklch(0.72 0.105 196);
-  --primary-foreground: oklch(0.2 0.01 230);
+  --primary: oklch(0.56 0.105 196);
+  --primary-foreground: oklch(0.955 0.004 210);
   --secondary: oklch(0.31 0.012 228);
   --secondary-foreground: oklch(0.955 0.004 210);
   --muted: oklch(0.31 0.012 228);
@@ -84,17 +88,19 @@
   --accent: oklch(0.345 0.022 196);
   --accent-foreground: oklch(0.955 0.004 210);
   --destructive: oklch(0.64 0.2 27.33);
+  --success: oklch(0.65 0.13 145);
+  --warning: oklch(0.76 0.18 80);
   --border: oklch(0.37 0.012 226);
   --input: oklch(0.37 0.012 226);
-  --ring: oklch(0.72 0.105 196);
-  --sidebar: oklch(0.2 0.012 232);
+  --ring: oklch(0.56 0.105 196);
+  --sidebar: oklch(0.15 0.012 232);
   --sidebar-foreground: oklch(0.955 0.004 210);
-  --sidebar-primary: oklch(0.72 0.105 196);
-  --sidebar-primary-foreground: oklch(0.2 0.01 230);
+  --sidebar-primary: oklch(0.56 0.105 196);
+  --sidebar-primary-foreground: oklch(0.955 0.004 210);
   --sidebar-accent: oklch(0.3 0.022 196);
   --sidebar-accent-foreground: oklch(0.955 0.004 210);
   --sidebar-border: oklch(0.33 0.014 226);
-  --sidebar-ring: oklch(0.72 0.105 196);
+  --sidebar-ring: oklch(0.56 0.105 196);
 }
 
 [data-palette="flexoki"] {
@@ -113,6 +119,8 @@
   --accent: oklch(0.916 0.013 88);
   --accent-foreground: oklch(0.184 0.006 65);
   --destructive: oklch(0.58 0.22 27.33);
+  --success: oklch(0.55 0.16 122);
+  --warning: oklch(0.58 0.16 80);
   --border: oklch(0.832 0.011 88);
   --input: oklch(0.832 0.011 88);
   --ring: oklch(0.44 0.15 258);
@@ -142,6 +150,8 @@
   --accent: oklch(0.22 0.007 68);
   --accent-foreground: oklch(0.957 0.012 92);
   --destructive: oklch(0.64 0.2 27.33);
+  --success: oklch(0.72 0.15 122);
+  --warning: oklch(0.78 0.14 85);
   --border: oklch(0.28 0.008 70);
   --input: oklch(0.28 0.008 70);
   --ring: oklch(0.60 0.13 250);
@@ -169,6 +179,85 @@
   --sidebar-accent: oklch(0.22 0.007 68 / 0.82);
   --sidebar-accent-foreground: oklch(0.957 0.012 92);
   --sidebar-ring: oklch(0.60 0.13 250);
+}
+
+[data-palette="abyss"] {
+  --background: oklch(0.968 0.008 240);
+  --foreground: oklch(0.19 0.025 258);
+  --card: oklch(0.990 0.005 240);
+  --card-foreground: oklch(0.19 0.025 258);
+  --popover: oklch(0.990 0.005 240);
+  --popover-foreground: oklch(0.19 0.025 258);
+  --primary: oklch(0.46 0.22 258);
+  --primary-foreground: oklch(0.990 0.005 240);
+  --secondary: oklch(0.940 0.010 238);
+  --secondary-foreground: oklch(0.28 0.022 256);
+  --muted: oklch(0.940 0.010 238);
+  --muted-foreground: oklch(0.50 0.020 250);
+  --accent: oklch(0.920 0.018 240);
+  --accent-foreground: oklch(0.19 0.025 258);
+  --destructive: oklch(0.58 0.22 27.33);
+  --success: oklch(0.52 0.20 145);
+  --warning: oklch(0.56 0.18 68);
+  --border: oklch(0.860 0.012 240);
+  --input: oklch(0.860 0.012 240);
+  --ring: oklch(0.46 0.22 258);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.942 0.010 242);
+  --sidebar-foreground: oklch(0.22 0.025 256);
+  --sidebar-primary: oklch(0.46 0.22 258);
+  --sidebar-primary-foreground: oklch(0.990 0.005 240);
+  --sidebar-accent: oklch(0.910 0.016 240);
+  --sidebar-accent-foreground: oklch(0.19 0.025 258);
+  --sidebar-border: oklch(0.828 0.014 238);
+  --sidebar-ring: oklch(0.46 0.22 258);
+}
+
+[data-palette="abyss"][data-theme="dark"] {
+  --background: oklch(0.138 0.026 267);
+  --foreground: oklch(0.960 0.006 220);
+  --card: oklch(0.172 0.026 265);
+  --card-foreground: oklch(0.960 0.006 220);
+  --popover: oklch(0.172 0.026 265);
+  --popover-foreground: oklch(0.960 0.006 220);
+  --primary: oklch(0.62 0.22 255);
+  --primary-foreground: oklch(0.10 0.022 268);
+  --secondary: oklch(0.210 0.026 262);
+  --secondary-foreground: oklch(0.910 0.006 225);
+  --muted: oklch(0.210 0.026 262);
+  --muted-foreground: oklch(0.66 0.018 240);
+  --accent: oklch(0.240 0.038 255);
+  --accent-foreground: oklch(0.960 0.006 220);
+  --destructive: oklch(0.64 0.2 27.33);
+  --success: oklch(0.70 0.20 145);
+  --warning: oklch(0.76 0.18 80);
+  --border: oklch(0.285 0.030 258);
+  --input: oklch(0.285 0.030 258);
+  --ring: oklch(0.62 0.22 255);
+  --sidebar: oklch(0.108 0.022 270);
+  --sidebar-foreground: oklch(0.960 0.006 220);
+  --sidebar-primary: oklch(0.62 0.22 255);
+  --sidebar-primary-foreground: oklch(0.10 0.022 268);
+  --sidebar-accent: oklch(0.210 0.036 258);
+  --sidebar-accent-foreground: oklch(0.960 0.006 220);
+  --sidebar-border: oklch(0.240 0.028 262);
+  --sidebar-ring: oklch(0.62 0.22 255);
+}
+
+[data-palette="abyss"][data-theme="light"][data-chrome-material="acrylic"] {
+  --sidebar: oklch(0.942 0.010 242 / 0.5);
+  --sidebar-border: oklch(0.828 0.014 238 / 0.6);
+  --sidebar-accent: oklch(0.920 0.018 240 / 0.82);
+  --sidebar-accent-foreground: oklch(0.19 0.025 258);
+  --sidebar-ring: oklch(0.46 0.22 258);
+}
+
+[data-palette="abyss"][data-theme="dark"][data-chrome-material="acrylic"] {
+  --sidebar: oklch(0.108 0.022 270 / 0.5);
+  --sidebar-border: oklch(0.240 0.028 262 / 0.5);
+  --sidebar-accent: oklch(0.210 0.036 258 / 0.82);
+  --sidebar-accent-foreground: oklch(0.960 0.006 220);
+  --sidebar-ring: oklch(0.62 0.22 255);
 }
 
 [data-theme="light"][data-chrome-material="acrylic"] {
@@ -422,4 +511,79 @@ body {
   .toast-root {
     width: min(22.5rem, calc(100vw - 3rem));
   }
+}
+
+[data-overflow='true'] [data-marquee-inner='true'] {
+  transform: translateX(0);
+}
+
+.group\/summary:hover [data-overflow='true'] [data-marquee-inner='true'],
+.group\/summary:focus-within [data-overflow='true'] [data-marquee-inner='true'] {
+  transform: translateX(var(--marquee-offset, 0px));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-marquee-inner='true'] {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* ─── Sonner Toast Theme ────────────────────────────────────────────────── */
+
+/* Sonner layout — stay close to the library defaults so icon/content keep their native flow */
+[data-sonner-toast][data-styled='true'] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px;
+}
+
+[data-sonner-toast][data-styled='true'] [data-content] {
+  min-width: 0;
+  flex: 1;
+}
+
+[data-sonner-toast][data-styled='true'] [data-icon] {
+  align-self: flex-start;
+  margin-top: 0.125rem;
+}
+
+[data-sonner-toast][data-styled='true'] [data-button],
+[data-sonner-toast][data-styled='true'] [data-cancel] {
+  margin-top: 0 !important;
+}
+
+/* Light (default — inherits from :root CSS vars) */
+[data-sonner-toaster] {
+  --normal-bg: var(--card);
+  --normal-text: var(--card-foreground);
+  --normal-border: var(--border);
+  --success-bg: var(--card);
+  --success-text: var(--success);
+  --success-border: var(--border);
+  --error-bg: var(--card);
+  --error-text: var(--destructive);
+  --error-border: var(--border);
+  --warning-bg: var(--card);
+  --warning-text: var(--warning);
+  --warning-border: var(--border);
+  --info-bg: var(--card);
+  --info-text: var(--card-foreground);
+  --info-border: var(--border);
+}
+
+/* Acrylic light — frosted glass */
+[data-chrome-material="acrylic"] [data-sonner-toaster] [data-sonner-toast] {
+  background: var(--card) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-color: var(--border) !important;
+}
+
+/* Acrylic dark — frosted glass */
+[data-chrome-material="acrylic"][data-theme="dark"] [data-sonner-toaster] [data-sonner-toast] {
+  background: var(--card) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-color: var(--border) !important;
 }

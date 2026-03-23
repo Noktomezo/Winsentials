@@ -6,6 +6,9 @@ pub mod privacy;
 pub mod security;
 pub mod system;
 
+use std::collections::HashMap;
+use std::sync::{Arc, OnceLock};
+
 use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
@@ -24,6 +27,11 @@ pub enum RiskLevel {
 pub struct TweakOption {
     pub label: String,
     pub value: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TweakConflict {
+    pub description: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,6 +66,7 @@ pub struct TweakMeta {
     pub recommended_value: String,
     pub risk: RiskLevel,
     pub risk_description: Option<String>,
+    pub conflicts: Option<Vec<TweakConflict>>,
     pub requires_action: RequiresAction,
     pub min_os_build: Option<u32>,
     pub min_os_ubr: Option<u32>,
@@ -97,29 +106,58 @@ const WINDOWS_VERSION_KEY: RegKey = RegKey {
     path: r"SOFTWARE\Microsoft\Windows NT\CurrentVersion",
 };
 
-pub fn all_tweaks() -> Vec<Box<dyn Tweak>> {
-    let mut tweaks = Vec::new();
-    tweaks.extend(appearance::tweaks());
-    tweaks.extend(behaviour::tweaks());
-    tweaks.extend(network::tweaks());
-    tweaks.extend(performance::tweaks());
-    tweaks.extend(privacy::tweaks());
-    tweaks.extend(security::tweaks());
-    tweaks.extend(system::tweaks());
+fn build_tweak_registry() -> Vec<Arc<dyn Tweak>> {
+    let mut tweaks: Vec<Arc<dyn Tweak>> = Vec::new();
+    tweaks.extend(appearance::tweaks().into_iter().map(Arc::from));
+    tweaks.extend(behaviour::tweaks().into_iter().map(Arc::from));
+    tweaks.extend(network::tweaks().into_iter().map(Arc::from));
+    tweaks.extend(performance::tweaks().into_iter().map(Arc::from));
+    tweaks.extend(privacy::tweaks().into_iter().map(Arc::from));
+    tweaks.extend(security::tweaks().into_iter().map(Arc::from));
+    tweaks.extend(system::tweaks().into_iter().map(Arc::from));
     tweaks
 }
 
-pub fn tweaks_for_category(category: &str) -> Vec<Box<dyn Tweak>> {
-    all_tweaks()
-        .into_iter()
-        .filter(|tweak| tweak.meta().category == category)
-        .collect()
+fn tweak_registry() -> &'static Vec<Arc<dyn Tweak>> {
+    static TWEAK_REGISTRY: OnceLock<Vec<Arc<dyn Tweak>>> = OnceLock::new();
+    TWEAK_REGISTRY.get_or_init(build_tweak_registry)
 }
 
-pub fn tweak_by_id(id: &str) -> Result<Box<dyn Tweak>, AppError> {
-    all_tweaks()
-        .into_iter()
-        .find(|tweak| tweak.id() == id)
+fn category_registry() -> &'static HashMap<String, Vec<Arc<dyn Tweak>>> {
+    static CATEGORY_REGISTRY: OnceLock<HashMap<String, Vec<Arc<dyn Tweak>>>> = OnceLock::new();
+    CATEGORY_REGISTRY.get_or_init(|| {
+        let mut categories: HashMap<String, Vec<Arc<dyn Tweak>>> = HashMap::new();
+        for tweak in tweak_registry() {
+            categories
+                .entry(tweak.meta().category.clone())
+                .or_default()
+                .push(Arc::clone(tweak));
+        }
+        categories
+    })
+}
+
+fn id_registry() -> &'static HashMap<String, Arc<dyn Tweak>> {
+    static ID_REGISTRY: OnceLock<HashMap<String, Arc<dyn Tweak>>> = OnceLock::new();
+    ID_REGISTRY.get_or_init(|| {
+        tweak_registry()
+            .iter()
+            .map(|tweak| (tweak.id().to_string(), Arc::clone(tweak)))
+            .collect()
+    })
+}
+
+pub fn tweaks_for_category(category: &str) -> Vec<Arc<dyn Tweak>> {
+    category_registry()
+        .get(category)
+        .cloned()
+        .unwrap_or_default()
+}
+
+pub fn tweak_by_id(id: &str) -> Result<Arc<dyn Tweak>, AppError> {
+    id_registry()
+        .get(id)
+        .cloned()
         .ok_or_else(|| AppError::message(format!("unknown tweak id: {id}")))
 }
 

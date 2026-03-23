@@ -1,11 +1,16 @@
+use std::{env, fs, path::PathBuf};
+
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
 use crate::shell::restart_explorer;
-use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
+use crate::tweaks::{
+    RequiresAction, RiskLevel, Tweak, TweakConflict, TweakControlType, TweakMeta, TweakStatus,
+};
 
 const ENABLED_VALUE: &str = "enabled";
 const DISABLED_VALUE: &str = "disabled";
-const SHORTCUT_ARROW_ICON: &str = r"%windir%\System32\shell32.dll,-50";
+
+const BLANK_ICO_BYTES: &[u8] = include_bytes!("../../../assets/blank.ico");
 
 const SHELL_ICONS_KEY: RegKey = RegKey {
     hive: Hive::LocalMachine,
@@ -38,6 +43,11 @@ impl RemoveShortcutArrowsTweak {
                 recommended_value: DISABLED_VALUE.into(),
                 risk: RiskLevel::None,
                 risk_description: None,
+                conflicts: Some(vec![TweakConflict {
+                    description:
+                        "appearance.tweaks.removeShortcutArrows.conflicts.windhawkTransparentWindows"
+                            .into(),
+                }]),
                 requires_action: RequiresAction::RestartApp {
                     app_name: "Explorer".into(),
                 },
@@ -49,11 +59,27 @@ impl RemoveShortcutArrowsTweak {
 
     fn is_enabled(&self) -> Result<bool, AppError> {
         match SHELL_ICONS_KEY.get_string("29") {
-            Ok(value) => Ok(value.eq_ignore_ascii_case(SHORTCUT_ARROW_ICON)),
+            Ok(value) => Ok(value.eq_ignore_ascii_case(&icon_registry_value())),
             Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
             Err(error) => Err(error),
         }
     }
+}
+
+fn icon_path() -> PathBuf {
+    env::var_os("SystemRoot")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(r"C:\Windows"))
+        .join("blank.ico")
+}
+
+fn icon_registry_value() -> String {
+    format!("{},0", icon_path().to_string_lossy())
+}
+
+fn ensure_icon() -> Result<String, AppError> {
+    fs::write(icon_path(), BLANK_ICO_BYTES)?;
+    Ok(icon_registry_value())
 }
 
 impl Tweak for RemoveShortcutArrowsTweak {
@@ -67,7 +93,10 @@ impl Tweak for RemoveShortcutArrowsTweak {
 
     fn apply(&self, value: &str) -> Result<(), AppError> {
         match value {
-            ENABLED_VALUE => SHELL_ICONS_KEY.set_string("29", SHORTCUT_ARROW_ICON),
+            ENABLED_VALUE => {
+                let value = ensure_icon()?;
+                SHELL_ICONS_KEY.set_string("29", &value)
+            }
             DISABLED_VALUE => self.reset(),
             _ => Err(AppError::message(format!(
                 "unsupported value `{value}` for {}",

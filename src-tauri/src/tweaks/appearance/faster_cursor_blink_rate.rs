@@ -1,6 +1,6 @@
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
-use crate::shell::restart_explorer;
+use crate::shell::set_caret_blink_time;
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
 
 const ENABLED_VALUE: &str = "enabled";
@@ -40,9 +40,8 @@ impl FasterCursorBlinkRateTweak {
                 recommended_value: DISABLED_VALUE.into(),
                 risk: RiskLevel::None,
                 risk_description: None,
-                requires_action: RequiresAction::RestartApp {
-                    app_name: "Explorer".into(),
-                },
+                conflicts: None,
+                requires_action: RequiresAction::None,
                 min_os_build: Some(10240),
                 min_os_ubr: None,
             },
@@ -69,7 +68,10 @@ impl Tweak for FasterCursorBlinkRateTweak {
 
     fn apply(&self, value: &str) -> Result<(), AppError> {
         match value {
-            ENABLED_VALUE => DESKTOP_KEY.set_string("CursorBlinkRate", FAST_CURSOR_BLINK_RATE),
+            ENABLED_VALUE => {
+                DESKTOP_KEY.set_string("CursorBlinkRate", FAST_CURSOR_BLINK_RATE)?;
+                set_caret_blink_time(200)
+            }
             DISABLED_VALUE => self.reset(),
             _ => Err(AppError::message(format!(
                 "unsupported value `{value}` for {}",
@@ -79,7 +81,8 @@ impl Tweak for FasterCursorBlinkRateTweak {
     }
 
     fn reset(&self) -> Result<(), AppError> {
-        DESKTOP_KEY.set_string("CursorBlinkRate", DEFAULT_CURSOR_BLINK_RATE)
+        DESKTOP_KEY.set_string("CursorBlinkRate", DEFAULT_CURSOR_BLINK_RATE)?;
+        set_caret_blink_time(530)
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {
@@ -93,9 +96,5 @@ impl Tweak for FasterCursorBlinkRateTweak {
             },
             is_default: !is_enabled,
         })
-    }
-
-    fn extra(&self) -> Result<(), AppError> {
-        restart_explorer()
     }
 }

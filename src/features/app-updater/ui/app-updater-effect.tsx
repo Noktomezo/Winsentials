@@ -13,7 +13,6 @@ export function AppUpdaterEffect() {
   const setUpdateChecksEnabled = usePreferencesStore(state => state.setUpdateChecksEnabled)
   const updateChecksEnabled = usePreferencesStore(state => state.updateChecksEnabled)
   const activeToastIdRef = useRef<string | undefined>(undefined)
-  const deferredUntilRestartRef = useRef(false)
   const isCheckingRef = useRef(false)
   const isInstallingRef = useRef(false)
   const promptedVersionRef = useRef<string | null>(null)
@@ -40,14 +39,6 @@ export function AppUpdaterEffect() {
 
     let cancelled = false
 
-    const deferPrompt = () => {
-      deferredUntilRestartRef.current = true
-      if (activeToastIdRef.current) {
-        toast.dismiss(activeToastIdRef.current)
-        activeToastIdRef.current = undefined
-      }
-    }
-
     const showUpdatePrompt = (update: Update) => {
       activeToastIdRef.current = toast.action(i18n.t('settings.updatePromptTitle'), {
         action: {
@@ -72,29 +63,21 @@ export function AppUpdaterEffect() {
           },
         },
         cancel: {
-          label: i18n.t('settings.notNow'),
-          onClick: deferPrompt,
+          label: i18n.t('settings.disableUpdateChecks'),
+          onClick: () => {
+            setUpdateChecksEnabled(false)
+            activeToastIdRef.current = undefined
+            toast.success(i18n.t('settings.updateChecksDisabled'))
+          },
         },
         description: i18n.t('settings.updatePromptDescription', { version: update.version }),
         duration: Number.POSITIVE_INFINITY,
-        extraActions: [
-          {
-            label: i18n.t('settings.disableUpdateChecks'),
-            onClick: () => {
-              setUpdateChecksEnabled(false)
-              activeToastIdRef.current = undefined
-              toast.success(i18n.t('settings.updateChecksDisabled'))
-            },
-          },
-        ],
-        onCloseButton: deferPrompt,
       }) as string
     }
 
     const runCheck = async () => {
       if (
         cancelled
-        || deferredUntilRestartRef.current
         || isCheckingRef.current
         || isInstallingRef.current
       ) {

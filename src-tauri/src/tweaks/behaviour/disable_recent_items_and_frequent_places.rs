@@ -1,6 +1,5 @@
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
-use crate::shell::restart_explorer;
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
 
 const ENABLED_VALUE: &str = "enabled";
@@ -40,8 +39,9 @@ impl DisableRecentItemsAndFrequentPlacesTweak {
                 recommended_value: ENABLED_VALUE.into(),
                 risk: RiskLevel::None,
                 risk_description: None,
+                conflicts: None,
                 requires_action: RequiresAction::RestartApp {
-                    app_name: "Explorer".into(),
+                    app_name: "explorer.exe".to_string(),
                 },
                 min_os_build: Some(10240),
                 min_os_ubr: None,
@@ -127,9 +127,5 @@ impl Tweak for DisableRecentItemsAndFrequentPlacesTweak {
             },
             is_default,
         })
-    }
-
-    fn extra(&self) -> Result<(), AppError> {
-        restart_explorer()
     }
 }

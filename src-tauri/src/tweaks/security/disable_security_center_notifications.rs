@@ -1,6 +1,5 @@
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
-use crate::shell::restart_explorer;
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
 
 const ENABLED_VALUE: &str = "enabled";
@@ -39,9 +38,8 @@ impl DisableSecurityCenterNotificationsTweak {
                 recommended_value: DISABLED_VALUE.into(),
                 risk: RiskLevel::None,
                 risk_description: None,
-                requires_action: RequiresAction::RestartApp {
-                    app_name: "Explorer".into(),
-                },
+                conflicts: None,
+                requires_action: RequiresAction::RestartPc,
                 min_os_build: Some(MIN_WINDOWS_10_CREATORS_UPDATE_BUILD),
                 min_os_ubr: None,
             },
@@ -92,9 +90,5 @@ impl Tweak for DisableSecurityCenterNotificationsTweak {
             },
             is_default: !is_enabled,
         })
-    }
-
-    fn extra(&self) -> Result<(), AppError> {
-        restart_explorer()
     }
 }
