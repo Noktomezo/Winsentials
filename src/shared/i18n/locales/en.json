@@ -229,6 +229,7 @@
   "startup": {
     "title": "Startup Apps",
     "description": "Manage Windows startup entries across the registry, startup folders, and scheduled tasks.",
+    "searchLabel": "Search startup entries",
     "searchPlaceholder": "Search startup entries",
     "filters": {
       "source": "Source",

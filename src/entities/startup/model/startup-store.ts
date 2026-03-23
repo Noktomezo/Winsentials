@@ -21,6 +21,7 @@ interface StartupStoreState {
   sourceLoading: Record<StartupSource, boolean>
   sourceErrors: Record<StartupSource, string | null>
   hasLoadedSource: Record<StartupSource, boolean>
+  hasSettledSource: Record<StartupSource, boolean>
   sourceRequestIds: Record<StartupSource, number>
   search: string
   sourceFilter: StartupSourceFilter
@@ -66,6 +67,12 @@ const emptySourceErrors: Record<StartupSource, string | null> = {
 }
 
 const emptyLoadedState: Record<StartupSource, boolean> = {
+  registry: false,
+  startup_folder: false,
+  scheduled_task: false,
+}
+
+const emptySettledState: Record<StartupSource, boolean> = {
   registry: false,
   startup_folder: false,
   scheduled_task: false,
@@ -180,6 +187,10 @@ async function refreshSource(
           ...current.hasLoadedSource,
           [source]: true,
         },
+        hasSettledSource: {
+          ...current.hasSettledSource,
+          [source]: true,
+        },
       }
     })
   }
@@ -198,6 +209,10 @@ async function refreshSource(
         hasLoadedSource: {
           ...current.hasLoadedSource,
           [source]: previousHasLoaded,
+        },
+        hasSettledSource: {
+          ...current.hasSettledSource,
+          [source]: true,
         },
         error: error instanceof Error ? error.message : 'Failed to load startup entries.',
       }
@@ -237,6 +252,7 @@ export const useStartupStore = create<StartupStoreState>()((set, get) => ({
   sourceLoading: emptySourceLoading,
   sourceErrors: emptySourceErrors,
   hasLoadedSource: emptyLoadedState,
+  hasSettledSource: emptySettledState,
   sourceRequestIds: emptySourceRequestIds,
   search: '',
   sourceFilter: 'all',

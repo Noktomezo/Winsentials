@@ -118,6 +118,19 @@ interface StartupCardProps {
   onReveal: (path: string | null | undefined) => void
 }
 
+function localizeStartupError(
+  error: string | null,
+  t: ReturnType<typeof useTranslation>['t'],
+) {
+  switch (error) {
+    case 'Failed to load startup entries.':
+    case 'Unknown startup source error.':
+      return t('startup.errors.load')
+    default:
+      return error ? t('startup.errors.partial') : null
+  }
+}
+
 const StartupCard = memo(({
   entry,
   isPending,
@@ -221,6 +234,7 @@ const StartupCard = memo(({
                   <TooltipTrigger asChild>
                     <DropdownMenuTrigger asChild>
                       <Button
+                        aria-label={t('startup.actions.more')}
                         disabled={isPending}
                         size="icon-xs"
                         type="button"
@@ -331,7 +345,7 @@ export function StartupPage() {
   const deferredSearch = useDeferredValue(search)
   const entries = useStartupStore(state => state.entries)
   const sourceLoading = useStartupStore(state => state.sourceLoading)
-  const hasLoadedSource = useStartupStore(state => state.hasLoadedSource)
+  const hasSettledSource = useStartupStore(state => state.hasSettledSource)
   const sourceFilter = useStartupStore(state => state.sourceFilter)
   const statusFilter = useStartupStore(state => state.statusFilter)
   const error = useStartupStore(state => state.error)
@@ -407,8 +421,9 @@ export function StartupPage() {
   }), [entries, normalizedSearch, sourceFilter, statusFilter])
 
   const anyLoading = startupSources.some(source => sourceLoading[source])
-  const anyLoaded = startupSources.some(source => hasLoadedSource[source])
-  const allLoaded = startupSources.every(source => hasLoadedSource[source])
+  const anyLoaded = startupSources.some(source => hasSettledSource[source])
+  const allLoaded = startupSources.every(source => hasSettledSource[source])
+  const localizedError = localizeStartupError(error, t)
 
   function handleCopy(value: string | null | undefined, successKey: string) {
     if (!value) {
@@ -523,6 +538,7 @@ export function StartupPage() {
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              aria-label={t('startup.searchLabel')}
               className="pl-9"
               onChange={event => setSearch(event.currentTarget.value)}
               placeholder={t('startup.searchPlaceholder')}
@@ -588,9 +604,9 @@ export function StartupPage() {
 
       <Separator />
 
-      {error && (
+      {localizedError && (
         <section className="rounded-xl border border-destructive/30 bg-destructive/8 p-4">
-          <p className="text-sm text-muted-foreground">{error}</p>
+          <p className="text-sm text-muted-foreground">{localizedError}</p>
         </section>
       )}
 

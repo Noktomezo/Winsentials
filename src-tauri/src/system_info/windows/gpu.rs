@@ -15,6 +15,17 @@ pub(crate) struct DxgiAdapterSnapshot {
     directx_version: Option<String>,
 }
 
+#[cfg(not(target_os = "windows"))]
+pub(crate) struct DxgiAdapterSnapshot {
+    name: String,
+    luid_low: u32,
+    luid_high: i32,
+    vram: u64,
+    raw_dedicated: u64,
+    shared_system: u64,
+    directx_version: Option<String>,
+}
+
 #[cfg(target_os = "windows")]
 fn normalise_driver_date(s: &str) -> Option<String> {
     let parts: Vec<&str> = s.split('-').collect();
@@ -322,7 +333,7 @@ fn gather_gpu_driver_info(
         ));
     }
 
-    None
+    Some((None, None, pci_bus, pci_device, pci_function))
 }
 
 #[cfg(target_os = "windows")]
@@ -342,11 +353,11 @@ fn classify_integrated_gpu(
     );
     let intel_integrated = vendor == "Intel" && name_upper.contains("GRAPHICS");
 
-    if intel_integrated || generic_amd_integrated {
-        return true;
-    }
     if raw_dedicated_bytes >= 2 * GB {
         return false;
+    }
+    if intel_integrated || generic_amd_integrated {
+        return true;
     }
     if shared_system_bytes > 0 && raw_dedicated_bytes <= 512 * MB {
         return true;
@@ -711,13 +722,6 @@ pub fn gather_gpu_live(
     pdh_query: isize,
     pdh_counter: isize,
 ) -> Result<Vec<LiveGpuMetrics>, PdhGpuUsageError> {
-    use windows::Win32::Foundation::LUID;
-    use windows::Win32::Graphics::Dxgi::{
-        CreateDXGIFactory1, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL,
-        DXGI_QUERY_VIDEO_MEMORY_INFO, IDXGIAdapter1, IDXGIAdapter3, IDXGIFactory1, IDXGIFactory4,
-    };
-    use windows::core::Interface;
-
     let pdh_open = pdh_query != 0;
     let usage_by_luid: HashMap<String, HashMap<String, f32>> = if pdh_open {
         pdh_collect_gpu_usage(pdh_query, pdh_counter)?
@@ -729,12 +733,6 @@ pub fn gather_gpu_live(
         .par_iter()
         .map(|gpu| get_gpu_temp_d3dkmt(gpu.luid_low, gpu.luid_high).map(|t| t.round() as u32))
         .collect();
-
-    let factory4_opt: Option<IDXGIFactory4> = unsafe {
-        CreateDXGIFactory1::<IDXGIFactory1>()
-            .ok()
-            .and_then(|f| f.cast::<IDXGIFactory4>().ok())
-    };
 
     Ok(gpus
         .iter()
@@ -749,63 +747,14 @@ pub fn gather_gpu_live(
             };
             let get_eng = |key: &str| engines.get(key).copied().unwrap_or(0.0) as u32;
 
-            let (vram_used_mb, vram_reserved_mb, vram_shared_mb) = match &factory4_opt {
-                Some(factory4) => unsafe {
-                    let luid = LUID {
-                        LowPart: low,
-                        HighPart: high,
-                    };
-                    match factory4
-                        .EnumAdapterByLuid::<IDXGIAdapter1>(luid)
-                        .ok()
-                        .and_then(|a1| a1.cast::<IDXGIAdapter3>().ok())
-                    {
-                        Some(adapter3) => {
-                            let mut local: DXGI_QUERY_VIDEO_MEMORY_INFO = std::mem::zeroed();
-                            let mut non_local: DXGI_QUERY_VIDEO_MEMORY_INFO = std::mem::zeroed();
-                            let local_ok = adapter3
-                                .QueryVideoMemoryInfo(
-                                    0,
-                                    DXGI_MEMORY_SEGMENT_GROUP_LOCAL,
-                                    &mut local,
-                                )
-                                .is_ok();
-                            let non_local_ok = adapter3
-                                .QueryVideoMemoryInfo(
-                                    0,
-                                    DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL,
-                                    &mut non_local,
-                                )
-                                .is_ok();
-                            let used = if local_ok {
-                                local.CurrentUsage / 1_048_576
-                            } else {
-                                0
-                            };
-                            let reserved = if local_ok {
-                                local.CurrentReservation / 1_048_576
-                            } else {
-                                0
-                            };
-                            let shared = if non_local_ok {
-                                non_local.CurrentUsage / 1_048_576
-                            } else {
-                                0
-                            };
-                            (used, reserved, shared)
-                        }
-                        None => (0, 0, 0),
-                    }
-                },
-                None => (0, 0, 0),
-            };
-
             LiveGpuMetrics {
                 index: gpu.index,
                 vram_total_mb: gpu.vram_total_mb,
-                vram_used_mb,
-                vram_shared_mb,
-                vram_reserved_mb,
+                // DXGI QueryVideoMemoryInfo exposes process-scoped memory values, not adapter-wide usage.
+                // Keep the aggregate live memory fields zeroed until a correct global metric source is added.
+                vram_used_mb: 0,
+                vram_shared_mb: 0,
+                vram_reserved_mb: 0,
                 temperature_c,
                 power_w: None,
                 util_3d: get_eng("3D"),
