@@ -277,6 +277,7 @@ fn gather_gpu_driver_info(
 
             let mut required_len = 0;
             if CM_Get_Device_ID_Size(&mut required_len, device_info.DevInst, 0) != CR_SUCCESS {
+                match_data = Some((None, pci_bus, pci_device, pci_function));
                 break;
             }
 
@@ -287,11 +288,13 @@ fn gather_gpu_driver_info(
                     .position(|value| *value == 0)
                     .unwrap_or(device_id.len());
                 match_data = Some((
-                    String::from_utf16_lossy(&device_id[..end]),
+                    Some(String::from_utf16_lossy(&device_id[..end])),
                     pci_bus,
                     pci_device,
                     pci_function,
                 ));
+            } else {
+                match_data = Some((None, pci_bus, pci_device, pci_function));
             }
             break;
         }
@@ -301,11 +304,15 @@ fn gather_gpu_driver_info(
     }?;
 
     let hklm = WinRegKey::predef(HKEY_LOCAL_MACHINE);
-    let class_key = hklm
-        .open_subkey(
-            r"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}",
-        )
-        .ok()?;
+    let Some(target_device_instance_id) = target_device_instance_id else {
+        return Some((None, None, pci_bus, pci_device, pci_function));
+    };
+    let class_key = match hklm.open_subkey(
+        r"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}",
+    ) {
+        Ok(key) => key,
+        Err(_) => return Some((None, None, pci_bus, pci_device, pci_function)),
+    };
 
     for key_name in class_key.enum_keys().flatten() {
         let subkey = match class_key.open_subkey(&key_name) {
