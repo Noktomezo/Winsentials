@@ -52,7 +52,7 @@ export function SettingsPage() {
         <SettingsSection
           title={t('settings.language')}
           description={t('settings.languageDescription')}
-          control={<LanguageSelect className="sm:ml-auto sm:w-[148px]" />}
+          control={<LanguageSelect className="sm:ml-auto sm:w-[163px]" />}
           icon={Languages}
         />
         <SettingsSection

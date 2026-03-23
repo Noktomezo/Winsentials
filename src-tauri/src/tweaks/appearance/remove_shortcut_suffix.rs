@@ -38,6 +38,7 @@ impl RemoveShortcutSuffixTweak {
                 recommended_value: DISABLED_VALUE.into(),
                 risk: RiskLevel::None,
                 risk_description: None,
+                conflicts: None,
                 requires_action: RequiresAction::RestartApp {
                     app_name: "Explorer".into(),
                 },

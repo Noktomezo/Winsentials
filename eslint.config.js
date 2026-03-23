@@ -3,36 +3,21 @@ import antfu from '@antfu/eslint-config'
 import oxlint from 'eslint-plugin-oxlint'
 
 export default antfu({
-  react: true,
   ignores: [
     'AGENTS.md',
     'CLAUDE.md',
     'coverage',
     'dist',
     'node_modules',
-    'src-tauri/gen/schemas',
-    'src-tauri/target',
+    'src-tauri',
   ],
   lessOpinionated: true,
 })
   .append(oxlint.configs['flat/recommended'])
-  .append(
-    {
-      files: ['src/app/router.tsx', 'src/shared/ui/*.tsx'],
-      rules: {
-        'react-refresh/only-export-components': 'off',
-      },
+  .append({
+    files: ['**/*.{js,jsx,ts,tsx}'],
+    rules: {
+      'style/max-statements-per-line': 'off',
+      'e18e/prefer-static-regex': 'off',
     },
-    {
-      files: ['src/shared/lib/hooks/use-mobile.ts'],
-      rules: {
-        'react-hooks-extra/no-direct-set-state-in-use-effect': 'off',
-      },
-    },
-    {
-      files: ['src/shared/ui/sidebar.tsx'],
-      rules: {
-        'react-naming-convention/use-state': 'off',
-      },
-    },
-  )
+  })

@@ -1,17 +1,18 @@
 import type { MouseEvent } from 'react'
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
-import { FolderCog, Network, Palette, Settings2, Shield } from 'lucide-react'
+import { FolderCog, House, Network, Palette, Rocket, Settings2, Shield } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/shared/ui/sidebar'
 
-type SidebarRoute = '/appearance' | '/behaviour' | '/security' | '/network' | '/settings'
+type SidebarRoute = '/home' | '/appearance' | '/behaviour' | '/security' | '/network' | '/startup' | '/settings'
 
 export function AppSidebar() {
   const { t } = useTranslation()
@@ -43,17 +44,42 @@ export function AppSidebar() {
     handleNavigate(to)
   }
 
+  const isHomeRoute = pathname === '/home'
+    || pathname === '/cpu'
+    || pathname === '/ram'
+    || pathname.startsWith('/gpu')
+    || pathname.startsWith('/storage')
+    || pathname.startsWith('/network-stats')
+
   return (
     <Sidebar
       className="h-full min-h-0 shrink-0 [&>[data-slot=sidebar-inner]]:bg-transparent"
       collapsible="icon"
       style={
         {
-          '--sidebar-width': '12rem',
+          '--sidebar-width': '13.44rem',
           '--sidebar-width-icon': 'calc(var(--spacing) * 12)',
         } as React.CSSProperties
       }
     >
+      <SidebarHeader className="border-b border-sidebar-border/70 p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="cursor-pointer"
+              isActive={isHomeRoute}
+              onClick={event => handleMenuClick(event, '/home')}
+              onFocus={() => handlePointerIntent('/home')}
+              onMouseEnter={() => handlePointerIntent('/home')}
+              tooltip={t('navigation.home')}
+              type="button"
+            >
+              <House />
+              <span>{t('navigation.home')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
       <SidebarContent className="p-2">
         <SidebarMenu>
           <SidebarMenuItem>
@@ -116,6 +142,20 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border/70 p-2">
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="cursor-pointer"
+              isActive={pathname === '/startup'}
+              onClick={event => handleMenuClick(event, '/startup')}
+              onFocus={() => handlePointerIntent('/startup')}
+              onMouseEnter={() => handlePointerIntent('/startup')}
+              tooltip={t('navigation.startup')}
+              type="button"
+            >
+              <Rocket />
+              <span>{t('navigation.startup')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               className="cursor-pointer"

@@ -10,11 +10,11 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import { useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
 import { SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
 import { SmoothScrollArea } from '@/shared/ui/smooth-scroll-area'
 import { AppSidebar } from '@/widgets/sidebar/ui/app-sidebar'
 import { AppTitlebar } from '@/widgets/titlebar/ui/app-titlebar'
+import { usePageHeader } from './use-page-header'
 
 function AppShellLayout({
   pathname,
@@ -23,32 +23,7 @@ function AppShellLayout({
   pathname: string
   scrollAreaRef: RefObject<SmoothScrollAreaHandle | null>
 }) {
-  const { t } = useTranslation()
-  const pageHeader = {
-    '/behaviour': {
-      description: t('behaviour.description'),
-      title: t('behaviour.title'),
-    },
-    '/appearance': {
-      description: t('appearance.description'),
-      title: t('appearance.title'),
-    },
-    '/security': {
-      description: t('security.description'),
-      title: t('security.title'),
-    },
-    '/network': {
-      description: t('network.description'),
-      title: t('network.title'),
-    },
-    '/settings': {
-      description: t('settings.description'),
-      title: t('settings.title'),
-    },
-  }[pathname] ?? {
-    description: '',
-    title: t('app.title'),
-  }
+  const pageHeader = usePageHeader(pathname)
 
   return (
     <SidebarProvider
@@ -61,7 +36,7 @@ function AppShellLayout({
         <SidebarInset className="min-h-0 overflow-hidden rounded-tl-[8px] border-t border-l border-border/70 bg-background">
           <SmoothScrollArea className="h-full" ref={scrollAreaRef}>
             <div key={pathname} className="page-shell-transition flex min-h-full flex-col">
-              <header className="p-4 md:p-6">
+              <header className="px-4 pt-4 pb-3 md:px-6 md:pt-4 md:pb-4">
                 <div className="space-y-0.5">
                   <h1 className="text-xl font-semibold tracking-tight text-foreground">
                     {pageHeader.title}
@@ -96,7 +71,7 @@ function AppShell() {
 }
 
 function IndexRedirect() {
-  return <Navigate to="/appearance" replace />
+  return <Navigate to="/home" replace />
 }
 
 const rootRoute = createRootRoute({
@@ -107,6 +82,15 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: IndexRedirect,
+})
+
+const homeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'home',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/home-page'),
+    'HomePage',
+  ),
 })
 
 const appearanceRoute = createRoute({
@@ -154,13 +138,94 @@ const networkRoute = createRoute({
   ),
 })
 
+const cpuRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'cpu',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/cpu-page'),
+    'CpuPage',
+  ),
+})
+
+const ramRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'ram',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/ram-page'),
+    'RamPage',
+  ),
+})
+
+const gpuRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'gpu',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/gpu-page'),
+    'GpuPage',
+  ),
+})
+
+const gpuDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'gpu/$gpuIndex',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/gpu-page'),
+    'GpuPage',
+  ),
+})
+
+const diskRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'storage/$disk',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/disk-detail-page'),
+    'DiskDetailPage',
+  ),
+})
+
+const networkStatsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'network-stats',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/network-stats-page'),
+    'NetworkStatsPage',
+  ),
+})
+
+const startupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'startup',
+  component: lazyRouteComponent(
+    () => import('@/pages/startup/ui/startup-page'),
+    'StartupPage',
+  ),
+})
+
+const networkAdapterRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'network-stats/$adapterName',
+  component: lazyRouteComponent(
+    () => import('@/pages/home/ui/network-stats-page'),
+    'NetworkStatsPage',
+  ),
+})
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  homeRoute,
   behaviourRoute,
   appearanceRoute,
   securityRoute,
   networkRoute,
+  startupRoute,
   settingsRoute,
+  cpuRoute,
+  ramRoute,
+  gpuRoute,
+  gpuDetailRoute,
+  diskRoute,
+  networkStatsRoute,
+  networkAdapterRoute,
 ])
 
 export const router = createRouter({

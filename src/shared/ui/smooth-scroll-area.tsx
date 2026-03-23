@@ -4,7 +4,8 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from 'react'
 import Lenis from 'lenis'
-import { useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { useImperativeHandle, useRef, useState } from 'react'
+import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { cn } from '@/shared/lib/utils'
 
 interface SmoothScrollAreaProps extends PropsWithChildren {
@@ -30,7 +31,7 @@ export const SmoothScrollArea = function SmoothScrollArea({ ref, children, class
   } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
 
-  useEffect(() => {
+  useMountEffect(() => {
     const wrapper = wrapperRef.current
     const content = contentRef.current
     const track = trackRef.current
@@ -103,7 +104,7 @@ export const SmoothScrollArea = function SmoothScrollArea({ ref, children, class
       lenis.destroy()
       lenisRef.current = null
     }
-  }, [])
+  })
 
   const scrollTo = (targetScrollTop: number, immediate = false) => {
     lenisRef.current?.scrollTo(targetScrollTop, immediate

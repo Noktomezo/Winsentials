@@ -30,14 +30,4 @@ export default defineConfig(async () => ({
       ignored: ['**/src-tauri/**'],
     },
   },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          ui: ['radix-ui', 'lucide-react'],
-          router: ['@tanstack/react-router'],
-        },
-      },
-    },
-  },
 }))

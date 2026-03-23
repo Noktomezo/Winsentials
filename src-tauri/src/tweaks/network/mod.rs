@@ -1,6 +1,7 @@
 pub mod disable_qos_bandwidth_limit;
 pub mod enable_bbr2;
 pub mod enable_network_offloading;
+pub mod native;
 
 use crate::tweaks::Tweak;
 

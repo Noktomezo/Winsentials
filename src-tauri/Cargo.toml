@@ -16,7 +16,7 @@ crate-type = [
 [profile.release]
 overflow-checks = false
 codegen-units = 1
-opt-level = "z"
+opt-level = 3
 panic = "abort"
 strip = true
 lto = true
@@ -30,13 +30,23 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = [ "derive" ] }
 serde_json = "1"
 thiserror = "2.0.18"
-winreg = "0.55.0"
+winreg = "0.56.0"
 window-vibrancy = "0.7.1"
 tauri-plugin-clipboard-manager = "2.3.2"
 tauri-plugin-store = "2"
 rayon = "1.11.0"
 tauri-plugin-prevent-default = "4.0.4"
+sysinfo = "0.38"
+tauri-plugin-devtools = "2.0.0"
+base64 = "0.22.1"
+png = "0.18.1"
+regex = "1.12.3"
+log = "0.4.29"
+windows = { version = "0.62", features = ["Win32_Devices_DeviceAndDriverInstallation", "Win32_Devices_Properties"] }
 
 [target."cfg(windows)".dependencies]
+system_shutdown = "4"
 tauri-plugin-process = "2"
 tauri-plugin-updater = "2"
+wmi = "0.18"
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_NetworkManagement_IpHelper", "Win32_NetworkManagement_WiFi", "Win32_System_Performance", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_Diagnostics_ToolHelp", "Win32_System_IO", "Win32_System_Ioctl", "Win32_System_Threading", "Win32_Networking_WinSock", "Win32_Storage_FileSystem", "Win32_Graphics_Dxgi", "Win32_Graphics_Gdi", "Wdk_Graphics_Direct3D", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_System_Registry", "Win32_System_TaskScheduler", "Win32_System_Com", "Win32_System_Variant", "Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D11", "Win32_Graphics_Direct3D12"] }

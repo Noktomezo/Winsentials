@@ -13,6 +13,10 @@ export interface TweakOption {
   value: string
 }
 
+export interface TweakConflict {
+  description: string
+}
+
 export type TweakControlType
   = | { kind: 'toggle' }
     | { kind: 'radio', options: TweakOption[] }
@@ -30,6 +34,7 @@ export interface TweakMeta {
   recommendedValue: string
   risk: RiskLevel
   riskDescription?: string
+  conflicts?: TweakConflict[]
   requiresAction: RequiresAction
   minOsBuild?: number
   minOsUbr?: number

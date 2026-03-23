@@ -39,6 +39,7 @@ impl DisableQosBandwidthLimitTweak {
                 risk_description: Some(
                     "network.tweaks.disableQosBandwidthLimit.riskDescription".into(),
                 ),
+                conflicts: None,
                 requires_action: RequiresAction::RestartPc,
                 min_os_build: Some(10240),
                 min_os_ubr: None,

@@ -1,6 +1,5 @@
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
-use crate::shell::restart_explorer;
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
 
 const ENABLED_VALUE: &str = "enabled";
@@ -37,9 +36,8 @@ impl DisableOpenFileWarningTweak {
                 recommended_value: DISABLED_VALUE.into(),
                 risk: RiskLevel::Low,
                 risk_description: None,
-                requires_action: RequiresAction::RestartApp {
-                    app_name: "Explorer".into(),
-                },
+                conflicts: None,
+                requires_action: RequiresAction::None,
                 min_os_build: Some(10240),
                 min_os_ubr: None,
             },
@@ -88,9 +86,5 @@ impl Tweak for DisableOpenFileWarningTweak {
             },
             is_default: !self.is_enabled()?,
         })
-    }
-
-    fn extra(&self) -> Result<(), AppError> {
-        restart_explorer()
     }
 }

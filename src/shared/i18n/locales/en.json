@@ -3,6 +3,12 @@
     "description": "Windows optimization toolbox",
     "title": "Winsentials"
   },
+  "titlebar": {
+    "maximize": "Maximize window",
+    "minimize": "Minimize window",
+    "restore": "Restore window",
+    "close": "Close window"
+  },
   "behaviour": {
     "description": "Adjust how Windows behaves in everyday interactions, including default shell actions and navigation flows.",
     "title": "Behaviour",
@@ -34,6 +40,10 @@
     "tweaks": {
       "classicContextMenu": {
         "detailDescription": "Disables the simplified Windows 11 context menu and restores the classic Windows 10 menu without requiring the Show more options step.",
+        "conflicts": {
+          "startAllBack": "May conflict with StartAllBack, StartIsBack, or similar shell customization tools that modify the same context menu behavior outside the registry path used by Winsentials.",
+          "windhawk": "May conflict with Windhawk mods or similar tools that restore the classic context menu by patching themes or system files instead of using the registry key managed by Winsentials."
+        },
         "name": "Classic Context Menu",
         "shortDescription": "Restores the classic context menu layout in Windows 11."
       },
@@ -64,6 +74,9 @@
       },
       "removeShortcutArrows": {
         "detailDescription": "Changes the system shortcut overlay icon to a transparent one.",
+        "conflicts": {
+          "windhawkTransparentWindows": "May conflict with any modifications that affect DWM and system window effects."
+        },
         "name": "Remove Shortcut Arrows",
         "shortDescription": "Removes the small arrows from shortcut icons on the desktop."
       },
@@ -75,11 +88,54 @@
     },
     "title": "Appearance"
   },
+  "home": {
+    "loadError": "Failed to load system information.",
+    "activation": "Activation",
+    "activationStatus": {
+      "activated": "Activated",
+      "grace_period": "Grace Period",
+      "not_activated": "Not Activated",
+      "unknown": "Unknown"
+    },
+    "architecture": "Architecture",
+    "baseFreq": "Base clock",
+    "biosVendor": "BIOS vendor",
+    "biosVersion": "BIOS version",
+    "build": "Build",
+    "cores": "Cores",
+    "coresValue": "{{physical}}C / {{logical}}T",
+    "cpu": "Processor",
+    "description": "Hardware and operating system summary.",
+    "gpu": "Graphics",
+    "hostname": "Hostname",
+    "manufacturer": "Manufacturer",
+    "model": "Model",
+    "motherboard": "Motherboard",
+    "livePending": "Waiting for live data",
+    "network": "Network",
+    "noActivity": "No active interfaces",
+    "os": "Operating System",
+    "product": "Product",
+    "ram": "Memory",
+    "slots": "Slots",
+    "speed": "Speed",
+    "storage": "Storage",
+    "title": "Overview",
+    "total": "Total",
+    "usage": "Usage",
+    "usedOf": "{{used}} / {{total}}",
+    "username": "User",
+    "vendor": "Vendor",
+    "version": "Version",
+    "vram": "VRAM"
+  },
   "navigation": {
     "appearance": "Appearance",
     "behaviour": "Behaviour",
+    "home": "Home",
     "network": "Network",
     "security": "Security",
+    "startup": "Startup",
     "settings": "Settings"
   },
   "network": {
@@ -139,6 +195,7 @@
     "language": "Language",
     "languageDescription": "Choose the interface language.",
     "languages": {
+      "system": "System",
       "en": "English",
       "ru": "Russian"
     },
@@ -147,6 +204,7 @@
     "palette": "Color palette",
     "paletteDescription": "Choose the color palette applied to the selected theme.",
     "palettes": {
+      "abyss": "Abyss",
       "flexoki": "Flexoki",
       "teal": "Teal"
     },
@@ -168,13 +226,251 @@
     "updates": "Updates",
     "updatesDescription": "Manage how the app checks for updates."
   },
+  "startup": {
+    "title": "Startup Apps",
+    "description": "Manage Windows startup entries across the registry, startup folders, and scheduled tasks.",
+    "searchLabel": "Search startup entries",
+    "searchPlaceholder": "Search startup entries",
+    "filters": {
+      "source": "Source",
+      "status": "Status",
+      "allSources": "All sources",
+      "allStatuses": "All statuses"
+    },
+    "summary": {
+      "total": "Visible",
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "sections": {
+      "summary": "Summary"
+    },
+    "sources": {
+      "registry": "Registry",
+      "startupFolder": "Startup Folder",
+      "scheduledTask": "Scheduled Task"
+    },
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled"
+    },
+    "scope": {
+      "currentUser": "Current User",
+      "allUsers": "All Users"
+    },
+    "badges": {
+      "runOnce": "Run once"
+    },
+    "publishers": {
+      "unknown": "Unknown publisher"
+    },
+    "fields": {
+      "source": "Source",
+      "scope": "Scope",
+      "status": "Status",
+      "location": "Location",
+      "command": "Command",
+      "targetPath": "Target path",
+      "registryHive": "Registry hive",
+      "registryPath": "Registry path",
+      "registryValueName": "Value name",
+      "startupFolderPath": "Startup folder",
+      "startupFilePath": "Startup file",
+      "taskPath": "Task path",
+      "taskAuthor": "Author",
+      "taskDescription": "Description",
+      "taskTriggers": "Triggers",
+      "taskActions": "Actions"
+    },
+    "actions": {
+      "enable": "Enable",
+      "disable": "Disable",
+      "delete": "Delete",
+      "details": "Details",
+      "more": "More actions",
+      "copyCommand": "Copy command",
+      "copyRegistryPath": "Copy registry path",
+      "copyTaskPath": "Copy task path",
+      "copyPath": "Copy path",
+      "copyLocation": "Copy location",
+      "openContainingFolder": "Open containing folder",
+      "openLocation": "Open location"
+    },
+    "confirm": {
+      "deleteTitle": "Delete startup entry",
+      "deleteDescription": "Delete \"{{name}}\" from startup?"
+    },
+    "empty": {
+      "title": "No startup entries",
+      "description": "No items match the current search and filters."
+    },
+    "errors": {
+      "load": "Failed to load startup entries.",
+      "partial": "Some startup sources could not be read.",
+      "enable": "Failed to enable the startup entry.",
+      "disable": "Failed to disable the startup entry.",
+      "delete": "Failed to delete the startup entry.",
+      "copy": "Failed to copy the value.",
+      "openFolder": "Failed to open the containing folder."
+    },
+    "success": {
+      "enabled": "Startup entry enabled.",
+      "disabled": "Startup entry disabled.",
+      "deleted": "Startup entry deleted.",
+      "copyCommand": "Command copied to clipboard.",
+      "copyRegistryPath": "Registry path copied to clipboard.",
+      "copyTaskPath": "Task path copied to clipboard.",
+      "copyPath": "Path copied to clipboard."
+    },
+    "states": {
+      "idle": "Waiting to load.",
+      "loaded": "Loaded.",
+      "loading": "Loading...",
+      "loadingDescription": "Sources are still loading. Entries will appear progressively."
+    }
+  },
+  "cpu": {
+    "loadError": "Failed to load processor information.",
+    "core": "Core",
+    "currentFreq": "Current clock",
+    "description": "Detailed processor usage and per-core breakdown.",
+    "handles": "Handles",
+    "info": "Processor info",
+    "l1Cache": "L1 cache",
+    "l2Cache": "L2 cache",
+    "l3Cache": "L3 cache",
+    "perCore": "Per-core usage",
+    "processes": "Processes",
+    "logicalCores": "Logical cores",
+    "sockets": "Sockets",
+    "threads": "Threads",
+    "title": "Processor",
+    "uptime": "System uptime",
+    "virtualization": "Virtualization",
+    "virtualizationOff": "Disabled",
+    "virtualizationOn": "Enabled"
+  },
+  "gpu": {
+    "adapter": "Graphics adapter",
+    "gpuLabel": "GPU {{index}}",
+    "description": "Graphics adapter info and live utilization.",
+    "load": "GPU Load",
+    "loadError": "Failed to load graphics adapter information.",
+    "liveLoadError": "Failed to load live graphics telemetry.",
+    "noLiveData": "Live stats unavailable for this adapter.",
+    "temperature": "Temperature",
+    "title": "Graphics",
+    "dedicated": "Dedicated memory",
+    "shared": "Shared memory",
+    "hwReserved": "HW reserved",
+    "driverVersion": "Driver version",
+    "driverDate": "Driver date",
+    "directx": "DirectX",
+    "totalRam": "GPU RAM",
+    "pciLocation": "Location",
+    "pciBus": "PCI bus",
+    "pciDevice": "device",
+    "pciFunction": "function",
+    "engine3D": "3D",
+    "engineCopy": "Copy",
+    "engineHP3D": "High Priority 3D",
+    "engineHPCompute": "High Priority Compute",
+    "engineVideoEncode": "Video Encode",
+    "engineVideoDecode": "Video Decode",
+    "engineCompute": "Compute"
+  },
+  "networkStats": {
+    "adapter": "Adapter",
+    "adapterDescription": "Adapter description",
+    "adapterLabel": "Adapter {{index}}",
+    "connectionType": "Connection type",
+    "description": "Network adapters and live throughput.",
+    "dnsName": "DNS name",
+    "info": "Information",
+    "ipv4": "IPv4",
+    "ipv6": "IPv6",
+    "liveLoadError": "Failed to load live network telemetry.",
+    "loadError": "Failed to load network adapter information.",
+    "adapterUnavailable": "This network adapter is no longer available.",
+    "max60": "Max over 60 sec",
+    "openAdapter": "Open",
+    "receive": "Receive",
+    "send": "Send",
+    "signal": "Signal strength",
+    "ssid": "SSID",
+    "title": "Network",
+    "throughput": "Throughput"
+  },
+  "ram": {
+    "description": "Memory capacity, speed, and live usage.",
+    "info": "Memory info",
+    "title": "Memory",
+    "memoryUsage": "Memory usage",
+    "seconds": "{{n}} sec",
+    "peak": "peak",
+    "used": "In use",
+    "available": "Available",
+    "committed": "Committed",
+    "cached": "Cached",
+    "pagedPool": "Paged pool",
+    "nonPagedPool": "Non-paged pool",
+    "other": "Other",
+    "formFactor": "Form factor",
+    "hardwareReserved": "Hardware reserved",
+    "compressed": "compressed"
+  },
+  "storage": {
+    "activeTime": "Active time",
+    "available": "Available",
+    "avgResponseTime": "Average response time",
+    "capacity": "Capacity",
+    "description": "Disk capacity and filesystem details.",
+    "device": "Device",
+    "diskInfo": "Disk info",
+    "diskLabel": "Disk {{index}}",
+    "format": "Format",
+    "fileSystem": "File system",
+    "loadError": "Failed to load disk information.",
+    "diskUnavailable": "This disk is no longer available.",
+    "mountPoint": "Mount point",
+    "no": "No",
+    "notFound": "Disk not found.",
+    "pagefile": "Page file",
+    "readSpeed": "Read speed",
+    "systemDisk": "System disk",
+    "title": "Storage",
+    "types": {
+      "hdd": "Hard disk drive",
+      "ssd": "Solid-state drive",
+      "unknown": "Unknown"
+    },
+    "volumeLabel": "Volume label",
+    "type": "Type",
+    "used": "Used",
+    "writeSpeed": "Write speed",
+    "yes": "Yes"
+  },
+  "dialog": {
+    "close": "Close"
+  },
+  "format": {
+    "byte": "B",
+    "gigabyte": "GB",
+    "kilobyte": "KB",
+    "megabyte": "MB",
+    "perSecond": "/s",
+    "temperatureUnit": "°C",
+    "terabyte": "TB"
+  },
   "tweaks": {
     "actions": {
       "copyCommand": "Copy command",
+      "resetToDefault": "Reset to default",
       "later": "Later",
       "restartNow": "Restart now",
       "retry": "Retry",
       "showDetails": "Show details",
+      "showConflictDetails": "Show conflict details",
       "showRiskDetails": "Show risk details"
     },
     "apps": {

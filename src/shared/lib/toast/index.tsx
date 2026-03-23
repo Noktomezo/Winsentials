@@ -1,11 +1,8 @@
 import type { ReactNode } from 'react'
-import { toast as hotToast } from 'react-hot-toast'
-import {
-  ToastView,
-} from '@/shared/lib/toast/toast-view'
+import { toast as sonner } from 'sonner'
 
 export interface ToastMessageOptions {
-  description?: ReactNode
+  description?: string
   duration?: number
 }
 
@@ -18,65 +15,44 @@ export interface ToastActionOptions extends ToastMessageOptions {
     label: ReactNode
     onClick?: () => void | Promise<void>
   }
-  extraActions?: Array<{
-    label: ReactNode
-    onClick: () => void | Promise<void>
-  }>
-  onCloseButton?: () => void | Promise<void>
-}
-
-const DEFAULT_DURATION = 4000
-const ACTION_DURATION = 8000
-const REMOVE_DELAY = 220
-
-function showToast(
-  variant: 'default' | 'error' | 'info' | 'success',
-  message: ReactNode,
-  options: ToastMessageOptions & {
-    action?: ToastActionOptions['action']
-    cancel?: ToastActionOptions['cancel']
-    extraActions?: ToastActionOptions['extraActions']
-    onCloseButton?: ToastActionOptions['onCloseButton']
-  } = {},
-) {
-  return hotToast.custom(
-    current => (
-      <ToastView
-        action={options.action}
-        cancel={options.cancel}
-        description={options.description}
-        extraActions={options.extraActions}
-        message={message}
-        onClose={() => hotToast.dismiss(current.id)}
-        onCloseButton={options.onCloseButton}
-        variant={variant}
-        visible={current.visible}
-      />
-    ),
-    {
-      duration: options.action || options.cancel
-        ? ACTION_DURATION
-        : (options.duration ?? DEFAULT_DURATION),
-      position: 'bottom-right',
-      removeDelay: REMOVE_DELAY,
-    },
-  )
 }
 
 export const toast = {
-  action(message: ReactNode, options: ToastActionOptions) {
-    return showToast('info', message, options)
+  action(message: string, options: ToastActionOptions) {
+    return sonner(message, {
+      description: options.description,
+      duration: options.duration ?? 8000,
+      action: {
+        label: options.action.label,
+        onClick: () => { void options.action.onClick() },
+      },
+      cancel: options.cancel
+        ? {
+            label: options.cancel.label,
+            onClick: () => { void options.cancel!.onClick?.() },
+          }
+        : undefined,
+    })
   },
-  dismiss(id?: string) {
-    hotToast.dismiss(id)
+  dismiss(id?: string | number) {
+    sonner.dismiss(id)
   },
-  error(message: ReactNode, options?: ToastMessageOptions) {
-    return showToast('error', message, options)
+  error(message: string, options?: ToastMessageOptions) {
+    return sonner.error(message, {
+      description: options?.description,
+      duration: options?.duration ?? 4000,
+    })
   },
-  message(message: ReactNode, options?: ToastMessageOptions) {
-    return showToast('default', message, options)
+  message(message: string, options?: ToastMessageOptions) {
+    return sonner(message, {
+      description: options?.description,
+      duration: options?.duration ?? 4000,
+    })
   },
-  success(message: ReactNode, options?: ToastMessageOptions) {
-    return showToast('success', message, options)
+  success(message: string, options?: ToastMessageOptions) {
+    return sonner.success(message, {
+      description: options?.description,
+      duration: options?.duration ?? 4000,
+    })
   },
 }
