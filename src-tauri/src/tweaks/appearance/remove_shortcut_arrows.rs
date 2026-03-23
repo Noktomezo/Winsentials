@@ -67,11 +67,9 @@ impl RemoveShortcutArrowsTweak {
 }
 
 fn icon_path() -> PathBuf {
-    env::var_os("ProgramData")
+    env::var_os("SystemRoot")
         .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(r"C:\ProgramData"))
-        .join("Winsentials")
-        .join("icons")
+        .unwrap_or_else(|| PathBuf::from(r"C:\Windows"))
         .join("blank.ico")
 }
 
@@ -80,11 +78,7 @@ fn icon_registry_value() -> String {
 }
 
 fn ensure_icon() -> Result<String, AppError> {
-    let path = icon_path();
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(&path, BLANK_ICO_BYTES)?;
+    fs::write(icon_path(), BLANK_ICO_BYTES)?;
     Ok(icon_registry_value())
 }
 
