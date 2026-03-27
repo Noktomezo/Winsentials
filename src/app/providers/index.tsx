@@ -28,6 +28,7 @@ function AppPreferencesEffect({ resolvedTheme }: { resolvedTheme: ResolvedTheme 
     document.documentElement.dataset.chromeMaterial = chromeAcrylic
       ? 'acrylic'
       : 'solid'
+    document.documentElement.style.colorScheme = resolvedTheme
   }, [chromeAcrylic, hasHydrated, palette, resolvedTheme])
 
   useEffect(() => {

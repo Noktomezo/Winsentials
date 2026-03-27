@@ -34,7 +34,6 @@ function useBreadcrumbs(): Crumb[] {
     '/ram': t('home.ram'),
     '/gpu': t('home.gpu'),
     '/network-stats': t('home.network'),
-    '/startup': t('startup.title'),
   }
   if (hardwareMap[pathname]) { return [home, { label: hardwareMap[pathname] }] }
 
@@ -66,6 +65,7 @@ function useBreadcrumbs(): Crumb[] {
 
   const topLevel: Record<string, string> = {
     '/appearance': t('appearance.title'),
+    '/backup': t('backup.title'),
     '/behaviour': t('behaviour.title'),
     '/security': t('security.title'),
     '/network': t('network.title'),

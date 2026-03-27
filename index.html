@@ -5,6 +5,52 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tauri + React + Typescript</title>
+    <script>
+      (() => {
+        const DEFAULT_THEME = 'dark'
+        const DEFAULT_PALETTE = 'teal'
+        const STORAGE_KEY = 'winsentials-preferences'
+
+        const root = document.documentElement
+
+        const resolveSystemTheme = () => {
+          return window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light'
+        }
+
+        try {
+          const raw = window.localStorage.getItem(STORAGE_KEY)
+          const persisted = raw ? JSON.parse(raw) : null
+          const state = persisted && typeof persisted === 'object' ? persisted.state : null
+
+          const themePreference = state && typeof state.theme === 'string'
+            ? state.theme
+            : DEFAULT_THEME
+          const resolvedTheme = themePreference === 'system'
+            ? resolveSystemTheme()
+            : themePreference
+
+          const palette = state && typeof state.palette === 'string'
+            ? state.palette
+            : DEFAULT_PALETTE
+          const chromeMaterial = state && state.chromeAcrylic === true
+            ? 'acrylic'
+            : 'solid'
+
+          root.dataset.theme = resolvedTheme === 'light' ? 'light' : 'dark'
+          root.dataset.palette = palette
+          root.dataset.chromeMaterial = chromeMaterial
+          root.style.colorScheme = resolvedTheme === 'light' ? 'light' : 'dark'
+        }
+        catch {
+          root.dataset.theme = DEFAULT_THEME
+          root.dataset.palette = DEFAULT_PALETTE
+          root.dataset.chromeMaterial = 'solid'
+          root.style.colorScheme = DEFAULT_THEME
+        }
+      })()
+    </script>
   </head>
 
   <body>

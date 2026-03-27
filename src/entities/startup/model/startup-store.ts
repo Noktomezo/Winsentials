@@ -323,19 +323,26 @@ async function hydrateLoadedEntries(
     const chunk = ids.slice(index, index + hydrationChunkSize)
     const hydrated: StartupEntry[] = []
 
-    for (const id of chunk) {
-      try {
-        const [entry] = await hydrateStartupEntries([id])
-        if (entry) {
-          hydrated.push(entry)
-        }
-      }
-      catch (error) {
-        console.error(`Failed to hydrate startup entry ${id}`, error)
-      }
+    try {
+      hydrated.push(...await hydrateStartupEntries(chunk))
+    }
+    catch (error) {
+      console.error('Failed to hydrate startup entries chunk, retrying per entry', error)
 
-      if (get().hydrationRequestId !== requestId) {
-        return
+      for (const id of chunk) {
+        try {
+          const [entry] = await hydrateStartupEntries([id])
+          if (entry) {
+            hydrated.push(entry)
+          }
+        }
+        catch (entryError) {
+          console.error(`Failed to hydrate startup entry ${id}`, entryError)
+        }
+
+        if (get().hydrationRequestId !== requestId) {
+          return
+        }
       }
     }
 

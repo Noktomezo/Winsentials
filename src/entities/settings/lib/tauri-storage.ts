@@ -10,6 +10,7 @@ export const tauriStateStorage: StateStorage = {
     const storedValue = await store.get<string>(name)
 
     if (typeof storedValue === 'string') {
+      window.localStorage.setItem(name, storedValue)
       return storedValue
     }
 
@@ -33,5 +34,6 @@ export const tauriStateStorage: StateStorage = {
   async setItem(name, value) {
     await store.set(name, value)
     await store.save()
+    window.localStorage.setItem(name, value)
   },
 }
