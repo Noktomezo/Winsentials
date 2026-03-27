@@ -1,29 +1,7 @@
 import type { ResolvedTheme } from '@/shared/config/app'
 import { useSyncExternalStore } from 'react'
 import { usePreferencesStore } from '@/entities/settings/model/preferences-store'
-
-function getSystemResolvedTheme(): ResolvedTheme {
-  if (typeof window === 'undefined') {
-    return 'dark'
-  }
-
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light'
-}
-
-function subscribeSystemTheme(onStoreChange: () => void) {
-  if (typeof window === 'undefined') {
-    return () => {}
-  }
-
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-  mediaQuery.addEventListener('change', onStoreChange)
-
-  return () => {
-    mediaQuery.removeEventListener('change', onStoreChange)
-  }
-}
+import { getSystemResolvedTheme, subscribeSystemTheme } from '@/shared/lib/system-theme'
 
 export function useResolvedTheme() {
   const theme = usePreferencesStore(state => state.theme)

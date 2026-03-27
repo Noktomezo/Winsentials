@@ -84,6 +84,7 @@ const emptySourceRequestIds: Record<StartupSource, number> = {
 }
 
 const hydrationChunkSize = 12
+const inFlightSourceLoads: Partial<Record<StartupSource, Promise<void>>> = {}
 
 function pushPending(current: string[], id: string) {
   return current.includes(id) ? current : [...current, id]
@@ -143,6 +144,50 @@ function applyEntryUpdate(
   }
 }
 
+function mergeHydratedEntry(currentEntry: StartupEntry, hydratedEntry: StartupEntry): StartupEntry {
+  return {
+    ...currentEntry,
+    arguments: hydratedEntry.arguments,
+    command: hydratedEntry.command,
+    displayName: hydratedEntry.displayName,
+    iconDataUrl: hydratedEntry.iconDataUrl,
+    lastError: hydratedEntry.lastError,
+    locationLabel: hydratedEntry.locationLabel,
+    name: hydratedEntry.name,
+    publisher: hydratedEntry.publisher,
+    registryPath: hydratedEntry.registryPath,
+    runOnce: hydratedEntry.runOnce,
+    scope: hydratedEntry.scope,
+    sourceDisplay: hydratedEntry.sourceDisplay,
+    targetPath: hydratedEntry.targetPath,
+    taskPath: hydratedEntry.taskPath,
+    workingDirectory: hydratedEntry.workingDirectory,
+  }
+}
+
+function applyLocalSourceMutation(
+  current: StartupStoreState,
+  source: StartupSource,
+  update: ReturnType<typeof applyEntryUpdate> | ReturnType<typeof removeEntry>,
+) {
+  return {
+    ...current,
+    ...update,
+    hasLoadedSource: {
+      ...current.hasLoadedSource,
+      [source]: true,
+    },
+    sourceLoading: {
+      ...current.sourceLoading,
+      [source]: false,
+    },
+    sourceRequestIds: {
+      ...current.sourceRequestIds,
+      [source]: current.sourceRequestIds[source] + 1,
+    },
+  }
+}
+
 function applyEntryUpdates(
   current: Record<StartupSource, StartupEntry[]>,
   entries: StartupEntry[],
@@ -164,7 +209,12 @@ function applyEntryUpdates(
   }
 
   for (const [source, sourceUpdates] of groupedUpdates) {
-    next[source] = next[source].map(currentEntry => sourceUpdates.get(currentEntry.id) ?? currentEntry)
+    next[source] = next[source].map((currentEntry) => {
+      const hydratedEntry = sourceUpdates.get(currentEntry.id)
+      return hydratedEntry
+        ? mergeHydratedEntry(currentEntry, hydratedEntry)
+        : currentEntry
+    })
   }
 
   return {
@@ -205,15 +255,19 @@ function sourceFromId(id: string): StartupSource | null {
   return null
 }
 
-async function refreshSource(
+function refreshSource(
   source: StartupSource,
   force: boolean,
   set: StartupStoreSetter,
   get: () => StartupStoreState,
 ) {
   const state = get()
-  if (!force && (state.sourceLoading[source] || state.hasLoadedSource[source])) {
-    return
+  if (!force && state.sourceLoading[source]) {
+    return inFlightSourceLoads[source] ?? Promise.resolve()
+  }
+
+  if (!force && state.hasLoadedSource[source]) {
+    return Promise.resolve()
   }
 
   let requestId = 0
@@ -231,70 +285,80 @@ async function refreshSource(
     },
   }))
 
-  try {
-    const response = await fetchSource(source)
-    set((current) => {
-      if (current.sourceRequestIds[source] !== requestId) {
-        return current
-      }
+  const loadPromise = (async () => {
+    try {
+      const response = await fetchSource(source)
+      set((current) => {
+        if (current.sourceRequestIds[source] !== requestId) {
+          return current
+        }
 
-      return {
-        ...current,
-        ...applySourceResponse(current.entriesBySource, response),
-        sourceErrors: {
-          ...current.sourceErrors,
-          [source]: response.error,
-        },
-        hasLoadedSource: {
-          ...current.hasLoadedSource,
-          [source]: true,
-        },
-        hasSettledSource: {
-          ...current.hasSettledSource,
-          [source]: true,
-        },
-      }
-    })
-  }
-  catch (error) {
-    set((current) => {
-      if (current.sourceRequestIds[source] !== requestId) {
-        return current
-      }
+        return {
+          ...current,
+          ...applySourceResponse(current.entriesBySource, response),
+          sourceErrors: {
+            ...current.sourceErrors,
+            [source]: response.error,
+          },
+          hasLoadedSource: {
+            ...current.hasLoadedSource,
+            [source]: true,
+          },
+          hasSettledSource: {
+            ...current.hasSettledSource,
+            [source]: true,
+          },
+        }
+      })
+    }
+    catch (error) {
+      set((current) => {
+        if (current.sourceRequestIds[source] !== requestId) {
+          return current
+        }
 
-      return {
-        ...current,
-        sourceErrors: {
-          ...current.sourceErrors,
-          [source]: error instanceof Error ? error.message : 'Unknown startup source error.',
-        },
-        hasLoadedSource: {
-          ...current.hasLoadedSource,
-          [source]: previousHasLoaded,
-        },
-        hasSettledSource: {
-          ...current.hasSettledSource,
-          [source]: true,
-        },
-        error: error instanceof Error ? error.message : 'Failed to load startup entries.',
-      }
-    })
-  }
-  finally {
-    set((current) => {
-      if (current.sourceRequestIds[source] !== requestId) {
-        return current
-      }
+        return {
+          ...current,
+          sourceErrors: {
+            ...current.sourceErrors,
+            [source]: error instanceof Error ? error.message : 'Unknown startup source error.',
+          },
+          hasLoadedSource: {
+            ...current.hasLoadedSource,
+            [source]: previousHasLoaded,
+          },
+          hasSettledSource: {
+            ...current.hasSettledSource,
+            [source]: true,
+          },
+          error: error instanceof Error ? error.message : 'Failed to load startup entries.',
+        }
+      })
+    }
+    finally {
+      set((current) => {
+        if (current.sourceRequestIds[source] !== requestId) {
+          return current
+        }
 
-      return {
-        ...current,
-        sourceLoading: {
-          ...current.sourceLoading,
-          [source]: false,
-        },
-      }
-    })
-  }
+        return {
+          ...current,
+          sourceLoading: {
+            ...current.sourceLoading,
+            [source]: false,
+          },
+        }
+      })
+    }
+  })()
+
+  inFlightSourceLoads[source] = loadPromise
+
+  return loadPromise.finally(() => {
+    if (inFlightSourceLoads[source] === loadPromise) {
+      delete inFlightSourceLoads[source]
+    }
+  })
 }
 
 function fetchSource(source: StartupSource) {
@@ -397,8 +461,7 @@ export const useStartupStore = create<StartupStoreState>()((set, get) => ({
     try {
       const entry = await enableStartupEntry(id)
       set(current => ({
-        ...current,
-        ...applyEntryUpdate(current.entriesBySource, entry),
+        ...applyLocalSourceMutation(current, entry.source, applyEntryUpdate(current.entriesBySource, entry)),
       }))
     }
     finally {
@@ -410,8 +473,7 @@ export const useStartupStore = create<StartupStoreState>()((set, get) => ({
     try {
       const entry = await disableStartupEntry(id)
       set(current => ({
-        ...current,
-        ...applyEntryUpdate(current.entriesBySource, entry),
+        ...applyLocalSourceMutation(current, entry.source, applyEntryUpdate(current.entriesBySource, entry)),
       }))
     }
     finally {
@@ -425,8 +487,7 @@ export const useStartupStore = create<StartupStoreState>()((set, get) => ({
       await deleteStartupEntry(id)
       if (source) {
         set(current => ({
-          ...current,
-          ...removeEntry(current.entriesBySource, source, id),
+          ...applyLocalSourceMutation(current, source, removeEntry(current.entriesBySource, source, id)),
         }))
       }
     }

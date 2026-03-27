@@ -10,7 +10,12 @@ export const tauriStateStorage: StateStorage = {
     const storedValue = await store.get<string>(name)
 
     if (typeof storedValue === 'string') {
-      window.localStorage.setItem(name, storedValue)
+      try {
+        window.localStorage.setItem(name, storedValue)
+      }
+      catch (error) {
+        console.warn(`Failed to cache settings key "${name}" in localStorage`, error)
+      }
       return storedValue
     }
 
@@ -34,6 +39,5 @@ export const tauriStateStorage: StateStorage = {
   async setItem(name, value) {
     await store.set(name, value)
     await store.save()
-    window.localStorage.setItem(name, value)
   },
 }

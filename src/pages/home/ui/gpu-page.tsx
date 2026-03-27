@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import type { GpuInfo, LiveGpuInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
-import { useNavigate, useParams } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { Navigate, useParams } from '@tanstack/react-router'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { useLiveGpu } from '@/entities/system-info/model/live-system-store'
@@ -190,7 +190,6 @@ function LiveGpuErrorState({ message, onRetry }: LiveGpuErrorStateProps) {
 
 export function GpuPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const params = useParams({ strict: false })
   const parsedGpuIndex = params.gpuIndex !== undefined ? Number(params.gpuIndex) : null
 
@@ -220,12 +219,9 @@ export function GpuPage() {
   const liveByIndex = Object.fromEntries((liveInfo ?? []).map(sample => [sample.index, sample]))
   const historyByIndex = gpuHistory
 
-  useEffect(() => {
-    if (!staticInfo || params.gpuIndex === undefined) { return }
-    if (gpuIndex === null) {
-      void navigate({ replace: true, to: '/gpu' })
-    }
-  }, [gpuIndex, navigate, params.gpuIndex, staticInfo])
+  if (staticInfo && params.gpuIndex !== undefined && gpuIndex === null) {
+    return <Navigate replace to="/gpu" />
+  }
 
   if (!staticInfo) {
     if (staticError) {

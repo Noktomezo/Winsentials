@@ -3,11 +3,12 @@ import type { ReactNode } from 'react'
 import type { GpuInfo, LiveGpuInfo, LiveHomeInfo, NetworkAdapterInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
 import { useNavigate, useRouter } from '@tanstack/react-router'
 import { ChevronRight, Cpu, HardDrive, Layers, Monitor, Network, Server } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLiveHome } from '@/entities/system-info/model/live-system-store'
 import { useStaticSystemInfo } from '@/entities/system-info/model/static-system-info'
 import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
+import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 import { mountLabel, mountToParam, networkAdapterToParam } from '@/shared/lib/mount-utils'
 import { Button, Skeleton } from '@/shared/ui'
@@ -44,12 +45,12 @@ function mergeVisibleNetworkAdapters(
 
 // ─── Marquee ──────────────────────────────────────────────────────────────────
 
-function MarqueeText({ text, className }: { text: string, className?: string }) {
+function MeasuredMarqueeText({ text, className }: { text: string, className?: string }) {
   const outerRef = useRef<HTMLSpanElement>(null)
   const innerRef = useRef<HTMLSpanElement>(null)
   const [offset, setOffset] = useState(0)
 
-  useEffect(() => {
+  useMountEffect(() => {
     if (!outerRef.current || !innerRef.current) { return }
 
     const outer = outerRef.current
@@ -66,7 +67,7 @@ function MarqueeText({ text, className }: { text: string, className?: string }) 
     const ro = new ResizeObserver(measure)
     ro.observe(outer)
     return () => ro.disconnect()
-  }, [text])
+  })
 
   return (
     <span
@@ -313,6 +314,10 @@ function NetworkSummary({
       )}
     />
   )
+}
+
+function MarqueeText({ text, className }: { text: string, className?: string }) {
+  return <MeasuredMarqueeText key={text} className={className} text={text} />
 }
 
 function gpuUsage(gpu: Pick<LiveGpuInfo, 'util3d' | 'utilCopy' | 'utilEncode' | 'utilDecode' | 'utilHighPriority3d' | 'utilHighPriorityCompute'>): number {

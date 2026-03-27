@@ -1,6 +1,6 @@
 import type { BackupEntry } from '@/entities/backup/model/types'
 import { ArchiveRestore, ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
@@ -10,6 +10,7 @@ import {
   renameBackup,
   restoreBackup,
 } from '@/entities/backup/api'
+import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { Button } from '@/shared/ui/button'
 import {
   Card,
@@ -64,9 +65,9 @@ export function BackupPage() {
   // Expanded tweak-value panels
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
 
-  useEffect(() => {
+  useMountEffect(() => {
     void loadBackups()
-  }, [])
+  })
 
   async function loadBackups() {
     try {

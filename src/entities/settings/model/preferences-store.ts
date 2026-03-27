@@ -32,6 +32,8 @@ interface PreferencesState {
   setUpdateChecksEnabled: (enabled: boolean) => void
 }
 
+export type { PreferencesState }
+
 export const usePreferencesStore = create<PreferencesState>()(
   persist(
     set => ({

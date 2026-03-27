@@ -137,6 +137,7 @@
     "network": "Network",
     "security": "Security",
     "startup": "Startup",
+    "tools": "Tools",
     "settings": "Settings"
   },
   "backup": {

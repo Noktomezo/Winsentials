@@ -9,12 +9,21 @@ import {
   Outlet,
   useRouterState,
 } from '@tanstack/react-router'
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
+import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
 import { SmoothScrollArea } from '@/shared/ui/smooth-scroll-area'
 import { AppSidebar } from '@/widgets/sidebar/ui/app-sidebar'
 import { AppTitlebar } from '@/widgets/titlebar/ui/app-titlebar'
 import { usePageHeader } from './use-page-header'
+
+function ScrollReset({ scrollAreaRef }: { scrollAreaRef: RefObject<SmoothScrollAreaHandle | null> }) {
+  useMountEffect(() => {
+    scrollAreaRef.current?.scrollToTop(true)
+  })
+
+  return null
+}
 
 function AppShellLayout({
   pathname,
@@ -63,11 +72,12 @@ function AppShell() {
   })
   const scrollAreaRef = useRef<SmoothScrollAreaHandle>(null)
 
-  useEffect(() => {
-    scrollAreaRef.current?.scrollToTop(true)
-  }, [pathname])
-
-  return <AppShellLayout pathname={pathname} scrollAreaRef={scrollAreaRef} />
+  return (
+    <>
+      <ScrollReset key={pathname} scrollAreaRef={scrollAreaRef} />
+      <AppShellLayout pathname={pathname} scrollAreaRef={scrollAreaRef} />
+    </>
+  )
 }
 
 function IndexRedirect() {
