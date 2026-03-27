@@ -5,6 +5,8 @@ use thiserror::Error;
 pub enum AppError {
     #[error("{0}")]
     Message(String),
+    #[error("registry startup entry not found: {id}")]
+    RegistryEntryNotFound { id: String },
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]

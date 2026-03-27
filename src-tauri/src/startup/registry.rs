@@ -155,13 +155,17 @@ pub fn enable_entry(id: &str) -> Result<StartupEntry, AppError> {
 }
 
 pub fn delete_entry(id: &str) -> Result<(), AppError> {
-    if let Ok((location, value_name, _)) = find_active_entry(id) {
-        open_root(location.hive)?
-            .create_subkey(location.path)?
-            .0
-            .delete_value(&value_name)
-            .map_err(AppError::from)?;
-        return Ok(());
+    match find_active_entry(id) {
+        Ok((location, value_name, _)) => {
+            open_root(location.hive)?
+                .create_subkey(location.path)?
+                .0
+                .delete_value(&value_name)
+                .map_err(AppError::from)?;
+            return Ok(());
+        }
+        Err(error) if is_registry_entry_not_found(&error, id) => {}
+        Err(error) => return Err(error),
     }
 
     let record = read_disabled_record(id)?;
@@ -169,38 +173,42 @@ pub fn delete_entry(id: &str) -> Result<(), AppError> {
 }
 
 pub fn entry_details(id: &str) -> Result<StartupEntryDetails, AppError> {
-    if let Ok((location, value_name, command)) = find_active_entry(id) {
-        let entry = build_entry(
-            RegistryEntryParams {
-                id: id.to_string(),
-                name: value_name.clone(),
-                command: Some(command),
-                scope: location.scope,
-                status: StartupStatus::Enabled,
-                run_once: location.run_once,
-                location_label: format_registry_location_label(location),
-                source_display: "Registry".to_string(),
-                hive: location.hive.to_string(),
-                registry_path: location.path.to_string(),
-                last_error: None,
-            },
-            true,
-        );
+    match find_active_entry(id) {
+        Ok((location, value_name, command)) => {
+            let entry = build_entry(
+                RegistryEntryParams {
+                    id: id.to_string(),
+                    name: value_name.clone(),
+                    command: Some(command),
+                    scope: location.scope,
+                    status: StartupStatus::Enabled,
+                    run_once: location.run_once,
+                    location_label: format_registry_location_label(location),
+                    source_display: "Registry".to_string(),
+                    hive: location.hive.to_string(),
+                    registry_path: location.path.to_string(),
+                    last_error: None,
+                },
+                true,
+            );
 
-        return Ok(StartupEntryDetails {
-            entry,
-            registry_hive: Some(location.hive.to_ascii_uppercase()),
-            registry_path: Some(location.path.to_string()),
-            registry_value_name: Some(value_name),
-            startup_folder_path: None,
-            startup_file_path: None,
-            task_path: None,
-            task_author: None,
-            task_description: None,
-            task_triggers: vec![],
-            task_actions: vec![],
-            raw_xml_preview: None,
-        });
+            return Ok(StartupEntryDetails {
+                entry,
+                registry_hive: Some(location.hive.to_ascii_uppercase()),
+                registry_path: Some(location.path.to_string()),
+                registry_value_name: Some(value_name),
+                startup_folder_path: None,
+                startup_file_path: None,
+                task_path: None,
+                task_author: None,
+                task_description: None,
+                task_triggers: vec![],
+                task_actions: vec![],
+                raw_xml_preview: None,
+            });
+        }
+        Err(error) if is_registry_entry_not_found(&error, id) => {}
+        Err(error) => return Err(error),
     }
 
     let record = read_disabled_record(id)?;
@@ -332,15 +340,13 @@ fn find_active_entry(id: &str) -> Result<(RegistryLocation, String, String), App
         }
     }
 
-    Err(AppError::message(format!(
-        "registry startup entry not found: {id}"
-    )))
+    Err(AppError::RegistryEntryNotFound { id: id.to_string() })
 }
 
 fn is_registry_entry_not_found(error: &AppError, id: &str) -> bool {
     matches!(
         error,
-        AppError::Message(message) if message == &format!("registry startup entry not found: {id}")
+        AppError::RegistryEntryNotFound { id: not_found_id } if not_found_id == id
     )
 }
 

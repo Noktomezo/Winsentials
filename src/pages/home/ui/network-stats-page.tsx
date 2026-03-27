@@ -113,15 +113,15 @@ function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
   const preloadRouteIntent = useRouteIntentPreload()
   const adapterName = networkAdapterToParam(adapter.name)
 
+  function handlePointerIntent() {
+    preloadRouteIntent(() => router.preloadRoute({ to: '/network-stats/$adapterName', params: { adapterName } }))
+  }
+
   return (
     <button
       className="flex w-full flex-col gap-3 rounded-xl border border-border/70 bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-accent/20"
-      onFocus={() => {
-        preloadRouteIntent(() => router.preloadRoute({ to: '/network-stats/$adapterName', params: { adapterName } }))
-      }}
-      onMouseEnter={() => {
-        preloadRouteIntent(() => router.preloadRoute({ to: '/network-stats/$adapterName', params: { adapterName } }))
-      }}
+      onFocus={handlePointerIntent}
+      onMouseEnter={handlePointerIntent}
       onClick={() => {
         void navigate({ to: '/network-stats/$adapterName', params: { adapterName } })
       }}

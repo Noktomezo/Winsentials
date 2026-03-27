@@ -149,6 +149,7 @@
     "rename": "Переименовать",
     "delete": "Удалить",
     "deleteConfirm": "Удалить этот бэкап? Это действие нельзя отменить.",
+    "key": "Ключ",
     "tweakValues": "Значения твиков",
     "noSnapshots": "Бэкапов пока нет",
     "snapshotCreated": "Бэкап создан",
@@ -156,6 +157,7 @@
     "deleted": "Бэкап удалён",
     "snapshotRestored": "{{applied}} твиков применено",
     "snapshotRestoredWithErrors": "{{applied}} применено, {{failed}} не удалось",
+    "value": "Значение",
     "errors": {
       "load": "Не удалось загрузить бэкапы.",
       "create": "Не удалось создать бэкап.",

@@ -38,7 +38,7 @@ import {
 } from '@/shared/ui/tooltip'
 
 export function BackupPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
 
   const [backups, setBackups] = useState<BackupEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -181,7 +181,13 @@ export function BackupPage() {
   }
 
   function formatDate(iso: string) {
-    return new Date(iso).toLocaleString()
+    const date = new Date(iso)
+
+    if (Number.isNaN(date.getTime())) {
+      return iso
+    }
+
+    return date.toLocaleString(i18n.language || undefined)
   }
 
   return (
@@ -284,6 +290,12 @@ export function BackupPage() {
                         {expanded && (
                           <ScrollArea className="mt-2 h-48 rounded-lg border border-border/50 bg-muted/30" data-lenis-prevent>
                             <table className="w-full text-xs">
+                              <thead className="sr-only">
+                                <tr>
+                                  <th scope="col">{t('backup.key')}</th>
+                                  <th scope="col">{t('backup.value')}</th>
+                                </tr>
+                              </thead>
                               <tbody>
                                 {tweakEntries.map(([id, value]) => (
                                   <tr key={id} className="border-b border-border/30 last:border-0">

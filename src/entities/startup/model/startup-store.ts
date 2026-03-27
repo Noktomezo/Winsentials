@@ -158,9 +158,16 @@ function applyEntryUpdates(
   }
 
   const next = { ...current }
+  const groupedUpdates = new Map<StartupSource, Map<string, StartupEntry>>()
 
   for (const entry of entries) {
-    next[entry.source] = next[entry.source].map(currentEntry => currentEntry.id === entry.id ? entry : currentEntry)
+    const sourceUpdates = groupedUpdates.get(entry.source) ?? new Map<string, StartupEntry>()
+    sourceUpdates.set(entry.id, entry)
+    groupedUpdates.set(entry.source, sourceUpdates)
+  }
+
+  for (const [source, sourceUpdates] of groupedUpdates) {
+    next[source] = next[source].map(currentEntry => sourceUpdates.get(currentEntry.id) ?? currentEntry)
   }
 
   return {

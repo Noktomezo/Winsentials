@@ -149,6 +149,7 @@
     "rename": "Rename",
     "delete": "Delete",
     "deleteConfirm": "Delete this backup? This action cannot be undone.",
+    "key": "Key",
     "tweakValues": "Tweak values",
     "noSnapshots": "No backups yet",
     "snapshotCreated": "Backup created",
@@ -156,6 +157,7 @@
     "deleted": "Backup deleted",
     "snapshotRestored": "{{applied}} tweaks applied",
     "snapshotRestoredWithErrors": "{{applied}} applied, {{failed}} failed",
+    "value": "Value",
     "errors": {
       "load": "Failed to load backups.",
       "create": "Failed to create backup.",
