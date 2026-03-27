@@ -420,8 +420,20 @@ fn write_disabled_record(key: &RegKey, record: &DisabledRegistryRecord) -> Resul
 
 fn read_disabled_record(id: &str) -> Result<DisabledRegistryRecord, AppError> {
     let hive = disabled_record_hive_from_id(id)?;
-    let store = ensure_disabled_store_read(hive)?;
-    let subkey = store.open_subkey(hex_encode(id)).map_err(AppError::from)?;
+    let store = match ensure_disabled_store_read(hive) {
+        Ok(store) => store,
+        Err(AppError::Io(error)) if error.kind() == ErrorKind::NotFound => {
+            return Err(AppError::RegistryEntryNotFound { id: id.to_string() });
+        }
+        Err(error) => return Err(error),
+    };
+    let subkey = match store.open_subkey(hex_encode(id)) {
+        Ok(subkey) => subkey,
+        Err(error) if error.kind() == ErrorKind::NotFound => {
+            return Err(AppError::RegistryEntryNotFound { id: id.to_string() });
+        }
+        Err(error) => return Err(AppError::from(error)),
+    };
     read_disabled_record_from_key(&subkey)
 }
 

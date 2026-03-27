@@ -33,9 +33,6 @@ interface StartupStoreState {
   setSearch: (search: string) => void
   setSourceFilter: (filter: StartupSourceFilter) => void
   setStatusFilter: (filter: StartupStatusFilter) => void
-  loadRegistryEntries: (force?: boolean) => Promise<void>
-  loadStartupFolderEntries: (force?: boolean) => Promise<void>
-  loadScheduledTaskEntries: (force?: boolean) => Promise<void>
   loadAllEntriesProgressive: () => Promise<void>
   enableEntry: (id: string) => Promise<void>
   disableEntry: (id: string) => Promise<void>
@@ -324,14 +321,22 @@ async function hydrateLoadedEntries(
     }
 
     const chunk = ids.slice(index, index + hydrationChunkSize)
-    let hydrated: StartupEntry[] = []
+    const hydrated: StartupEntry[] = []
 
-    try {
-      hydrated = await hydrateStartupEntries(chunk)
-    }
-    catch (error) {
-      console.error('Failed to hydrate startup entries chunk', error)
-      continue
+    for (const id of chunk) {
+      try {
+        const [entry] = await hydrateStartupEntries([id])
+        if (entry) {
+          hydrated.push(entry)
+        }
+      }
+      catch (error) {
+        console.error(`Failed to hydrate startup entry ${id}`, error)
+      }
+
+      if (get().hydrationRequestId !== requestId) {
+        return
+      }
     }
 
     if (get().hydrationRequestId !== requestId || hydrated.length === 0) {
@@ -368,15 +373,6 @@ export const useStartupStore = create<StartupStoreState>()((set, get) => ({
   setSearch: search => set({ search }),
   setSourceFilter: sourceFilter => set({ sourceFilter }),
   setStatusFilter: statusFilter => set({ statusFilter }),
-  async loadRegistryEntries(force = false) {
-    await refreshSource('registry', force, set, get)
-  },
-  async loadStartupFolderEntries(force = false) {
-    await refreshSource('startup_folder', force, set, get)
-  },
-  async loadScheduledTaskEntries(force = false) {
-    await refreshSource('scheduled_task', force, set, get)
-  },
   async loadAllEntriesProgressive() {
     const requestId = get().hydrationRequestId + 1
     set({ hydrationRequestId: requestId })
