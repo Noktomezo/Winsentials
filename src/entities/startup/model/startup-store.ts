@@ -13,6 +13,7 @@ import {
   getRegistryStartupEntries,
   getScheduledTaskStartupEntries,
   getStartupFolderEntries,
+  hydrateStartupEntries,
 } from '@/entities/startup/api'
 
 interface StartupStoreState {
@@ -23,6 +24,7 @@ interface StartupStoreState {
   hasLoadedSource: Record<StartupSource, boolean>
   hasSettledSource: Record<StartupSource, boolean>
   sourceRequestIds: Record<StartupSource, number>
+  hydrationRequestId: number
   search: string
   sourceFilter: StartupSourceFilter
   statusFilter: StartupStatusFilter
@@ -84,6 +86,8 @@ const emptySourceRequestIds: Record<StartupSource, number> = {
   scheduled_task: 0,
 }
 
+const hydrationChunkSize = 12
+
 function pushPending(current: string[], id: string) {
   return current.includes(id) ? current : [...current, id]
 }
@@ -119,6 +123,60 @@ function applySourceResponse(
   const next = {
     ...current,
     [response.source]: response.entries,
+  }
+
+  return {
+    entriesBySource: next,
+    entries: mergeEntries(next),
+  }
+}
+
+function applyEntryUpdate(
+  current: Record<StartupSource, StartupEntry[]>,
+  entry: StartupEntry,
+) {
+  const next = {
+    ...current,
+    [entry.source]: current[entry.source].map(currentEntry => currentEntry.id === entry.id ? entry : currentEntry),
+  }
+
+  return {
+    entriesBySource: next,
+    entries: mergeEntries(next),
+  }
+}
+
+function applyEntryUpdates(
+  current: Record<StartupSource, StartupEntry[]>,
+  entries: StartupEntry[],
+) {
+  if (entries.length === 0) {
+    return {
+      entriesBySource: current,
+      entries: mergeEntries(current),
+    }
+  }
+
+  const next = { ...current }
+
+  for (const entry of entries) {
+    next[entry.source] = next[entry.source].map(currentEntry => currentEntry.id === entry.id ? entry : currentEntry)
+  }
+
+  return {
+    entriesBySource: next,
+    entries: mergeEntries(next),
+  }
+}
+
+function removeEntry(
+  current: Record<StartupSource, StartupEntry[]>,
+  source: StartupSource,
+  id: string,
+) {
+  const next = {
+    ...current,
+    [source]: current[source].filter(entry => entry.id !== id),
   }
 
   return {
@@ -246,6 +304,38 @@ function fetchSource(source: StartupSource) {
   }
 }
 
+async function hydrateLoadedEntries(
+  requestId: number,
+  set: StartupStoreSetter,
+  get: () => StartupStoreState,
+) {
+  const ids = get().entries.filter(entry => entry.iconDataUrl === null || entry.publisher === null).map(entry => entry.id)
+
+  for (let index = 0; index < ids.length; index += hydrationChunkSize) {
+    if (get().hydrationRequestId !== requestId) {
+      return
+    }
+
+    const chunk = ids.slice(index, index + hydrationChunkSize)
+    const hydrated = await hydrateStartupEntries(chunk)
+
+    if (get().hydrationRequestId !== requestId || hydrated.length === 0) {
+      continue
+    }
+
+    set((current) => {
+      if (current.hydrationRequestId !== requestId) {
+        return current
+      }
+
+      return {
+        ...current,
+        ...applyEntryUpdates(current.entriesBySource, hydrated),
+      }
+    })
+  }
+}
+
 export const useStartupStore = create<StartupStoreState>()((set, get) => ({
   entries: [],
   entriesBySource: emptyEntriesBySource,
@@ -254,6 +344,7 @@ export const useStartupStore = create<StartupStoreState>()((set, get) => ({
   hasLoadedSource: emptyLoadedState,
   hasSettledSource: emptySettledState,
   sourceRequestIds: emptySourceRequestIds,
+  hydrationRequestId: 0,
   search: '',
   sourceFilter: 'all',
   statusFilter: 'all',
@@ -272,37 +363,38 @@ export const useStartupStore = create<StartupStoreState>()((set, get) => ({
     await refreshSource('scheduled_task', force, set, get)
   },
   async loadAllEntriesProgressive() {
-    const registryPromise = refreshSource('registry', false, set, get)
-    const startupFolderPromise = refreshSource('startup_folder', false, set, get)
-    const scheduledTasksPromise = refreshSource('scheduled_task', false, set, get)
+    const requestId = get().hydrationRequestId + 1
+    set({ hydrationRequestId: requestId })
 
     await Promise.allSettled([
-      registryPromise,
-      startupFolderPromise,
-      scheduledTasksPromise,
+      refreshSource('registry', false, set, get),
+      refreshSource('startup_folder', false, set, get),
     ])
+
+    await refreshSource('scheduled_task', false, set, get)
+    void hydrateLoadedEntries(requestId, set, get)
   },
   async enableEntry(id) {
-    const source = sourceFromId(id)
     set(state => ({ pendingIds: pushPending(state.pendingIds, id) }))
     try {
-      await enableStartupEntry(id)
-      if (source) {
-        await refreshSource(source, true, set, get)
-      }
+      const entry = await enableStartupEntry(id)
+      set(current => ({
+        ...current,
+        ...applyEntryUpdate(current.entriesBySource, entry),
+      }))
     }
     finally {
       set(state => ({ pendingIds: popPending(state.pendingIds, id) }))
     }
   },
   async disableEntry(id) {
-    const source = sourceFromId(id)
     set(state => ({ pendingIds: pushPending(state.pendingIds, id) }))
     try {
-      await disableStartupEntry(id)
-      if (source) {
-        await refreshSource(source, true, set, get)
-      }
+      const entry = await disableStartupEntry(id)
+      set(current => ({
+        ...current,
+        ...applyEntryUpdate(current.entriesBySource, entry),
+      }))
     }
     finally {
       set(state => ({ pendingIds: popPending(state.pendingIds, id) }))
@@ -314,7 +406,10 @@ export const useStartupStore = create<StartupStoreState>()((set, get) => ({
     try {
       await deleteStartupEntry(id)
       if (source) {
-        await refreshSource(source, true, set, get)
+        set(current => ({
+          ...current,
+          ...removeEntry(current.entriesBySource, source, id),
+        }))
       }
     }
     finally {

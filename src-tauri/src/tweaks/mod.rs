@@ -154,6 +154,10 @@ pub fn tweaks_for_category(category: &str) -> Vec<Arc<dyn Tweak>> {
         .unwrap_or_default()
 }
 
+pub fn all_tweaks() -> &'static Vec<Arc<dyn Tweak>> {
+    tweak_registry()
+}
+
 pub fn tweak_by_id(id: &str) -> Result<Arc<dyn Tweak>, AppError> {
     id_registry()
         .get(id)

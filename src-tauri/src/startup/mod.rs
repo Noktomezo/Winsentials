@@ -25,6 +25,10 @@ pub fn startup_list_scheduled_tasks() -> StartupSourceListResponse {
     )
 }
 
+pub fn startup_hydrate_entries(ids: &[String]) -> Vec<StartupEntry> {
+    ids.iter().filter_map(|id| startup_entry(id).ok()).collect()
+}
+
 pub fn startup_enable(id: &str) -> Result<StartupEntry, AppError> {
     if id.starts_with("reg:") {
         return registry::enable_entry(id);
@@ -84,6 +88,22 @@ pub fn startup_details(id: &str) -> Result<StartupEntryDetails, AppError> {
 
     if id.starts_with("task:") {
         return scheduled_tasks::entry_details(id);
+    }
+
+    Err(AppError::message(format!("unknown startup entry id: {id}")))
+}
+
+fn startup_entry(id: &str) -> Result<StartupEntry, AppError> {
+    if id.starts_with("reg:") {
+        return registry::entry(id);
+    }
+
+    if id.starts_with("folder:") {
+        return startup_folder::entry(id);
+    }
+
+    if id.starts_with("task:") {
+        return scheduled_tasks::entry(id);
     }
 
     Err(AppError::message(format!("unknown startup entry id: {id}")))

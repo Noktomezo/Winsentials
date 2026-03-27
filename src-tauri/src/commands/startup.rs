@@ -28,6 +28,13 @@ pub async fn startup_list_scheduled_tasks() -> Result<StartupSourceListResponse,
 }
 
 #[tauri::command]
+pub async fn startup_hydrate_entries(ids: Vec<String>) -> Result<Vec<StartupEntry>, AppError> {
+    tauri::async_runtime::spawn_blocking(move || startup::startup_hydrate_entries(&ids))
+        .await
+        .map_err(|error| AppError::message(format!("startup_hydrate_entries join error: {error}")))
+}
+
+#[tauri::command]
 pub async fn startup_enable(id: String) -> Result<StartupEntry, AppError> {
     tauri::async_runtime::spawn_blocking(move || startup::startup_enable(&id))
         .await

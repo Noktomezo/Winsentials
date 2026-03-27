@@ -131,12 +131,38 @@
   },
   "navigation": {
     "appearance": "Appearance",
+    "backup": "Backups",
     "behaviour": "Behaviour",
     "home": "Home",
     "network": "Network",
     "security": "Security",
     "startup": "Startup",
     "settings": "Settings"
+  },
+  "backup": {
+    "title": "Backups",
+    "description": "Create and restore snapshots of your tweak settings.",
+    "createSnapshot": "Create Backup",
+    "labelPlaceholder": "Backup name (optional)",
+    "apply": "Apply",
+    "applyConfirm": "Apply this backup? Your current tweak settings will be overwritten.",
+    "rename": "Rename",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this backup? This action cannot be undone.",
+    "tweakValues": "Tweak values",
+    "noSnapshots": "No backups yet",
+    "snapshotCreated": "Backup created",
+    "renamed": "Backup renamed",
+    "deleted": "Backup deleted",
+    "snapshotRestored": "{{applied}} tweaks applied",
+    "snapshotRestoredWithErrors": "{{applied}} applied, {{failed}} failed",
+    "errors": {
+      "load": "Failed to load backups.",
+      "create": "Failed to create backup.",
+      "restore": "Failed to apply backup.",
+      "delete": "Failed to delete backup.",
+      "rename": "Failed to rename backup."
+    }
   },
   "network": {
     "description": "Configure network adapter behavior, offloading, and TCP stack settings.",

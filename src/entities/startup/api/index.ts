@@ -110,6 +110,15 @@ export async function getScheduledTaskStartupEntries(): Promise<StartupSourceLis
   return mapSourceResponse(response)
 }
 
+export async function hydrateStartupEntries(ids: string[]): Promise<StartupEntry[]> {
+  if (ids.length === 0) {
+    return []
+  }
+
+  const response = await invoke<BackendStartupEntry[]>('startup_hydrate_entries', { ids })
+  return response.map(mapEntry)
+}
+
 export async function getStartupEntryDetails(id: string): Promise<StartupEntryDetails> {
   const response = await invoke<BackendStartupEntryDetails>('startup_details', { id })
   return mapDetails(response)

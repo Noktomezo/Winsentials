@@ -7,7 +7,7 @@ use crate::error::AppError;
 use crate::startup::disabled_store::{
     DisabledRegistryRecord, HKCU_DISABLED_REGISTRY_PATH, HKLM_DISABLED_REGISTRY_PATH, hex_encode,
 };
-use crate::startup::presentation::registry_presentation;
+use crate::startup::presentation::{registry_presentation, registry_presentation_light};
 use crate::startup::types::{
     StartupEntry, StartupEntryDetails, StartupScope, StartupSource, StartupStatus,
 };
@@ -88,6 +88,30 @@ pub fn list_entries() -> Result<Vec<StartupEntry>, AppError> {
     Ok(entries)
 }
 
+pub fn entry(id: &str) -> Result<StartupEntry, AppError> {
+    if let Ok((location, value_name, command)) = find_active_entry(id) {
+        return Ok(build_entry(
+            RegistryEntryParams {
+                id: id.to_string(),
+                name: value_name,
+                command: Some(command),
+                scope: location.scope,
+                status: StartupStatus::Enabled,
+                run_once: location.run_once,
+                location_label: format_registry_location_label(location),
+                source_display: "Registry".to_string(),
+                hive: location.hive.to_string(),
+                registry_path: location.path.to_string(),
+                last_error: None,
+            },
+            true,
+        ));
+    }
+
+    let record = read_disabled_record(id)?;
+    entry_from_record(record, StartupStatus::Disabled, true)
+}
+
 pub fn disable_entry(id: &str) -> Result<StartupEntry, AppError> {
     let (location, value_name, command) = find_active_entry(id)?;
     let encoded = hex_encode(id);
@@ -111,7 +135,7 @@ pub fn disable_entry(id: &str) -> Result<StartupEntry, AppError> {
         .delete_value(&value_name)
         .map_err(AppError::from)?;
 
-    entry_from_record(record, StartupStatus::Disabled)
+    entry_from_record(record, StartupStatus::Disabled, true)
 }
 
 pub fn enable_entry(id: &str) -> Result<StartupEntry, AppError> {
@@ -123,7 +147,7 @@ pub fn enable_entry(id: &str) -> Result<StartupEntry, AppError> {
         .map_err(AppError::from)?;
     delete_disabled_record(id, &record.original_hive)?;
 
-    entry_from_record(record, StartupStatus::Enabled)
+    entry_from_record(record, StartupStatus::Enabled, true)
 }
 
 pub fn delete_entry(id: &str) -> Result<(), AppError> {
@@ -142,19 +166,22 @@ pub fn delete_entry(id: &str) -> Result<(), AppError> {
 
 pub fn entry_details(id: &str) -> Result<StartupEntryDetails, AppError> {
     if let Ok((location, value_name, command)) = find_active_entry(id) {
-        let entry = build_entry(RegistryEntryParams {
-            id: id.to_string(),
-            name: value_name.clone(),
-            command: Some(command),
-            scope: location.scope,
-            status: StartupStatus::Enabled,
-            run_once: location.run_once,
-            location_label: format_registry_location_label(location),
-            source_display: "Registry".to_string(),
-            hive: location.hive.to_string(),
-            registry_path: location.path.to_string(),
-            last_error: None,
-        });
+        let entry = build_entry(
+            RegistryEntryParams {
+                id: id.to_string(),
+                name: value_name.clone(),
+                command: Some(command),
+                scope: location.scope,
+                status: StartupStatus::Enabled,
+                run_once: location.run_once,
+                location_label: format_registry_location_label(location),
+                source_display: "Registry".to_string(),
+                hive: location.hive.to_string(),
+                registry_path: location.path.to_string(),
+                last_error: None,
+            },
+            true,
+        );
 
         return Ok(StartupEntryDetails {
             entry,
@@ -173,7 +200,7 @@ pub fn entry_details(id: &str) -> Result<StartupEntryDetails, AppError> {
     }
 
     let record = read_disabled_record(id)?;
-    let entry = entry_from_record(record.clone(), StartupStatus::Disabled)?;
+    let entry = entry_from_record(record.clone(), StartupStatus::Disabled, true)?;
     Ok(StartupEntryDetails {
         entry,
         registry_hive: Some(record.original_hive.to_ascii_uppercase()),
@@ -209,19 +236,22 @@ fn list_active_entries(location: RegistryLocation) -> Result<Vec<StartupEntry>, 
             continue;
         }
         let id = registry_entry_id(location.hive, location.path, &value_name);
-        entries.push(build_entry(RegistryEntryParams {
-            id,
-            name: value_name,
-            command: Some(command),
-            scope: location.scope,
-            status: StartupStatus::Enabled,
-            run_once: location.run_once,
-            location_label: format_registry_location_label(location),
-            source_display: "Registry".to_string(),
-            hive: location.hive.to_string(),
-            registry_path: location.path.to_string(),
-            last_error: None,
-        }));
+        entries.push(build_entry(
+            RegistryEntryParams {
+                id,
+                name: value_name,
+                command: Some(command),
+                scope: location.scope,
+                status: StartupStatus::Enabled,
+                run_once: location.run_once,
+                location_label: format_registry_location_label(location),
+                source_display: "Registry".to_string(),
+                hive: location.hive.to_string(),
+                registry_path: location.path.to_string(),
+                last_error: None,
+            },
+            false,
+        ));
     }
 
     Ok(entries)
@@ -242,7 +272,7 @@ fn list_disabled_entries(hive: &str) -> Result<Vec<StartupEntry>, AppError> {
         if is_system_command(&record.command) {
             continue;
         }
-        entries.push(entry_from_record(record, StartupStatus::Disabled)?);
+        entries.push(entry_from_record(record, StartupStatus::Disabled, false)?);
     }
 
     Ok(entries)
@@ -251,24 +281,28 @@ fn list_disabled_entries(hive: &str) -> Result<Vec<StartupEntry>, AppError> {
 fn entry_from_record(
     record: DisabledRegistryRecord,
     status: StartupStatus,
+    enrich: bool,
 ) -> Result<StartupEntry, AppError> {
-    Ok(build_entry(RegistryEntryParams {
-        id: record.id,
-        name: record.value_name,
-        command: Some(record.command),
-        scope: record.scope,
-        status,
-        run_once: record.run_once,
-        location_label: format!(
-            "{} {}",
-            record.original_hive.to_ascii_uppercase(),
-            if record.run_once { "RunOnce" } else { "Run" }
-        ),
-        source_display: "Registry".to_string(),
-        hive: record.original_hive,
-        registry_path: record.original_path,
-        last_error: None,
-    }))
+    Ok(build_entry(
+        RegistryEntryParams {
+            id: record.id,
+            name: record.value_name,
+            command: Some(record.command),
+            scope: record.scope,
+            status,
+            run_once: record.run_once,
+            location_label: format!(
+                "{} {}",
+                record.original_hive.to_ascii_uppercase(),
+                if record.run_once { "RunOnce" } else { "Run" }
+            ),
+            source_display: "Registry".to_string(),
+            hive: record.original_hive,
+            registry_path: record.original_path,
+            last_error: None,
+        },
+        enrich,
+    ))
 }
 
 fn find_active_entry(id: &str) -> Result<(RegistryLocation, String, String), AppError> {
@@ -299,8 +333,12 @@ fn find_active_entry(id: &str) -> Result<(RegistryLocation, String, String), App
     )))
 }
 
-fn build_entry(params: RegistryEntryParams) -> StartupEntry {
-    let presentation = registry_presentation(&params.name, params.command.as_deref());
+fn build_entry(params: RegistryEntryParams, enrich: bool) -> StartupEntry {
+    let presentation = if enrich {
+        registry_presentation(&params.name, params.command.as_deref())
+    } else {
+        registry_presentation_light(&params.name, params.command.as_deref())
+    };
 
     StartupEntry {
         id: params.id,

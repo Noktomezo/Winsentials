@@ -17,7 +17,9 @@ use windows::Win32::System::Variant::VARIANT;
 use windows::core::{BSTR, Interface};
 
 use crate::error::AppError;
-use crate::startup::presentation::scheduled_task_presentation;
+use crate::startup::presentation::{
+    scheduled_task_presentation, scheduled_task_presentation_light,
+};
 use crate::startup::types::{
     StartupEntry, StartupEntryDetails, StartupScope, StartupSource, StartupStatus,
 };
@@ -26,8 +28,19 @@ pub fn list_entries() -> Result<Vec<StartupEntry>, AppError> {
     let session = TaskSchedulerSession::connect()?;
     let root = session.root_folder()?;
     let mut entries = Vec::new();
-    collect_folder_entries(&root, &mut entries)?;
+    collect_folder_entries(&root, &mut entries, false)?;
     Ok(entries)
+}
+
+pub fn entry(id: &str) -> Result<StartupEntry, AppError> {
+    let full_path = task_full_path_from_id(id)?;
+    let session = TaskSchedulerSession::connect()?;
+    let task = session.get_task(&full_path)?;
+    task_to_entry(&task, true)?.ok_or_else(|| {
+        AppError::message(format!(
+            "scheduled task is filtered from startup list: {full_path}"
+        ))
+    })
 }
 
 pub fn enable_entry(id: &str) -> Result<StartupEntry, AppError> {
@@ -38,7 +51,7 @@ pub fn enable_entry(id: &str) -> Result<StartupEntry, AppError> {
     unsafe {
         task.SetEnabled(VARIANT_BOOL(1))?;
     }
-    task_to_entry(&task)?.ok_or_else(|| {
+    task_to_entry(&task, true)?.ok_or_else(|| {
         AppError::message(format!(
             "scheduled task is filtered from startup list: {full_path}"
         ))
@@ -53,7 +66,7 @@ pub fn disable_entry(id: &str) -> Result<StartupEntry, AppError> {
     unsafe {
         task.SetEnabled(VARIANT_BOOL(0))?;
     }
-    task_to_entry(&task)?.ok_or_else(|| {
+    task_to_entry(&task, true)?.ok_or_else(|| {
         AppError::message(format!(
             "scheduled task is filtered from startup list: {full_path}"
         ))
@@ -77,7 +90,7 @@ pub fn entry_details(id: &str) -> Result<StartupEntryDetails, AppError> {
     let full_path = task_full_path_from_id(id)?;
     let session = TaskSchedulerSession::connect()?;
     let task = session.get_task(&full_path)?;
-    let entry = task_to_entry(&task)?.ok_or_else(|| {
+    let entry = task_to_entry(&task, true)?.ok_or_else(|| {
         AppError::message(format!(
             "scheduled task is filtered from startup list: {full_path}"
         ))
@@ -184,6 +197,11 @@ struct TaskActionInfo {
     working_directory: Option<String>,
 }
 
+struct TaskListMetadata {
+    author: Option<String>,
+    first_action: Option<TaskActionInfo>,
+}
+
 struct TaskMetadata {
     author: Option<String>,
     description: Option<String>,
@@ -213,18 +231,35 @@ impl TaskMetadata {
     }
 }
 
+impl TaskListMetadata {
+    fn from_definition(definition: &ITaskDefinition) -> Result<Self, AppError> {
+        let author = unsafe {
+            let registration = definition.RegistrationInfo()?;
+            bstr_out(|value| registration.Author(value))?
+        };
+
+        let first_action = unsafe { first_action_info(&definition.Actions()?)? };
+
+        Ok(Self {
+            author,
+            first_action,
+        })
+    }
+}
+
 fn collect_folder_entries(
     folder: &ITaskFolder,
     entries: &mut Vec<StartupEntry>,
+    enrich: bool,
 ) -> Result<(), AppError> {
     let tasks = unsafe { folder.GetTasks(TASK_ENUM_HIDDEN.0)? };
-    push_tasks(&tasks, entries)?;
+    push_tasks(&tasks, entries, enrich)?;
 
     let subfolders = unsafe { folder.GetFolders(0)? };
     let count = unsafe { subfolders.Count()? };
     for index in 1..=count {
         let child = unsafe { subfolders.get_Item(&VARIANT::from(index))? };
-        collect_folder_entries(&child, entries)?;
+        collect_folder_entries(&child, entries, enrich)?;
     }
 
     Ok(())
@@ -233,11 +268,12 @@ fn collect_folder_entries(
 fn push_tasks(
     tasks: &windows::Win32::System::TaskScheduler::IRegisteredTaskCollection,
     entries: &mut Vec<StartupEntry>,
+    enrich: bool,
 ) -> Result<(), AppError> {
     let count = unsafe { tasks.Count()? };
     for index in 1..=count {
         let task = unsafe { tasks.get_Item(&VARIANT::from(index))? };
-        if let Some(entry) = task_to_entry(&task)? {
+        if let Some(entry) = task_to_entry(&task, enrich)? {
             entries.push(entry);
         }
     }
@@ -245,7 +281,7 @@ fn push_tasks(
     Ok(())
 }
 
-fn task_to_entry(task: &IRegisteredTask) -> Result<Option<StartupEntry>, AppError> {
+fn task_to_entry(task: &IRegisteredTask, enrich: bool) -> Result<Option<StartupEntry>, AppError> {
     let name = unsafe { optional_bstr(task.Name()?) }
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| "Scheduled task".to_string());
@@ -257,23 +293,22 @@ fn task_to_entry(task: &IRegisteredTask) -> Result<Option<StartupEntry>, AppErro
     let metadata = unsafe {
         match task.Definition() {
             Ok(definition) => {
-                TaskMetadata::from_definition(&definition).unwrap_or_else(|_| TaskMetadata {
+                TaskListMetadata::from_definition(&definition).unwrap_or(TaskListMetadata {
                     author: None,
-                    description: None,
-                    actions: vec![],
-                    triggers: vec![],
+                    first_action: None,
                 })
             }
-            Err(_) => TaskMetadata {
+            Err(_) => TaskListMetadata {
                 author: None,
-                description: None,
-                actions: vec![],
-                triggers: vec![],
+                first_action: None,
             },
         }
     };
 
-    let first_action = metadata.actions.first().cloned();
+    let TaskListMetadata {
+        author,
+        first_action,
+    } = metadata;
     let command = first_action.as_ref().and_then(|action| {
         action
             .command
@@ -286,14 +321,23 @@ fn task_to_entry(task: &IRegisteredTask) -> Result<Option<StartupEntry>, AppErro
     let working_directory = first_action
         .as_ref()
         .and_then(|action| action.working_directory.clone());
-    let presentation = scheduled_task_presentation(
-        &name,
-        command.as_deref(),
-        arguments.as_deref(),
-        working_directory.as_deref(),
-    );
+    let presentation = if enrich {
+        scheduled_task_presentation(
+            &name,
+            command.as_deref(),
+            arguments.as_deref(),
+            working_directory.as_deref(),
+        )
+    } else {
+        scheduled_task_presentation_light(
+            &name,
+            command.as_deref(),
+            arguments.as_deref(),
+            working_directory.as_deref(),
+        )
+    };
     let is_system = is_system_task(
-        &metadata,
+        author.as_deref(),
         &full_path,
         command.as_deref(),
         presentation.target_path.as_deref(),
@@ -330,7 +374,7 @@ fn task_to_entry(task: &IRegisteredTask) -> Result<Option<StartupEntry>, AppErro
 }
 
 fn ensure_task_is_visible(task: &IRegisteredTask, full_path: &str) -> Result<(), AppError> {
-    task_to_entry(task)?.map(|_| ()).ok_or_else(|| {
+    task_to_entry(task, false)?.map(|_| ()).ok_or_else(|| {
         AppError::message(format!(
             "scheduled task is filtered from startup list: {full_path}"
         ))
@@ -338,14 +382,12 @@ fn ensure_task_is_visible(task: &IRegisteredTask, full_path: &str) -> Result<(),
 }
 
 fn is_system_task(
-    metadata: &TaskMetadata,
+    author: Option<&str>,
     full_path: &str,
     command: Option<&str>,
     target_path: Option<&str>,
 ) -> bool {
-    metadata
-        .author
-        .as_deref()
+    author
         .map(|value| value.to_ascii_lowercase().contains("microsoft"))
         .unwrap_or(false)
         || full_path.to_ascii_lowercase().starts_with(r"\microsoft\")
@@ -390,6 +432,19 @@ unsafe fn collect_action_info(
     }
 
     Ok(result)
+}
+
+unsafe fn first_action_info(
+    actions: &IActionCollection,
+) -> Result<Option<TaskActionInfo>, AppError> {
+    let count = count_out(|value| unsafe { actions.Count(value) })?;
+    if count <= 0 {
+        return Ok(None);
+    }
+
+    let action = unsafe { actions.get_Item(1)? };
+    let action_type = task_action_type_out(|value| unsafe { action.Type(value) })?;
+    Ok(Some(unsafe { action_info(&action, action_type)? }))
 }
 
 unsafe fn action_info(

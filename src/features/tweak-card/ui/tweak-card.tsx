@@ -304,22 +304,26 @@ export function TweakCard({
 export function TweakCardSkeleton() {
   return (
     <article className="rounded-xl border border-border/70 bg-card p-4">
-      <div className="space-y-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex flex-1 items-start gap-3">
-            <Skeleton className="size-9 rounded-lg" />
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex flex-wrap gap-2">
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-6 w-36 rounded-full" />
-                <Skeleton className="h-4 w-full max-w-md" />
-              </div>
+      <div className="min-w-0 flex items-start gap-3">
+        <Skeleton className="size-9 shrink-0 rounded-lg" />
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex flex-wrap items-center gap-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="size-3.5 rounded-full" />
+              <Skeleton className="size-3.5 rounded-full" />
+              <Skeleton className="size-3.5 rounded-full" />
+            </div>
+            <div className="flex shrink-0 items-center gap-2 self-start">
+              <Skeleton className="h-6 w-11 rounded-full" />
+              <Skeleton className="size-6 rounded-md" />
             </div>
           </div>
-          <Skeleton className="h-6 w-11 rounded-full" />
+          <div className="space-y-1.5">
+            <Skeleton className="h-3 w-full max-w-xl" />
+            <Skeleton className="h-3 w-full max-w-md" />
+          </div>
         </div>
-        <Skeleton className="ml-12 h-4 w-full max-w-xl" />
-        <Skeleton className="ml-12 h-4 w-full max-w-md" />
       </div>
     </article>
   )

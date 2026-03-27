@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
-import { FolderCog, House, Network, Palette, Rocket, Settings2, Shield } from 'lucide-react'
+import { ArchiveRestore, FolderCog, House, Network, Palette, Rocket, Settings2, Shield } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   Sidebar,
@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
 } from '@/shared/ui/sidebar'
 
-type SidebarRoute = '/home' | '/appearance' | '/behaviour' | '/security' | '/network' | '/startup' | '/settings'
+type SidebarRoute = '/home' | '/appearance' | '/backup' | '/behaviour' | '/security' | '/network' | '/startup' | '/settings'
 
 export function AppSidebar() {
   const { t } = useTranslation()
@@ -154,6 +154,20 @@ export function AppSidebar() {
             >
               <Rocket />
               <span>{t('navigation.startup')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="cursor-pointer"
+              isActive={pathname === '/backup'}
+              onClick={event => handleMenuClick(event, '/backup')}
+              onFocus={() => handlePointerIntent('/backup')}
+              onMouseEnter={() => handlePointerIntent('/backup')}
+              tooltip={t('navigation.backup')}
+              type="button"
+            >
+              <ArchiveRestore />
+              <span>{t('navigation.backup')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

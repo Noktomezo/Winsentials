@@ -615,15 +615,20 @@ export function StartupPage() {
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, index) => (
                 <section className="rounded-xl border border-border/70 bg-card p-4" key={index}>
-                  <div className="flex gap-3">
-                    <Skeleton className="size-10 rounded-lg" />
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-3 w-full max-w-xl" />
-                      <div className="flex gap-2">
-                        <Skeleton className="h-5 w-24 rounded-full" />
-                        <Skeleton className="h-5 w-20 rounded-full" />
+                  <div className="min-w-0 flex items-start gap-3">
+                    <Skeleton className="size-9 shrink-0 rounded-lg" />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex flex-wrap items-center gap-2">
+                          <Skeleton className="h-4 w-48" />
+                          <Skeleton className="size-3 rounded-full" />
+                          <Skeleton className="size-3 rounded-full" />
+                        </div>
+                        <div className="flex h-6 items-center">
+                          <Skeleton className="h-5 w-9 rounded-full" />
+                        </div>
                       </div>
+                      <Skeleton className="h-3 w-32" />
                     </div>
                   </div>
                 </section>

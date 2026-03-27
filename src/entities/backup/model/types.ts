@@ -14,3 +14,7 @@ export interface BackupSnapshot {
   label: string
   tweaks: Record<string, string>
 }
+
+export interface BackupEntry extends BackupMeta {
+  tweaks: Record<string, string>
+}

@@ -201,6 +201,15 @@ const startupRoute = createRoute({
   ),
 })
 
+const backupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'backup',
+  component: lazyRouteComponent(
+    () => import('@/pages/backup/ui/backup-page'),
+    'BackupPage',
+  ),
+})
+
 const networkAdapterRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'network-stats/$adapterName',
@@ -218,6 +227,7 @@ const routeTree = rootRoute.addChildren([
   securityRoute,
   networkRoute,
   startupRoute,
+  backupRoute,
   settingsRoute,
   cpuRoute,
   ramRoute,

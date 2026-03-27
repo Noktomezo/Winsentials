@@ -7,10 +7,11 @@ pub mod startup;
 pub mod system_info;
 pub mod tweaks;
 
+use crate::backup::{backup_create, backup_delete, backup_list, backup_rename, backup_restore};
 use crate::commands::app::greet;
 use crate::commands::startup::{
-    startup_delete, startup_details, startup_disable, startup_enable, startup_list_registry,
-    startup_list_scheduled_tasks, startup_list_startup_folder,
+    startup_delete, startup_details, startup_disable, startup_enable, startup_hydrate_entries,
+    startup_list_registry, startup_list_scheduled_tasks, startup_list_startup_folder,
 };
 use crate::commands::system::restart_pc;
 use crate::commands::system_info::{
@@ -54,6 +55,7 @@ pub fn run() {
     builder
         .manage(system_info::SystemInfoState::new())
         .setup(|app| {
+            crate::backup::ensure_initial_backup();
             use std::time::{Duration, Instant};
             use sysinfo::{CpuRefreshKind, MemoryRefreshKind, Networks, RefreshKind, System};
 
@@ -143,6 +145,11 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            backup_create,
+            backup_list,
+            backup_restore,
+            backup_rename,
+            backup_delete,
             greet,
             set_chrome_acrylic,
             tweaks_by_category,
@@ -156,6 +163,7 @@ pub fn run() {
             startup_list_registry,
             startup_list_startup_folder,
             startup_list_scheduled_tasks,
+            startup_hydrate_entries,
             startup_enable,
             startup_disable,
             startup_delete,

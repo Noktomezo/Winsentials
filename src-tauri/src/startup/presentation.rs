@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use std::ffi::{OsStr, c_void};
 use std::mem::size_of;
 use std::path::{Path, PathBuf};
 use std::ptr::null_mut;
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 
 use base64::Engine;
 use png::{BitDepth, ColorType, Encoder};
@@ -52,6 +53,20 @@ struct ShortcutTarget {
     working_directory: Option<String>,
 }
 
+#[derive(Debug, Clone, Default)]
+struct FilePresentation {
+    display_name: Option<String>,
+    publisher: Option<String>,
+    icon_data_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Default)]
+struct VersionStrings {
+    file_description: Option<String>,
+    product_name: Option<String>,
+    company_name: Option<String>,
+}
+
 pub fn parse_command_line(input: &str) -> ParsedCommand {
     let raw = input.trim().to_string();
     if raw.is_empty() {
@@ -76,13 +91,31 @@ pub fn parse_command_line(input: &str) -> ParsedCommand {
 pub fn registry_presentation(raw_name: &str, command: Option<&str>) -> StartupPresentation {
     let parsed = command.map(parse_command_line).unwrap_or_default();
     let executable = parsed.executable_path.as_deref();
+    let metadata = executable.map(file_presentation_for_path);
 
     StartupPresentation {
-        display_name: file_display_name(executable)
-            .or_else(|| file_stem(executable))
+        display_name: metadata
+            .as_ref()
+            .and_then(|value| value.display_name.clone())
             .unwrap_or_else(|| normalize_registry_name(raw_name)),
-        publisher: file_publisher(executable),
-        icon_data_url: resolve_icon_data_url(executable),
+        publisher: metadata.as_ref().and_then(|value| value.publisher.clone()),
+        icon_data_url: metadata
+            .as_ref()
+            .and_then(|value| value.icon_data_url.clone()),
+        target_path: executable.map(path_to_string),
+        arguments: parsed.arguments,
+        working_directory: None,
+    }
+}
+
+pub fn registry_presentation_light(raw_name: &str, command: Option<&str>) -> StartupPresentation {
+    let parsed = command.map(parse_command_line).unwrap_or_default();
+    let executable = parsed.executable_path.as_deref();
+
+    StartupPresentation {
+        display_name: file_stem(executable).unwrap_or_else(|| normalize_registry_name(raw_name)),
+        publisher: None,
+        icon_data_url: None,
         target_path: executable.map(path_to_string),
         arguments: parsed.arguments,
         working_directory: None,
@@ -90,10 +123,13 @@ pub fn registry_presentation(raw_name: &str, command: Option<&str>) -> StartupPr
 }
 
 pub fn startup_folder_presentation(path: &Path) -> StartupPresentation {
-    let shortcut = resolve_shortcut(path).ok().flatten();
+    let shortcut = resolve_shortcut_cached(path);
     let resolved_target = shortcut
         .as_ref()
         .and_then(|value| value.target_path.as_deref());
+    let metadata = resolved_target
+        .or(Some(path))
+        .map(file_presentation_for_path);
     let working_directory = shortcut
         .as_ref()
         .and_then(|value| value.working_directory.clone())
@@ -101,16 +137,30 @@ pub fn startup_folder_presentation(path: &Path) -> StartupPresentation {
     let arguments = shortcut.as_ref().and_then(|value| value.arguments.clone());
 
     StartupPresentation {
-        display_name: file_display_name(resolved_target)
-            .or_else(|| file_stem(resolved_target))
+        display_name: metadata
+            .as_ref()
+            .and_then(|value| value.display_name.clone())
             .unwrap_or_else(|| fallback_path_name(path)),
-        publisher: file_publisher(resolved_target.or(Some(path))),
-        icon_data_url: resolve_icon_data_url(resolved_target.or(Some(path))),
+        publisher: metadata.as_ref().and_then(|value| value.publisher.clone()),
+        icon_data_url: metadata
+            .as_ref()
+            .and_then(|value| value.icon_data_url.clone()),
         target_path: resolved_target
             .map(path_to_string)
             .or_else(|| Some(path_to_string(path))),
         arguments,
         working_directory,
+    }
+}
+
+pub fn startup_folder_presentation_light(path: &Path) -> StartupPresentation {
+    StartupPresentation {
+        display_name: fallback_path_name(path),
+        publisher: None,
+        icon_data_url: None,
+        target_path: Some(path_to_string(path)),
+        arguments: None,
+        working_directory: path.parent().map(path_to_string),
     }
 }
 
@@ -123,13 +173,44 @@ pub fn scheduled_task_presentation(
     let executable = command
         .map(PathBuf::from)
         .filter(|path| !path.as_os_str().is_empty());
+    let metadata = executable.as_deref().map(file_presentation_for_path);
 
     StartupPresentation {
-        display_name: file_display_name(executable.as_deref())
-            .or_else(|| file_stem(executable.as_deref()))
+        display_name: metadata
+            .as_ref()
+            .and_then(|value| value.display_name.clone())
             .unwrap_or_else(|| normalize_task_name(raw_name)),
-        publisher: file_publisher(executable.as_deref()),
-        icon_data_url: resolve_icon_data_url(executable.as_deref()),
+        publisher: metadata.as_ref().and_then(|value| value.publisher.clone()),
+        icon_data_url: metadata
+            .as_ref()
+            .and_then(|value| value.icon_data_url.clone()),
+        target_path: executable.as_deref().map(path_to_string),
+        arguments: arguments
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string),
+        working_directory: working_directory
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string),
+    }
+}
+
+pub fn scheduled_task_presentation_light(
+    raw_name: &str,
+    command: Option<&str>,
+    arguments: Option<&str>,
+    working_directory: Option<&str>,
+) -> StartupPresentation {
+    let executable = command
+        .map(PathBuf::from)
+        .filter(|path| !path.as_os_str().is_empty());
+
+    StartupPresentation {
+        display_name: file_stem(executable.as_deref())
+            .unwrap_or_else(|| normalize_task_name(raw_name)),
+        publisher: None,
+        icon_data_url: None,
         target_path: executable.as_deref().map(path_to_string),
         arguments: arguments
             .map(str::trim)
@@ -254,17 +335,69 @@ fn fallback_path_name(path: &Path) -> String {
         .to_string()
 }
 
-fn file_display_name(path: Option<&Path>) -> Option<String> {
-    let path = path?;
-    if !path.exists() {
-        return file_stem(Some(path));
+fn file_presentation_for_path(path: &Path) -> FilePresentation {
+    let cache_key = cache_key(path);
+    let cache = file_presentation_cache();
+
+    if let Ok(guard) = cache.lock()
+        && let Some(cached) = guard.get(&cache_key)
+    {
+        return cached.clone();
     }
 
+    let computed = compute_file_presentation(path);
+
+    if let Ok(mut guard) = cache.lock() {
+        guard.insert(cache_key, computed.clone());
+    }
+
+    computed
+}
+
+fn compute_file_presentation(path: &Path) -> FilePresentation {
+    let version_strings = if path.exists() {
+        read_version_strings(path)
+    } else {
+        None
+    };
+
+    FilePresentation {
+        display_name: version_strings
+            .as_ref()
+            .and_then(|value| {
+                value
+                    .file_description
+                    .as_deref()
+                    .filter(|text| is_reasonable_display_name(text))
+                    .map(str::to_string)
+            })
+            .or_else(|| {
+                version_strings.as_ref().and_then(|value| {
+                    value
+                        .product_name
+                        .as_deref()
+                        .filter(|text| is_reasonable_display_name(text))
+                        .map(str::to_string)
+                })
+            })
+            .or_else(|| file_stem(Some(path))),
+        publisher: version_strings.as_ref().and_then(|value| {
+            value
+                .company_name
+                .as_deref()
+                .filter(|text| is_reasonable_publisher(text))
+                .map(str::to_string)
+        }),
+        icon_data_url: resolve_icon_data_url(Some(path)),
+    }
+}
+
+fn read_version_strings(path: &Path) -> Option<VersionStrings> {
     let wide_path = wide_from_os(path.as_os_str());
     let mut handle = 0u32;
     let size = unsafe { GetFileVersionInfoSizeW(PCWSTR(wide_path.as_ptr()), Some(&mut handle)) };
     if size == 0 {
-        return file_stem(Some(path));
+        return None;
     }
 
     let mut data = vec![0u8; size as usize];
@@ -279,60 +412,30 @@ fn file_display_name(path: Option<&Path>) -> Option<String> {
     }
 
     let translation = query_translation(&data).unwrap_or((0x0409, 0x04B0));
-    query_version_string(
-        &data,
-        &format!(
-            "\\StringFileInfo\\{:04x}{:04x}\\FileDescription",
-            translation.0, translation.1
+
+    Some(VersionStrings {
+        file_description: query_version_string(
+            &data,
+            &format!(
+                "\\StringFileInfo\\{:04x}{:04x}\\FileDescription",
+                translation.0, translation.1
+            ),
         ),
-    )
-    .filter(|value| is_reasonable_display_name(value))
-    .or_else(|| {
-        query_version_string(
+        product_name: query_version_string(
             &data,
             &format!(
                 "\\StringFileInfo\\{:04x}{:04x}\\ProductName",
                 translation.0, translation.1
             ),
-        )
-        .filter(|value| is_reasonable_display_name(value))
-    })
-    .or_else(|| file_stem(Some(path)))
-}
-
-fn file_publisher(path: Option<&Path>) -> Option<String> {
-    let path = path?;
-    if !path.exists() {
-        return None;
-    }
-
-    let wide_path = wide_from_os(path.as_os_str());
-    let mut handle = 0u32;
-    let size = unsafe { GetFileVersionInfoSizeW(PCWSTR(wide_path.as_ptr()), Some(&mut handle)) };
-    if size == 0 {
-        return None;
-    }
-
-    let mut data = vec![0u8; size as usize];
-    unsafe {
-        GetFileVersionInfoW(
-            PCWSTR(wide_path.as_ptr()),
-            Some(handle),
-            size,
-            data.as_mut_ptr() as *mut c_void,
-        )
-        .ok()?;
-    }
-
-    let translation = query_translation(&data).unwrap_or((0x0409, 0x04B0));
-    query_version_string(
-        &data,
-        &format!(
-            "\\StringFileInfo\\{:04x}{:04x}\\CompanyName",
-            translation.0, translation.1
         ),
-    )
-    .filter(|value| is_reasonable_publisher(value))
+        company_name: query_version_string(
+            &data,
+            &format!(
+                "\\StringFileInfo\\{:04x}{:04x}\\CompanyName",
+                translation.0, translation.1
+            ),
+        ),
+    })
 }
 
 fn query_translation(data: &[u8]) -> Option<(u16, u16)> {
@@ -481,6 +584,25 @@ fn resolve_icon_data_url(path: Option<&Path>) -> Option<String> {
     let encoded = icon_to_png_data_url(icon);
     let _ = unsafe { DestroyIcon(icon) };
     encoded
+}
+
+fn resolve_shortcut_cached(path: &Path) -> Option<ShortcutTarget> {
+    let cache_key = cache_key(path);
+    let cache = shortcut_target_cache();
+
+    if let Ok(guard) = cache.lock()
+        && let Some(cached) = guard.get(&cache_key)
+    {
+        return cached.clone();
+    }
+
+    let computed = resolve_shortcut(path).ok().flatten();
+
+    if let Ok(mut guard) = cache.lock() {
+        guard.insert(cache_key, computed.clone());
+    }
+
+    computed
 }
 
 fn icon_to_png_data_url(icon: windows::Win32::UI::WindowsAndMessaging::HICON) -> Option<String> {
@@ -649,6 +771,20 @@ fn file_stem(path: Option<&Path>) -> Option<String> {
 
 fn path_to_string(path: &Path) -> String {
     path.to_string_lossy().into_owned()
+}
+
+fn cache_key(path: &Path) -> PathBuf {
+    PathBuf::from(path.to_string_lossy().to_ascii_lowercase())
+}
+
+fn file_presentation_cache() -> &'static Mutex<HashMap<PathBuf, FilePresentation>> {
+    static CACHE: OnceLock<Mutex<HashMap<PathBuf, FilePresentation>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn shortcut_target_cache() -> &'static Mutex<HashMap<PathBuf, Option<ShortcutTarget>>> {
+    static CACHE: OnceLock<Mutex<HashMap<PathBuf, Option<ShortcutTarget>>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
 fn wide_from_os(value: &OsStr) -> Vec<u16> {

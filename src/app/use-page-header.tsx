@@ -25,6 +25,7 @@ export function usePageHeader(pathname: string): PageHeader {
     '/security': { title: t('security.title'), description: t('security.description') },
     '/network': { title: t('network.title'), description: t('network.description') },
     '/settings': { title: t('settings.title'), description: t('settings.description') },
+    '/backup': { title: t('backup.title'), description: t('backup.description') },
   }), [t])
   if (staticMap[pathname]) { return staticMap[pathname] }
 
