@@ -116,7 +116,6 @@ export function BackupPage() {
     if (!renameTarget) { return }
     const newLabel = renameLabel.trim()
     if (newLabel === '') {
-      setIsRenaming(false)
       toast.error(t('backup.errors.rename'))
       return
     }
