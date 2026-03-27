@@ -116,28 +116,38 @@ export function initAppServices() {
     const state = usePreferencesStore.getState()
     applyDocumentAppearance(state)
     languageManager.syncLanguage(state)
-    acrylicManager.syncAcrylic(state)
+  }
+
+  const syncAcrylic = () => {
+    acrylicManager.syncAcrylic(usePreferencesStore.getState())
   }
 
   syncAll()
+  syncAcrylic()
 
   usePreferencesStore.subscribe((state, previousState) => {
-    if (
-      state.hasHydrated === previousState.hasHydrated
-      && state.chromeAcrylic === previousState.chromeAcrylic
-      && state.language === previousState.language
-      && state.palette === previousState.palette
-      && state.theme === previousState.theme
-    ) {
-      return
+    const appearanceOrLanguageChanged = state.hasHydrated !== previousState.hasHydrated
+      || state.language !== previousState.language
+      || state.palette !== previousState.palette
+      || state.theme !== previousState.theme
+
+    if (appearanceOrLanguageChanged) {
+      syncAll()
     }
 
-    syncAll()
+    if (
+      state.hasHydrated !== previousState.hasHydrated
+      || state.chromeAcrylic !== previousState.chromeAcrylic
+      || state.theme !== previousState.theme
+    ) {
+      syncAcrylic()
+    }
   })
 
   subscribeSystemTheme(() => {
     if (usePreferencesStore.getState().theme === 'system') {
       syncAll()
+      syncAcrylic()
     }
   })
 

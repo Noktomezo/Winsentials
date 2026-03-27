@@ -11,37 +11,34 @@ import {
   restoreBackup,
 } from '@/entities/backup/api'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
-import { Button } from '@/shared/ui/button'
 import {
+  Button,
   Card,
   CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/shared/ui/card'
-import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/shared/ui/dialog'
-import { Input } from '@/shared/ui/input'
-import { ScrollArea } from '@/shared/ui/scroll-area'
-import { Separator } from '@/shared/ui/separator'
-import { Skeleton } from '@/shared/ui/skeleton'
-import {
+  Input,
+  ScrollArea,
+  Separator,
+  Skeleton,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@/shared/ui/tooltip'
+} from '@/shared/ui'
 
 export function BackupPage() {
   const { t, i18n } = useTranslation()
 
   const [backups, setBackups] = useState<BackupEntry[]>([])
+  const [loadError, setLoadError] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
   // Create
@@ -70,10 +67,14 @@ export function BackupPage() {
   })
 
   async function loadBackups() {
+    setLoadError(false)
+    setIsLoading(true)
+
     try {
       setBackups(await listBackups())
     }
     catch {
+      setLoadError(true)
       toast.error(t('backup.errors.load'))
     }
     finally {
@@ -210,114 +211,127 @@ export function BackupPage() {
               ))}
             </div>
           )
-        : backups.length === 0
+        : loadError
           ? (
-              <div className="flex flex-1 flex-col items-center justify-center gap-2 text-muted-foreground">
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
                 <ArchiveRestore className="size-10 opacity-40" />
-                <p className="text-sm">{t('backup.noSnapshots')}</p>
+                <p className="text-sm">{t('backup.errors.load')}</p>
+                <Button onClick={() => void loadBackups()} size="sm" type="button" variant="outline">
+                  {t('tweaks.actions.retry')}
+                </Button>
               </div>
             )
-          : (
-              <div className="grid gap-3">
-                {backups.map((backup) => {
-                  const expanded = expandedCards.has(backup.filename)
-                  const tweakEntries = Object.entries(backup.tweaks)
-                  return (
-                    <Card key={backup.filename} className="gap-0 p-4">
-                      <CardHeader className="p-0">
-                        <CardTitle className="truncate text-sm">{backup.label}</CardTitle>
-                        <CardDescription className="text-xs">{formatDate(backup.createdAt)}</CardDescription>
-                        <CardAction className="flex items-center gap-1.5">
+          : backups.length === 0
+            ? (
+                <div className="flex flex-1 flex-col items-center justify-center gap-2 text-muted-foreground">
+                  <ArchiveRestore className="size-10 opacity-40" />
+                  <p className="text-sm">{t('backup.noSnapshots')}</p>
+                </div>
+              )
+            : (
+                <div className="grid gap-3">
+                  {backups.map((backup) => {
+                    const expanded = expandedCards.has(backup.filename)
+                    const tweakEntries = Object.entries(backup.tweaks)
+                    const panelId = `backup-panel-${backup.filename.replace(/[^\w-]/g, '-')}`
+                    return (
+                      <Card key={backup.filename} className="gap-0 p-4">
+                        <CardHeader className="p-0">
+                          <CardTitle className="truncate text-sm">{backup.label}</CardTitle>
+                          <CardDescription className="text-xs">{formatDate(backup.createdAt)}</CardDescription>
+                          <CardAction className="flex items-center gap-1.5">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setApplyTarget(backup)}
+                            >
+                              <ArchiveRestore className="size-3.5" />
+                              {t('backup.apply')}
+                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  aria-label={t('backup.rename')}
+                                  size="icon"
+                                  variant="ghost"
+                                  className="size-8"
+                                  onClick={() => {
+                                    setRenameTarget(backup)
+                                    setRenameLabel(backup.label)
+                                  }}
+                                >
+                                  <Pencil className="size-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t('backup.rename')}</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  aria-label={t('backup.delete')}
+                                  size="icon"
+                                  variant="ghost"
+                                  className="size-8 text-destructive hover:text-destructive"
+                                  onClick={() => setDeleteTarget(backup)}
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t('backup.delete')}</TooltipContent>
+                            </Tooltip>
+                          </CardAction>
+                        </CardHeader>
+
+                        <CardContent className="p-0 pt-3">
+                          <Separator className="mb-3" />
                           <Button
+                            aria-controls={panelId}
+                            aria-expanded={expanded}
+                            variant="ghost"
                             size="sm"
-                            variant="outline"
-                            onClick={() => setApplyTarget(backup)}
+                            className="h-auto gap-1 px-0 py-0 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground"
+                            onClick={() => toggleExpand(backup.filename)}
                           >
-                            <ArchiveRestore className="size-3.5" />
-                            {t('backup.apply')}
+                            {expanded
+                              ? <ChevronUp className="size-3.5" />
+                              : <ChevronDown className="size-3.5" />}
+                            {t('backup.tweakValues')}
+                            {' '}
+                            (
+                            {tweakEntries.length}
+                            )
                           </Button>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                aria-label={t('backup.rename')}
-                                size="icon"
-                                variant="ghost"
-                                className="size-8"
-                                onClick={() => {
-                                  setRenameTarget(backup)
-                                  setRenameLabel(backup.label)
-                                }}
-                              >
-                                <Pencil className="size-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t('backup.rename')}</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                aria-label={t('backup.delete')}
-                                size="icon"
-                                variant="ghost"
-                                className="size-8 text-destructive hover:text-destructive"
-                                onClick={() => setDeleteTarget(backup)}
-                              >
-                                <Trash2 className="size-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t('backup.delete')}</TooltipContent>
-                          </Tooltip>
-                        </CardAction>
-                      </CardHeader>
 
-                      <CardContent className="p-0 pt-3">
-                        <Separator className="mb-3" />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto gap-1 px-0 py-0 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground"
-                          onClick={() => toggleExpand(backup.filename)}
-                        >
-                          {expanded
-                            ? <ChevronUp className="size-3.5" />
-                            : <ChevronDown className="size-3.5" />}
-                          {t('backup.tweakValues')}
-                          {' '}
-                          (
-                          {tweakEntries.length}
-                          )
-                        </Button>
-
-                        {expanded && (
-                          <ScrollArea className="mt-2 h-48 rounded-lg border border-border/50 bg-muted/30" data-lenis-prevent>
-                            <table className="w-full text-xs">
-                              <thead className="sr-only">
-                                <tr>
-                                  <th scope="col">{t('backup.key')}</th>
-                                  <th scope="col">{t('backup.value')}</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {tweakEntries.map(([id, value]) => (
-                                  <tr key={id} className="border-b border-border/30 last:border-0">
-                                    <td className="px-3 py-1.5 font-mono text-muted-foreground">
-                                      {id}
-                                    </td>
-                                    <td className="px-3 py-1.5 text-right font-medium">
-                                      {value}
-                                    </td>
+                          {expanded && (
+                            <ScrollArea className="mt-2 h-48 rounded-lg border border-border/50 bg-muted/30" data-lenis-prevent id={panelId}>
+                              <table className="w-full text-xs">
+                                <thead className="sr-only">
+                                  <tr>
+                                    <th scope="col">{t('backup.key')}</th>
+                                    <th scope="col">{t('backup.value')}</th>
                                   </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </ScrollArea>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-            )}
+                                </thead>
+                                <tbody>
+                                  {tweakEntries.map(([id, value]) => (
+                                    <tr key={id} className="border-b border-border/30 last:border-0">
+                                      <td className="px-3 py-1.5 font-mono text-muted-foreground">
+                                        {id}
+                                      </td>
+                                      <td className="px-3 py-1.5 text-right font-medium">
+                                        {value}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </ScrollArea>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              )}
 
       {/* Create dialog */}
       <Dialog
@@ -335,6 +349,7 @@ export function BackupPage() {
             <DialogDescription>{t('backup.labelPlaceholder')}</DialogDescription>
           </DialogHeader>
           <Input
+            aria-label={t('backup.createSnapshot')}
             value={createLabel}
             onChange={e => setCreateLabel(e.target.value)}
             placeholder={t('backup.labelPlaceholder')}
@@ -369,6 +384,7 @@ export function BackupPage() {
             <DialogTitle>{t('backup.rename')}</DialogTitle>
           </DialogHeader>
           <Input
+            aria-label={t('backup.rename')}
             value={renameLabel}
             onChange={e => setRenameLabel(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !isRenaming && void handleRename()}

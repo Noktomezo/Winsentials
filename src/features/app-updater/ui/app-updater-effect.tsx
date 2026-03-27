@@ -56,6 +56,7 @@ export function initAppUpdater() {
         label: i18n.t('settings.disableUpdateChecks'),
         onClick: () => {
           usePreferencesStore.getState().setUpdateChecksEnabled(false)
+          promptedVersion = null
           activeToastId = undefined
           toast.success(i18n.t('settings.updateChecksDisabled'))
         },
@@ -78,6 +79,7 @@ export function initAppUpdater() {
       const latestState = usePreferencesStore.getState()
 
       if (!latestState.updateChecksEnabled) {
+        promptedVersion = null
         dismissActiveToast()
         return
       }
@@ -111,6 +113,7 @@ export function initAppUpdater() {
         intervalId = null
       }
 
+      promptedVersion = null
       dismissActiveToast()
       return
     }
