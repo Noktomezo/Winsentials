@@ -112,12 +112,18 @@ export function BackupPage() {
 
   async function handleRename() {
     if (!renameTarget) { return }
+    const newLabel = renameLabel.trim()
+    if (newLabel === '') {
+      setIsRenaming(false)
+      toast.error(t('backup.errors.rename'))
+      return
+    }
     setIsRenaming(true)
     try {
-      await renameBackup(renameTarget.filename, renameLabel.trim())
+      await renameBackup(renameTarget.filename, newLabel)
       setBackups(prev =>
         prev.map(b =>
-          b.filename === renameTarget.filename ? { ...b, label: renameLabel.trim() } : b,
+          b.filename === renameTarget.filename ? { ...b, label: newLabel } : b,
         ),
       )
       setRenameTarget(null)
@@ -226,6 +232,7 @@ export function BackupPage() {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
+                                aria-label={t('backup.rename')}
                                 size="icon"
                                 variant="ghost"
                                 className="size-8"
@@ -242,6 +249,7 @@ export function BackupPage() {
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
+                                aria-label={t('backup.delete')}
                                 size="icon"
                                 variant="ghost"
                                 className="size-8 text-destructive hover:text-destructive"

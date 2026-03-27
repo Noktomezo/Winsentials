@@ -122,6 +122,7 @@ export function DiskDetailPage() {
           <Row label={t('storage.avgResponseTime')} value={`${avgResponseTime} ms`} />
           <Row label={t('storage.readSpeed')} value={formatRate(diskLive?.readBytesPerSec ?? 0, i18n.language, t)} />
           <Row label={t('storage.writeSpeed')} value={formatRate(diskLive?.writeBytesPerSec ?? 0, i18n.language, t)} />
+          <Row label={t('storage.device')} value={disk.model ?? disk.name} />
           <Row label={t('storage.capacity')} value={formatBytes(disk.totalBytes, i18n.language, t)} />
           <Row label={t('storage.format')} value={disk.fileSystem || '-'} />
           <Row label={t('storage.systemDisk')} value={disk.isSystemDisk ? t('storage.yes') : t('storage.no')} />

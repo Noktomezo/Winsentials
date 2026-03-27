@@ -25,8 +25,8 @@ pub fn startup_list_scheduled_tasks() -> StartupSourceListResponse {
     )
 }
 
-pub fn startup_hydrate_entries(ids: &[String]) -> Vec<StartupEntry> {
-    ids.iter().filter_map(|id| startup_entry(id).ok()).collect()
+pub fn startup_hydrate_entries(ids: &[String]) -> Result<Vec<StartupEntry>, AppError> {
+    ids.iter().map(|id| startup_entry(id)).collect()
 }
 
 pub fn startup_enable(id: &str) -> Result<StartupEntry, AppError> {

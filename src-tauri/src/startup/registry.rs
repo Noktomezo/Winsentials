@@ -89,23 +89,27 @@ pub fn list_entries() -> Result<Vec<StartupEntry>, AppError> {
 }
 
 pub fn entry(id: &str) -> Result<StartupEntry, AppError> {
-    if let Ok((location, value_name, command)) = find_active_entry(id) {
-        return Ok(build_entry(
-            RegistryEntryParams {
-                id: id.to_string(),
-                name: value_name,
-                command: Some(command),
-                scope: location.scope,
-                status: StartupStatus::Enabled,
-                run_once: location.run_once,
-                location_label: format_registry_location_label(location),
-                source_display: "Registry".to_string(),
-                hive: location.hive.to_string(),
-                registry_path: location.path.to_string(),
-                last_error: None,
-            },
-            true,
-        ));
+    match find_active_entry(id) {
+        Ok((location, value_name, command)) => {
+            return Ok(build_entry(
+                RegistryEntryParams {
+                    id: id.to_string(),
+                    name: value_name,
+                    command: Some(command),
+                    scope: location.scope,
+                    status: StartupStatus::Enabled,
+                    run_once: location.run_once,
+                    location_label: format_registry_location_label(location),
+                    source_display: "Registry".to_string(),
+                    hive: location.hive.to_string(),
+                    registry_path: location.path.to_string(),
+                    last_error: None,
+                },
+                true,
+            ));
+        }
+        Err(error) if is_registry_entry_not_found(&error, id) => {}
+        Err(error) => return Err(error),
     }
 
     let record = read_disabled_record(id)?;
@@ -331,6 +335,13 @@ fn find_active_entry(id: &str) -> Result<(RegistryLocation, String, String), App
     Err(AppError::message(format!(
         "registry startup entry not found: {id}"
     )))
+}
+
+fn is_registry_entry_not_found(error: &AppError, id: &str) -> bool {
+    matches!(
+        error,
+        AppError::Message(message) if message == &format!("registry startup entry not found: {id}")
+    )
 }
 
 fn build_entry(params: RegistryEntryParams, enrich: bool) -> StartupEntry {

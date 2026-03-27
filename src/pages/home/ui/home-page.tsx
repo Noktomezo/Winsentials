@@ -1,13 +1,14 @@
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { GpuInfo, LiveGpuInfo, LiveHomeInfo, NetworkAdapterInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useRouter } from '@tanstack/react-router'
 import { ChevronRight, Cpu, HardDrive, Layers, Monitor, Network, Server } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLiveHome } from '@/entities/system-info/model/live-system-store'
 import { useStaticSystemInfo } from '@/entities/system-info/model/static-system-info'
 import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
+import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 import { mountLabel, mountToParam, networkAdapterToParam } from '@/shared/lib/mount-utils'
 import { Button, Skeleton } from '@/shared/ui'
 
@@ -99,6 +100,7 @@ interface SummaryCardProps {
   title: ReactNode
   stat?: ReactNode
   onNavigate: () => void
+  onPointerIntent?: () => void
   children?: ReactNode
 }
 
@@ -153,12 +155,15 @@ function SummaryCard({
   title,
   stat,
   onNavigate,
+  onPointerIntent,
   children,
 }: SummaryCardProps) {
   return (
     <button
       className="group/summary flex cursor-pointer flex-col gap-3 rounded-xl border border-border/70 bg-card p-4 text-left transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       onClick={onNavigate}
+      onFocus={onPointerIntent}
+      onMouseEnter={onPointerIntent}
       type="button"
     >
       <div className="flex items-center justify-between gap-2">
@@ -181,11 +186,14 @@ function SummaryCard({
 function CpuSummary({ live, s }: { live: LiveHomeInfo | null, s: StaticSystemInfo }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const router = useRouter()
+  const preloadRouteIntent = useRouteIntentPreload()
   const pct = live ? Math.round(live.cpuUsagePercent) : null
   return (
     <SummaryCard
       icon={Cpu}
       onNavigate={() => void navigate({ to: '/cpu' })}
+      onPointerIntent={() => preloadRouteIntent(() => router.preloadRoute({ to: '/cpu' }))}
       stat={pct === null
         ? <span className="text-xs font-medium text-muted-foreground">{t('home.livePending')}</span>
         : (
@@ -207,6 +215,8 @@ function CpuSummary({ live, s }: { live: LiveHomeInfo | null, s: StaticSystemInf
 function RamSummary({ live, s }: { live: LiveHomeInfo | null, s: StaticSystemInfo }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const router = useRouter()
+  const preloadRouteIntent = useRouteIntentPreload()
   const total = s.ram.totalBytes
   const used = live?.ramUsedBytes ?? null
   const pct = used === null ? null : usagePct(used, total)
@@ -214,6 +224,7 @@ function RamSummary({ live, s }: { live: LiveHomeInfo | null, s: StaticSystemInf
     <SummaryCard
       icon={Server}
       onNavigate={() => void navigate({ to: '/ram' })}
+      onPointerIntent={() => preloadRouteIntent(() => router.preloadRoute({ to: '/ram' }))}
       stat={used === null || pct === null
         ? <span className="text-xs font-medium text-muted-foreground">{t('home.livePending')}</span>
         : (
@@ -232,12 +243,15 @@ function RamSummary({ live, s }: { live: LiveHomeInfo | null, s: StaticSystemInf
 function DiskSummary({ disk, index }: { disk: StaticSystemInfo['disks'][number], index: number }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const router = useRouter()
+  const preloadRouteIntent = useRouteIntentPreload()
   const used = disk.totalBytes - disk.availableBytes
   const param = mountToParam(disk.mountPoint)
   return (
     <SummaryCard
       icon={HardDrive}
       onNavigate={() => void navigate({ to: '/storage/$disk', params: { disk: param } })}
+      onPointerIntent={() => preloadRouteIntent(() => router.preloadRoute({ to: '/storage/$disk', params: { disk: param } }))}
       stat={(
         <span className={`text-xs font-medium tabular-nums ${loadColor(usagePct(used, disk.totalBytes))}`}>
           {t('home.usedOf', {
@@ -270,11 +284,15 @@ function NetworkSummary({
 }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const router = useRouter()
+  const preloadRouteIntent = useRouteIntentPreload()
   const traffic = live?.network.find(entry => entry.name === adapter.name)
+  const adapterName = networkAdapterToParam(adapter.name)
   return (
     <SummaryCard
       icon={Network}
-      onNavigate={() => void navigate({ to: '/network-stats/$adapterName', params: { adapterName: networkAdapterToParam(adapter.name) } })}
+      onNavigate={() => void navigate({ to: '/network-stats/$adapterName', params: { adapterName } })}
+      onPointerIntent={() => preloadRouteIntent(() => router.preloadRoute({ to: '/network-stats/$adapterName', params: { adapterName } }))}
       stat={(
         <div className="flex gap-2">
           <span className="text-xs tabular-nums text-primary">
@@ -290,7 +308,7 @@ function NetworkSummary({
       title={(
         <span className="flex min-w-0 items-baseline gap-1">
           <span className="shrink-0">{t('home.network')}</span>
-          <MarqueeText className="font-normal text-muted-foreground" text={`(${adapter.name})`} />
+          <MarqueeText className="font-normal text-muted-foreground" text={`(${adapter.adapterDescription})`} />
         </span>
       )}
     />
@@ -308,11 +326,15 @@ function GpuSummary({ gpu, index, gpuLive }: {
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const router = useRouter()
+  const preloadRouteIntent = useRouteIntentPreload()
+  const gpuIndex = String(index)
   const usage = gpuLive ? gpuUsage(gpuLive) : null
   return (
     <SummaryCard
       icon={Layers}
-      onNavigate={() => void navigate({ to: '/gpu/$gpuIndex', params: { gpuIndex: String(index) } })}
+      onNavigate={() => void navigate({ to: '/gpu/$gpuIndex', params: { gpuIndex } })}
+      onPointerIntent={() => preloadRouteIntent(() => router.preloadRoute({ to: '/gpu/$gpuIndex', params: { gpuIndex } }))}
       stat={usage != null
         ? (
             <span className={`text-xs font-medium tabular-nums ${loadColor(usage)}`}>

@@ -14,6 +14,92 @@ struct DiskMetadataInfo {
 }
 
 #[cfg(target_os = "windows")]
+fn query_disk_models() -> HashMap<String, String> {
+    use wmi::WMIConnection;
+
+    fn wmi_string(row: &mut HashMap<String, wmi::Variant>, key: &str) -> Option<String> {
+        match row.remove(key) {
+            Some(wmi::Variant::String(value)) => {
+                let trimmed = value.trim().to_string();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed)
+                }
+            }
+            _ => None,
+        }
+    }
+
+    fn escape_wmi_value(value: &str) -> String {
+        value.replace('\'', "''").replace('\\', r"\\")
+    }
+
+    let Ok(wmi_con) = WMIConnection::new() else {
+        return HashMap::new();
+    };
+
+    let Ok(drives) = wmi_con
+        .raw_query::<HashMap<String, wmi::Variant>>("SELECT DeviceID, Model FROM Win32_DiskDrive")
+    else {
+        return HashMap::new();
+    };
+
+    let mut models_by_mount = HashMap::new();
+
+    for mut drive in drives {
+        let Some(device_id) = wmi_string(&mut drive, "DeviceID") else {
+            continue;
+        };
+        let Some(model) = wmi_string(&mut drive, "Model") else {
+            continue;
+        };
+
+        let partitions_query = format!(
+            "ASSOCIATORS OF {{Win32_DiskDrive.DeviceID='{}'}} WHERE AssocClass = Win32_DiskDriveToDiskPartition",
+            escape_wmi_value(&device_id),
+        );
+
+        let Ok(partitions) = wmi_con.raw_query::<HashMap<String, wmi::Variant>>(&partitions_query)
+        else {
+            continue;
+        };
+
+        for mut partition in partitions {
+            let Some(partition_id) = wmi_string(&mut partition, "DeviceID") else {
+                continue;
+            };
+
+            let logical_disks_query = format!(
+                "ASSOCIATORS OF {{Win32_DiskPartition.DeviceID='{}'}} WHERE AssocClass = Win32_LogicalDiskToPartition",
+                escape_wmi_value(&partition_id),
+            );
+
+            let Ok(logical_disks) =
+                wmi_con.raw_query::<HashMap<String, wmi::Variant>>(&logical_disks_query)
+            else {
+                continue;
+            };
+
+            for mut logical_disk in logical_disks {
+                let Some(logical_disk_id) = wmi_string(&mut logical_disk, "DeviceID") else {
+                    continue;
+                };
+                let mount_point = format!("{}\\", logical_disk_id.trim_end_matches('\\'));
+                models_by_mount.insert(mount_point, model.clone());
+            }
+        }
+    }
+
+    models_by_mount
+}
+
+#[cfg(not(target_os = "windows"))]
+fn query_disk_models() -> HashMap<String, String> {
+    HashMap::new()
+}
+
+#[cfg(target_os = "windows")]
 pub fn get_volume_label(mount_point: &str) -> Option<String> {
     use windows::Win32::Storage::FileSystem::GetVolumeInformationW;
     let path: Vec<u16> = mount_point
@@ -407,6 +493,7 @@ pub fn gather_disk_live(
 
 pub fn gather_disks() -> Vec<DiskInfo> {
     let disks = Disks::new_with_refreshed_list();
+    let disk_models = query_disk_models();
     let system_drive_root = get_system_drive_root();
     let mut result: Vec<DiskInfo> = disks
         .iter()
@@ -428,6 +515,7 @@ pub fn gather_disks() -> Vec<DiskInfo> {
             };
             DiskInfo {
                 name: d.name().to_string_lossy().into_owned(),
+                model: disk_models.get(&mount_point).cloned(),
                 mount_point,
                 total_bytes: d.total_space(),
                 available_bytes: d.available_space(),

@@ -100,6 +100,7 @@ pub struct MotherboardInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiskInfo {
     pub name: String,
+    pub model: Option<String>,
     pub mount_point: String,
     pub total_bytes: u64,
     pub available_bytes: u64,

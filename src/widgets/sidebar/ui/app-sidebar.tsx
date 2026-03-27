@@ -2,6 +2,7 @@ import type { MouseEvent } from 'react'
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
 import { ArchiveRestore, FolderCog, House, Network, Palette, Rocket, Settings2, Shield } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 import {
   Sidebar,
   SidebarContent,
@@ -18,6 +19,7 @@ export function AppSidebar() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const router = useRouter()
+  const preloadRouteIntent = useRouteIntentPreload()
   const pathname = useRouterState({
     select: state => state.location.pathname,
   })
@@ -31,9 +33,7 @@ export function AppSidebar() {
   }
 
   function handlePointerIntent(to: SidebarRoute) {
-    router.preloadRoute({ to }).catch((error) => {
-      console.warn('Failed to preload route', error)
-    })
+    preloadRouteIntent(() => router.preloadRoute({ to }))
   }
 
   function handleMenuClick(

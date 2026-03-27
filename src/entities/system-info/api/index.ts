@@ -84,6 +84,7 @@ interface BackendMotherboardInfo {
 
 interface BackendDiskInfo {
   name: string
+  model: string | null
   mount_point: string
   total_bytes: number
   available_bytes: number
@@ -280,6 +281,7 @@ function mapMotherboard(m: BackendMotherboardInfo): MotherboardInfo {
 function mapDisk(d: BackendDiskInfo): DiskInfo {
   return {
     name: d.name,
+    model: d.model,
     mountPoint: d.mount_point,
     totalBytes: d.total_bytes,
     availableBytes: d.available_bytes,

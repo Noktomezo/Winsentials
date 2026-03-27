@@ -27,15 +27,19 @@ pub fn list_entries() -> Result<Vec<StartupEntry>, AppError> {
 }
 
 pub fn entry(id: &str) -> Result<StartupEntry, AppError> {
-    if let Ok((scope, active_path)) = find_active_path(id) {
-        return build_entry_from_path(
-            active_path,
-            scope,
-            StartupStatus::Enabled,
-            false,
-            Some(id.to_string()),
-            true,
-        );
+    match find_active_path(id) {
+        Ok((scope, active_path)) => {
+            return build_entry_from_path(
+                active_path,
+                scope,
+                StartupStatus::Enabled,
+                false,
+                Some(id.to_string()),
+                true,
+            );
+        }
+        Err(error) if is_startup_folder_entry_not_found(&error, id) => {}
+        Err(error) => return Err(error),
     }
 
     let metadata = read_disabled_metadata(id)?;
@@ -248,6 +252,13 @@ fn find_active_path(id: &str) -> Result<(StartupScope, PathBuf), AppError> {
     Err(AppError::message(format!(
         "startup folder entry not found: {id}"
     )))
+}
+
+fn is_startup_folder_entry_not_found(error: &AppError, id: &str) -> bool {
+    matches!(
+        error,
+        AppError::Message(message) if message == &format!("startup folder entry not found: {id}")
+    )
 }
 
 fn read_disabled_metadata(id: &str) -> Result<DisabledStartupFileMetadata, AppError> {

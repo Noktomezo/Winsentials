@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
 import type { NetworkAdapterInfo, NetworkIfaceStats } from '@/entities/system-info/model/types'
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useNavigate, useParams, useRouter } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { useDeviceInventory, useLiveNetwork } from '@/entities/system-info/model/live-system-store'
 import { formatRateLocalized } from '@/shared/lib/format-size'
+import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 import { networkAdapterToParam } from '@/shared/lib/mount-utils'
 import { Button, Skeleton } from '@/shared/ui'
 import { LiveChart } from '@/shared/ui/live-chart'
@@ -108,19 +109,28 @@ function LiveNetworkErrorState({ message, onRetry }: LiveNetworkErrorStateProps)
 function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const router = useRouter()
+  const preloadRouteIntent = useRouteIntentPreload()
+  const adapterName = networkAdapterToParam(adapter.name)
 
   return (
     <button
       className="flex w-full flex-col gap-3 rounded-xl border border-border/70 bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-accent/20"
+      onFocus={() => {
+        preloadRouteIntent(() => router.preloadRoute({ to: '/network-stats/$adapterName', params: { adapterName } }))
+      }}
+      onMouseEnter={() => {
+        preloadRouteIntent(() => router.preloadRoute({ to: '/network-stats/$adapterName', params: { adapterName } }))
+      }}
       onClick={() => {
-        void navigate({ to: '/network-stats/$adapterName', params: { adapterName: networkAdapterToParam(adapter.name) } })
+        void navigate({ to: '/network-stats/$adapterName', params: { adapterName } })
       }}
       type="button"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <h3 className="text-sm font-medium text-foreground">{adapter.name}</h3>
-          <p className="text-xs text-muted-foreground">{adapter.connectionType}</p>
+          <p className="text-xs text-muted-foreground">{adapter.adapterDescription}</p>
           {adapter.isWifi && adapter.ssid && (
             <p className="text-xs text-primary">{adapter.ssid}</p>
           )}
@@ -247,6 +257,7 @@ export function NetworkStatsPage() {
             <Row label={t('networkStats.send')} value={formatRate(traffic?.txBytesPerSec ?? 0, i18n.language, t)} />
             <Row label={t('networkStats.receive')} value={formatRate(traffic?.rxBytesPerSec ?? 0, i18n.language, t)} />
             <Row label={t('networkStats.adapter')} value={selectedAdapter.name} />
+            <Row label={t('networkStats.adapterDescription')} value={selectedAdapter.adapterDescription} />
             <Row label={t('networkStats.dnsName')} value={selectedAdapter.dnsName ?? <EmptyValue />} />
             <Row label={t('networkStats.connectionType')} value={selectedAdapter.connectionType} />
             <Row

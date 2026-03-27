@@ -154,13 +154,22 @@ pub fn startup_folder_presentation(path: &Path) -> StartupPresentation {
 }
 
 pub fn startup_folder_presentation_light(path: &Path) -> StartupPresentation {
+    let shortcut = resolve_shortcut_cached(path);
+
     StartupPresentation {
         display_name: fallback_path_name(path),
         publisher: None,
         icon_data_url: None,
-        target_path: Some(path_to_string(path)),
-        arguments: None,
-        working_directory: path.parent().map(path_to_string),
+        target_path: shortcut
+            .as_ref()
+            .and_then(|value| value.target_path.as_ref())
+            .map(|value| path_to_string(value))
+            .or_else(|| Some(path_to_string(path))),
+        arguments: shortcut.as_ref().and_then(|value| value.arguments.clone()),
+        working_directory: shortcut
+            .as_ref()
+            .and_then(|value| value.working_directory.clone())
+            .or_else(|| path.parent().map(path_to_string)),
     }
 }
 

@@ -317,7 +317,15 @@ async function hydrateLoadedEntries(
     }
 
     const chunk = ids.slice(index, index + hydrationChunkSize)
-    const hydrated = await hydrateStartupEntries(chunk)
+    let hydrated: StartupEntry[] = []
+
+    try {
+      hydrated = await hydrateStartupEntries(chunk)
+    }
+    catch (error) {
+      console.error('Failed to hydrate startup entries chunk', error)
+      continue
+    }
 
     if (get().hydrationRequestId !== requestId || hydrated.length === 0) {
       continue

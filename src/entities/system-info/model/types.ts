@@ -62,6 +62,7 @@ export interface MotherboardInfo {
 
 export interface DiskInfo {
   name: string
+  model: string | null
   mountPoint: string
   totalBytes: number
   availableBytes: number
