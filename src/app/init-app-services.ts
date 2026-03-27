@@ -127,6 +127,7 @@ export function initAppServices() {
 
   usePreferencesStore.subscribe((state, previousState) => {
     const appearanceOrLanguageChanged = state.hasHydrated !== previousState.hasHydrated
+      || state.chromeAcrylic !== previousState.chromeAcrylic
       || state.language !== previousState.language
       || state.palette !== previousState.palette
       || state.theme !== previousState.theme

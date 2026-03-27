@@ -145,6 +145,11 @@ export function BackupPage() {
     try {
       await deleteBackup(deleteTarget.filename)
       setBackups(prev => prev.filter(b => b.filename !== deleteTarget.filename))
+      setExpandedCards((prev) => {
+        const next = new Set(prev)
+        next.delete(deleteTarget.filename)
+        return next
+      })
       setDeleteTarget(null)
       toast.success(t('backup.deleted'))
     }
