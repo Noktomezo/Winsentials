@@ -10,7 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/ui/select'
+} from '@/shared/ui/'
 
 const PALETTE_ICONS: Record<(typeof APP_PALETTES)[number], LucideIcon> = {
   abyss: Anchor,

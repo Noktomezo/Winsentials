@@ -121,13 +121,15 @@ impl Tweak for DisableFaultTolerantHeapTweak {
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {
+        let enabled = self.is_enabled()?;
+
         Ok(TweakStatus {
-            current_value: if self.is_enabled()? {
+            current_value: if enabled {
                 ENABLED_VALUE.into()
             } else {
                 DISABLED_VALUE.into()
             },
-            is_default: !self.is_enabled()?,
+            is_default: !enabled,
         })
     }
 }

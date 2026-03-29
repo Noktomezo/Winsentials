@@ -205,7 +205,7 @@ export function TweakCard({
           </div>
         </div>
 
-        <footer className="mt-2 border-t border-border/40 pt-2">
+        <footer className="mt-auto border-t border-border/40 pt-2">
           <div className="flex flex-wrap gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -350,7 +350,7 @@ export function TweakCardSkeleton() {
             </div>
           </div>
         </div>
-        <div className="mt-2 border-t border-border/40 pt-2">
+        <div className="mt-auto border-t border-border/40 pt-2">
           <div className="flex flex-wrap gap-2">
             <Skeleton className="h-5 w-20 rounded-md" />
             <Skeleton className="h-5 w-30 rounded-md" />

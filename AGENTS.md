@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Winsentials** is a desktop application for Windows 10/11 that allows users to tune system settings, basically, with just 1-click
+**Winsentials** is a desktop application for Windows 10/11 that allows users to tune system settings with just one click.
 
 The app exposes a clean, friendly UI on top of low-level OS operations (registry edits, PowerShell commands, service control). Every tweak has a typed contract on both frontend and backend.
 
@@ -38,6 +38,8 @@ The app exposes a clean, friendly UI on top of low-level OS operations (registry
 - Dev packages: `bun add -d <pkg>`
 - Run scripts: `bunx <tool>` or `bun run <script>`
 - Do **not** commit `package-lock.json` or `pnpm-lock.yaml` — only `bun.lockb`
+- Treat window materials as modifiers, not standalone themes. `acrylic`, `mica`, and `tabbed` must stay modeled via `data-webview-material` on the root element together with the existing `light`/`dark` theme values in `data-theme`; never replace the theme key with a material value.
+- When changing theme or appearance code, preserve the invariant that theme selection (`light`/`dark`/`system`) and material selection (`none`/`acrylic`/`mica`/`tabbed`) are combined, not merged into one field.
 
 ### Backend (Rust)
 

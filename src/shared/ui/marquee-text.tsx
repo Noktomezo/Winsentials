@@ -1,5 +1,4 @@
-import { useRef, useState } from 'react'
-import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
+import { useEffect, useRef, useState } from 'react'
 
 interface MarqueeTextProps {
   text: string
@@ -11,7 +10,7 @@ export function MarqueeText({ text, className }: MarqueeTextProps) {
   const innerRef = useRef<HTMLSpanElement>(null)
   const [offset, setOffset] = useState(0)
 
-  useMountEffect(() => {
+  useEffect(() => {
     if (!outerRef.current || !innerRef.current) {
       return
     }
@@ -30,7 +29,7 @@ export function MarqueeText({ text, className }: MarqueeTextProps) {
     const ro = new ResizeObserver(measure)
     ro.observe(outer)
     return () => ro.disconnect()
-  })
+  }, [text])
 
   return (
     <span

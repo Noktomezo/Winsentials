@@ -265,7 +265,7 @@
       "flexoki": "Флексоки",
       "teal": "Бирюза"
     },
-    "materialDescription": "Выберите системный backdrop-материал для окна приложения. Mica и Tabbed требуют Windows 11, а acrylic доступен на поддерживаемых сборках Windows 10 и 11.",
+    "materialDescription": "Выберите системный backdrop-материал для окна приложения. Mica и Tabbed требуют Windows 11, а Acrylic доступен на поддерживаемых сборках Windows 10 и 11.",
     "materialInfo": "Подробнее о материале окна",
     "materialUnavailable": "Выбранный материал окна недоступен на этой сборке Windows. Выполнен откат на вариант без материала.",
     "materials": {

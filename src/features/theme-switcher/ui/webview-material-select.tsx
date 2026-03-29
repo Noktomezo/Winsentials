@@ -10,8 +10,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/ui/select'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/ui'
 
 const MATERIAL_ICONS: Record<(typeof APP_WEBVIEW_MATERIALS)[number], LucideIcon> = {
   none: Monitor,

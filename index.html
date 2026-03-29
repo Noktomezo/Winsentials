@@ -35,10 +35,16 @@
           const palette = state && typeof state.palette === 'string'
             ? state.palette
             : DEFAULT_PALETTE
+          const normalizeWebviewMaterial = (value) => {
+            if (value === 'micaAlt') return 'tabbed'
+            if (value === 'blur') return 'none'
+            return value
+          }
+
           const webviewMaterial = state && typeof state.webviewMaterial === 'string'
-            ? state.webviewMaterial
+            ? normalizeWebviewMaterial(state.webviewMaterial)
             : state && typeof state.chromeMaterial === 'string'
-              ? state.chromeMaterial
+              ? normalizeWebviewMaterial(state.chromeMaterial)
             : state && state.chromeAcrylic === true
               ? 'acrylic'
               : DEFAULT_WEBVIEW_MATERIAL

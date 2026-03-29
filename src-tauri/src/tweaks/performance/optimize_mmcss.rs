@@ -110,28 +110,77 @@ impl OptimizeMmcssTweak {
         Ok(())
     }
 
-    fn is_enabled(&self) -> Result<bool, AppError> {
-        let system_responsiveness = SYSTEM_PROFILE_KEY.get_dword("SystemResponsiveness");
-        let games_scheduling_category = GAMES_TASK_KEY.get_string("Scheduling Category");
-        let games_priority = GAMES_TASK_KEY.get_dword("Priority");
-        let games_gpu_priority = GAMES_TASK_KEY.get_dword("GPU Priority");
-        let games_sfio_priority = GAMES_TASK_KEY.get_string("SFIO Priority");
-        let pro_audio_scheduling_category = PRO_AUDIO_TASK_KEY.get_string("Scheduling Category");
-        let pro_audio_priority = PRO_AUDIO_TASK_KEY.get_dword("Priority");
-        let pro_audio_gpu_priority = PRO_AUDIO_TASK_KEY.get_dword("GPU Priority");
-        let pro_audio_sfio_priority = PRO_AUDIO_TASK_KEY.get_string("SFIO Priority");
+    fn read_dword_or_default(key: &RegKey, name: &str, default: u32) -> Result<u32, AppError> {
+        match key.get_dword(name) {
+            Ok(value) => Ok(value),
+            Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => Ok(default),
+            Err(error) => Err(error),
+        }
+    }
 
-        Ok(
-            matches!(system_responsiveness, Ok(OPTIMIZED_SYSTEM_RESPONSIVENESS))
-                && matches!(games_scheduling_category, Ok(value) if value == OPTIMIZED_GAMES_SCHEDULING_CATEGORY)
-                && matches!(games_priority, Ok(OPTIMIZED_GAMES_PRIORITY))
-                && matches!(games_gpu_priority, Ok(OPTIMIZED_GAMES_GPU_PRIORITY))
-                && matches!(games_sfio_priority, Ok(value) if value == OPTIMIZED_GAMES_SFIO_PRIORITY)
-                && matches!(pro_audio_scheduling_category, Ok(value) if value == OPTIMIZED_PRO_AUDIO_SCHEDULING_CATEGORY)
-                && matches!(pro_audio_priority, Ok(OPTIMIZED_PRO_AUDIO_PRIORITY))
-                && matches!(pro_audio_gpu_priority, Ok(OPTIMIZED_PRO_AUDIO_GPU_PRIORITY))
-                && matches!(pro_audio_sfio_priority, Ok(value) if value == OPTIMIZED_PRO_AUDIO_SFIO_PRIORITY),
-        )
+    fn read_string_or_default(key: &RegKey, name: &str, default: &str) -> Result<String, AppError> {
+        match key.get_string(name) {
+            Ok(value) => Ok(value),
+            Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {
+                Ok(default.to_string())
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    fn is_enabled(&self) -> Result<bool, AppError> {
+        let system_responsiveness = Self::read_dword_or_default(
+            &SYSTEM_PROFILE_KEY,
+            "SystemResponsiveness",
+            DEFAULT_SYSTEM_RESPONSIVENESS,
+        )?;
+        let games_scheduling_category = Self::read_string_or_default(
+            &GAMES_TASK_KEY,
+            "Scheduling Category",
+            DEFAULT_GAMES_SCHEDULING_CATEGORY,
+        )?;
+        let games_priority =
+            Self::read_dword_or_default(&GAMES_TASK_KEY, "Priority", DEFAULT_GAMES_PRIORITY)?;
+        let games_gpu_priority = Self::read_dword_or_default(
+            &GAMES_TASK_KEY,
+            "GPU Priority",
+            DEFAULT_GAMES_GPU_PRIORITY,
+        )?;
+        let games_sfio_priority = Self::read_string_or_default(
+            &GAMES_TASK_KEY,
+            "SFIO Priority",
+            DEFAULT_GAMES_SFIO_PRIORITY,
+        )?;
+        let pro_audio_scheduling_category = Self::read_string_or_default(
+            &PRO_AUDIO_TASK_KEY,
+            "Scheduling Category",
+            DEFAULT_PRO_AUDIO_SCHEDULING_CATEGORY,
+        )?;
+        let pro_audio_priority = Self::read_dword_or_default(
+            &PRO_AUDIO_TASK_KEY,
+            "Priority",
+            DEFAULT_PRO_AUDIO_PRIORITY,
+        )?;
+        let pro_audio_gpu_priority = Self::read_dword_or_default(
+            &PRO_AUDIO_TASK_KEY,
+            "GPU Priority",
+            DEFAULT_PRO_AUDIO_GPU_PRIORITY,
+        )?;
+        let pro_audio_sfio_priority = Self::read_string_or_default(
+            &PRO_AUDIO_TASK_KEY,
+            "SFIO Priority",
+            DEFAULT_PRO_AUDIO_SFIO_PRIORITY,
+        )?;
+
+        Ok(system_responsiveness == OPTIMIZED_SYSTEM_RESPONSIVENESS
+            && games_scheduling_category == OPTIMIZED_GAMES_SCHEDULING_CATEGORY
+            && games_priority == OPTIMIZED_GAMES_PRIORITY
+            && games_gpu_priority == OPTIMIZED_GAMES_GPU_PRIORITY
+            && games_sfio_priority == OPTIMIZED_GAMES_SFIO_PRIORITY
+            && pro_audio_scheduling_category == OPTIMIZED_PRO_AUDIO_SCHEDULING_CATEGORY
+            && pro_audio_priority == OPTIMIZED_PRO_AUDIO_PRIORITY
+            && pro_audio_gpu_priority == OPTIMIZED_PRO_AUDIO_GPU_PRIORITY
+            && pro_audio_sfio_priority == OPTIMIZED_PRO_AUDIO_SFIO_PRIORITY)
     }
 }
 
@@ -160,13 +209,15 @@ impl Tweak for OptimizeMmcssTweak {
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {
+        let enabled = self.is_enabled()?;
+
         Ok(TweakStatus {
-            current_value: if self.is_enabled()? {
+            current_value: if enabled {
                 ENABLED_VALUE.into()
             } else {
                 DISABLED_VALUE.into()
             },
-            is_default: !self.is_enabled()?,
+            is_default: !enabled,
         })
     }
 }

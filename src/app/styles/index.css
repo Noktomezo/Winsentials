@@ -631,15 +631,6 @@ body {
   border-color: var(--border) !important;
 }
 
-[data-webview-material="acrylic"][data-theme="dark"] [data-sonner-toaster] [data-sonner-toast],
-[data-webview-material="mica"][data-theme="dark"] [data-sonner-toaster] [data-sonner-toast],
-[data-webview-material="tabbed"][data-theme="dark"] [data-sonner-toaster] [data-sonner-toast] {
-  background: var(--card) !important;
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-color: var(--border) !important;
-}
-
 /* Tooltips render in a portal, so they need their own global material blur. */
 [data-webview-material="acrylic"] [data-slot="tooltip-content"],
 [data-webview-material="mica"] [data-slot="tooltip-content"],

@@ -10,7 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/shared/ui/select'
+} from '@/shared/ui/'
 
 const THEME_ICONS: Record<(typeof APP_THEMES)[number], LucideIcon> = {
   light: SunMedium,
