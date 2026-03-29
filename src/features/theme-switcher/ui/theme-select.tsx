@@ -4,7 +4,13 @@ import { useTranslation } from 'react-i18next'
 import { usePreferencesStore } from '@/entities/settings/model/preferences-store'
 import { APP_THEMES } from '@/shared/config/app'
 import { cn } from '@/shared/lib/utils'
-import { RadioGroup, RadioGroupItem } from '@/shared/ui/radio-group'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/ui/select'
 
 const THEME_ICONS: Record<(typeof APP_THEMES)[number], LucideIcon> = {
   light: SunMedium,
@@ -12,35 +18,32 @@ const THEME_ICONS: Record<(typeof APP_THEMES)[number], LucideIcon> = {
   system: MonitorCog,
 }
 
-export function ThemeSelect() {
+export function ThemeSelect({ className }: { className?: string }) {
   const { t } = useTranslation()
   const theme = usePreferencesStore(state => state.theme)
   const setTheme = usePreferencesStore(state => state.setTheme)
 
   return (
-    <RadioGroup
-      className="flex gap-1 rounded-lg border border-border/70 bg-background p-1"
-      onValueChange={value => setTheme(value as typeof theme)}
-      value={theme}
-    >
-      {APP_THEMES.map((item) => {
-        const checked = theme === item
-        const Icon = THEME_ICONS[item]
+    <div className={cn('w-full', className)}>
+      <Select value={theme} onValueChange={value => setTheme(value as typeof theme)}>
+        <SelectTrigger className="w-full justify-between aria-expanded:border-primary/40 aria-expanded:ring-1 aria-expanded:ring-primary/50 focus-visible:border-primary/40 focus-visible:ring-primary/50">
+          <SelectValue placeholder={t('settings.mode')} />
+        </SelectTrigger>
+        <SelectContent>
+          {APP_THEMES.map((item) => {
+            const Icon = THEME_ICONS[item]
 
-        return (
-          <label
-            key={item}
-            className={cn(
-              'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors',
-              checked && 'bg-accent text-accent-foreground shadow-xs',
-            )}
-          >
-            <RadioGroupItem className="sr-only" value={item} />
-            <Icon className="size-3.5 shrink-0" />
-            {t(`settings.themes.${item}`)}
-          </label>
-        )
-      })}
-    </RadioGroup>
+            return (
+              <SelectItem key={item} value={item}>
+                <span className="flex items-center gap-2">
+                  <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+                  <span>{t(`settings.themes.${item}`)}</span>
+                </span>
+              </SelectItem>
+            )
+          })}
+        </SelectContent>
+      </Select>
+    </div>
   )
 }

@@ -22,7 +22,7 @@ use crate::commands::system_info::{
 use crate::commands::tweaks::{
     get_windows_build, tweak_apply, tweak_extra, tweak_reset, tweak_status, tweaks_by_category,
 };
-use crate::commands::window::set_chrome_acrylic;
+use crate::commands::window::set_webview_material;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -151,7 +151,7 @@ pub fn run() {
             backup_rename,
             backup_delete,
             greet,
-            set_chrome_acrylic,
+            set_webview_material,
             tweaks_by_category,
             tweak_apply,
             tweak_reset,

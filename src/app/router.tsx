@@ -148,6 +148,15 @@ const networkRoute = createRoute({
   ),
 })
 
+const performanceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'performance',
+  component: lazyRouteComponent(
+    () => import('@/pages/performance/ui/performance-page'),
+    'PerformancePage',
+  ),
+})
+
 const cpuRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'cpu',
@@ -236,6 +245,7 @@ const routeTree = rootRoute.addChildren([
   appearanceRoute,
   securityRoute,
   networkRoute,
+  performanceRoute,
   startupRoute,
   backupRoute,
   settingsRoute,

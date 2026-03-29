@@ -165,7 +165,14 @@
   --sidebar-ring: oklch(0.60 0.13 250);
 }
 
-[data-palette="flexoki"][data-theme="light"][data-chrome-material="acrylic"] {
+[data-palette="flexoki"][data-theme="light"][data-webview-material="acrylic"],
+[data-palette="flexoki"][data-theme="light"][data-webview-material="mica"],
+[data-palette="flexoki"][data-theme="light"][data-webview-material="tabbed"] {
+  --background: oklch(0.993 0.012 95 / 0.72);
+  --card: oklch(0.982 0.01 94 / 0.76);
+  --popover: oklch(0.985 0.01 94 / 0.84);
+  --secondary: oklch(0.935 0.012 89 / 0.72);
+  --muted: oklch(0.935 0.012 89 / 0.7);
   --sidebar: oklch(0.993 0.012 95 / 0.5);
   --sidebar-border: oklch(0.805 0.011 85 / 0.6);
   --sidebar-accent: oklch(0.916 0.013 88 / 0.82);
@@ -173,7 +180,14 @@
   --sidebar-ring: oklch(0.44 0.15 258);
 }
 
-[data-palette="flexoki"][data-theme="dark"][data-chrome-material="acrylic"] {
+[data-palette="flexoki"][data-theme="dark"][data-webview-material="acrylic"],
+[data-palette="flexoki"][data-theme="dark"][data-webview-material="mica"],
+[data-palette="flexoki"][data-theme="dark"][data-webview-material="tabbed"] {
+  --background: oklch(0.139 0.005 75 / 0.68);
+  --card: oklch(0.184 0.006 65 / 0.74);
+  --popover: oklch(0.184 0.006 65 / 0.84);
+  --secondary: oklch(0.22 0.007 68 / 0.74);
+  --muted: oklch(0.22 0.007 68 / 0.72);
   --sidebar: oklch(0.108 0.004 72 / 0.5);
   --sidebar-border: oklch(0.23 0.007 67 / 0.5);
   --sidebar-accent: oklch(0.22 0.007 68 / 0.82);
@@ -244,7 +258,14 @@
   --sidebar-ring: oklch(0.62 0.22 255);
 }
 
-[data-palette="abyss"][data-theme="light"][data-chrome-material="acrylic"] {
+[data-palette="abyss"][data-theme="light"][data-webview-material="acrylic"],
+[data-palette="abyss"][data-theme="light"][data-webview-material="mica"],
+[data-palette="abyss"][data-theme="light"][data-webview-material="tabbed"] {
+  --background: oklch(0.968 0.008 240 / 0.7);
+  --card: oklch(0.985 0.006 240 / 0.74);
+  --popover: oklch(0.988 0.006 240 / 0.84);
+  --secondary: oklch(0.944 0.01 238 / 0.72);
+  --muted: oklch(0.944 0.01 238 / 0.7);
   --sidebar: oklch(0.942 0.010 242 / 0.5);
   --sidebar-border: oklch(0.828 0.014 238 / 0.6);
   --sidebar-accent: oklch(0.920 0.018 240 / 0.82);
@@ -252,7 +273,14 @@
   --sidebar-ring: oklch(0.46 0.22 258);
 }
 
-[data-palette="abyss"][data-theme="dark"][data-chrome-material="acrylic"] {
+[data-palette="abyss"][data-theme="dark"][data-webview-material="acrylic"],
+[data-palette="abyss"][data-theme="dark"][data-webview-material="mica"],
+[data-palette="abyss"][data-theme="dark"][data-webview-material="tabbed"] {
+  --background: oklch(0.138 0.026 267 / 0.66);
+  --card: oklch(0.172 0.026 265 / 0.72);
+  --popover: oklch(0.172 0.026 265 / 0.84);
+  --secondary: oklch(0.210 0.026 262 / 0.74);
+  --muted: oklch(0.210 0.026 262 / 0.72);
   --sidebar: oklch(0.108 0.022 270 / 0.5);
   --sidebar-border: oklch(0.240 0.028 262 / 0.5);
   --sidebar-accent: oklch(0.210 0.036 258 / 0.82);
@@ -260,7 +288,14 @@
   --sidebar-ring: oklch(0.62 0.22 255);
 }
 
-[data-theme="light"][data-chrome-material="acrylic"] {
+[data-theme="light"][data-webview-material="acrylic"],
+[data-theme="light"][data-webview-material="mica"],
+[data-theme="light"][data-webview-material="tabbed"] {
+  --background: oklch(0.965 0.006 210 / 0.72);
+  --card: oklch(0.992 0.003 210 / 0.76);
+  --popover: oklch(0.992 0.003 210 / 0.84);
+  --secondary: oklch(0.94 0.006 210 / 0.72);
+  --muted: oklch(0.935 0.006 210 / 0.7);
   --sidebar: oklch(0.965 0.008 214 / 0.5);
   --sidebar-border: oklch(0.74 0.016 214 / 0.6);
   --sidebar-accent: oklch(0.93 0.02 196 / 0.82);
@@ -268,7 +303,14 @@
   --sidebar-ring: oklch(0.54 0.11 198);
 }
 
-[data-theme="dark"][data-chrome-material="acrylic"] {
+[data-theme="dark"][data-webview-material="acrylic"],
+[data-theme="dark"][data-webview-material="mica"],
+[data-theme="dark"][data-webview-material="tabbed"] {
+  --background: oklch(0.18 0.012 230 / 0.68);
+  --card: oklch(0.22 0.012 228 / 0.74);
+  --popover: oklch(0.22 0.012 228 / 0.84);
+  --secondary: oklch(0.31 0.012 228 / 0.74);
+  --muted: oklch(0.31 0.012 228 / 0.72);
   --sidebar: oklch(0.195 0.012 232 / 0.5);
   --sidebar-border: oklch(0.38 0.014 226 / 0.5);
   --sidebar-accent: oklch(0.285 0.022 196 / 0.82);
@@ -502,6 +544,13 @@ body {
   font-family: var(--font-sans) !important;
 }
 
+.tweak-card-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+  align-items: stretch;
+}
+
 @media (width >= 48rem) {
   .toast-host {
     right: 1.5rem !important;
@@ -517,8 +566,8 @@ body {
   transform: translateX(0);
 }
 
-.group\/summary:hover [data-overflow='true'] [data-marquee-inner='true'],
-.group\/summary:focus-within [data-overflow='true'] [data-marquee-inner='true'] {
+[data-marquee-group='true']:hover [data-overflow='true'] [data-marquee-inner='true'],
+[data-marquee-group='true']:focus-within [data-overflow='true'] [data-marquee-inner='true'] {
   transform: translateX(var(--marquee-offset, 0px));
 }
 
@@ -572,18 +621,39 @@ body {
   --info-border: var(--border);
 }
 
-/* Acrylic light — frosted glass */
-[data-chrome-material="acrylic"] [data-sonner-toaster] [data-sonner-toast] {
+/* Window materials — translucent toast surfaces */
+[data-webview-material="acrylic"] [data-sonner-toaster] [data-sonner-toast],
+[data-webview-material="mica"] [data-sonner-toaster] [data-sonner-toast],
+[data-webview-material="tabbed"] [data-sonner-toaster] [data-sonner-toast] {
   background: var(--card) !important;
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-color: var(--border) !important;
 }
 
-/* Acrylic dark — frosted glass */
-[data-chrome-material="acrylic"][data-theme="dark"] [data-sonner-toaster] [data-sonner-toast] {
+[data-webview-material="acrylic"][data-theme="dark"] [data-sonner-toaster] [data-sonner-toast],
+[data-webview-material="mica"][data-theme="dark"] [data-sonner-toaster] [data-sonner-toast],
+[data-webview-material="tabbed"][data-theme="dark"] [data-sonner-toaster] [data-sonner-toast] {
   background: var(--card) !important;
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-color: var(--border) !important;
+}
+
+/* Tooltips render in a portal, so they need their own global material blur. */
+[data-webview-material="acrylic"] [data-slot="tooltip-content"],
+[data-webview-material="mica"] [data-slot="tooltip-content"],
+[data-webview-material="tabbed"] [data-slot="tooltip-content"] {
+  background: color-mix(in srgb, var(--popover) 88%, transparent) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-color: var(--border) !important;
+}
+
+[data-webview-material="acrylic"] [data-slot="select-content"],
+[data-webview-material="mica"] [data-slot="select-content"],
+[data-webview-material="tabbed"] [data-slot="select-content"] {
+  background: color-mix(in srgb, var(--popover) 88%, transparent) !important;
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
 }

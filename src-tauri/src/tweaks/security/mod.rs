@@ -1,3 +1,4 @@
+pub mod disable_autoplay;
 pub mod disable_open_file_warning;
 pub mod disable_security_center_notifications;
 pub mod disable_user_account_control;
@@ -9,6 +10,7 @@ pub fn tweaks() -> Vec<Box<dyn Tweak>> {
         Box::new(
             disable_security_center_notifications::DisableSecurityCenterNotificationsTweak::new(),
         ),
+        Box::new(disable_autoplay::DisableAutoplayTweak::new()),
         Box::new(disable_open_file_warning::DisableOpenFileWarningTweak::new()),
         Box::new(disable_user_account_control::DisableUserAccountControlTweak::new()),
     ]
