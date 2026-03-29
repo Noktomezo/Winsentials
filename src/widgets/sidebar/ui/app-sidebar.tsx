@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
-import { ArchiveRestore, ChevronDown, FolderCog, House, Network, Palette, Rocket, Settings2, Shield, Wrench } from 'lucide-react'
+import { ArchiveRestore, ChevronDown, FolderCog, Gauge, House, Network, Palette, Rocket, Settings2, Shield, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
@@ -19,7 +19,7 @@ import {
   useSidebar,
 } from '@/shared/ui'
 
-type SidebarRoute = '/home' | '/appearance' | '/backup' | '/behaviour' | '/security' | '/network' | '/startup' | '/settings'
+type SidebarRoute = '/home' | '/appearance' | '/backup' | '/behaviour' | '/security' | '/network' | '/performance' | '/startup' | '/settings'
 
 export function AppSidebar() {
   const { t } = useTranslation()
@@ -136,6 +136,20 @@ export function AppSidebar() {
             >
               <Palette />
               <span>{t('navigation.appearance')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="cursor-pointer"
+              isActive={pathname === '/performance'}
+              onClick={event => handleMenuClick(event, '/performance')}
+              onFocus={() => handlePointerIntent('/performance')}
+              onMouseEnter={() => handlePointerIntent('/performance')}
+              tooltip={t('navigation.performance')}
+              type="button"
+            >
+              <Gauge />
+              <span>{t('navigation.performance')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

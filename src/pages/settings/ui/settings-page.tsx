@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { UpdateCheckSwitch } from '@/features/app-updater/ui/update-check-switch'
 import { LanguageSelect } from '@/features/language-switcher/ui/language-select'
 import { PaletteSelect } from '@/features/theme-switcher/ui/palette-select'
-import { ChromeAcrylicSwitch } from '@/features/theme-switcher/ui/sidebar-acrylic-switch'
 import { ThemeSelect } from '@/features/theme-switcher/ui/theme-select'
+import { WebviewMaterialSelect } from '@/features/theme-switcher/ui/webview-material-select'
 
 function SettingsSection({
   children,
@@ -61,21 +61,21 @@ export function SettingsPage() {
           icon={Palette}
         >
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-foreground">
                 <MoonStar className="size-4 text-muted-foreground" />
                 {t('settings.mode')}
               </div>
-              <ThemeSelect />
+              <ThemeSelect className="w-full sm:w-[163px]" />
             </div>
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-foreground">
                 <Leaf className="size-4 text-muted-foreground" />
                 {t('settings.palette')}
               </div>
-              <PaletteSelect />
+              <PaletteSelect className="w-full sm:w-[163px]" />
             </div>
-            <ChromeAcrylicSwitch />
+            <WebviewMaterialSelect />
           </div>
         </SettingsSection>
         <SettingsSection

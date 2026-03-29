@@ -9,6 +9,7 @@
       (() => {
         const DEFAULT_THEME = 'dark'
         const DEFAULT_PALETTE = 'teal'
+        const DEFAULT_WEBVIEW_MATERIAL = 'none'
         const STORAGE_KEY = 'winsentials-preferences-bootstrap'
 
         const root = document.documentElement
@@ -34,19 +35,29 @@
           const palette = state && typeof state.palette === 'string'
             ? state.palette
             : DEFAULT_PALETTE
-          const chromeMaterial = state && state.chromeAcrylic === true
-            ? 'acrylic'
-            : 'solid'
+          const normalizeWebviewMaterial = (value) => {
+            if (value === 'micaAlt') return 'tabbed'
+            if (value === 'blur') return 'none'
+            return value
+          }
+
+          const webviewMaterial = state && typeof state.webviewMaterial === 'string'
+            ? normalizeWebviewMaterial(state.webviewMaterial)
+            : state && typeof state.chromeMaterial === 'string'
+              ? normalizeWebviewMaterial(state.chromeMaterial)
+            : state && state.chromeAcrylic === true
+              ? 'acrylic'
+              : DEFAULT_WEBVIEW_MATERIAL
 
           root.dataset.theme = resolvedTheme === 'light' ? 'light' : 'dark'
           root.dataset.palette = palette
-          root.dataset.chromeMaterial = chromeMaterial
+          root.dataset.webviewMaterial = webviewMaterial
           root.style.colorScheme = resolvedTheme === 'light' ? 'light' : 'dark'
         }
         catch {
           root.dataset.theme = DEFAULT_THEME
           root.dataset.palette = DEFAULT_PALETTE
-          root.dataset.chromeMaterial = 'solid'
+          root.dataset.webviewMaterial = DEFAULT_WEBVIEW_MATERIAL
           root.style.colorScheme = DEFAULT_THEME
         }
       })()
