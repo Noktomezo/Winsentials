@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::{env, path::PathBuf, process::Command};
 
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
@@ -66,7 +66,7 @@ impl DisableFaultTolerantHeapTweak {
     }
 
     fn clear_fth_history(&self) -> Result<(), AppError> {
-        let mut cmd = Command::new("rundll32.exe");
+        let mut cmd = Command::new(rundll32_path());
         cmd.arg("fthsvc.dll,FthSysprepSpecialize");
 
         #[cfg(target_os = "windows")]
@@ -105,8 +105,8 @@ impl Tweak for DisableFaultTolerantHeapTweak {
     fn apply(&self, value: &str) -> Result<(), AppError> {
         match value {
             ENABLED_VALUE => {
-                FTH_KEY.set_dword("Enabled", DISABLED_FTH_VALUE)?;
-                self.clear_fth_history()
+                self.clear_fth_history()?;
+                FTH_KEY.set_dword("Enabled", DISABLED_FTH_VALUE)
             }
             DISABLED_VALUE => self.reset(),
             _ => Err(AppError::message(format!(
@@ -132,4 +132,12 @@ impl Tweak for DisableFaultTolerantHeapTweak {
             is_default: !enabled,
         })
     }
+}
+
+fn rundll32_path() -> PathBuf {
+    env::var_os("SystemRoot")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(r"C:\Windows"))
+        .join("System32")
+        .join("rundll32.exe")
 }

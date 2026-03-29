@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { TweakMeta, WindowsVersion } from '@/entities/tweak/model/types'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
-import { AlertTriangle, AppWindow, BellOff, CircleAlert, Clock3, Cpu, ExternalLink, FileType, Gauge, HardDrive, History, House, Images, Info, LogOut, Menu, Network, PanelsTopLeft, Power, RotateCcw, Settings, Shield, ShieldOff, TextCursor, TriangleAlert, Type, Usb, Zap } from 'lucide-react'
+import { AlertTriangle, AppWindow, BellOff, CircleAlert, Clock3, Copy, Cpu, ExternalLink, FileType, Gauge, HardDrive, History, House, Images, Info, LogOut, Menu, Network, PanelsTopLeft, Power, RotateCcw, Settings, Shield, ShieldOff, TextCursor, TriangleAlert, Type, Usb, Zap } from 'lucide-react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/shared/lib/toast'
 import { MarqueeText } from '@/shared/ui/marquee-text'
@@ -243,41 +243,39 @@ export function TweakCard({
             )}
 
             {tweak.risk !== 'none' && tweak.riskDescription && (
-              <Tooltip>
-                <TooltipTrigger asChild>
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      aria-label={t('tweaks.meta.risk')}
+                      className="cursor-help"
+                      type="button"
+                    >
+                      <MetadataChip icon={TriangleAlert} tone="warning">{t('tweaks.meta.risk')}</MetadataChip>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-80 text-pretty whitespace-pre-line" sideOffset={8}>
+                    <Trans
+                      components={{
+                        code: <code className="mt-2 block w-fit rounded-[4px] border border-border/70 bg-accent px-2 py-1 font-mono text-xs font-medium text-foreground shadow-xs" />,
+                      }}
+                      i18nKey={tweak.riskDescription}
+                    />
+                  </TooltipContent>
+                </Tooltip>
+                {copyableRiskCommand && (
                   <button
-                    aria-label={t('tweaks.meta.risk')}
-                    className="cursor-help"
+                    aria-label={t('tweaks.actions.copyCommand')}
+                    className="cursor-pointer"
+                    onClick={() => {
+                      void handleCopyRiskCommand()
+                    }}
                     type="button"
                   >
-                    <MetadataChip icon={TriangleAlert} tone="warning">{t('tweaks.meta.risk')}</MetadataChip>
+                    <MetadataChip icon={Copy} tone="warning">{t('tweaks.actions.copyCommand')}</MetadataChip>
                   </button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-80 text-pretty whitespace-pre-line" sideOffset={8}>
-                  <Trans
-                    components={{
-                      code: (
-                        <code
-                          aria-label={t('tweaks.actions.copyCommand')}
-                          className="mt-2 block w-fit cursor-copy rounded-[4px] border border-border/70 bg-accent px-2 py-1 font-mono text-xs font-medium text-foreground shadow-xs transition-colors hover:bg-accent/80"
-                          onClick={() => {
-                            void handleCopyRiskCommand()
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault()
-                              void handleCopyRiskCommand()
-                            }
-                          }}
-                          role="button"
-                          tabIndex={0}
-                        />
-                      ),
-                    }}
-                    i18nKey={tweak.riskDescription}
-                  />
-                </TooltipContent>
-              </Tooltip>
+                )}
+              </>
             )}
 
             {conflicts.length > 0 && (
