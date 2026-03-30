@@ -444,6 +444,9 @@ impl Tweak for OptimizeMmcssTweak {
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {
+        let _lock = mmcss_operation_lock()
+            .lock()
+            .map_err(|_| AppError::message("failed to acquire MMCSS operation lock"))?;
         let values = self.read_current_values()?;
         let enabled = Self::is_optimized_values(&values);
         let is_default = Self::is_default_values(&values);
