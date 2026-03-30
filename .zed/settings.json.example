@@ -2,7 +2,7 @@
   "context_servers": {
     "vexp": {
       "command": {
-        "path": "C:\\Users\\Noktomezo\\.bun\\install\\global\\node_modules\\@vexp\\core-win32-x64\\bin\\vexp-core.exe",
+        "path": "C:\\path\\to\\your\\vexp-core.exe",
         "args": [
           "mcp"
         ]

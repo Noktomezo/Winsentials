@@ -1,6 +1,7 @@
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
+use std::sync::{Mutex, OnceLock};
 
 const ENABLED_VALUE: &str = "enabled";
 const DISABLED_VALUE: &str = "disabled";
@@ -112,6 +113,9 @@ impl OptimizeMmcssTweak {
     }
 
     fn set_optimized_values(&self) -> Result<(), AppError> {
+        let _lock = mmcss_operation_lock()
+            .lock()
+            .map_err(|_| AppError::message("failed to acquire MMCSS operation lock"))?;
         let snapshot = self.capture_snapshot()?;
         self.apply_with_rollback(snapshot, || {
             SYSTEM_PROFILE_KEY
@@ -136,6 +140,9 @@ impl OptimizeMmcssTweak {
     }
 
     fn set_default_values(&self) -> Result<(), AppError> {
+        let _lock = mmcss_operation_lock()
+            .lock()
+            .map_err(|_| AppError::message("failed to acquire MMCSS operation lock"))?;
         let snapshot = self.capture_snapshot()?;
         self.apply_with_rollback(snapshot, || {
             SYSTEM_PROFILE_KEY.set_dword("SystemResponsiveness", DEFAULT_SYSTEM_RESPONSIVENESS)?;
@@ -405,6 +412,11 @@ impl OptimizeMmcssTweak {
             Err(error) => Err(error),
         }
     }
+}
+
+fn mmcss_operation_lock() -> &'static Mutex<()> {
+    static MMCSS_OPERATION_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    MMCSS_OPERATION_LOCK.get_or_init(|| Mutex::new(()))
 }
 
 impl Tweak for OptimizeMmcssTweak {
