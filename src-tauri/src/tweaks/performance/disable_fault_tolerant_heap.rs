@@ -66,7 +66,8 @@ impl DisableFaultTolerantHeapTweak {
     }
 
     fn clear_fth_history(&self) -> Result<(), AppError> {
-        let mut cmd = Command::new(rundll32_path());
+        let resolved_rundll32 = rundll32_path();
+        let mut cmd = Command::new(&resolved_rundll32);
         cmd.arg("fthsvc.dll,FthSysprepSpecialize");
 
         #[cfg(target_os = "windows")]
@@ -83,7 +84,10 @@ impl DisableFaultTolerantHeapTweak {
         let message = if stderr.is_empty() { stdout } else { stderr };
 
         Err(AppError::CommandFailed {
-            command: "rundll32.exe fthsvc.dll,FthSysprepSpecialize".into(),
+            command: format!(
+                "{} fthsvc.dll,FthSysprepSpecialize",
+                resolved_rundll32.to_string_lossy()
+            ),
             stderr: if message.is_empty() {
                 "unknown error".into()
             } else {

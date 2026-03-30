@@ -185,55 +185,99 @@ impl OptimizeMmcssTweak {
         match writer() {
             Ok(()) => Ok(()),
             Err(error) => {
-                let _ = Self::restore_snapshot(&snapshot);
-                Err(error)
+                let rollback_errors = Self::restore_snapshot(&snapshot);
+
+                if rollback_errors.is_empty() {
+                    Err(error)
+                } else {
+                    Err(AppError::message(format!(
+                        "{error}; rollback failed: {}",
+                        rollback_errors.join("; ")
+                    )))
+                }
             }
         }
     }
 
-    fn restore_snapshot(snapshot: &MmcssSnapshot) -> Result<(), AppError> {
-        Self::restore_dword(
-            &SYSTEM_PROFILE_KEY,
-            "SystemResponsiveness",
-            &snapshot.system_responsiveness,
-        )?;
-        Self::restore_string(
-            &GAMES_TASK_KEY,
-            "Scheduling Category",
-            &snapshot.games_scheduling_category,
-        )?;
-        Self::restore_dword(&GAMES_TASK_KEY, "Priority", &snapshot.games_priority)?;
-        Self::restore_dword(
-            &GAMES_TASK_KEY,
-            "GPU Priority",
-            &snapshot.games_gpu_priority,
-        )?;
-        Self::restore_string(
-            &GAMES_TASK_KEY,
-            "SFIO Priority",
-            &snapshot.games_sfio_priority,
-        )?;
-        Self::restore_string(
-            &PRO_AUDIO_TASK_KEY,
-            "Scheduling Category",
-            &snapshot.pro_audio_scheduling_category,
-        )?;
-        Self::restore_dword(
-            &PRO_AUDIO_TASK_KEY,
-            "Priority",
-            &snapshot.pro_audio_priority,
-        )?;
-        Self::restore_dword(
-            &PRO_AUDIO_TASK_KEY,
-            "GPU Priority",
-            &snapshot.pro_audio_gpu_priority,
-        )?;
-        Self::restore_string(
-            &PRO_AUDIO_TASK_KEY,
-            "SFIO Priority",
-            &snapshot.pro_audio_sfio_priority,
-        )?;
-        Ok(())
+    fn restore_snapshot(snapshot: &MmcssSnapshot) -> Vec<String> {
+        let mut errors = Vec::new();
+
+        Self::push_restore_error(
+            &mut errors,
+            Self::restore_dword(
+                &SYSTEM_PROFILE_KEY,
+                "SystemResponsiveness",
+                &snapshot.system_responsiveness,
+            ),
+        );
+        Self::push_restore_error(
+            &mut errors,
+            Self::restore_string(
+                &GAMES_TASK_KEY,
+                "Scheduling Category",
+                &snapshot.games_scheduling_category,
+            ),
+        );
+        Self::push_restore_error(
+            &mut errors,
+            Self::restore_dword(&GAMES_TASK_KEY, "Priority", &snapshot.games_priority),
+        );
+        Self::push_restore_error(
+            &mut errors,
+            Self::restore_dword(
+                &GAMES_TASK_KEY,
+                "GPU Priority",
+                &snapshot.games_gpu_priority,
+            ),
+        );
+        Self::push_restore_error(
+            &mut errors,
+            Self::restore_string(
+                &GAMES_TASK_KEY,
+                "SFIO Priority",
+                &snapshot.games_sfio_priority,
+            ),
+        );
+        Self::push_restore_error(
+            &mut errors,
+            Self::restore_string(
+                &PRO_AUDIO_TASK_KEY,
+                "Scheduling Category",
+                &snapshot.pro_audio_scheduling_category,
+            ),
+        );
+        Self::push_restore_error(
+            &mut errors,
+            Self::restore_dword(
+                &PRO_AUDIO_TASK_KEY,
+                "Priority",
+                &snapshot.pro_audio_priority,
+            ),
+        );
+        Self::push_restore_error(
+            &mut errors,
+            Self::restore_dword(
+                &PRO_AUDIO_TASK_KEY,
+                "GPU Priority",
+                &snapshot.pro_audio_gpu_priority,
+            ),
+        );
+        Self::push_restore_error(
+            &mut errors,
+            Self::restore_string(
+                &PRO_AUDIO_TASK_KEY,
+                "SFIO Priority",
+                &snapshot.pro_audio_sfio_priority,
+            ),
+        );
+
+        errors
+    }
+
+    fn push_restore_error(errors: &mut Vec<String>, result: Result<(), AppError>) {
+        if let Err(error) = result {
+            errors.push(error.to_string());
+        }
     }
 
     fn snapshot_dword(key: &RegKey, name: &str) -> Result<DwordSnapshot, AppError> {
@@ -361,12 +405,6 @@ impl OptimizeMmcssTweak {
             Err(error) => Err(error),
         }
     }
-
-    fn is_enabled(&self) -> Result<bool, AppError> {
-        let values = self.read_current_values()?;
-
-        Ok(Self::is_optimized_values(&values))
-    }
 }
 
 impl Tweak for OptimizeMmcssTweak {
@@ -395,7 +433,7 @@ impl Tweak for OptimizeMmcssTweak {
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {
         let values = self.read_current_values()?;
-        let enabled = self.is_enabled()?;
+        let enabled = Self::is_optimized_values(&values);
         let is_default = Self::is_default_values(&values);
 
         Ok(TweakStatus {
