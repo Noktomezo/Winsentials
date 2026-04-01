@@ -136,6 +136,7 @@
     "backup": "Backups",
     "behaviour": "Behaviour",
     "home": "Home",
+    "input": "Input",
     "network": "Network",
     "performance": "Performance",
     "security": "Security",
@@ -200,6 +201,24 @@
       }
     }
   },
+  "input": {
+    "description": "Tune keyboard input behavior, including more aggressive repeat timing presets than the default Windows sliders allow.",
+    "title": "Input",
+    "tweaks": {
+      "fastKeyboardRepeat": {
+        "detailDescription": "Changes how quickly a held key starts repeating and how fast repeated characters are produced after that. Faster presets make input feel more responsive in games, code editors, and general navigation, while slower presets stay more comfortable for everyday typing. After changing this setting, it is best to sign out and back in so Windows fully applies the new profile.",
+        "name": "Fast Keyboard Repeat",
+        "options": {
+          "balanced": "Balanced",
+          "default": "Windows Default",
+          "fast": "Fast",
+          "ultraFast": "Ultra Fast"
+        },
+        "riskDescription": "Very aggressive repeat timing can feel too sensitive for normal typing, remote desktops, or applications that react poorly to rapid repeated input. If typing starts to feel erratic, switch back to a slower preset or restore the default profile.",
+        "shortDescription": "Lets you choose a ready-made keyboard repeat profile, from the Windows default to faster and more responsive presets."
+      }
+    }
+  },
   "performance": {
     "description": "Tune Windows features that can trade compatibility safeguards for lower overhead and snappier app behavior.",
     "title": "Performance",
@@ -209,6 +228,12 @@
         "name": "Disable Fault Tolerant Heap (FTH)",
         "riskDescription": "Apps that truly depend on FTH for crash mitigation may become unstable again after you disable it. If a specific program starts crashing more often, reset this tweak and reboot Windows.",
         "shortDescription": "Turns off the global FTH compatibility heap and clears existing FTH app assignments."
+      },
+      "disableGameDvr": {
+        "detailDescription": "Fully disables GameDVR, Xbox Game Bar, and background game recording by applying both user-level switches and the machine policy that prevents Windows from re-enabling the feature. Winsentials also forces the fullscreen optimization-related GameDVR flags into the disabled state for more consistent behavior in fullscreen games. After enabling it, the Win + G overlay and background capture pipeline should stay off until you restore the default settings and reboot Windows.",
+        "name": "Disable GameDVR and Xbox Game Bar",
+        "riskDescription": "The Xbox Game Bar overlay, Win + G shortcut, and built-in gameplay capture features will stop working while this tweak is enabled. If you use Game Bar widgets, quick clips, or background recording, reset the tweak and reboot Windows.",
+        "shortDescription": "Turns off Xbox Game Bar, background recording, and GameDVR-related fullscreen hooks."
       },
       "optimizeMmcss": {
         "detailDescription": "Optimizes MMCSS for low-latency gaming by setting SystemResponsiveness to 0 and raising the Games task profile to a more aggressive scheduling configuration. It also applies a matching Pro Audio profile so game audio pipelines and low-latency audio workloads are prioritized more consistently. This can help reduce microstutter and uneven frame pacing on systems where Windows keeps too much CPU time reserved for background work.",
@@ -530,15 +555,21 @@
     "terabyte": "TB"
   },
   "tweaks": {
+    "controls": {
+      "selectPreset": "Select preset"
+    },
     "actions": {
       "copyCommand": "Copy command",
       "resetToDefault": "Reset to default",
       "later": "Later",
+      "logoutNow": "Sign out now",
       "restartNow": "Restart now",
       "retry": "Retry",
       "showDetails": "Show details",
       "showConflictDetails": "Show conflict details",
-      "showRiskDetails": "Show risk details"
+      "showRiskDetails": "Show risk details",
+      "uninstallNow": "Uninstall now",
+      "uninstallXboxGameBar": "Remove Xbox Game Bar"
     },
     "apps": {
       "explorer": "Explorer"
@@ -547,19 +578,24 @@
       "apply": "Failed to apply tweak.",
       "copyCommand": "Failed to copy the command.",
       "loadCategory": "Failed to load tweaks.",
-      "restartApp": "Failed to restart the required app."
+      "restartApp": "Failed to restart the required app.",
+      "uninstallXboxGameBar": "Failed to remove Xbox Game Bar."
     },
     "prompts": {
       "logout": "A logout is required to apply this tweak.",
+      "logoutDescription": "The change will fully take effect after signing out of the current Windows session and signing back in.",
       "restartApp": "Restart {{appName}} to apply this tweak.",
       "restartDevice": "Restart {{deviceName}} to apply this tweak.",
       "restartExplorer": "Explorer needs to restart to apply this tweak.",
       "restartPc": "A full PC restart is required to apply this tweak.",
       "restartPcDescription": "The change will only take effect after a full Windows reboot.",
-      "restartService": "Restart the {{serviceName}} service to apply this tweak."
+      "restartService": "Restart the {{serviceName}} service to apply this tweak.",
+      "uninstallXboxGameBar": "Also remove the Xbox Game Bar app package?",
+      "uninstallXboxGameBarDescription": "This optional step runs PowerShell as administrator context through the app and removes Microsoft.XboxGamingOverlay from the current user profile."
     },
     "meta": {
       "conflicts": "Conflicts",
+      "customValue": "Custom",
       "details": "Details",
       "logout": "Logout",
       "restart": "Restart",
@@ -570,6 +606,9 @@
       "restartPc": "Requires PC restart",
       "windowsBuild": "Requires Windows build {{build}} or newer"
     },
+    "progress": {
+      "uninstallXboxGameBarLoading": "Removing Xbox Game Bar..."
+    },
     "states": {
       "disabled": "Disabled",
       "enabled": "Enabled",
@@ -577,7 +616,8 @@
     },
     "success": {
       "copyCommand": "Command copied to clipboard.",
-      "restartApp": "{{appName}} restarted."
+      "restartApp": "{{appName}} restarted.",
+      "uninstallXboxGameBar": "Xbox Game Bar removed."
     }
   }
 }

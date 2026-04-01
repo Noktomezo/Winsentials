@@ -6,6 +6,12 @@ export interface ToastMessageOptions {
   duration?: number
 }
 
+export interface ToastPromiseMessages {
+  error: string | ((error: unknown) => string)
+  loading: string
+  success: string
+}
+
 export interface ToastActionOptions extends ToastMessageOptions {
   action: {
     label: ReactNode
@@ -24,12 +30,16 @@ export const toast = {
       duration: options.duration ?? 8000,
       action: {
         label: options.action.label,
-        onClick: () => { void options.action.onClick() },
+        onClick: () => {
+          void options.action.onClick()
+        },
       },
       cancel: options.cancel
         ? {
             label: options.cancel.label,
-            onClick: () => { void options.cancel!.onClick?.() },
+            onClick: () => {
+              void options.cancel?.onClick?.()
+            },
           }
         : undefined,
     })
@@ -47,6 +57,16 @@ export const toast = {
     return sonner(message, {
       description: options?.description,
       duration: options?.duration ?? 4000,
+    })
+  },
+  promise<T>(promise: Promise<T>, messages: ToastPromiseMessages) {
+    return sonner.promise(promise, {
+      error: error =>
+        typeof messages.error === 'function'
+          ? messages.error(error)
+          : messages.error,
+      loading: messages.loading,
+      success: messages.success,
     })
   },
   success(message: string, options?: ToastMessageOptions) {

@@ -96,12 +96,19 @@ function mapTweakStatus(status: BackendTweakStatus): TweakStatus {
   }
 }
 
-export async function getTweaksByCategory(category: string): Promise<TweakMeta[]> {
-  const tweaks = await invoke<BackendTweakMeta[]>('tweaks_by_category', { category })
+export async function getTweaksByCategory(
+  category: string,
+): Promise<TweakMeta[]> {
+  const tweaks = await invoke<BackendTweakMeta[]>('tweaks_by_category', {
+    category,
+  })
   return tweaks.map(mapTweakMeta)
 }
 
-export async function applyTweak(id: string, value: string): Promise<TweakResult> {
+export async function applyTweak(
+  id: string,
+  value: string,
+): Promise<TweakResult> {
   const result = await invoke<BackendTweakResult>('tweak_apply', { id, value })
   return mapTweakResult(result)
 }
@@ -126,4 +133,8 @@ export async function getWindowsBuild() {
 
 export async function restartPc(): Promise<void> {
   await invoke('restart_pc')
+}
+
+export async function logoutUser(): Promise<void> {
+  await invoke('logout_user')
 }

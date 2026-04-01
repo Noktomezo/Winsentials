@@ -1,8 +1,16 @@
 import type { TweakMeta } from '@/entities/tweak/model/types'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { applyTweak, restartPc } from '@/entities/tweak/api'
-import { EMPTY_CATEGORY, useTweakCacheStore } from '@/entities/tweak/model/tweak-cache-store'
+import {
+  applyTweak,
+  logoutUser,
+  restartPc,
+  runTweakExtra,
+} from '@/entities/tweak/api'
+import {
+  EMPTY_CATEGORY,
+  useTweakCacheStore,
+} from '@/entities/tweak/model/tweak-cache-store'
 import {
   TweakCard,
   TweakCardSkeleton,
@@ -29,12 +37,19 @@ interface TweakCategoryPageProps {
 
 export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
   const { t } = useTranslation()
-  const cachedCategory = useTweakCacheStore(state => state.categories[category])
+  const cachedCategory = useTweakCacheStore(
+    state => state.categories[category],
+  )
   const currentBuild = useTweakCacheStore(state => state.windowsBuild)
   const ensureCategory = useTweakCacheStore(state => state.ensureCategory)
-  const revalidateCategory = useTweakCacheStore(state => state.revalidateCategory)
-  const updateCachedTweak = useTweakCacheStore(state => state.updateCachedTweak)
+  const revalidateCategory = useTweakCacheStore(
+    state => state.revalidateCategory,
+  )
+  const updateCachedTweak = useTweakCacheStore(
+    state => state.updateCachedTweak,
+  )
   const [pendingIds, setPendingIds] = useState<string[]>([])
+  const [extraPendingIds, setExtraPendingIds] = useState<string[]>([])
   const categoryState = cachedCategory ?? EMPTY_CATEGORY
 
   useMountEffect(() => {
@@ -56,8 +71,15 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
     )
   }
 
-  const handleToggle = async (tweak: TweakMeta, checked: boolean) => {
-    const nextValue = checked ? 'enabled' : 'disabled'
+  const setExtraPending = (id: string, pending: boolean) => {
+    setExtraPendingIds(current =>
+      pending
+        ? [...new Set([...current, id])]
+        : current.filter(item => item !== id),
+    )
+  }
+
+  const handleApplyValue = async (tweak: TweakMeta, nextValue: string) => {
     setPending(tweak.id, true)
 
     try {
@@ -65,7 +87,11 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
       updateCachedTweak(category, tweak.id, result.currentValue)
 
       if (tweak.requiresAction.type === 'restart_app') {
-        toast.message(t('tweaks.prompts.restartApp', { appName: tweak.requiresAction.appName }))
+        toast.message(
+          t('tweaks.prompts.restartApp', {
+            appName: tweak.requiresAction.appName,
+          }),
+        )
       }
 
       if (tweak.requiresAction.type === 'restart_pc') {
@@ -73,7 +99,9 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
           description: t('tweaks.prompts.restartPcDescription'),
           action: {
             label: t('tweaks.actions.restartNow'),
-            onClick: () => { void restartPc() },
+            onClick: () => {
+              void restartPc()
+            },
           },
           cancel: {
             label: t('tweaks.actions.later'),
@@ -83,15 +111,35 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
       }
 
       if (tweak.requiresAction.type === 'logout') {
-        toast.message(t('tweaks.prompts.logout'))
+        toast.action(t('tweaks.prompts.logout'), {
+          description: t('tweaks.prompts.logoutDescription'),
+          action: {
+            label: t('tweaks.actions.logoutNow'),
+            onClick: () => {
+              void logoutUser()
+            },
+          },
+          cancel: {
+            label: t('tweaks.actions.later'),
+          },
+          duration: Number.POSITIVE_INFINITY,
+        })
       }
 
       if (tweak.requiresAction.type === 'restart_service') {
-        toast.message(t('tweaks.prompts.restartService', { serviceName: tweak.requiresAction.serviceName }))
+        toast.message(
+          t('tweaks.prompts.restartService', {
+            serviceName: tweak.requiresAction.serviceName,
+          }),
+        )
       }
 
       if (tweak.requiresAction.type === 'restart_device') {
-        toast.message(t('tweaks.prompts.restartDevice', { deviceName: tweak.requiresAction.deviceName }))
+        toast.message(
+          t('tweaks.prompts.restartDevice', {
+            deviceName: tweak.requiresAction.deviceName,
+          }),
+        )
       }
     }
     catch (applyError) {
@@ -102,6 +150,38 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
     finally {
       setPending(tweak.id, false)
     }
+  }
+
+  const handleRunExtra = (tweak: TweakMeta) => {
+    if (tweak.id !== 'disable_game_dvr') {
+      return
+    }
+
+    toast.action(t('tweaks.prompts.uninstallXboxGameBar'), {
+      description: t('tweaks.prompts.uninstallXboxGameBarDescription'),
+      action: {
+        label: t('tweaks.actions.uninstallNow'),
+        onClick: () => {
+          setExtraPending(tweak.id, true)
+
+          void toast.promise(
+            runTweakExtra(tweak.id).finally(() => {
+              setExtraPending(tweak.id, false)
+            }),
+            {
+              loading: t('tweaks.progress.uninstallXboxGameBarLoading'),
+              success: t('tweaks.success.uninstallXboxGameBar'),
+              error: error =>
+                getErrorMessage(error, t('tweaks.errors.uninstallXboxGameBar')),
+            },
+          )
+        },
+      },
+      cancel: {
+        label: t('tweaks.actions.later'),
+      },
+      duration: Number.POSITIVE_INFINITY,
+    })
   }
 
   return (
@@ -121,10 +201,17 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
                 {t('tweaks.errors.loadCategory')}
               </h2>
               <p className="text-sm leading-6 text-muted-foreground">
-                {getErrorMessage(categoryState.error, t('tweaks.errors.loadCategory'))}
+                {getErrorMessage(
+                  categoryState.error,
+                  t('tweaks.errors.loadCategory'),
+                )}
               </p>
             </div>
-            <Button onClick={() => void ensureCategory(category)} type="button" variant="outline">
+            <Button
+              onClick={() => void ensureCategory(category)}
+              type="button"
+              variant="outline"
+            >
               {t('tweaks.actions.retry')}
             </Button>
           </div>
@@ -137,8 +224,10 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
             <TweakCard
               key={tweak.id}
               currentBuild={currentBuild}
+              isExtraPending={extraPendingIds.includes(tweak.id)}
               isPending={pendingIds.includes(tweak.id)}
-              onToggle={checked => void handleToggle(tweak, checked)}
+              onApplyValue={value => void handleApplyValue(tweak, value)}
+              onRunExtra={() => handleRunExtra(tweak)}
               tweak={tweak}
             />
           ))}

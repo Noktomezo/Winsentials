@@ -70,6 +70,7 @@ function useBreadcrumbs(): Crumb[] {
     '/security': t('security.title'),
     '/network': t('network.title'),
     '/performance': t('performance.title'),
+    '/input': t('input.title'),
     '/startup': t('startup.title'),
     '/settings': t('settings.title'),
   }

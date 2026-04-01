@@ -1,22 +1,60 @@
 import type { LucideIcon } from 'lucide-react'
 import type { TweakMeta, WindowsVersion } from '@/entities/tweak/model/types'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
-import { AlertTriangle, AppWindow, BellOff, CircleAlert, Clock3, Copy, Cpu, ExternalLink, FileType, Gauge, HardDrive, History, House, Images, Info, LogOut, Menu, Network, PanelsTopLeft, Power, RotateCcw, Settings, Shield, ShieldOff, TextCursor, TriangleAlert, Type, Usb, Zap } from 'lucide-react'
+import {
+  AlertTriangle,
+  AppWindow,
+  BellOff,
+  CircleAlert,
+  Clock3,
+  Copy,
+  Cpu,
+  ExternalLink,
+  FileType,
+  Gamepad2,
+  Gauge,
+  HardDrive,
+  History,
+  House,
+  Images,
+  Info,
+  Keyboard,
+  LogOut,
+  Menu,
+  Network,
+  PanelsTopLeft,
+  Power,
+  RotateCcw,
+  Settings,
+  Shield,
+  ShieldOff,
+  TextCursor,
+  Trash2,
+  TriangleAlert,
+  Type,
+  Usb,
+  Zap,
+} from 'lucide-react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/shared/lib/toast'
 import { MarqueeText } from '@/shared/ui/marquee-text'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/ui/select'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { Switch } from '@/shared/ui/switch'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/shared/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
 
 interface TweakCardProps {
   currentBuild: WindowsVersion
+  isExtraPending?: boolean
   isPending?: boolean
-  onToggle: (checked: boolean) => void
+  onApplyValue: (value: string) => void
+  onRunExtra?: () => void
   tweak: TweakMeta
 }
 
@@ -40,7 +78,9 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   disable_user_account_control: Shield,
   disable_ncsi_active_probing: CircleAlert,
   disable_fault_tolerant_heap: Gauge,
+  disable_game_dvr: Gamepad2,
   optimize_mmcss: Zap,
+  fast_keyboard_repeat: Keyboard,
   enable_bbr2_congestion_control: Zap,
   disable_qos_bandwidth_limit: Gauge,
   enable_network_offloading_rss: Cpu,
@@ -48,6 +88,10 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
 
 const COPYABLE_RISK_COMMANDS: Record<string, string> = {
   disable_user_account_control: 'runas /trustlevel:0x20000 "program.exe"',
+}
+
+const EXTRA_ACTION_LABELS: Record<string, string> = {
+  disable_game_dvr: 'tweaks.actions.uninstallXboxGameBar',
 }
 
 function formatMinBuild(tweak: TweakMeta) {
@@ -76,7 +120,9 @@ function isBelowMinBuild(currentBuild: WindowsVersion, tweak: TweakMeta) {
   return currentBuild.ubr < tweak.minOsUbr
 }
 
-function metadataChipClassName(tone: 'default' | 'warning' | 'info' = 'default') {
+function metadataChipClassName(
+  tone: 'default' | 'warning' | 'info' = 'default',
+) {
   if (tone === 'warning') {
     return 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300'
   }
@@ -88,7 +134,10 @@ function metadataChipClassName(tone: 'default' | 'warning' | 'info' = 'default')
   return 'border-border/70 bg-accent/45 text-muted-foreground'
 }
 
-function requiresActionBadge(tweak: TweakMeta, t: ReturnType<typeof useTranslation>['t']): { icon: LucideIcon, label: string, tooltip: string } | null {
+function requiresActionBadge(
+  tweak: TweakMeta,
+  t: ReturnType<typeof useTranslation>['t'],
+): { icon: LucideIcon, label: string, tooltip: string } | null {
   switch (tweak.requiresAction.type) {
     case 'none':
       return null
@@ -108,26 +157,41 @@ function requiresActionBadge(tweak: TweakMeta, t: ReturnType<typeof useTranslati
       return {
         icon: Settings,
         label: tweak.requiresAction.serviceName,
-        tooltip: t('tweaks.prompts.restartService', { serviceName: tweak.requiresAction.serviceName }),
+        tooltip: t('tweaks.prompts.restartService', {
+          serviceName: tweak.requiresAction.serviceName,
+        }),
       }
     case 'restart_app':
       return {
         icon: AppWindow,
         label: tweak.requiresAction.appName,
-        tooltip: t('tweaks.prompts.restartApp', { appName: tweak.requiresAction.appName }),
+        tooltip: t('tweaks.prompts.restartApp', {
+          appName: tweak.requiresAction.appName,
+        }),
       }
     case 'restart_device':
       return {
         icon: Usb,
         label: tweak.requiresAction.deviceName,
-        tooltip: t('tweaks.prompts.restartDevice', { deviceName: tweak.requiresAction.deviceName }),
+        tooltip: t('tweaks.prompts.restartDevice', {
+          deviceName: tweak.requiresAction.deviceName,
+        }),
       }
   }
 }
 
-function MetadataChip({ children, tone = 'default', icon: Icon }: React.PropsWithChildren<{ tone?: 'default' | 'warning' | 'info', icon?: LucideIcon }>) {
+function MetadataChip({
+  children,
+  tone = 'default',
+  icon: Icon,
+}: React.PropsWithChildren<{
+  tone?: 'default' | 'warning' | 'info'
+  icon?: LucideIcon
+}>) {
   return (
-    <span className={`inline-flex items-center rounded-md border px-2 py-0.75 text-[10px] font-medium ${metadataChipClassName(tone)}`}>
+    <span
+      className={`inline-flex items-center rounded-md border px-2 py-0.75 text-[10px] font-medium ${metadataChipClassName(tone)}`}
+    >
       {Icon && <Icon className="mr-1 size-[11px]" />}
       {children}
     </span>
@@ -136,20 +200,32 @@ function MetadataChip({ children, tone = 'default', icon: Icon }: React.PropsWit
 
 export function TweakCard({
   currentBuild,
+  isExtraPending = false,
   isPending = false,
-  onToggle,
+  onApplyValue,
+  onRunExtra,
   tweak,
 }: TweakCardProps) {
   const { t } = useTranslation()
   const Icon = TWEAK_ICONS[tweak.id] ?? Info
   const isEnabled = tweak.currentValue === 'enabled'
-  const isDefaultEnabled = tweak.defaultValue === 'enabled'
   const isAtDefault = tweak.currentValue === tweak.defaultValue
   const isUnsupported = isBelowMinBuild(currentBuild, tweak)
   const minBuild = formatMinBuild(tweak)
   const copyableRiskCommand = COPYABLE_RISK_COMMANDS[tweak.id]
   const conflicts = tweak.conflicts ?? []
   const requiresBadge = requiresActionBadge(tweak, t)
+  const extraActionLabel = EXTRA_ACTION_LABELS[tweak.id]
+
+  const dropdownOptions
+    = tweak.control.kind === 'dropdown'
+      ? tweak.currentValue === 'custom'
+        ? [
+            ...tweak.control.options,
+            { label: 'tweaks.meta.customValue', value: 'custom' },
+          ]
+        : tweak.control.options
+      : []
 
   const handleCopyRiskCommand = async () => {
     if (!copyableRiskCommand) {
@@ -166,38 +242,23 @@ export function TweakCard({
   }
 
   return (
-    <article className="h-full rounded-xl border border-border/70 bg-card p-4" data-marquee-group="true">
+    <article
+      className="h-full rounded-xl border border-border/70 bg-card p-4"
+      data-marquee-group="true"
+    >
       <div className="flex h-full min-w-0 flex-col">
         <div className="min-w-0 flex items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/60 text-accent-foreground">
             <Icon className="size-4" />
           </span>
           <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex flex-1 items-start">
-                <h2 className="min-w-0 flex-1 text-sm font-medium text-foreground">
-                  <MarqueeText className="block max-w-full" text={t(tweak.name)} />
-                </h2>
-              </div>
-              {tweak.control.kind === 'toggle' && (
-                <div className="flex shrink-0 items-center gap-2 self-start">
-                  <Switch
-                    aria-label={t(tweak.name)}
-                    checked={isEnabled}
-                    disabled={isPending || isUnsupported}
-                    onCheckedChange={onToggle}
-                  />
-                  <button
-                    aria-label={t('tweaks.actions.resetToDefault')}
-                    className="inline-flex cursor-pointer items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
-                    disabled={isPending || isAtDefault || isUnsupported}
-                    onClick={() => onToggle(isDefaultEnabled)}
-                    type="button"
-                  >
-                    <RotateCcw className="size-3.5" />
-                  </button>
-                </div>
-              )}
+            <div className="min-w-0 flex flex-1 items-start">
+              <h2 className="min-w-0 flex-1 text-sm font-medium text-foreground">
+                <MarqueeText
+                  className="block max-w-full"
+                  text={t(tweak.name)}
+                />
+              </h2>
             </div>
             <p className="text-xs leading-5 text-muted-foreground">
               {t(tweak.shortDescription)}
@@ -205,7 +266,7 @@ export function TweakCard({
           </div>
         </div>
 
-        <footer className="mt-auto border-t border-border/40 pt-2">
+        <footer className="mt-auto flex items-end justify-between gap-3 border-t border-border/40 pt-2">
           <div className="flex flex-wrap gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -236,7 +297,10 @@ export function TweakCard({
                     </MetadataChip>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-80 text-pretty whitespace-pre-line" sideOffset={8}>
+                <TooltipContent
+                  className="max-w-80 text-pretty whitespace-pre-line"
+                  sideOffset={8}
+                >
                   {requiresBadge.tooltip}
                 </TooltipContent>
               </Tooltip>
@@ -251,13 +315,20 @@ export function TweakCard({
                       className="cursor-help"
                       type="button"
                     >
-                      <MetadataChip icon={TriangleAlert} tone="warning">{t('tweaks.meta.risk')}</MetadataChip>
+                      <MetadataChip icon={TriangleAlert} tone="warning">
+                        {t('tweaks.meta.risk')}
+                      </MetadataChip>
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent className="max-w-80 text-pretty whitespace-pre-line" sideOffset={8}>
+                  <TooltipContent
+                    className="max-w-80 text-pretty whitespace-pre-line"
+                    sideOffset={8}
+                  >
                     <Trans
                       components={{
-                        code: <code className="mt-2 block w-fit rounded-[4px] border border-border/70 bg-accent px-2 py-1 font-mono text-xs font-medium text-foreground shadow-xs" />,
+                        code: (
+                          <code className="mt-2 block w-fit rounded-[4px] border border-border/70 bg-accent px-2 py-1 font-mono text-xs font-medium text-foreground shadow-xs" />
+                        ),
                       }}
                       i18nKey={tweak.riskDescription}
                     />
@@ -272,10 +343,28 @@ export function TweakCard({
                     }}
                     type="button"
                   >
-                    <MetadataChip icon={Copy} tone="warning">{t('tweaks.actions.copyCommand')}</MetadataChip>
+                    <MetadataChip icon={Copy} tone="warning">
+                      {t('tweaks.actions.copyCommand')}
+                    </MetadataChip>
                   </button>
                 )}
               </>
+            )}
+
+            {extraActionLabel && onRunExtra && (
+              <button
+                aria-label={t(extraActionLabel)}
+                className="cursor-pointer"
+                disabled={isPending || isExtraPending || isUnsupported}
+                onClick={() => {
+                  onRunExtra()
+                }}
+                type="button"
+              >
+                <MetadataChip icon={Trash2} tone="warning">
+                  {t(extraActionLabel)}
+                </MetadataChip>
+              </button>
             )}
 
             {conflicts.length > 0 && (
@@ -286,16 +375,25 @@ export function TweakCard({
                     className="cursor-help"
                     type="button"
                   >
-                    <MetadataChip icon={AlertTriangle} tone="warning">{t('tweaks.meta.conflicts')}</MetadataChip>
+                    <MetadataChip icon={AlertTriangle} tone="warning">
+                      {t('tweaks.meta.conflicts')}
+                    </MetadataChip>
                   </button>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-80 text-pretty whitespace-pre-line" sideOffset={8}>
+                <TooltipContent
+                  className="max-w-80 text-pretty whitespace-pre-line"
+                  sideOffset={8}
+                >
                   {conflicts.length === 1
-                    ? <p>{t(conflicts[0].description)}</p>
+                    ? (
+                        <p>{t(conflicts[0].description)}</p>
+                      )
                     : (
                         <ul className="list-disc space-y-1 pl-4">
                           {conflicts.map(conflict => (
-                            <li key={conflict.description}>{t(conflict.description)}</li>
+                            <li key={conflict.description}>
+                              {t(conflict.description)}
+                            </li>
                           ))}
                         </ul>
                       )}
@@ -307,11 +405,15 @@ export function TweakCard({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    aria-label={t('tweaks.requires.windowsBuild', { build: minBuild })}
+                    aria-label={t('tweaks.requires.windowsBuild', {
+                      build: minBuild,
+                    })}
                     className="cursor-help"
                     type="button"
                   >
-                    <MetadataChip icon={CircleAlert} tone="warning">{t('tweaks.requires.windowsBuild', { build: minBuild })}</MetadataChip>
+                    <MetadataChip icon={CircleAlert} tone="warning">
+                      {t('tweaks.requires.windowsBuild', { build: minBuild })}
+                    </MetadataChip>
                   </button>
                 </TooltipTrigger>
                 <TooltipContent sideOffset={8}>
@@ -319,6 +421,54 @@ export function TweakCard({
                 </TooltipContent>
               </Tooltip>
             )}
+          </div>
+          <div className="flex shrink-0 items-center gap-2 self-start">
+            {tweak.control.kind === 'toggle' && (
+              <Switch
+                aria-label={t(tweak.name)}
+                checked={isEnabled}
+                disabled={isPending || isUnsupported}
+                onCheckedChange={checked =>
+                  onApplyValue(checked ? 'enabled' : 'disabled')}
+              />
+            )}
+            {tweak.control.kind === 'dropdown' && (
+              <Select
+                disabled={isPending || isUnsupported}
+                onValueChange={value => onApplyValue(value)}
+                value={tweak.currentValue}
+              >
+                <SelectTrigger className="h-6 min-w-[9rem] max-w-[11.5rem] justify-between px-2 text-[11px] [&_svg]:size-3.5">
+                  <SelectValue
+                    placeholder={t('tweaks.controls.selectPreset')}
+                  />
+                </SelectTrigger>
+                <SelectContent
+                  align="end"
+                  className="min-w-[var(--radix-select-trigger-width)] rounded-[10px] border text-[11px]"
+                >
+                  {dropdownOptions.map(option => (
+                    <SelectItem
+                      className="min-h-7 py-1 pr-7 pl-2 text-[11px]"
+                      disabled={option.value === 'custom'}
+                      key={option.value}
+                      value={option.value}
+                    >
+                      {t(option.label)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <button
+              aria-label={t('tweaks.actions.resetToDefault')}
+              className="inline-flex cursor-pointer items-center justify-center rounded-md p-1 text-muted-foreground transition-colors hover:bg-destructive/15 hover:text-destructive disabled:pointer-events-none disabled:opacity-50"
+              disabled={isPending || isAtDefault || isUnsupported}
+              onClick={() => onApplyValue(tweak.defaultValue)}
+              type="button"
+            >
+              <RotateCcw className="size-3.5" />
+            </button>
           </div>
         </footer>
       </div>
@@ -333,14 +483,8 @@ export function TweakCardSkeleton() {
         <div className="min-w-0 flex items-start gap-3">
           <Skeleton className="size-9 shrink-0 rounded-lg" />
           <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <Skeleton className="h-4 w-40" />
-              </div>
-              <div className="flex shrink-0 items-center gap-2 self-start">
-                <Skeleton className="h-6 w-11 rounded-full" />
-                <Skeleton className="size-6 rounded-md" />
-              </div>
+            <div className="min-w-0 flex-1">
+              <Skeleton className="h-4 w-40" />
             </div>
             <div className="space-y-1.5">
               <Skeleton className="h-3 w-full max-w-xl" />
@@ -348,11 +492,15 @@ export function TweakCardSkeleton() {
             </div>
           </div>
         </div>
-        <div className="mt-auto border-t border-border/40 pt-2">
+        <div className="mt-auto flex items-end justify-between gap-3 border-t border-border/40 pt-2">
           <div className="flex flex-wrap gap-2">
             <Skeleton className="h-5 w-20 rounded-md" />
             <Skeleton className="h-5 w-30 rounded-md" />
             <Skeleton className="h-5 w-16 rounded-md" />
+          </div>
+          <div className="flex shrink-0 items-center gap-2 self-start">
+            <Skeleton className="h-6 w-24 rounded-md" />
+            <Skeleton className="size-6 rounded-md" />
           </div>
         </div>
       </div>

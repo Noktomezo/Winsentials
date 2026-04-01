@@ -13,7 +13,7 @@ use crate::commands::startup::{
     startup_delete, startup_details, startup_disable, startup_enable, startup_hydrate_entries,
     startup_list_registry, startup_list_scheduled_tasks, startup_list_startup_folder,
 };
-use crate::commands::system::restart_pc;
+use crate::commands::system::{logout_user, restart_pc};
 use crate::commands::system_info::{
     get_device_inventory_info, get_live_cpu_info, get_live_disk_info, get_live_gpu_info,
     get_live_home_info, get_live_network_info, get_live_ram_info, get_live_system_info,
@@ -176,6 +176,7 @@ pub fn run() {
             get_live_network_info,
             get_live_gpu_info,
             restart_pc,
+            logout_user,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
