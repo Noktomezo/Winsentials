@@ -24,6 +24,8 @@ export function usePageHeader(pathname: string): PageHeader {
     '/appearance': { title: t('appearance.title'), description: t('appearance.description') },
     '/security': { title: t('security.title'), description: t('security.description') },
     '/network': { title: t('network.title'), description: t('network.description') },
+    '/performance': { title: t('performance.title'), description: t('performance.description') },
+    '/input': { title: t('input.title'), description: t('input.description') },
     '/settings': { title: t('settings.title'), description: t('settings.description') },
     '/backup': { title: t('backup.title'), description: t('backup.description') },
   }), [t])

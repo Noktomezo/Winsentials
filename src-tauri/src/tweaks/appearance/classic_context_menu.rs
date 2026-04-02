@@ -43,16 +43,9 @@ impl ClassicContextMenuTweak {
                 recommended_value: DISABLED_VALUE.into(),
                 risk: RiskLevel::None,
                 risk_description: None,
-                conflicts: Some(vec![
-                    TweakConflict {
-                        description: "appearance.tweaks.classicContextMenu.conflicts.windhawk"
-                            .into(),
-                    },
-                    TweakConflict {
-                        description: "appearance.tweaks.classicContextMenu.conflicts.startAllBack"
-                            .into(),
-                    },
-                ]),
+                conflicts: Some(vec![TweakConflict {
+                    description: "appearance.tweaks.classicContextMenu.conflicts.windhawk".into(),
+                }]),
                 requires_action: RequiresAction::RestartApp {
                     app_name: "Explorer".into(),
                 },

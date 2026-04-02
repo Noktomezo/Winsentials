@@ -1,5 +1,6 @@
 pub mod appearance;
 pub mod behaviour;
+pub mod input;
 pub mod network;
 pub mod performance;
 pub mod privacy;
@@ -110,6 +111,7 @@ fn build_tweak_registry() -> Vec<Arc<dyn Tweak>> {
     let mut tweaks: Vec<Arc<dyn Tweak>> = Vec::new();
     tweaks.extend(appearance::tweaks().into_iter().map(Arc::from));
     tweaks.extend(behaviour::tweaks().into_iter().map(Arc::from));
+    tweaks.extend(input::tweaks().into_iter().map(Arc::from));
     tweaks.extend(network::tweaks().into_iter().map(Arc::from));
     tweaks.extend(performance::tweaks().into_iter().map(Arc::from));
     tweaks.extend(privacy::tweaks().into_iter().map(Arc::from));

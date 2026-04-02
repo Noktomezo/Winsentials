@@ -18,6 +18,8 @@ coverage
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+.zed/*
+!.zed/settings.json.example
 .idea
 .DS_Store
 *.suo

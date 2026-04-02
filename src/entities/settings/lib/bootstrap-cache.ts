@@ -12,7 +12,7 @@ function writeBootstrapCache() {
   try {
     window.localStorage.setItem(BOOTSTRAP_STORAGE_KEY, JSON.stringify({
       state: {
-        chromeAcrylic: state.chromeAcrylic,
+        webviewMaterial: state.webviewMaterial,
         language: state.language,
         palette: state.palette,
         theme: state.theme,
@@ -39,7 +39,7 @@ export function initPreferencesBootstrapCache() {
   usePreferencesStore.subscribe((state, previousState) => {
     if (
       state.hasHydrated === previousState.hasHydrated
-      && state.chromeAcrylic === previousState.chromeAcrylic
+      && state.webviewMaterial === previousState.webviewMaterial
       && state.language === previousState.language
       && state.palette === previousState.palette
       && state.theme === previousState.theme
