@@ -25,6 +25,17 @@ const GAME_DVR_POLICY_KEY: RegKey = RegKey {
     path: r"SOFTWARE\Policies\Microsoft\Windows\GameDVR",
 };
 
+struct GameDvrState {
+    app_capture_enabled: Option<u32>,
+    game_dvr_enabled: Option<u32>,
+    fse_behavior: Option<u32>,
+    fse_behavior_mode: Option<u32>,
+    honor_user_fse: Option<u32>,
+    dxgi_honor_fse: Option<u32>,
+    efse_feature_flags: Option<u32>,
+    allow_game_dvr: Option<u32>,
+}
+
 pub struct DisableGameDvrTweak {
     meta: TweakMeta,
 }
@@ -66,56 +77,48 @@ impl DisableGameDvrTweak {
         }
     }
 
-    fn is_enabled_state(&self) -> Result<bool, AppError> {
-        let app_capture_enabled = Self::read_dword(&GAME_DVR_KEY, "AppCaptureEnabled")?;
-        let game_dvr_enabled = Self::read_dword(&GAME_CONFIG_STORE_KEY, "GameDVR_Enabled")?;
-        let fse_behavior = Self::read_dword(&GAME_CONFIG_STORE_KEY, "GameDVR_FSEBehavior")?;
-        let fse_behavior_mode =
-            Self::read_dword(&GAME_CONFIG_STORE_KEY, "GameDVR_FSEBehaviorMode")?;
-        let honor_user_fse =
-            Self::read_dword(&GAME_CONFIG_STORE_KEY, "GameDVR_HonorUserFSEBehaviorMode")?;
-        let dxgi_honor_fse = Self::read_dword(
-            &GAME_CONFIG_STORE_KEY,
-            "GameDVR_DXGIHonorFSEWindowsCompatible",
-        )?;
-        let efse_feature_flags =
-            Self::read_dword(&GAME_CONFIG_STORE_KEY, "GameDVR_EFSEFeatureFlags")?;
-        let allow_game_dvr = Self::read_dword(&GAME_DVR_POLICY_KEY, "AllowGameDVR")?;
-
-        Ok(app_capture_enabled == Some(DISABLED_FLAG)
-            && game_dvr_enabled == Some(DISABLED_FLAG)
-            && fse_behavior == Some(DISABLED_FSE_BEHAVIOR)
-            && fse_behavior_mode == Some(DISABLED_FSE_BEHAVIOR)
-            && honor_user_fse == Some(DISABLED_FLAG)
-            && dxgi_honor_fse == Some(DISABLED_FLAG)
-            && efse_feature_flags == Some(DISABLED_FLAG)
-            && allow_game_dvr == Some(DISABLED_FLAG))
+    fn read_state(&self) -> Result<GameDvrState, AppError> {
+        Ok(GameDvrState {
+            app_capture_enabled: Self::read_dword(&GAME_DVR_KEY, "AppCaptureEnabled")?,
+            game_dvr_enabled: Self::read_dword(&GAME_CONFIG_STORE_KEY, "GameDVR_Enabled")?,
+            fse_behavior: Self::read_dword(&GAME_CONFIG_STORE_KEY, "GameDVR_FSEBehavior")?,
+            fse_behavior_mode: Self::read_dword(&GAME_CONFIG_STORE_KEY, "GameDVR_FSEBehaviorMode")?,
+            honor_user_fse: Self::read_dword(
+                &GAME_CONFIG_STORE_KEY,
+                "GameDVR_HonorUserFSEBehaviorMode",
+            )?,
+            dxgi_honor_fse: Self::read_dword(
+                &GAME_CONFIG_STORE_KEY,
+                "GameDVR_DXGIHonorFSEWindowsCompatible",
+            )?,
+            efse_feature_flags: Self::read_dword(
+                &GAME_CONFIG_STORE_KEY,
+                "GameDVR_EFSEFeatureFlags",
+            )?,
+            allow_game_dvr: Self::read_dword(&GAME_DVR_POLICY_KEY, "AllowGameDVR")?,
+        })
     }
 
-    fn is_default_state(&self) -> Result<bool, AppError> {
-        let app_capture_enabled = Self::read_dword(&GAME_DVR_KEY, "AppCaptureEnabled")?;
-        let game_dvr_enabled = Self::read_dword(&GAME_CONFIG_STORE_KEY, "GameDVR_Enabled")?;
-        let fse_behavior = Self::read_dword(&GAME_CONFIG_STORE_KEY, "GameDVR_FSEBehavior")?;
-        let fse_behavior_mode =
-            Self::read_dword(&GAME_CONFIG_STORE_KEY, "GameDVR_FSEBehaviorMode")?;
-        let honor_user_fse =
-            Self::read_dword(&GAME_CONFIG_STORE_KEY, "GameDVR_HonorUserFSEBehaviorMode")?;
-        let dxgi_honor_fse = Self::read_dword(
-            &GAME_CONFIG_STORE_KEY,
-            "GameDVR_DXGIHonorFSEWindowsCompatible",
-        )?;
-        let efse_feature_flags =
-            Self::read_dword(&GAME_CONFIG_STORE_KEY, "GameDVR_EFSEFeatureFlags")?;
-        let allow_game_dvr = Self::read_dword(&GAME_DVR_POLICY_KEY, "AllowGameDVR")?;
+    fn is_enabled(state: &GameDvrState) -> bool {
+        state.app_capture_enabled == Some(DISABLED_FLAG)
+            && state.game_dvr_enabled == Some(DISABLED_FLAG)
+            && state.fse_behavior == Some(DISABLED_FSE_BEHAVIOR)
+            && state.fse_behavior_mode == Some(DISABLED_FSE_BEHAVIOR)
+            && state.honor_user_fse == Some(DISABLED_FLAG)
+            && state.dxgi_honor_fse == Some(DISABLED_FLAG)
+            && state.efse_feature_flags == Some(DISABLED_FLAG)
+            && state.allow_game_dvr == Some(DISABLED_FLAG)
+    }
 
-        Ok(app_capture_enabled == Some(ENABLED_FLAG)
-            && game_dvr_enabled == Some(ENABLED_FLAG)
-            && fse_behavior.is_none()
-            && fse_behavior_mode.is_none()
-            && honor_user_fse.is_none()
-            && dxgi_honor_fse.is_none()
-            && efse_feature_flags.is_none()
-            && allow_game_dvr != Some(DISABLED_FLAG))
+    fn is_default(state: &GameDvrState) -> bool {
+        state.app_capture_enabled == Some(ENABLED_FLAG)
+            && state.game_dvr_enabled == Some(ENABLED_FLAG)
+            && state.fse_behavior.is_none()
+            && state.fse_behavior_mode.is_none()
+            && state.honor_user_fse.is_none()
+            && state.dxgi_honor_fse.is_none()
+            && state.efse_feature_flags.is_none()
+            && state.allow_game_dvr != Some(DISABLED_FLAG)
     }
 }
 
@@ -163,8 +166,9 @@ impl Tweak for DisableGameDvrTweak {
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {
-        let enabled = self.is_enabled_state()?;
-        let is_default = self.is_default_state()?;
+        let state = self.read_state()?;
+        let enabled = Self::is_enabled(&state);
+        let is_default = Self::is_default(&state);
 
         Ok(TweakStatus {
             current_value: if enabled {
