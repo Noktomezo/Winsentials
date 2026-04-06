@@ -1,4 +1,9 @@
-import type { AppLanguagePreference, AppPalette, AppTheme } from '@/shared/config/app'
+import type {
+  AppLanguagePreference,
+  AppPalette,
+  AppTheme,
+  AppWebviewMaterial,
+} from '@/shared/config/app'
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { tauriStateStorage } from '@/entities/settings/lib/tauri-storage'
@@ -6,9 +11,12 @@ import {
   DEFAULT_LANGUAGE,
   DEFAULT_PALETTE,
   DEFAULT_THEME,
+  DEFAULT_WEBVIEW_MATERIAL,
 } from '@/shared/config/app'
 
 interface PersistedPreferencesState {
+  chromeMaterial?: AppWebviewMaterial | 'blur' | 'micaAlt'
+  webviewMaterial?: AppWebviewMaterial | 'blur' | 'micaAlt'
   chromeAcrylic?: boolean
   language?: AppLanguagePreference
   palette?: AppPalette
@@ -18,12 +26,12 @@ interface PersistedPreferencesState {
 }
 
 interface PreferencesState {
-  chromeAcrylic: boolean
+  webviewMaterial: AppWebviewMaterial
   hasHydrated: boolean
   language: AppLanguagePreference
   palette: AppPalette
   updateChecksEnabled: boolean
-  setChromeAcrylic: (enabled: boolean) => void
+  setWebviewMaterial: (material: AppWebviewMaterial) => void
   setHasHydrated: (hasHydrated: boolean) => void
   setPalette: (palette: AppPalette) => void
   theme: AppTheme
@@ -37,12 +45,12 @@ export type { PreferencesState }
 export const usePreferencesStore = create<PreferencesState>()(
   persist(
     set => ({
-      chromeAcrylic: false,
+      webviewMaterial: DEFAULT_WEBVIEW_MATERIAL,
       hasHydrated: false,
       language: DEFAULT_LANGUAGE,
       palette: DEFAULT_PALETTE,
       updateChecksEnabled: true,
-      setChromeAcrylic: chromeAcrylic => set({ chromeAcrylic }),
+      setWebviewMaterial: webviewMaterial => set({ webviewMaterial }),
       setHasHydrated: hasHydrated => set({ hasHydrated }),
       setPalette: palette => set({ palette }),
       setUpdateChecksEnabled: updateChecksEnabled => set({ updateChecksEnabled }),
@@ -54,12 +62,19 @@ export const usePreferencesStore = create<PreferencesState>()(
       migrate: (persistedState: unknown) => {
         const state = (persistedState ?? {}) as PersistedPreferencesState
         const legacyAcrylic = state.theme === 'acrylic'
+        const rawLegacyMaterial = state.webviewMaterial ?? state.chromeMaterial
+        const normalizedWebviewMaterial = rawLegacyMaterial === 'micaAlt'
+          ? 'tabbed'
+          : rawLegacyMaterial === 'blur'
+            ? 'none'
+            : rawLegacyMaterial
+        const webviewMaterial = normalizedWebviewMaterial
+          ?? (legacyAcrylic || state.chromeAcrylic === true || state.sidebarAcrylic === true
+            ? 'acrylic'
+            : DEFAULT_WEBVIEW_MATERIAL)
 
         return {
-          chromeAcrylic:
-            legacyAcrylic
-            || state.chromeAcrylic === true
-            || state.sidebarAcrylic === true,
+          webviewMaterial,
           language: state.language ?? DEFAULT_LANGUAGE,
           palette: state.palette ?? DEFAULT_PALETTE,
           theme: legacyAcrylic ? 'dark' : (state.theme ?? DEFAULT_THEME),
@@ -69,7 +84,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       name: 'winsentials-preferences',
       onRehydrateStorage: () => state => state?.setHasHydrated(true),
       storage: createJSONStorage(() => tauriStateStorage),
-      version: 5,
+      version: 6,
     },
   ),
 )

@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
-import { ArchiveRestore, ChevronDown, FolderCog, House, Network, Palette, Rocket, Settings2, Shield, Wrench } from 'lucide-react'
+import { ArchiveRestore, ChevronDown, FolderCog, Gauge, House, Keyboard, Network, Palette, Rocket, Settings2, Shield, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
@@ -19,7 +19,7 @@ import {
   useSidebar,
 } from '@/shared/ui'
 
-type SidebarRoute = '/home' | '/appearance' | '/backup' | '/behaviour' | '/security' | '/network' | '/startup' | '/settings'
+type SidebarRoute = '/home' | '/appearance' | '/backup' | '/behaviour' | '/security' | '/network' | '/performance' | '/input' | '/startup' | '/settings'
 
 export function AppSidebar() {
   const { t } = useTranslation()
@@ -89,7 +89,7 @@ export function AppSidebar() {
               type="button"
             >
               <House />
-              <span>{t('navigation.home')}</span>
+              <span data-sidebar-label>{t('navigation.home')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -107,7 +107,7 @@ export function AppSidebar() {
               type="button"
             >
               <Shield />
-              <span>{t('navigation.security')}</span>
+              <span data-sidebar-label>{t('navigation.security')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
@@ -121,7 +121,7 @@ export function AppSidebar() {
               type="button"
             >
               <FolderCog />
-              <span>{t('navigation.behaviour')}</span>
+              <span data-sidebar-label>{t('navigation.behaviour')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
@@ -135,7 +135,35 @@ export function AppSidebar() {
               type="button"
             >
               <Palette />
-              <span>{t('navigation.appearance')}</span>
+              <span data-sidebar-label>{t('navigation.appearance')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="cursor-pointer"
+              isActive={pathname === '/performance'}
+              onClick={event => handleMenuClick(event, '/performance')}
+              onFocus={() => handlePointerIntent('/performance')}
+              onMouseEnter={() => handlePointerIntent('/performance')}
+              tooltip={t('navigation.performance')}
+              type="button"
+            >
+              <Gauge />
+              <span data-sidebar-label>{t('navigation.performance')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="cursor-pointer"
+              isActive={pathname === '/input'}
+              onClick={event => handleMenuClick(event, '/input')}
+              onFocus={() => handlePointerIntent('/input')}
+              onMouseEnter={() => handlePointerIntent('/input')}
+              tooltip={t('navigation.input')}
+              type="button"
+            >
+              <Keyboard />
+              <span data-sidebar-label>{t('navigation.input')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
@@ -149,7 +177,7 @@ export function AppSidebar() {
               type="button"
             >
               <Network />
-              <span>{t('navigation.network')}</span>
+              <span data-sidebar-label>{t('navigation.network')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -168,7 +196,7 @@ export function AppSidebar() {
                   type="button"
                 >
                   <Wrench />
-                  <span>{t('navigation.tools')}</span>
+                  <span data-sidebar-label>{t('navigation.tools')}</span>
                   <ChevronDown className={`ml-auto size-4 opacity-70 transition-transform duration-200 hidden group-data-[state=expanded]:block ${isToolsOpen ? 'rotate-180' : 'rotate-0'}`} />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
@@ -211,7 +239,7 @@ export function AppSidebar() {
               type="button"
             >
               <Settings2 />
-              <span>{t('navigation.settings')}</span>
+              <span data-sidebar-label>{t('navigation.settings')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

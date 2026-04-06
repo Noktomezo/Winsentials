@@ -18,6 +18,12 @@
         "name": "Open File Explorer to This PC",
         "shortDescription": "Open This PC instead of Home when File Explorer starts."
       },
+      "disableStartupDelay": {
+        "detailDescription": "Disables the Explorer startup serialization delay that Windows uses to stagger startup applications after sign-in. It sets both StartupDelayInMSec and WaitForIdleState to 0 in the current user profile so startup apps can launch almost immediately after login, including on Windows 11 builds that honor the extra idle-state gate.",
+        "name": "Disable Startup App Delay",
+        "riskDescription": "If you have many heavy startup apps, logging in may feel more bursty because more programs compete for CPU, disk, and memory at the same time.",
+        "shortDescription": "Lets startup apps launch immediately instead of waiting for Explorer's built-in delay."
+      },
       "disable8dot3NameCreation": {
         "detailDescription": "Stops Windows from generating legacy DOS-style 8.3 short names for newly created files and folders. This reduces extra filesystem work in directories with many items, but only affects new items going forward; existing short names remain on disk. A restart is required before the change takes full effect.",
         "name": "Disable 8.3 Name Creation",
@@ -41,8 +47,7 @@
       "classicContextMenu": {
         "detailDescription": "Disables the simplified Windows 11 context menu and restores the classic Windows 10 menu without requiring the Show more options step.",
         "conflicts": {
-          "startAllBack": "May conflict with StartAllBack, StartIsBack, or similar shell customization tools that modify the same context menu behavior outside the registry path used by Winsentials.",
-          "windhawk": "May conflict with Windhawk mods or similar tools that restore the classic context menu by patching themes or system files instead of using the registry key managed by Winsentials."
+          "windhawk": "May conflict with any shell modification that restores the classic context menu by patching themes or system files."
         },
         "name": "Classic Context Menu",
         "shortDescription": "Restores the classic context menu layout in Windows 11."
@@ -74,9 +79,6 @@
       },
       "removeShortcutArrows": {
         "detailDescription": "Changes the system shortcut overlay icon to a transparent one.",
-        "conflicts": {
-          "windhawkTransparentWindows": "May conflict with any modifications that affect DWM and system window effects."
-        },
         "name": "Remove Shortcut Arrows",
         "shortDescription": "Removes the small arrows from shortcut icons on the desktop."
       },
@@ -134,7 +136,9 @@
     "backup": "Backups",
     "behaviour": "Behaviour",
     "home": "Home",
+    "input": "Input",
     "network": "Network",
+    "performance": "Performance",
     "security": "Security",
     "startup": "Startup",
     "tools": "Tools",
@@ -177,6 +181,12 @@
         "riskDescription": "BBR2 may behave differently on some ISP networks or VPN tunnels. If you notice unstable connections after enabling, reset this tweak.",
         "shortDescription": "Replaces default congestion providers with BBR2 across all TCP templates for lower latency and better throughput."
       },
+      "disableNcsiActiveProbing": {
+        "detailDescription": "Disables Windows NCSI active probing by setting both the main registry flag and the matching policy override. This stops periodic checks to Microsoft connectivity test endpoints such as msftconnecttest.com and dns.msftncsi.com. A full restart is recommended so Windows and shell components refresh their connectivity state.",
+        "name": "Disable NCSI Active Probing",
+        "riskDescription": "Windows may stop reliably showing the no-internet warning icon, captive portal detection can break, and some Microsoft apps or services may react worse to connectivity changes until you restore the default behavior.",
+        "shortDescription": "Stops Windows from periodically pinging Microsoft endpoints to detect internet access."
+      },
       "disableQosBandwidthLimit": {
         "detailDescription": "Windows reserves a portion of your connection for system services by default. This tweak sets the QoS reservation to 0%, allowing browsers, games, and download managers to use 100% of your available bandwidth.",
         "name": "Disable QoS Bandwidth Limit",
@@ -191,10 +201,57 @@
       }
     }
   },
+  "input": {
+    "description": "Tune keyboard input behavior, including more aggressive repeat timing presets than the default Windows sliders allow.",
+    "title": "Input",
+    "tweaks": {
+      "fastKeyboardRepeat": {
+        "detailDescription": "Changes how quickly a held key starts repeating and how fast repeated characters are produced after that. Faster presets make input feel more responsive in games, code editors, and general navigation, while slower presets stay more comfortable for everyday typing. After changing this setting, it is best to sign out and back in so Windows fully applies the new profile.",
+        "name": "Fast Keyboard Repeat",
+        "options": {
+          "balanced": "Balanced",
+          "default": "Windows Default",
+          "fast": "Fast",
+          "ultraFast": "Ultra Fast"
+        },
+        "riskDescription": "Very aggressive repeat timing can feel too sensitive for normal typing, remote desktops, or applications that react poorly to rapid repeated input. If typing starts to feel erratic, switch back to a slower preset or restore the default profile.",
+        "shortDescription": "Lets you choose a ready-made keyboard repeat profile, from the Windows default to faster and more responsive presets."
+      }
+    }
+  },
+  "performance": {
+    "description": "Tune Windows features that can trade compatibility safeguards for lower overhead and snappier app behavior.",
+    "title": "Performance",
+    "tweaks": {
+      "disableFaultTolerantHeap": {
+        "detailDescription": "Disables Windows Fault Tolerant Heap (FTH), a compatibility layer that Windows can automatically enable for apps that crash often. FTH tries to keep unstable apps alive by changing heap behavior, but that can reduce performance, increase memory overhead, and interfere with some games or native software. When you enable this tweak, Winsentials also runs the command rundll32.exe fthsvc.dll,FthSysprepSpecialize to clear the list of apps that were already opted into FTH.",
+        "name": "Disable Fault Tolerant Heap (FTH)",
+        "riskDescription": "Apps that truly depend on FTH for crash mitigation may become unstable again after you disable it. If a specific program starts crashing more often, reset this tweak and reboot Windows.",
+        "shortDescription": "Turns off the global FTH compatibility heap and clears existing FTH app assignments."
+      },
+      "disableGameDvr": {
+        "detailDescription": "Fully disables GameDVR, Xbox Game Bar, and background game recording by applying both user-level switches and the machine policy that prevents Windows from re-enabling the feature. Winsentials also forces the fullscreen optimization-related GameDVR flags into the disabled state for more consistent behavior in fullscreen games. After enabling it, the Win + G overlay and background capture pipeline should stay off until you restore the default settings and reboot Windows.",
+        "name": "Disable GameDVR and Xbox Game Bar",
+        "riskDescription": "The Xbox Game Bar overlay, Win + G shortcut, and built-in gameplay capture features will stop working while this tweak is enabled. If you use Game Bar widgets, quick clips, or background recording, reset the tweak and reboot Windows.",
+        "shortDescription": "Turns off Xbox Game Bar, background recording, and GameDVR-related fullscreen hooks."
+      },
+      "optimizeMmcss": {
+        "detailDescription": "Optimizes MMCSS for low-latency gaming by setting SystemResponsiveness to 0 and raising the Games task profile to a more aggressive scheduling configuration. It also applies a matching Pro Audio profile so game audio pipelines and low-latency audio workloads are prioritized more consistently. This can help reduce microstutter and uneven frame pacing on systems where Windows keeps too much CPU time reserved for background work.",
+        "name": "Optimize MMCSS (Gaming + Pro Audio)",
+        "riskDescription": "Background audio, video playback, streaming helpers, or other non-game multimedia tasks can become less stable while this profile is active. If you notice worse multitasking behavior, reset the tweak and reboot Windows.",
+        "shortDescription": "Reduces MMCSS CPU reservation and raises the Games and Pro Audio task profiles for lower latency."
+      }
+    }
+  },
   "security": {
     "description": "Adjust Windows safety prompts, downloaded file handling, and related system checks.",
     "title": "Security",
     "tweaks": {
+      "disableAutoplay": {
+        "detailDescription": "Disables Windows AutoPlay and AutoRun for removable drives and USB devices by setting both NoDriveTypeAutoRun and the AutoPlay handlers override in the current user profile. This prevents removable media from automatically launching content or suggested actions when connected. A full PC restart is recommended so Explorer and shell services fully refresh the policy state.",
+        "name": "Disable AutoPlay for Removable Media",
+        "shortDescription": "Blocks removable drives and USB devices from automatically launching content or actions."
+      },
       "disableSecurityCenterNotifications": {
         "detailDescription": "Hides the Windows Security shield tray icon and suppresses toast notifications about antivirus, firewall, and related protection checks. The policy key is created automatically if Windows has not created it yet.",
         "name": "Disable Security Center Notifications",
@@ -214,10 +271,6 @@
     }
   },
   "settings": {
-    "acrylic": "Acrylic material",
-    "acrylicDescription": "Apply Windows acrylic to the sidebar and titlebar.",
-    "acrylicInfo": "More info about acrylic material",
-    "acrylicUnavailable": "Acrylic material is unavailable on this system.",
     "disableUpdateChecks": "Disable update checks",
     "description": "Adjust application language and theme preferences.",
     "installingUpdate": "Downloading and installing the latest update...",
@@ -237,6 +290,15 @@
       "flexoki": "Flexoki",
       "teal": "Teal"
     },
+    "materialDescription": "Choose the Windows backdrop material used for the app window. Mica and Tabbed require Windows 11, while acrylic is available on supported Windows 10 and 11 builds.",
+    "materialInfo": "More info about window material",
+    "materialUnavailable": "The selected window material is unavailable on this Windows build. Falling back to no material.",
+    "materials": {
+      "acrylic": "Acrylic",
+      "mica": "Mica",
+      "none": "None",
+      "tabbed": "Tabbed"
+    },
     "theme": "Theme",
     "themeDescription": "Select the light, dark, or system appearance used by the application shell.",
     "themes": {
@@ -249,6 +311,7 @@
     "updateChecksDescription": "Automatically check for new app updates every 30 seconds.",
     "updateChecksDisabled": "Automatic update checks have been disabled.",
     "updateInstallFailed": "Failed to install the update.",
+    "windowMaterial": "Window material",
     "updateNow": "Update",
     "updatePromptDescription": "Winsentials {{version}} is available and ready to install.",
     "updatePromptTitle": "A new update is available.",
@@ -492,15 +555,21 @@
     "terabyte": "TB"
   },
   "tweaks": {
+    "controls": {
+      "selectPreset": "Select preset"
+    },
     "actions": {
       "copyCommand": "Copy command",
       "resetToDefault": "Reset to default",
       "later": "Later",
+      "logoutNow": "Sign out now",
       "restartNow": "Restart now",
       "retry": "Retry",
       "showDetails": "Show details",
       "showConflictDetails": "Show conflict details",
-      "showRiskDetails": "Show risk details"
+      "showRiskDetails": "Show risk details",
+      "uninstallNow": "Uninstall now",
+      "uninstallXboxGameBar": "Remove Xbox Game Bar"
     },
     "apps": {
       "explorer": "Explorer"
@@ -509,21 +578,36 @@
       "apply": "Failed to apply tweak.",
       "copyCommand": "Failed to copy the command.",
       "loadCategory": "Failed to load tweaks.",
-      "restartApp": "Failed to restart the required app."
+      "restartApp": "Failed to restart the required app.",
+      "uninstallXboxGameBar": "Failed to remove Xbox Game Bar."
     },
     "prompts": {
       "logout": "A logout is required to apply this tweak.",
+      "logoutDescription": "The change will fully take effect after signing out of the current Windows session and signing back in.",
       "restartApp": "Restart {{appName}} to apply this tweak.",
       "restartDevice": "Restart {{deviceName}} to apply this tweak.",
       "restartExplorer": "Explorer needs to restart to apply this tweak.",
       "restartPc": "A full PC restart is required to apply this tweak.",
       "restartPcDescription": "The change will only take effect after a full Windows reboot.",
-      "restartService": "Restart the {{serviceName}} service to apply this tweak."
+      "restartService": "Restart the {{serviceName}} service to apply this tweak.",
+      "uninstallXboxGameBar": "Also remove the Xbox Game Bar app package?",
+      "uninstallXboxGameBarDescription": "This optional step runs PowerShell as administrator context through the app and removes Microsoft.XboxGamingOverlay from the current user profile."
+    },
+    "meta": {
+      "conflicts": "Conflicts",
+      "customValue": "Custom",
+      "details": "Details",
+      "logout": "Logout",
+      "restart": "Restart",
+      "risk": "Risks"
     },
     "requires": {
       "restartExplorer": "Requires Explorer restart",
       "restartPc": "Requires PC restart",
       "windowsBuild": "Requires Windows build {{build}} or newer"
+    },
+    "progress": {
+      "uninstallXboxGameBarLoading": "Removing Xbox Game Bar..."
     },
     "states": {
       "disabled": "Disabled",
@@ -532,7 +616,8 @@
     },
     "success": {
       "copyCommand": "Command copied to clipboard.",
-      "restartApp": "{{appName}} restarted."
+      "restartApp": "{{appName}} restarted.",
+      "uninstallXboxGameBar": "Xbox Game Bar removed."
     }
   }
 }

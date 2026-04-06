@@ -3,15 +3,14 @@ import type { ReactNode } from 'react'
 import type { GpuInfo, LiveGpuInfo, LiveHomeInfo, NetworkAdapterInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
 import { useNavigate, useRouter } from '@tanstack/react-router'
 import { ChevronRight, Cpu, HardDrive, Layers, Monitor, Network, Server } from 'lucide-react'
-import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLiveHome } from '@/entities/system-info/model/live-system-store'
 import { useStaticSystemInfo } from '@/entities/system-info/model/static-system-info'
 import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
-import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 import { mountLabel, mountToParam, networkAdapterToParam } from '@/shared/lib/mount-utils'
 import { Button, Skeleton } from '@/shared/ui'
+import { MarqueeText } from '@/shared/ui/marquee-text'
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -41,52 +40,6 @@ function mergeVisibleNetworkAdapters(
   return (live?.network ?? [])
     .map(entry => staticAdapters.find(adapter => adapter.name === entry.name) ?? null)
     .filter((adapter): adapter is NetworkAdapterInfo => adapter !== null)
-}
-
-// ─── Marquee ──────────────────────────────────────────────────────────────────
-
-function MeasuredMarqueeText({ text, className }: { text: string, className?: string }) {
-  const outerRef = useRef<HTMLSpanElement>(null)
-  const innerRef = useRef<HTMLSpanElement>(null)
-  const [offset, setOffset] = useState(0)
-
-  useMountEffect(() => {
-    if (!outerRef.current || !innerRef.current) { return }
-
-    const outer = outerRef.current
-    const inner = innerRef.current
-
-    const measure = () => {
-      requestAnimationFrame(() => {
-        const diff = inner.scrollWidth - outer.offsetWidth
-        setOffset(diff > 0 ? diff + 2 : 0)
-      })
-    }
-
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(outer)
-    return () => ro.disconnect()
-  })
-
-  return (
-    <span
-      className={`overflow-hidden ${className ?? ''}`}
-      data-overflow={offset > 0 ? 'true' : 'false'}
-      ref={outerRef}
-    >
-      <span
-        data-marquee-inner="true"
-        ref={innerRef}
-        className={offset > 0
-          ? 'inline-block whitespace-nowrap transition-transform duration-700 ease-out will-change-transform motion-reduce:transition-none'
-          : 'inline-block whitespace-nowrap'}
-        style={offset > 0 ? { ['--marquee-offset' as string]: `-${offset}px` } : undefined}
-      >
-        {text}
-      </span>
-    </span>
-  )
 }
 
 // ─── OS card (static, full-width) ─────────────────────────────────────────────
@@ -162,6 +115,7 @@ function SummaryCard({
   return (
     <button
       className="group/summary flex cursor-pointer flex-col gap-3 rounded-xl border border-border/70 bg-card p-4 text-left transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      data-marquee-group="true"
       onClick={onNavigate}
       onFocus={onPointerIntent}
       onMouseEnter={onPointerIntent}
@@ -314,10 +268,6 @@ function NetworkSummary({
       )}
     />
   )
-}
-
-function MarqueeText({ text, className }: { text: string, className?: string }) {
-  return <MeasuredMarqueeText key={text} className={className} text={text} />
 }
 
 function gpuUsage(gpu: Pick<LiveGpuInfo, 'util3d' | 'utilCopy' | 'utilEncode' | 'utilDecode' | 'utilHighPriority3d' | 'utilHighPriorityCompute'>): number {

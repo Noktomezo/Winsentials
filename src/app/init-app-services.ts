@@ -4,7 +4,7 @@ import { usePreferencesStore } from '@/entities/settings/model/preferences-store
 import { initAppUpdater } from '@/features/app-updater/ui/app-updater-effect'
 import i18n from '@/shared/i18n'
 import { resolveLanguage } from '@/shared/i18n/resolve-language'
-import { syncChromeAcrylic } from '@/shared/lib/desktop/window-effects'
+import { syncWebviewMaterial } from '@/shared/lib/desktop/window-effects'
 import { getSystemResolvedTheme, subscribeSystemTheme } from '@/shared/lib/system-theme'
 import { toast } from '@/shared/lib/toast'
 
@@ -22,9 +22,7 @@ function applyDocumentAppearance(state: PreferencesState) {
   const resolvedTheme = resolveTheme(state.theme)
   document.documentElement.dataset.theme = resolvedTheme
   document.documentElement.dataset.palette = state.palette
-  document.documentElement.dataset.chromeMaterial = state.chromeAcrylic
-    ? 'acrylic'
-    : 'solid'
+  document.documentElement.dataset.webviewMaterial = state.webviewMaterial
   document.documentElement.style.colorScheme = resolvedTheme
 }
 
@@ -62,10 +60,10 @@ function createLanguageManager() {
   return { syncLanguage }
 }
 
-function createChromeAcrylicManager() {
+function createWebviewMaterialManager() {
   let applyRequestId = 0
 
-  const syncAcrylic = (state: PreferencesState) => {
+  const syncMaterial = (state: PreferencesState) => {
     if (!state.hasHydrated) {
       return
     }
@@ -73,31 +71,31 @@ function createChromeAcrylicManager() {
     const requestId = ++applyRequestId
     const resolvedTheme = resolveTheme(state.theme)
 
-    void syncChromeAcrylic({
-      enabled: state.chromeAcrylic,
+    void syncWebviewMaterial({
+      material: state.webviewMaterial,
       theme: resolvedTheme,
     }).then((applied) => {
       if (requestId !== applyRequestId) {
         return
       }
 
-      if (state.chromeAcrylic && !applied) {
-        toast.error(i18n.t('settings.acrylicUnavailable'))
-        usePreferencesStore.getState().setChromeAcrylic(false)
+      if (state.webviewMaterial !== 'none' && !applied) {
+        toast.error(i18n.t('settings.materialUnavailable'))
+        usePreferencesStore.getState().setWebviewMaterial('none')
       }
     }).catch(() => {
       if (requestId !== applyRequestId) {
         return
       }
 
-      if (state.chromeAcrylic) {
-        toast.error(i18n.t('settings.acrylicUnavailable'))
-        usePreferencesStore.getState().setChromeAcrylic(false)
+      if (state.webviewMaterial !== 'none') {
+        toast.error(i18n.t('settings.materialUnavailable'))
+        usePreferencesStore.getState().setWebviewMaterial('none')
       }
     })
   }
 
-  return { syncAcrylic }
+  return { syncMaterial }
 }
 
 let initialized = false
@@ -110,7 +108,7 @@ export function initAppServices() {
   initialized = true
 
   const languageManager = createLanguageManager()
-  const acrylicManager = createChromeAcrylicManager()
+  const materialManager = createWebviewMaterialManager()
 
   const syncAll = () => {
     const state = usePreferencesStore.getState()
@@ -118,16 +116,16 @@ export function initAppServices() {
     languageManager.syncLanguage(state)
   }
 
-  const syncAcrylic = () => {
-    acrylicManager.syncAcrylic(usePreferencesStore.getState())
+  const syncMaterial = () => {
+    materialManager.syncMaterial(usePreferencesStore.getState())
   }
 
   syncAll()
-  syncAcrylic()
+  syncMaterial()
 
   usePreferencesStore.subscribe((state, previousState) => {
     const appearanceOrLanguageChanged = state.hasHydrated !== previousState.hasHydrated
-      || state.chromeAcrylic !== previousState.chromeAcrylic
+      || state.webviewMaterial !== previousState.webviewMaterial
       || state.language !== previousState.language
       || state.palette !== previousState.palette
       || state.theme !== previousState.theme
@@ -138,17 +136,17 @@ export function initAppServices() {
 
     if (
       state.hasHydrated !== previousState.hasHydrated
-      || state.chromeAcrylic !== previousState.chromeAcrylic
+      || state.webviewMaterial !== previousState.webviewMaterial
       || state.theme !== previousState.theme
     ) {
-      syncAcrylic()
+      syncMaterial()
     }
   })
 
   subscribeSystemTheme(() => {
     if (usePreferencesStore.getState().theme === 'system') {
       syncAll()
-      syncAcrylic()
+      syncMaterial()
     }
   })
 
