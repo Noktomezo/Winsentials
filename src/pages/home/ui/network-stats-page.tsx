@@ -76,7 +76,7 @@ function LiveNetworkLoadingState() {
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
       {Array.from({ length: 3 }).map((_, i) => (
-        <section className="rounded-xl border border-border/70 bg-card p-4" key={i}>
+        <section className="rounded-lg border border-border/70 bg-card p-4" key={i}>
           <Skeleton className="mb-3 h-4 w-40" />
           <div className="space-y-2.5">
             <Skeleton className="h-3 w-full" />
@@ -94,7 +94,7 @@ function LiveNetworkErrorState({ message, onRetry }: LiveNetworkErrorStateProps)
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-      <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+      <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
         <p className="text-sm text-muted-foreground">{message}</p>
         <div>
           <Button onClick={onRetry} size="sm" type="button" variant="outline">
@@ -119,7 +119,7 @@ function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
 
   return (
     <button
-      className="flex w-full flex-col gap-3 rounded-xl border border-border/70 bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-accent/20"
+      className="flex w-full flex-col gap-3 rounded-lg border border-border/70 bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-accent/20"
       onFocus={handlePointerIntent}
       onMouseEnter={handlePointerIntent}
       onClick={() => {
@@ -170,7 +170,7 @@ export function NetworkStatsPage() {
     if (inventoryError) {
       return (
         <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-          <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+          <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
             <p className="text-sm text-muted-foreground">{t('networkStats.loadError')}</p>
             <div>
               <Button onClick={retryInventory} size="sm" type="button" variant="outline">
@@ -186,7 +186,7 @@ export function NetworkStatsPage() {
       return (
         <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
           {Array.from({ length: 3 }).map((_, i) => (
-            <section className="rounded-xl border border-border/70 bg-card p-4" key={i}>
+            <section className="rounded-lg border border-border/70 bg-card p-4" key={i}>
               <Skeleton className="mb-3 h-4 w-40" />
               <div className="space-y-2.5">
                 <Skeleton className="h-3 w-full" />
@@ -216,7 +216,7 @@ export function NetworkStatsPage() {
   if (adapterParam !== null && deviceInventory !== null && !selectedAdapter) {
     return (
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-        <section className="rounded-xl border border-border/70 bg-card p-4">
+        <section className="rounded-lg border border-border/70 bg-card p-4">
           <span className="text-xs text-muted-foreground">{t('networkStats.adapterUnavailable')}</span>
         </section>
       </section>
@@ -235,7 +235,7 @@ export function NetworkStatsPage() {
 
     return (
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-        <section className="flex flex-col gap-1 rounded-xl border border-border/70 bg-card p-4">
+        <section className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card p-4">
           <div className="flex items-baseline justify-between gap-4">
             <span className="text-xs font-medium text-foreground">{t('networkStats.throughput')}</span>
             <span className="text-xs tabular-nums text-muted-foreground">
@@ -251,7 +251,7 @@ export function NetworkStatsPage() {
           </div>
         </section>
 
-        <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+        <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
           <h3 className="text-sm font-medium text-foreground">{t('networkStats.info')}</h3>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Row label={t('networkStats.send')} value={formatRate(traffic?.txBytesPerSec ?? 0, i18n.language, t)} />
@@ -287,7 +287,7 @@ export function NetworkStatsPage() {
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
       {adapters.length === 0
         ? (
-            <section className="rounded-xl border border-border/70 bg-card p-4">
+            <section className="rounded-lg border border-border/70 bg-card p-4">
               <span className="text-xs text-muted-foreground">{t('home.noActivity')}</span>
             </section>
           )

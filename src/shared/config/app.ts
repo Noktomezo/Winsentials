@@ -1,16 +1,12 @@
 export const APP_NAME = 'Winsentials'
 
-export const APP_THEMES = ['light', 'dark', 'system'] as const
+export const APP_THEMES = ['light', 'dark'] as const
 export type AppTheme = (typeof APP_THEMES)[number]
-export type ResolvedTheme = Exclude<AppTheme, 'system'>
+export type ResolvedTheme = AppTheme
 
 export const APP_WEBVIEW_MATERIALS = ['none', 'acrylic', 'mica', 'tabbed'] as const
 export type AppWebviewMaterial = (typeof APP_WEBVIEW_MATERIALS)[number]
 export const DEFAULT_WEBVIEW_MATERIAL: AppWebviewMaterial = 'none'
-
-export const APP_PALETTES = ['teal', 'flexoki', 'abyss'] as const
-export type AppPalette = (typeof APP_PALETTES)[number]
-export const DEFAULT_PALETTE: AppPalette = 'teal'
 
 export const SUPPORTED_LANGUAGES = ['en', 'ru'] as const
 export type AppLanguage = (typeof SUPPORTED_LANGUAGES)[number]

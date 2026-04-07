@@ -71,7 +71,7 @@ function WindowsCard({ s }: { s: StaticSystemInfo }) {
   const { t } = useTranslation()
   const w = s.windows
   return (
-    <section className="col-span-2 flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+    <section className="col-span-2 flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
       <div className="flex items-center gap-2">
         <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent/60 text-accent-foreground">
           <Monitor className="size-3.5" />
@@ -114,7 +114,7 @@ function SummaryCard({
 }: SummaryCardProps) {
   return (
     <button
-      className="group/summary flex cursor-pointer flex-col gap-3 rounded-xl border border-border/70 bg-card p-4 text-left transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group/summary flex cursor-pointer flex-col gap-3 rounded-lg border border-border/70 bg-card p-4 text-left transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       data-marquee-group="true"
       onClick={onNavigate}
       onFocus={onPointerIntent}
@@ -313,7 +313,7 @@ function GpuSummary({ gpu, index, gpuLive }: {
 function HomeSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-4">
-      <section className="col-span-2 rounded-xl border border-border/70 bg-card p-4">
+      <section className="col-span-2 rounded-lg border border-border/70 bg-card p-4">
         <div className="mb-3 flex items-center gap-2">
           <Skeleton className="size-7 rounded-md" />
           <Skeleton className="h-4 w-24" />
@@ -325,7 +325,7 @@ function HomeSkeleton() {
         </div>
       </section>
       {Array.from({ length: 4 }).map((_, i) => (
-        <section className="rounded-xl border border-border/70 bg-card p-4" key={i}>
+        <section className="rounded-lg border border-border/70 bg-card p-4" key={i}>
           <div className="mb-3 flex items-center gap-2">
             <Skeleton className="size-7 rounded-md" />
             <Skeleton className="h-4 w-24" />
@@ -361,7 +361,7 @@ export function HomePage() {
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
       {staticInfoError
         ? (
-            <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+            <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
               <p className="text-sm text-muted-foreground">{t('home.loadError')}</p>
               <div>
                 <Button onClick={retryStaticInfo} size="sm" type="button" variant="outline">

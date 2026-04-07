@@ -1,11 +1,11 @@
 import type { TweakMeta } from '@/entities/tweak/model/types'
+import { AppWindow } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   applyTweak,
   logoutUser,
   restartPc,
-  runTweakExtra,
 } from '@/entities/tweak/api'
 import {
   EMPTY_CATEGORY,
@@ -49,7 +49,6 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
     state => state.updateCachedTweak,
   )
   const [pendingIds, setPendingIds] = useState<string[]>([])
-  const [extraPendingIds, setExtraPendingIds] = useState<string[]>([])
   const categoryState = cachedCategory ?? EMPTY_CATEGORY
 
   useMountEffect(() => {
@@ -71,14 +70,6 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
     )
   }
 
-  const setExtraPending = (id: string, pending: boolean) => {
-    setExtraPendingIds(current =>
-      pending
-        ? [...new Set([...current, id])]
-        : current.filter(item => item !== id),
-    )
-  }
-
   const handleApplyValue = async (tweak: TweakMeta, nextValue: string) => {
     setPending(tweak.id, true)
 
@@ -91,6 +82,11 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
           t('tweaks.prompts.restartApp', {
             appName: tweak.requiresAction.appName,
           }),
+          {
+            icon: tweak.requiresAction.appName === 'Explorer'
+              ? <AppWindow className="size-4" />
+              : undefined,
+          },
         )
       }
 
@@ -152,38 +148,6 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
     }
   }
 
-  const handleRunExtra = (tweak: TweakMeta) => {
-    if (tweak.id !== 'disable_game_dvr') {
-      return
-    }
-
-    toast.action(t('tweaks.prompts.uninstallXboxGameBar'), {
-      description: t('tweaks.prompts.uninstallXboxGameBarDescription'),
-      action: {
-        label: t('tweaks.actions.uninstallNow'),
-        onClick: () => {
-          setExtraPending(tweak.id, true)
-
-          void toast.promise(
-            runTweakExtra(tweak.id).finally(() => {
-              setExtraPending(tweak.id, false)
-            }),
-            {
-              loading: t('tweaks.progress.uninstallXboxGameBarLoading'),
-              success: t('tweaks.success.uninstallXboxGameBar'),
-              error: error =>
-                getErrorMessage(error, t('tweaks.errors.uninstallXboxGameBar')),
-            },
-          )
-        },
-      },
-      cancel: {
-        label: t('tweaks.actions.later'),
-      },
-      duration: Number.POSITIVE_INFINITY,
-    })
-  }
-
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
       {!categoryState.hasLoaded && (
@@ -194,7 +158,7 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
       )}
 
       {!categoryState.hasLoaded && categoryState.error && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
           <div className="space-y-3">
             <div className="space-y-1">
               <h2 className="text-sm font-medium text-foreground">
@@ -224,10 +188,8 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
             <TweakCard
               key={tweak.id}
               currentBuild={currentBuild}
-              isExtraPending={extraPendingIds.includes(tweak.id)}
               isPending={pendingIds.includes(tweak.id)}
               onApplyValue={value => void handleApplyValue(tweak, value)}
-              onRunExtra={() => handleRunExtra(tweak)}
               tweak={tweak}
             />
           ))}

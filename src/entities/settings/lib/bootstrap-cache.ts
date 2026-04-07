@@ -14,7 +14,6 @@ function writeBootstrapCache() {
       state: {
         webviewMaterial: state.webviewMaterial,
         language: state.language,
-        palette: state.palette,
         theme: state.theme,
         updateChecksEnabled: state.updateChecksEnabled,
       },
@@ -41,7 +40,6 @@ export function initPreferencesBootstrapCache() {
       state.hasHydrated === previousState.hasHydrated
       && state.webviewMaterial === previousState.webviewMaterial
       && state.language === previousState.language
-      && state.palette === previousState.palette
       && state.theme === previousState.theme
       && state.updateChecksEnabled === previousState.updateChecksEnabled
     ) {

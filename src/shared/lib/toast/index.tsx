@@ -4,6 +4,7 @@ import { toast as sonner } from 'sonner'
 export interface ToastMessageOptions {
   description?: string
   duration?: number
+  icon?: ReactNode
 }
 
 export interface ToastPromiseMessages {
@@ -51,12 +52,14 @@ export const toast = {
     return sonner.error(message, {
       description: options?.description,
       duration: options?.duration ?? 4000,
+      icon: options?.icon,
     })
   },
   message(message: string, options?: ToastMessageOptions) {
     return sonner(message, {
       description: options?.description,
       duration: options?.duration ?? 4000,
+      icon: options?.icon,
     })
   },
   promise<T>(promise: Promise<T>, messages: ToastPromiseMessages) {
@@ -73,6 +76,7 @@ export const toast = {
     return sonner.success(message, {
       description: options?.description,
       duration: options?.duration ?? 4000,
+      icon: options?.icon,
     })
   },
 }

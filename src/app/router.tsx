@@ -166,6 +166,15 @@ const inputRoute = createRoute({
   ),
 })
 
+const toolsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'tools',
+  component: lazyRouteComponent(
+    () => import('@/pages/tools/ui/tools-page'),
+    'ToolsPage',
+  ),
+})
+
 const cpuRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'cpu',
@@ -256,6 +265,7 @@ const routeTree = rootRoute.addChildren([
   networkRoute,
   performanceRoute,
   inputRoute,
+  toolsRoute,
   startupRoute,
   backupRoute,
   settingsRoute,

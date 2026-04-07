@@ -1,9 +1,8 @@
 import type { LucideIcon } from 'lucide-react'
-import { Download, Languages, Leaf, MoonStar, Palette } from 'lucide-react'
+import { Download, Languages, MoonStar, Palette } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { UpdateCheckSwitch } from '@/features/app-updater/ui/update-check-switch'
 import { LanguageSelect } from '@/features/language-switcher/ui/language-select'
-import { PaletteSelect } from '@/features/theme-switcher/ui/palette-select'
 import { ThemeSelect } from '@/features/theme-switcher/ui/theme-select'
 import { WebviewMaterialSelect } from '@/features/theme-switcher/ui/webview-material-select'
 
@@ -21,10 +20,10 @@ function SettingsSection({
   title: string
 }) {
   return (
-    <section className="space-y-3 rounded-xl border border-border/70 bg-card p-4">
+    <section className="space-y-3 rounded-lg border border-border/70 bg-card p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent/60 text-accent-foreground">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent/60 text-accent-foreground">
             <Icon className="size-4" />
           </span>
           <div className="space-y-1">
@@ -67,13 +66,6 @@ export function SettingsPage() {
                 {t('settings.mode')}
               </div>
               <ThemeSelect className="w-full sm:w-[163px]" />
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-foreground">
-                <Leaf className="size-4 text-muted-foreground" />
-                {t('settings.palette')}
-              </div>
-              <PaletteSelect className="w-full sm:w-[163px]" />
             </div>
             <WebviewMaterialSelect />
           </div>

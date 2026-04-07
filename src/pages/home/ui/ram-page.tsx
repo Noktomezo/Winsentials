@@ -70,7 +70,7 @@ function StripBar({
   ]
 
   return (
-    <section className="flex flex-col gap-2 rounded-xl border border-border/70 bg-card p-4">
+    <section className="flex flex-col gap-2 rounded-lg border border-border/70 bg-card p-4">
       <div className="flex h-4 w-full overflow-hidden rounded-full">
         {segments.map(s => (
           s.pct > 0 && (
@@ -112,7 +112,7 @@ export function RamPage() {
     return (
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
         {[1, 2, 3].map(i => (
-          <section className="rounded-xl border border-border/70 bg-card p-4" key={i}>
+          <section className="rounded-lg border border-border/70 bg-card p-4" key={i}>
             <Skeleton className="mb-3 h-4 w-32" />
             <div className="space-y-2.5">
               <Skeleton className="h-3 w-full" />
@@ -129,7 +129,7 @@ export function RamPage() {
     return (
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
         {[1, 2, 3].map(i => (
-          <section className="rounded-xl border border-border/70 bg-card p-4" key={i}>
+          <section className="rounded-lg border border-border/70 bg-card p-4" key={i}>
             <Skeleton className="mb-3 h-4 w-32" />
             <div className="space-y-2.5">
               <Skeleton className="h-3 w-full" />
@@ -163,7 +163,7 @@ export function RamPage() {
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
 
       {/* Usage chart with corner labels */}
-      <section className="flex flex-col gap-1 rounded-xl border border-border/70 bg-card p-4">
+      <section className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card p-4">
         <div className="flex items-baseline justify-between">
           <span className="text-xs font-medium text-foreground">
             {t('ram.memoryUsage')}
@@ -188,7 +188,7 @@ export function RamPage() {
       <StripBar availableBytes={available} totalBytes={total} usedBytes={used} />
 
       {/* Info card — 2 columns */}
-      <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+      <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
         <h3 className="text-sm font-medium text-foreground">{t('ram.info')}</h3>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Row

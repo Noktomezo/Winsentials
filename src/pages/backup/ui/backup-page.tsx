@@ -211,7 +211,7 @@ export function BackupPage() {
         ? (
             <div className="grid gap-3">
               {[0, 1, 2].map(i => (
-                <Skeleton key={i} className="h-24 w-full rounded-xl" />
+                <Skeleton key={i} className="h-24 w-full rounded-lg" />
               ))}
             </div>
           )
