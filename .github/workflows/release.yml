@@ -48,7 +48,7 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Winsentials ${{ github.ref_name }}'
           releaseBody: ✨ Windows tweaking toolbox. See assets below ⬇️
-          releaseDraft: false
+          releaseDraft: true
           prerelease: false
           uploadUpdaterJson: true
           updaterJsonPreferNsis: true
