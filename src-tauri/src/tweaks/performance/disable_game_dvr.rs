@@ -1,6 +1,5 @@
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
-use crate::shell::run_powershell;
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
 
 const ENABLED_VALUE: &str = "enabled";
@@ -20,11 +19,6 @@ const GAME_CONFIG_STORE_KEY: RegKey = RegKey {
     path: r"System\GameConfigStore",
 };
 
-const GAME_DVR_POLICY_KEY: RegKey = RegKey {
-    hive: Hive::LocalMachine,
-    path: r"SOFTWARE\Policies\Microsoft\Windows\GameDVR",
-};
-
 struct GameDvrState {
     app_capture_enabled: Option<u32>,
     game_dvr_enabled: Option<u32>,
@@ -33,7 +27,6 @@ struct GameDvrState {
     honor_user_fse: Option<u32>,
     dxgi_honor_fse: Option<u32>,
     efse_feature_flags: Option<u32>,
-    allow_game_dvr: Option<u32>,
 }
 
 pub struct DisableGameDvrTweak {
@@ -95,7 +88,6 @@ impl DisableGameDvrTweak {
                 &GAME_CONFIG_STORE_KEY,
                 "GameDVR_EFSEFeatureFlags",
             )?,
-            allow_game_dvr: Self::read_dword(&GAME_DVR_POLICY_KEY, "AllowGameDVR")?,
         })
     }
 
@@ -107,7 +99,6 @@ impl DisableGameDvrTweak {
             && state.honor_user_fse == Some(DISABLED_FLAG)
             && state.dxgi_honor_fse == Some(DISABLED_FLAG)
             && state.efse_feature_flags == Some(DISABLED_FLAG)
-            && state.allow_game_dvr == Some(DISABLED_FLAG)
     }
 
     fn is_default(state: &GameDvrState) -> bool {
@@ -118,7 +109,6 @@ impl DisableGameDvrTweak {
             && state.honor_user_fse.is_none()
             && state.dxgi_honor_fse.is_none()
             && state.efse_feature_flags.is_none()
-            && state.allow_game_dvr != Some(DISABLED_FLAG)
     }
 }
 
@@ -143,8 +133,7 @@ impl Tweak for DisableGameDvrTweak {
                     .set_dword("GameDVR_HonorUserFSEBehaviorMode", DISABLED_FLAG)?;
                 GAME_CONFIG_STORE_KEY
                     .set_dword("GameDVR_DXGIHonorFSEWindowsCompatible", DISABLED_FLAG)?;
-                GAME_CONFIG_STORE_KEY.set_dword("GameDVR_EFSEFeatureFlags", DISABLED_FLAG)?;
-                GAME_DVR_POLICY_KEY.set_dword("AllowGameDVR", DISABLED_FLAG)
+                GAME_CONFIG_STORE_KEY.set_dword("GameDVR_EFSEFeatureFlags", DISABLED_FLAG)
             }
             DISABLED_VALUE => self.reset(),
             _ => Err(AppError::message(format!(
@@ -161,8 +150,7 @@ impl Tweak for DisableGameDvrTweak {
         GAME_CONFIG_STORE_KEY.delete_value("GameDVR_FSEBehaviorMode")?;
         GAME_CONFIG_STORE_KEY.delete_value("GameDVR_HonorUserFSEBehaviorMode")?;
         GAME_CONFIG_STORE_KEY.delete_value("GameDVR_DXGIHonorFSEWindowsCompatible")?;
-        GAME_CONFIG_STORE_KEY.delete_value("GameDVR_EFSEFeatureFlags")?;
-        GAME_DVR_POLICY_KEY.delete_value("AllowGameDVR")
+        GAME_CONFIG_STORE_KEY.delete_value("GameDVR_EFSEFeatureFlags")
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {
@@ -180,15 +168,5 @@ impl Tweak for DisableGameDvrTweak {
             },
             is_default,
         })
-    }
-
-    fn extra(&self) -> Result<(), AppError> {
-        run_powershell(
-            "$package = Get-AppxPackage Microsoft.XboxGamingOverlay -ErrorAction SilentlyContinue; \
-if ($null -eq $package) { Write-Output 'Xbox Game Bar is not installed.'; exit 0 }; \
-$package | Remove-AppxPackage -ErrorAction Stop",
-        )?;
-
-        Ok(())
     }
 }

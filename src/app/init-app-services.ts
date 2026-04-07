@@ -1,29 +1,19 @@
 import type { PreferencesState } from '@/entities/settings/model/preferences-store'
-import type { ResolvedTheme } from '@/shared/config/app'
 import { usePreferencesStore } from '@/entities/settings/model/preferences-store'
 import { initAppUpdater } from '@/features/app-updater/ui/app-updater-effect'
 import i18n from '@/shared/i18n'
 import { resolveLanguage } from '@/shared/i18n/resolve-language'
 import { syncWebviewMaterial } from '@/shared/lib/desktop/window-effects'
-import { getSystemResolvedTheme, subscribeSystemTheme } from '@/shared/lib/system-theme'
 import { toast } from '@/shared/lib/toast'
-
-function resolveTheme(theme: PreferencesState['theme']): ResolvedTheme {
-  return theme === 'system'
-    ? getSystemResolvedTheme()
-    : theme
-}
 
 function applyDocumentAppearance(state: PreferencesState) {
   if (!state.hasHydrated) {
     return
   }
 
-  const resolvedTheme = resolveTheme(state.theme)
-  document.documentElement.dataset.theme = resolvedTheme
-  document.documentElement.dataset.palette = state.palette
+  document.documentElement.dataset.theme = state.theme
   document.documentElement.dataset.webviewMaterial = state.webviewMaterial
-  document.documentElement.style.colorScheme = resolvedTheme
+  document.documentElement.style.colorScheme = state.theme
 }
 
 function createLanguageManager() {
@@ -69,11 +59,10 @@ function createWebviewMaterialManager() {
     }
 
     const requestId = ++applyRequestId
-    const resolvedTheme = resolveTheme(state.theme)
 
     void syncWebviewMaterial({
       material: state.webviewMaterial,
-      theme: resolvedTheme,
+      theme: state.theme,
     }).then((applied) => {
       if (requestId !== applyRequestId) {
         return
@@ -127,7 +116,6 @@ export function initAppServices() {
     const appearanceOrLanguageChanged = state.hasHydrated !== previousState.hasHydrated
       || state.webviewMaterial !== previousState.webviewMaterial
       || state.language !== previousState.language
-      || state.palette !== previousState.palette
       || state.theme !== previousState.theme
 
     if (appearanceOrLanguageChanged) {
@@ -139,13 +127,6 @@ export function initAppServices() {
       || state.webviewMaterial !== previousState.webviewMaterial
       || state.theme !== previousState.theme
     ) {
-      syncMaterial()
-    }
-  })
-
-  subscribeSystemTheme(() => {
-    if (usePreferencesStore.getState().theme === 'system') {
-      syncAll()
       syncMaterial()
     }
   })

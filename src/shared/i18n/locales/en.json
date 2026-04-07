@@ -144,6 +144,12 @@
     "tools": "Tools",
     "settings": "Settings"
   },
+  "tools": {
+    "title": "Tools",
+    "description": "Open standalone utilities for startup entries and tweak backups.",
+    "eyebrow": "Standalone utility",
+    "open": "Open section"
+  },
   "backup": {
     "title": "Backups",
     "description": "Create and restore snapshots of your tweak settings.",
@@ -202,9 +208,15 @@
     }
   },
   "input": {
-    "description": "Tune keyboard input behavior, including more aggressive repeat timing presets than the default Windows sliders allow.",
+    "description": "Tune keyboard and mouse input behavior, including faster repeat timing and a true 1:1 cursor response profile.",
     "title": "Input",
     "tweaks": {
+      "disableMouseAcceleration": {
+        "detailDescription": "Disables Windows mouse acceleration so cursor movement stays 1:1 with the physical movement of your mouse. This is especially useful for FPS games, aiming, and precise desktop work where you want consistent muscle memory instead of the pointer speeding up during faster swipes.",
+        "name": "Disable Mouse Acceleration",
+        "riskDescription": "If you are used to Windows cursor acceleration, the pointer may initially feel slower or require more desk movement, especially at lower DPI settings. If it becomes uncomfortable, reset the tweak and reboot Windows.",
+        "shortDescription": "Turns off Enhance Pointer Precision for a more consistent 1:1 mouse feel."
+      },
       "fastKeyboardRepeat": {
         "detailDescription": "Changes how quickly a held key starts repeating and how fast repeated characters are produced after that. Faster presets make input feel more responsive in games, code editors, and general navigation, while slower presets stay more comfortable for everyday typing. After changing this setting, it is best to sign out and back in so Windows fully applies the new profile.",
         "name": "Fast Keyboard Repeat",
@@ -230,16 +242,16 @@
         "shortDescription": "Turns off the global FTH compatibility heap and clears existing FTH app assignments."
       },
       "disableGameDvr": {
-        "detailDescription": "Fully disables GameDVR, Xbox Game Bar, and background game recording by applying both user-level switches and the machine policy that prevents Windows from re-enabling the feature. Winsentials also forces the fullscreen optimization-related GameDVR flags into the disabled state for more consistent behavior in fullscreen games. After enabling it, the Win + G overlay and background capture pipeline should stay off until you restore the default settings and reboot Windows.",
-        "name": "Disable GameDVR and Xbox Game Bar",
-        "riskDescription": "The Xbox Game Bar overlay, Win + G shortcut, and built-in gameplay capture features will stop working while this tweak is enabled. If you use Game Bar widgets, quick clips, or background recording, reset the tweak and reboot Windows.",
-        "shortDescription": "Turns off Xbox Game Bar, background recording, and GameDVR-related fullscreen hooks."
+        "detailDescription": "Disables GameDVR recording and related fullscreen capture hooks so Windows interferes less with games running in fullscreen. This can help if you want to keep built-in gameplay capture out of the way and prefer more predictable fullscreen behavior.",
+        "name": "Disable GameDVR",
+        "riskDescription": "Background gameplay recording and capture features that rely on GameDVR may stop working while this tweak is enabled. If you use built-in game clips or background capture, reset the tweak and reboot Windows.",
+        "shortDescription": "Turns off GameDVR recording and related fullscreen capture hooks."
       },
       "optimizeMmcss": {
-        "detailDescription": "Optimizes MMCSS for low-latency gaming by setting SystemResponsiveness to 0 and raising the Games task profile to a more aggressive scheduling configuration. It also applies a matching Pro Audio profile so game audio pipelines and low-latency audio workloads are prioritized more consistently. This can help reduce microstutter and uneven frame pacing on systems where Windows keeps too much CPU time reserved for background work.",
-        "name": "Optimize MMCSS (Gaming + Pro Audio)",
+        "detailDescription": "Prioritizes games and low-latency audio workloads more aggressively so Windows spends less time favoring background activity. This can help reduce microstutter, improve frame pacing, and make gameplay feel more responsive on systems that feel slightly sluggish under load.",
+        "name": "Optimize MMCSS",
         "riskDescription": "Background audio, video playback, streaming helpers, or other non-game multimedia tasks can become less stable while this profile is active. If you notice worse multitasking behavior, reset the tweak and reboot Windows.",
-        "shortDescription": "Reduces MMCSS CPU reservation and raises the Games and Pro Audio task profiles for lower latency."
+        "shortDescription": "Can reduce microstutter and make games feel more responsive by favoring gaming and low-latency audio."
       }
     }
   },
@@ -272,7 +284,7 @@
   },
   "settings": {
     "disableUpdateChecks": "Disable update checks",
-    "description": "Adjust application language and theme preferences.",
+    "description": "Adjust application language, appearance mode, and window materials.",
     "installingUpdate": "Downloading and installing the latest update...",
     "language": "Language",
     "languageDescription": "Choose the interface language.",
@@ -283,13 +295,6 @@
     },
     "notNow": "Not now",
     "mode": "Mode",
-    "palette": "Color palette",
-    "paletteDescription": "Choose the color palette applied to the selected theme.",
-    "palettes": {
-      "abyss": "Abyss",
-      "flexoki": "Flexoki",
-      "teal": "Teal"
-    },
     "materialDescription": "Choose the Windows backdrop material used for the app window. Mica and Tabbed require Windows 11, while acrylic is available on supported Windows 10 and 11 builds.",
     "materialInfo": "More info about window material",
     "materialUnavailable": "The selected window material is unavailable on this Windows build. Falling back to no material.",
@@ -300,11 +305,10 @@
       "tabbed": "Tabbed"
     },
     "theme": "Theme",
-    "themeDescription": "Select the light, dark, or system appearance used by the application shell.",
+    "themeDescription": "Choose between the clean light and deep dark application appearances.",
     "themes": {
       "dark": "Dark",
-      "light": "Light",
-      "system": "System"
+      "light": "Light"
     },
     "title": "Settings",
     "updateChecks": "Automatic update checks",
@@ -556,6 +560,8 @@
   },
   "tweaks": {
     "controls": {
+      "preset": "Preset",
+      "state": "State",
       "selectPreset": "Select preset"
     },
     "actions": {
@@ -567,9 +573,7 @@
       "retry": "Retry",
       "showDetails": "Show details",
       "showConflictDetails": "Show conflict details",
-      "showRiskDetails": "Show risk details",
-      "uninstallNow": "Uninstall now",
-      "uninstallXboxGameBar": "Remove Xbox Game Bar"
+      "showRiskDetails": "Show risk details"
     },
     "apps": {
       "explorer": "Explorer"
@@ -578,8 +582,7 @@
       "apply": "Failed to apply tweak.",
       "copyCommand": "Failed to copy the command.",
       "loadCategory": "Failed to load tweaks.",
-      "restartApp": "Failed to restart the required app.",
-      "uninstallXboxGameBar": "Failed to remove Xbox Game Bar."
+      "restartApp": "Failed to restart the required app."
     },
     "prompts": {
       "logout": "A logout is required to apply this tweak.",
@@ -589,9 +592,7 @@
       "restartExplorer": "Explorer needs to restart to apply this tweak.",
       "restartPc": "A full PC restart is required to apply this tweak.",
       "restartPcDescription": "The change will only take effect after a full Windows reboot.",
-      "restartService": "Restart the {{serviceName}} service to apply this tweak.",
-      "uninstallXboxGameBar": "Also remove the Xbox Game Bar app package?",
-      "uninstallXboxGameBarDescription": "This optional step runs PowerShell as administrator context through the app and removes Microsoft.XboxGamingOverlay from the current user profile."
+      "restartService": "Restart the {{serviceName}} service to apply this tweak."
     },
     "meta": {
       "conflicts": "Conflicts",
@@ -606,9 +607,7 @@
       "restartPc": "Requires PC restart",
       "windowsBuild": "Requires Windows build {{build}} or newer"
     },
-    "progress": {
-      "uninstallXboxGameBarLoading": "Removing Xbox Game Bar..."
-    },
+    "progress": {},
     "states": {
       "disabled": "Disabled",
       "enabled": "Enabled",
@@ -616,8 +615,7 @@
     },
     "success": {
       "copyCommand": "Command copied to clipboard.",
-      "restartApp": "{{appName}} restarted.",
-      "uninstallXboxGameBar": "Xbox Game Bar removed."
+      "restartApp": "{{appName}} restarted."
     }
   }
 }

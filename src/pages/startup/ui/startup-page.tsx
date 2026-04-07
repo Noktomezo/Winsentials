@@ -146,7 +146,7 @@ const StartupCard = memo(({
   const ScopeIcon = scopeBadgeIcon(entry.scope)
 
   return (
-    <section className="rounded-xl border border-border/70 bg-card p-4">
+    <section className="rounded-lg border border-border/70 bg-card p-4">
       <div className="min-w-0 flex items-start gap-3">
         <span className={cn(
           'flex size-9 shrink-0 items-center justify-center rounded-lg',
@@ -605,7 +605,7 @@ export function StartupPage() {
       <Separator />
 
       {localizedError && (
-        <section className="rounded-xl border border-destructive/30 bg-destructive/8 p-4">
+        <section className="rounded-lg border border-destructive/30 bg-destructive/8 p-4">
           <p className="text-sm text-muted-foreground">{localizedError}</p>
         </section>
       )}
@@ -614,7 +614,7 @@ export function StartupPage() {
         ? (
             <div className="space-y-3">
               {Array.from({ length: 4 }).map((_, index) => (
-                <section className="rounded-xl border border-border/70 bg-card p-4" key={index}>
+                <section className="rounded-lg border border-border/70 bg-card p-4" key={index}>
                   <div className="min-w-0 flex items-start gap-3">
                     <Skeleton className="size-9 shrink-0 rounded-lg" />
                     <div className="min-w-0 flex-1 space-y-1">
@@ -637,7 +637,7 @@ export function StartupPage() {
           )
         : visibleEntries.length === 0
           ? (
-              <section className="rounded-xl border border-border/70 bg-card p-8 text-center">
+              <section className="rounded-lg border border-border/70 bg-card p-8 text-center">
                 <h2 className="text-sm font-medium text-foreground">
                   {allLoaded ? t('startup.empty.title') : t('startup.states.loading')}
                 </h2>

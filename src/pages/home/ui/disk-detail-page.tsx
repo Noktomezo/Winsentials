@@ -51,7 +51,7 @@ export function DiskDetailPage() {
     if (inventoryError) {
       return (
         <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-          <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+          <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
             <p className="text-sm text-muted-foreground">{t('storage.loadError')}</p>
             <div>
               <Button onClick={retryInventory} size="sm" type="button" variant="outline">
@@ -66,7 +66,7 @@ export function DiskDetailPage() {
     if (inventoryFetching) {
       return (
         <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-          <section className="rounded-xl border border-border/70 bg-card p-4">
+          <section className="rounded-lg border border-border/70 bg-card p-4">
             <Skeleton className="mb-3 h-4 w-32" />
             <div className="space-y-2.5">
               <Skeleton className="h-3 w-full" />
@@ -103,7 +103,7 @@ export function DiskDetailPage() {
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-      <section className="flex flex-col gap-1 rounded-xl border border-border/70 bg-card p-4">
+      <section className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card p-4">
         <div className="flex items-baseline justify-between">
           <span className="text-xs font-medium text-foreground">{t('storage.activeTime')}</span>
           <span className="text-xs tabular-nums text-muted-foreground">100%</span>
@@ -115,7 +115,7 @@ export function DiskDetailPage() {
         </div>
       </section>
 
-      <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+      <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
         <h3 className="text-sm font-medium text-foreground">{t('storage.diskInfo')}</h3>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Row label={t('storage.activeTime')} value={`${diskLive?.activeTimePercent ?? 0}%`} />

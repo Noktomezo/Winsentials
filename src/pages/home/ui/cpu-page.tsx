@@ -72,7 +72,7 @@ export function CpuPage() {
     if (staticInfoError) {
       return (
         <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-          <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+          <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
             <p className="text-sm text-muted-foreground">{t('cpu.loadError')}</p>
             <div>
               <Button onClick={loadStaticInfo} size="sm" type="button" variant="outline">
@@ -87,7 +87,7 @@ export function CpuPage() {
     return (
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
         {Array.from({ length: 3 }).map((_, i) => (
-          <section className="rounded-xl border border-border/70 bg-card p-4" key={i}>
+          <section className="rounded-lg border border-border/70 bg-card p-4" key={i}>
             <Skeleton className="mb-3 h-4 w-32" />
             <div className="space-y-2.5">
               <Skeleton className="h-3 w-full" />
@@ -105,7 +105,7 @@ export function CpuPage() {
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
       {/* Live chart */}
-      <section className="flex flex-col gap-1 rounded-xl border border-border/70 bg-card p-4">
+      <section className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card p-4">
         <div className="flex items-baseline justify-between">
           <span className="text-xs font-medium text-foreground">{t('home.usage')}</span>
           <span className="text-xs tabular-nums text-muted-foreground">100%</span>
@@ -118,7 +118,7 @@ export function CpuPage() {
       </section>
 
       {/* CPU info */}
-      <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+      <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
         <h3 className="text-sm font-medium text-foreground">{t('cpu.info')}</h3>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Row
@@ -192,7 +192,7 @@ export function CpuPage() {
 
       {/* Per-core usage */}
       {liveInfo && (
-        <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+        <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
           <h3 className="text-sm font-medium text-foreground">{t('cpu.perCore')}</h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
             {liveInfo.cpuPerCore.map((usage, i) => (

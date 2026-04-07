@@ -84,7 +84,7 @@ function EngineChart({ label, value, data }: EngineChartProps) {
   const { t } = useTranslation()
 
   return (
-    <section className="flex flex-col gap-2 rounded-xl border border-border/70 bg-card p-4">
+    <section className="flex flex-col gap-2 rounded-lg border border-border/70 bg-card p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
         <span className="text-xs font-semibold tabular-nums text-foreground">
@@ -105,7 +105,7 @@ function MemChart({ label, valueLabel, data, unit = '%', yDomain }: MemChartProp
   const { t } = useTranslation()
 
   return (
-    <section className="col-span-2 flex flex-col gap-2 rounded-xl border border-border/70 bg-card p-4">
+    <section className="col-span-2 flex flex-col gap-2 rounded-lg border border-border/70 bg-card p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
         <span className="text-xs font-semibold tabular-nums text-foreground">{valueLabel}</span>
@@ -154,12 +154,12 @@ function LiveGpuLoadingState() {
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
       <div className="grid grid-cols-2 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <section className="rounded-xl border border-border/70 bg-card p-4" key={i}>
+          <section className="rounded-lg border border-border/70 bg-card p-4" key={i}>
             <Skeleton className="mb-3 h-3 w-24" />
             <Skeleton className="h-16 w-full" />
           </section>
         ))}
-        <section className="col-span-2 rounded-xl border border-border/70 bg-card p-4">
+        <section className="col-span-2 rounded-lg border border-border/70 bg-card p-4">
           <div className="space-y-2.5">
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton className="h-3 w-full" key={i} />
@@ -176,7 +176,7 @@ function LiveGpuErrorState({ message, onRetry }: LiveGpuErrorStateProps) {
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-      <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+      <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
         <p className="text-sm text-muted-foreground">{message}</p>
         <div>
           <Button onClick={onRetry} size="sm" type="button" variant="outline">
@@ -227,7 +227,7 @@ export function GpuPage() {
     if (staticError) {
       return (
         <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-          <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4">
+          <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
             <p className="text-sm text-muted-foreground">{t('gpu.loadError')}</p>
             <div>
               <Button onClick={loadStaticInfo} size="sm" type="button" variant="outline">
@@ -243,12 +243,12 @@ export function GpuPage() {
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
         <div className="grid grid-cols-2 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <section className="rounded-xl border border-border/70 bg-card p-4" key={i}>
+            <section className="rounded-lg border border-border/70 bg-card p-4" key={i}>
               <Skeleton className="mb-3 h-3 w-24" />
               <Skeleton className="h-16 w-full" />
             </section>
           ))}
-          <section className="col-span-2 rounded-xl border border-border/70 bg-card p-4">
+          <section className="col-span-2 rounded-lg border border-border/70 bg-card p-4">
             <div className="space-y-2.5">
               {Array.from({ length: 8 }).map((_, i) => (
                 <Skeleton className="h-3 w-full" key={i} />
@@ -274,7 +274,7 @@ export function GpuPage() {
     if (!live) {
       return (
         <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-          <section className="rounded-xl border border-border/70 bg-card p-4">
+          <section className="rounded-lg border border-border/70 bg-card p-4">
             <p className="text-sm text-muted-foreground">{t('gpu.noLiveData')}</p>
           </section>
         </section>
@@ -341,7 +341,7 @@ export function GpuPage() {
         </div>
 
         {/* Single info card */}
-        <section className="flex flex-col gap-2.5 rounded-xl border border-border/70 bg-card p-4">
+        <section className="flex flex-col gap-2.5 rounded-lg border border-border/70 bg-card p-4">
           {gpu.vendor && gpu.vendor !== 'Unknown' && (
             <Row label={t('home.vendor')} value={gpu.vendor} />
           )}
@@ -427,7 +427,7 @@ export function GpuPage() {
           const gpuLive = liveByIndex[idx]
           const liveUsage = gpuLive ? gpuUsage(gpuLive) : 0
           return (
-            <section className="flex flex-col gap-3 rounded-xl border border-border/70 bg-card p-4" key={idx}>
+            <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4" key={idx}>
               {gpuIndex === null && (
                 <h3 className="text-sm font-medium text-foreground">
                   {t('gpu.adapter')}

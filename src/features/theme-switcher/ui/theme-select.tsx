@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { MonitorCog, MoonStar, SunMedium } from 'lucide-react'
+import { MoonStar, SunMedium } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { usePreferencesStore } from '@/entities/settings/model/preferences-store'
 import { APP_THEMES } from '@/shared/config/app'
@@ -15,7 +15,6 @@ import {
 const THEME_ICONS: Record<(typeof APP_THEMES)[number], LucideIcon> = {
   light: SunMedium,
   dark: MoonStar,
-  system: MonitorCog,
 }
 
 export function ThemeSelect({ className }: { className?: string }) {

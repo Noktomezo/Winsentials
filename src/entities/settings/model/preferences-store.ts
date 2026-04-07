@@ -1,6 +1,5 @@
 import type {
   AppLanguagePreference,
-  AppPalette,
   AppTheme,
   AppWebviewMaterial,
 } from '@/shared/config/app'
@@ -9,7 +8,6 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 import { tauriStateStorage } from '@/entities/settings/lib/tauri-storage'
 import {
   DEFAULT_LANGUAGE,
-  DEFAULT_PALETTE,
   DEFAULT_THEME,
   DEFAULT_WEBVIEW_MATERIAL,
 } from '@/shared/config/app'
@@ -19,9 +17,8 @@ interface PersistedPreferencesState {
   webviewMaterial?: AppWebviewMaterial | 'blur' | 'micaAlt'
   chromeAcrylic?: boolean
   language?: AppLanguagePreference
-  palette?: AppPalette
   sidebarAcrylic?: boolean
-  theme?: AppTheme | 'acrylic'
+  theme?: AppTheme | 'acrylic' | 'system'
   updateChecksEnabled?: boolean
 }
 
@@ -29,11 +26,9 @@ interface PreferencesState {
   webviewMaterial: AppWebviewMaterial
   hasHydrated: boolean
   language: AppLanguagePreference
-  palette: AppPalette
   updateChecksEnabled: boolean
   setWebviewMaterial: (material: AppWebviewMaterial) => void
   setHasHydrated: (hasHydrated: boolean) => void
-  setPalette: (palette: AppPalette) => void
   theme: AppTheme
   setLanguage: (language: AppLanguagePreference) => void
   setTheme: (theme: AppTheme) => void
@@ -48,11 +43,9 @@ export const usePreferencesStore = create<PreferencesState>()(
       webviewMaterial: DEFAULT_WEBVIEW_MATERIAL,
       hasHydrated: false,
       language: DEFAULT_LANGUAGE,
-      palette: DEFAULT_PALETTE,
       updateChecksEnabled: true,
       setWebviewMaterial: webviewMaterial => set({ webviewMaterial }),
       setHasHydrated: hasHydrated => set({ hasHydrated }),
-      setPalette: palette => set({ palette }),
       setUpdateChecksEnabled: updateChecksEnabled => set({ updateChecksEnabled }),
       theme: DEFAULT_THEME,
       setLanguage: language => set({ language }),
@@ -72,19 +65,21 @@ export const usePreferencesStore = create<PreferencesState>()(
           ?? (legacyAcrylic || state.chromeAcrylic === true || state.sidebarAcrylic === true
             ? 'acrylic'
             : DEFAULT_WEBVIEW_MATERIAL)
+        const normalizedTheme = state.theme === 'light' || state.theme === 'dark'
+          ? state.theme
+          : DEFAULT_THEME
 
         return {
           webviewMaterial,
           language: state.language ?? DEFAULT_LANGUAGE,
-          palette: state.palette ?? DEFAULT_PALETTE,
-          theme: legacyAcrylic ? 'dark' : (state.theme ?? DEFAULT_THEME),
+          theme: legacyAcrylic ? 'dark' : normalizedTheme,
           updateChecksEnabled: state.updateChecksEnabled ?? true,
         }
       },
       name: 'winsentials-preferences',
       onRehydrateStorage: () => state => state?.setHasHydrated(true),
       storage: createJSONStorage(() => tauriStateStorage),
-      version: 6,
+      version: 7,
     },
   ),
 )
