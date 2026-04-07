@@ -16,13 +16,3 @@
 ## 🥶 Disclaimer
 
 Winsentials is currently under active development and is not recommended for use right now.
-
-## Local Zed + vexp setup
-
-If you use Zed with the local `vexp` MCP server:
-
-1. Copy `.zed/settings.json.example` to `.zed/settings.json`
-2. Update `context_servers.vexp.command.path` to point to your local `vexp-core.exe`
-3. Keep `args` set to `["mcp"]`
-
-The real `.zed/settings.json` is ignored on purpose so each contributor can keep a machine-specific path locally.
