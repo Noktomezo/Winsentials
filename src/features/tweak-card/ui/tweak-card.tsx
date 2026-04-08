@@ -37,6 +37,7 @@ import {
 import { forwardRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/shared/lib/toast'
+import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
 import { MarqueeText } from '@/shared/ui/marquee-text'
 import {
@@ -248,7 +249,7 @@ const MetadataChipButton = forwardRef<
   return (
     <button
       aria-label={ariaLabel}
-      className={className ?? 'cursor-help'}
+      className={cn('cursor-help', className)}
       ref={ref}
       type={type ?? 'button'}
       {...props}

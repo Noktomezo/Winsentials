@@ -3,6 +3,10 @@
     "description": "Набор инструментов для оптимизации Windows",
     "title": "Winsentials"
   },
+  "common": {
+    "off": "Выкл",
+    "on": "Вкл"
+  },
   "titlebar": {
     "maximize": "Развернуть окно",
     "minimize": "Свернуть окно",

@@ -105,7 +105,7 @@ impl ConfigureKernelTimingChainTweak {
     }
 
     fn read_state(&self) -> Result<KernelTimingState, AppError> {
-        let output = Self::run_bcdedit(&["/enum"])?;
+        let output = Self::run_bcdedit(&["/enum", "{current}"])?;
 
         Ok(KernelTimingState {
             use_platform_clock: Self::parse_boot_value(&output, USE_PLATFORM_CLOCK),
@@ -128,7 +128,7 @@ impl ConfigureKernelTimingChainTweak {
 
     fn delete_if_present(state_value: &Option<String>, key: &str) -> Result<(), AppError> {
         if state_value.is_some() {
-            Self::run_bcdedit(&["/deletevalue", key])?;
+            Self::run_bcdedit(&["/deletevalue", "{current}", key])?;
         }
 
         Ok(())
@@ -147,9 +147,9 @@ impl Tweak for ConfigureKernelTimingChainTweak {
     fn apply(&self, value: &str) -> Result<(), AppError> {
         match value {
             ENABLED_VALUE => {
-                Self::run_bcdedit(&["/set", USE_PLATFORM_CLOCK, "no"])?;
-                Self::run_bcdedit(&["/set", USE_PLATFORM_TICK, "yes"])?;
-                Self::run_bcdedit(&["/set", DISABLE_DYNAMIC_TICK, "yes"])?;
+                Self::run_bcdedit(&["/set", "{current}", USE_PLATFORM_CLOCK, "no"])?;
+                Self::run_bcdedit(&["/set", "{current}", USE_PLATFORM_TICK, "yes"])?;
+                Self::run_bcdedit(&["/set", "{current}", DISABLE_DYNAMIC_TICK, "yes"])?;
                 Ok(())
             }
             DISABLED_VALUE => self.reset(),

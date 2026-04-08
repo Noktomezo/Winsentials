@@ -50,11 +50,10 @@ function LabeledSwitch({
   trueLabel,
   ...props
 }: LabeledSwitchProps) {
-  const { i18n } = useTranslation()
-  const isRussian = i18n.resolvedLanguage?.startsWith('ru')
+  const { t } = useTranslation()
   const stateLabel = checked
-    ? (trueLabel ?? (isRussian ? 'Вкл' : 'On'))
-    : (falseLabel ?? (isRussian ? 'Выкл' : 'Off'))
+    ? (trueLabel ?? t('common.on'))
+    : (falseLabel ?? t('common.off'))
 
   return (
     <div

@@ -3,6 +3,10 @@
     "description": "Windows optimization toolbox",
     "title": "Winsentials"
   },
+  "common": {
+    "off": "Off",
+    "on": "On"
+  },
   "titlebar": {
     "maximize": "Maximize window",
     "minimize": "Minimize window",
