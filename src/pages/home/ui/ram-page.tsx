@@ -64,9 +64,9 @@ function StripBar({
   const otherPct = Math.max(0, 100 - usedPct - availablePct)
 
   const segments = [
-    { pct: usedPct, color: 'bg-primary', label: t('ram.used'), value: toGb(usedBytes, i18n.language, t) },
-    { pct: otherPct, color: 'bg-warning/70', label: t('ram.other'), value: toGb(otherBytes, i18n.language, t) },
-    { pct: availablePct, color: 'bg-muted', label: t('ram.available'), value: toGb(availableBytes, i18n.language, t) },
+    { pct: usedPct, color: 'bg-[var(--metric-accent)]', label: t('ram.used'), value: toGb(usedBytes, i18n.language, t) },
+    { pct: otherPct, color: 'bg-[var(--metric-warning)]', label: t('ram.other'), value: toGb(otherBytes, i18n.language, t) },
+    { pct: availablePct, color: 'bg-[var(--metric-good)]', label: t('ram.available'), value: toGb(availableBytes, i18n.language, t) },
   ]
 
   return (

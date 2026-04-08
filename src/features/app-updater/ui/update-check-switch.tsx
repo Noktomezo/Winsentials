@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { usePreferencesStore } from '@/entities/settings/model/preferences-store'
-import { Switch } from '@/shared/ui/switch'
+import { LabeledSwitch } from '@/shared/ui/switch'
 
 export function UpdateCheckSwitch() {
   const { t } = useTranslation()
@@ -8,7 +8,7 @@ export function UpdateCheckSwitch() {
   const setUpdateChecksEnabled = usePreferencesStore(state => state.setUpdateChecksEnabled)
 
   return (
-    <Switch
+    <LabeledSwitch
       aria-label={t('settings.updates')}
       checked={updateChecksEnabled}
       onCheckedChange={setUpdateChecksEnabled}

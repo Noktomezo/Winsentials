@@ -16,6 +16,8 @@
     "updeps": "bun update --latest --force"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/ibm-plex-sans": "^5.2.8",
     "@radix-ui/react-scroll-area": "^1.2.10",
     "@tanstack/react-router": "^1.167.3",
     "@tauri-apps/api": "^2.10.1",

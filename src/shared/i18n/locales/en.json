@@ -10,7 +10,7 @@
     "close": "Close window"
   },
   "behaviour": {
-    "description": "Adjust how Windows behaves in everyday interactions, including default shell actions and navigation flows.",
+    "description": "General settings for everyday Windows behavior.",
     "title": "Behaviour",
     "tweaks": {
       "openExplorerToThisPc": {
@@ -208,7 +208,7 @@
     }
   },
   "input": {
-    "description": "Tune keyboard and mouse input behavior, including faster repeat timing and a true 1:1 cursor response profile.",
+    "description": "General settings for input devices and responsiveness.",
     "title": "Input",
     "tweaks": {
       "disableMouseAcceleration": {
@@ -221,8 +221,8 @@
         "detailDescription": "Changes how quickly a held key starts repeating and how fast repeated characters are produced after that. Faster presets make input feel more responsive in games, code editors, and general navigation, while slower presets stay more comfortable for everyday typing. After changing this setting, it is best to sign out and back in so Windows fully applies the new profile.",
         "name": "Fast Keyboard Repeat",
         "options": {
-          "balanced": "Balanced",
-          "default": "Windows Default",
+          "balanced": "Balance",
+          "default": "Default",
           "fast": "Fast",
           "ultraFast": "Ultra Fast"
         },
@@ -232,11 +232,17 @@
     }
   },
   "performance": {
-    "description": "Tune Windows features that can trade compatibility safeguards for lower overhead and snappier app behavior.",
+    "description": "General settings for system performance and responsiveness.",
     "title": "Performance",
     "tweaks": {
+      "configureKernelTimingChain": {
+        "detailDescription": "Changes how Windows handles system timing so games and other latency-sensitive apps can feel more consistent under load. On the right system this can reduce microstutter, smooth out frametime, and make input feel steadier after a full reboot.",
+        "name": "Configure Kernel Timing Chain",
+        "riskDescription": "This tweak does not help every PC. On some systems it can make frametime worse, introduce audio crackles, or add new stutter. If that happens, reset the tweak and reboot Windows.",
+        "shortDescription": "Can make games feel smoother and more consistent by using a lower-latency timing setup."
+      },
       "disableFaultTolerantHeap": {
-        "detailDescription": "Disables Windows Fault Tolerant Heap (FTH), a compatibility layer that Windows can automatically enable for apps that crash often. FTH tries to keep unstable apps alive by changing heap behavior, but that can reduce performance, increase memory overhead, and interfere with some games or native software. When you enable this tweak, Winsentials also runs the command rundll32.exe fthsvc.dll,FthSysprepSpecialize to clear the list of apps that were already opted into FTH.",
+        "detailDescription": "Disables Windows Fault Tolerant Heap (FTH), a compatibility layer that Windows can automatically enable for apps that crash often. FTH tries to keep unstable apps alive, but that can reduce performance, increase memory overhead, and interfere with some games or native software.",
         "name": "Disable Fault Tolerant Heap (FTH)",
         "riskDescription": "Apps that truly depend on FTH for crash mitigation may become unstable again after you disable it. If a specific program starts crashing more often, reset this tweak and reboot Windows.",
         "shortDescription": "Turns off the global FTH compatibility heap and clears existing FTH app assignments."

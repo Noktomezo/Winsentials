@@ -15,9 +15,9 @@ import { MarqueeText } from '@/shared/ui/marquee-text'
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
 function loadColor(pct: number): string {
-  if (pct >= 85) { return 'text-destructive' }
-  if (pct >= 60) { return 'text-warning' }
-  return 'text-success'
+  if (pct >= 85) { return 'text-[var(--metric-danger)]' }
+  if (pct >= 60) { return 'text-[var(--metric-warning)]' }
+  return 'text-[var(--metric-good)]'
 }
 
 function usagePct(used: number, total: number): number {
@@ -88,9 +88,9 @@ function WindowsCard({ s }: { s: StaticSystemInfo }) {
           label={t('home.activation')}
           value={(
             <span className={({
-              activated: 'text-success',
-              not_activated: 'text-destructive',
-              grace_period: 'text-warning',
+              activated: 'text-[var(--metric-good)]',
+              not_activated: 'text-[var(--metric-danger)]',
+              grace_period: 'text-[var(--metric-warning)]',
             } as Record<string, string>)[w.activationStatus] ?? 'text-muted-foreground'}
             >
               {t(`home.activationStatus.${w.activationStatus}`)}
@@ -250,11 +250,11 @@ function NetworkSummary({
       onPointerIntent={() => preloadRouteIntent(() => router.preloadRoute({ to: '/network-stats/$adapterName', params: { adapterName } }))}
       stat={(
         <div className="flex gap-2">
-          <span className="text-xs tabular-nums text-primary">
+          <span className="text-xs tabular-nums text-[var(--metric-accent)]">
             ↓
             {formatRate(traffic?.rxBytesPerSec ?? 0, t, i18n.language)}
           </span>
-          <span className="text-xs tabular-nums text-primary">
+          <span className="text-xs tabular-nums text-[var(--metric-accent)]">
             ↑
             {formatRate(traffic?.txBytesPerSec ?? 0, t, i18n.language)}
           </span>

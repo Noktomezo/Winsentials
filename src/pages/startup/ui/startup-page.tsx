@@ -34,6 +34,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
+  LabeledSwitch,
   Select,
   SelectContent,
   SelectItem,
@@ -41,7 +42,6 @@ import {
   SelectValue,
   Separator,
   Skeleton,
-  Switch,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -212,8 +212,8 @@ const StartupCard = memo(({
             <div className="flex shrink-0 items-center gap-1 self-start">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="flex h-6 items-center">
-                    <Switch
+                  <span className="flex items-center">
+                    <LabeledSwitch
                       aria-label={entry.status === 'enabled'
                         ? t('startup.actions.disable')
                         : t('startup.actions.enable')}

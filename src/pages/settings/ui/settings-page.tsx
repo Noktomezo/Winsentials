@@ -5,6 +5,7 @@ import { UpdateCheckSwitch } from '@/features/app-updater/ui/update-check-switch
 import { LanguageSelect } from '@/features/language-switcher/ui/language-select'
 import { ThemeSelect } from '@/features/theme-switcher/ui/theme-select'
 import { WebviewMaterialSelect } from '@/features/theme-switcher/ui/webview-material-select'
+import { cn } from '@/shared/lib/utils'
 
 function SettingsSection({
   children,
@@ -12,27 +13,34 @@ function SettingsSection({
   description,
   icon: Icon,
   title,
+  withDivider = false,
 }: {
   children?: React.ReactNode
   control?: React.ReactNode
   description: string
   icon: LucideIcon
   title: string
+  withDivider?: boolean
 }) {
   return (
     <section className="space-y-3 rounded-lg border border-border/70 bg-card p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent/60 text-accent-foreground">
+      <div
+        className={cn(
+          'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between',
+          withDivider && 'border-b border-border/40 pb-3',
+        )}
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex size-9 shrink-0 self-center items-center justify-center rounded-md bg-accent/60 text-accent-foreground">
             <Icon className="size-4" />
           </span>
-          <div className="space-y-1">
+          <div className="min-w-0 flex-1">
             <h2 className="text-sm font-medium text-foreground">{title}</h2>
             <p className="text-xs leading-5 text-muted-foreground">{description}</p>
           </div>
         </div>
         {control && (
-          <div className="sm:shrink-0">
+          <div className="self-center sm:shrink-0">
             {control}
           </div>
         )}
@@ -58,10 +66,11 @@ export function SettingsPage() {
           title={t('settings.theme')}
           description={t('settings.themeDescription')}
           icon={Palette}
+          withDivider
         >
           <div className="space-y-2">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-foreground">
+              <div className="flex shrink-0 items-center gap-2 self-center text-sm font-medium text-foreground">
                 <MoonStar className="size-4 text-muted-foreground" />
                 {t('settings.mode')}
               </div>

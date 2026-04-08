@@ -69,15 +69,15 @@ function Row({ label, value }: RowProps) {
 }
 
 function loadColor(pct: number): string {
-  if (pct >= 85) { return 'text-destructive' }
-  if (pct >= 60) { return 'text-warning' }
-  return 'text-success'
+  if (pct >= 85) { return 'text-[var(--metric-danger)]' }
+  if (pct >= 60) { return 'text-[var(--metric-warning)]' }
+  return 'text-[var(--metric-good)]'
 }
 
 function tempColorClass(temp: number): string {
-  if (temp >= 80) { return 'text-destructive' }
-  if (temp >= 60) { return 'text-warning' }
-  return 'text-success'
+  if (temp >= 80) { return 'text-[var(--metric-danger)]' }
+  if (temp >= 60) { return 'text-[var(--metric-warning)]' }
+  return 'text-[var(--metric-good)]'
 }
 
 function EngineChart({ label, value, data }: EngineChartProps) {

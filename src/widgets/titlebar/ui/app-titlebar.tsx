@@ -6,7 +6,7 @@ import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStaticInfo } from '@/entities/system-info/model/static-system-info'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
-import { mountLabel, mountToParam } from '@/shared/lib/mount-utils'
+import { mountToParam } from '@/shared/lib/mount-utils'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -19,6 +19,14 @@ import {
 } from '@/shared/ui'
 
 interface Crumb { label: string, href?: string }
+
+const titlebarControlClassName = 'h-8 w-8 cursor-pointer rounded-md border border-transparent p-0 text-sidebar-foreground/82 transition-[background-color,border-color,color,box-shadow] hover:border-sidebar-border hover:bg-[color:color-mix(in_oklch,var(--sidebar-accent)_72%,transparent)] hover:text-sidebar-accent-foreground focus-visible:border-sidebar-border focus-visible:bg-[color:color-mix(in_oklch,var(--sidebar-accent)_72%,transparent)] focus-visible:text-sidebar-accent-foreground focus-visible:ring-sidebar-ring/30'
+
+const titlebarMinimizeControlClassName = 'h-8 w-8 cursor-pointer rounded-md border border-transparent p-0 text-sidebar-foreground/82 transition-[background-color,border-color,color,box-shadow] hover:border-[color:color-mix(in_oklch,var(--warning)_30%,transparent)] hover:bg-[color:color-mix(in_oklch,var(--warning)_16%,transparent)] hover:text-[var(--warning)] focus-visible:border-[color:color-mix(in_oklch,var(--warning)_30%,transparent)] focus-visible:bg-[color:color-mix(in_oklch,var(--warning)_16%,transparent)] focus-visible:text-[var(--warning)] focus-visible:ring-[color:color-mix(in_oklch,var(--warning)_24%,transparent)]'
+
+const titlebarMaximizeControlClassName = 'h-8 w-8 cursor-pointer rounded-md border border-transparent p-0 text-sidebar-foreground/82 transition-[background-color,border-color,color,box-shadow] hover:border-[color:color-mix(in_oklch,var(--success)_30%,transparent)] hover:bg-[color:color-mix(in_oklch,var(--success)_16%,transparent)] hover:text-[var(--success)] focus-visible:border-[color:color-mix(in_oklch,var(--success)_30%,transparent)] focus-visible:bg-[color:color-mix(in_oklch,var(--success)_16%,transparent)] focus-visible:text-[var(--success)] focus-visible:ring-[color:color-mix(in_oklch,var(--success)_24%,transparent)]'
+
+const titlebarCloseControlClassName = 'h-8 w-8 cursor-pointer rounded-md border border-transparent p-0 text-sidebar-foreground/82 transition-[background-color,border-color,color,box-shadow] hover:border-[color:color-mix(in_oklch,var(--badge-red)_30%,transparent)] hover:bg-[color:color-mix(in_oklch,var(--badge-red)_16%,transparent)] hover:text-[var(--badge-red)] focus-visible:border-[color:color-mix(in_oklch,var(--badge-red)_30%,transparent)] focus-visible:bg-[color:color-mix(in_oklch,var(--badge-red)_16%,transparent)] focus-visible:text-[var(--badge-red)] focus-visible:ring-[color:color-mix(in_oklch,var(--badge-red)_24%,transparent)]'
 
 function useBreadcrumbs(): Crumb[] {
   const pathname = useRouterState({ select: s => s.location.pathname })
@@ -46,35 +54,41 @@ function useBreadcrumbs(): Crumb[] {
   }
 
   if (pathname.startsWith('/network-stats/')) {
-    const adapterName = decodeURIComponent(pathname.replace('/network-stats/', ''))
-    const adapter = staticInfo?.networkAdapters.find(entry => entry.name === adapterName)
-    return [home, { label: adapter ? `${t('home.network')} (${adapter.name})` : t('home.network') }]
+    return [home, { label: t('home.network') }]
   }
 
   if (pathname.startsWith('/storage/')) {
     const param = pathname.replace('/storage/', '')
     const idx = staticInfo?.disks.findIndex(d => mountToParam(d.mountPoint) === param) ?? -1
-    const disk = idx >= 0 ? staticInfo!.disks[idx] : null
-    const base = idx >= 0 ? t('storage.diskLabel', { index: idx }) : param.toUpperCase()
-    const sub = disk
-      ? disk.volumeLabel ? `${mountLabel(disk.mountPoint)} - ${disk.volumeLabel}` : mountLabel(disk.mountPoint)
-      : null
-    const label = sub ? `${base} (${sub})` : base
+    const label = idx >= 0 ? t('storage.diskLabel', { index: idx }) : param.toUpperCase()
     return [home, { label }]
   }
 
   const topLevel: Record<string, string> = {
     '/appearance': t('appearance.title'),
-    '/backup': t('backup.title'),
     '/behaviour': t('behaviour.title'),
     '/security': t('security.title'),
     '/network': t('network.title'),
     '/performance': t('performance.title'),
     '/input': t('input.title'),
-    '/startup': t('startup.title'),
+    '/tools': t('tools.title'),
     '/settings': t('settings.title'),
   }
   if (topLevel[pathname]) { return [{ label: topLevel[pathname] }] }
+
+  if (pathname === '/startup') {
+    return [
+      { label: t('tools.title'), href: '/tools' },
+      { label: t('startup.title') },
+    ]
+  }
+
+  if (pathname === '/backup') {
+    return [
+      { label: t('tools.title'), href: '/tools' },
+      { label: t('backup.title') },
+    ]
+  }
 
   return [{ label: t('app.title') }]
 }
@@ -140,14 +154,17 @@ export function AppTitlebar() {
   }
 
   return (
-    <header className="relative flex h-10 shrink-0 items-center bg-sidebar px-2 text-sidebar-foreground">
+    <header
+      className="relative flex h-10 shrink-0 items-center bg-transparent px-2 text-sidebar-foreground"
+      data-slot="app-titlebar"
+    >
       <SidebarTrigger
-        className="size-8 cursor-pointer rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        className={titlebarControlClassName}
         iconClassName="size-3.5"
       />
 
       {/* Absolutely centred breadcrumb — independent of left/right button widths */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
         <div className="pointer-events-auto max-w-[min(40rem,calc(100%-9rem))] overflow-hidden">
           <Breadcrumb>
             <BreadcrumbList className="max-w-full flex-nowrap gap-1 overflow-hidden text-xs sm:gap-1.5">
@@ -165,7 +182,12 @@ export function AppTitlebar() {
                               asChild
                               className="max-w-full truncate text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground"
                             >
-                              <Link to={crumb.href}>{crumb.label}</Link>
+                              <Link
+                                className="max-w-full cursor-pointer truncate"
+                                to={crumb.href}
+                              >
+                                {crumb.label}
+                              </Link>
                             </BreadcrumbLink>
                           )
                         : (
@@ -188,7 +210,7 @@ export function AppTitlebar() {
       <div className="flex items-center gap-1">
         <TitlebarButton
           aria-label={t('titlebar.minimize')}
-          className="h-8 w-8 cursor-pointer rounded-md p-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          className={titlebarMinimizeControlClassName}
           onClick={() => {
             void handleMinimize()
           }}
@@ -197,7 +219,7 @@ export function AppTitlebar() {
         </TitlebarButton>
         <TitlebarButton
           aria-label={isMaximized ? t('titlebar.restore') : t('titlebar.maximize')}
-          className="h-8 w-8 cursor-pointer rounded-md p-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          className={titlebarMaximizeControlClassName}
           onClick={() => {
             void handleToggleMaximize()
           }}
@@ -206,7 +228,7 @@ export function AppTitlebar() {
         </TitlebarButton>
         <TitlebarButton
           aria-label={t('titlebar.close')}
-          className="h-8 w-8 cursor-pointer rounded-md p-0 text-sidebar-foreground hover:bg-destructive hover:text-white focus-visible:ring-destructive/20 dark:hover:bg-destructive/60 dark:focus-visible:ring-destructive/40"
+          className={titlebarCloseControlClassName}
           onClick={() => {
             void handleClose()
           }}

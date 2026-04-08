@@ -112,14 +112,15 @@ export function usePageHeader(pathname: string): PageHeader {
   if (pathname.startsWith('/network-stats/')) {
     const adapterName = decodeURIComponent(pathname.replace('/network-stats/', ''))
     const adapter = staticInfo?.networkAdapters.find(entry => entry.name === adapterName) ?? null
+    const adapterLabel = adapter?.adapterDescription || adapter?.name || null
     return {
-      title: adapter
+      title: adapterLabel
         ? (
             <span className="flex items-baseline gap-1.5">
               <span>{t('home.network')}</span>
               <span className="text-base font-normal text-muted-foreground">
                 (
-                {adapter.name}
+                {adapterLabel}
                 )
               </span>
             </span>

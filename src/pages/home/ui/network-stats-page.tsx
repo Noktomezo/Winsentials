@@ -119,7 +119,7 @@ function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
 
   return (
     <button
-      className="flex w-full flex-col gap-3 rounded-lg border border-border/70 bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-accent/20"
+      className="flex w-full flex-col gap-3 rounded-lg border border-border/70 bg-card p-4 text-left transition-colors hover:border-[color:color-mix(in_oklch,var(--ring)_32%,var(--border)_68%)] hover:bg-accent/20"
       onFocus={handlePointerIntent}
       onMouseEnter={handlePointerIntent}
       onClick={() => {
@@ -132,7 +132,7 @@ function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
           <h3 className="text-sm font-medium text-foreground">{adapter.name}</h3>
           <p className="text-xs text-muted-foreground">{adapter.adapterDescription}</p>
           {adapter.isWifi && adapter.ssid && (
-            <p className="text-xs text-primary">{adapter.ssid}</p>
+            <p className="text-xs text-[var(--metric-accent)]">{adapter.ssid}</p>
           )}
         </div>
         <span className="text-xs tabular-nums text-muted-foreground">
@@ -257,7 +257,10 @@ export function NetworkStatsPage() {
             <Row label={t('networkStats.send')} value={formatRate(traffic?.txBytesPerSec ?? 0, i18n.language, t)} />
             <Row label={t('networkStats.receive')} value={formatRate(traffic?.rxBytesPerSec ?? 0, i18n.language, t)} />
             <Row label={t('networkStats.adapter')} value={selectedAdapter.name} />
-            <Row label={t('networkStats.adapterDescription')} value={selectedAdapter.adapterDescription} />
+            <Row
+              label={t('networkStats.adapterDescription')}
+              value={<span className="text-muted-foreground">{selectedAdapter.adapterDescription}</span>}
+            />
             <Row label={t('networkStats.dnsName')} value={selectedAdapter.dnsName ?? <EmptyValue />} />
             <Row label={t('networkStats.connectionType')} value={selectedAdapter.connectionType} />
             <Row
