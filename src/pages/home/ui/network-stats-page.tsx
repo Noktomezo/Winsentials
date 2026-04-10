@@ -35,7 +35,7 @@ function getRateUnit(bytesPerSec: number, t: ReturnType<typeof useTranslation>['
 }
 
 function ceilToNiceNumber(value: number): number {
-  if (value <= 0) { return 0 }
+  if (value <= 0) return 0
   const magnitude = 10 ** Math.floor(Math.log10(value))
   return Math.ceil(value / magnitude) * magnitude
 }
@@ -47,6 +47,15 @@ interface LiveNetworkErrorStateProps {
 
 function getLiveAdapter(liveInfo: NetworkIfaceStats[] | null, adapter: NetworkAdapterInfo): NetworkIfaceStats | null {
   return liveInfo?.find(entry => entry.name === adapter.name) ?? null
+}
+
+function getPrimaryIpv6Address(addresses: string[]): string | null {
+  if (addresses.length === 0) {
+    return null
+  }
+
+  const preferred = addresses.find(address => !address.toLowerCase().startsWith('fe80:'))
+  return preferred ?? addresses[0] ?? null
 }
 
 interface RowProps {
@@ -132,7 +141,7 @@ function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
           <h3 className="text-sm font-medium text-foreground">{adapter.name}</h3>
           <p className="text-xs text-muted-foreground">{adapter.adapterDescription}</p>
           {adapter.isWifi && adapter.ssid && (
-            <p className="text-xs text-[var(--metric-accent)]">{adapter.ssid}</p>
+            <p className="metric-text-accent text-xs">{adapter.ssid}</p>
           )}
         </div>
         <span className="text-xs tabular-nums text-muted-foreground">
@@ -266,7 +275,7 @@ export function NetworkStatsPage() {
             />
             <Row
               label={t('networkStats.ipv6')}
-              value={selectedAdapter.ipv6Addresses.length > 0 ? selectedAdapter.ipv6Addresses.join(', ') : <EmptyValue />}
+              value={getPrimaryIpv6Address(selectedAdapter.ipv6Addresses) ?? <EmptyValue />}
             />
             {selectedAdapter.isWifi && (
               <Row label={t('networkStats.ssid')} value={selectedAdapter.ssid ?? <EmptyValue />} />

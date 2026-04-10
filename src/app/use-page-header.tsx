@@ -14,23 +14,59 @@ export function usePageHeader(pathname: string): PageHeader {
   const staticInfo = useStaticInfo()
 
   // ── Static pages ────────────────────────────────────────────────────────────
-  const staticMap: Record<string, PageHeader> = useMemo(() => ({
-    '/home': { title: t('home.title'), description: t('home.description') },
-    '/ram': { title: t('home.ram'), description: t('ram.description') },
-    '/gpu': { title: t('home.gpu'), description: t('gpu.description') },
-    '/network-stats': { title: t('home.network'), description: t('networkStats.description') },
-    '/startup': { title: t('startup.title'), description: t('startup.description') },
-    '/behaviour': { title: t('behaviour.title'), description: t('behaviour.description') },
-    '/appearance': { title: t('appearance.title'), description: t('appearance.description') },
-    '/security': { title: t('security.title'), description: t('security.description') },
-    '/network': { title: t('network.title'), description: t('network.description') },
-    '/performance': { title: t('performance.title'), description: t('performance.description') },
-    '/input': { title: t('input.title'), description: t('input.description') },
-    '/tools': { title: t('tools.title'), description: t('tools.description') },
-    '/settings': { title: t('settings.title'), description: t('settings.description') },
-    '/backup': { title: t('backup.title'), description: t('backup.description') },
-  }), [t])
-  if (staticMap[pathname]) { return staticMap[pathname] }
+  const staticMap: Record<string, PageHeader> = useMemo(
+    () => ({
+      '/home': { title: t('home.title'), description: t('home.description') },
+      '/ram': { title: t('home.ram'), description: t('ram.description') },
+      '/gpu': { title: t('home.gpu'), description: t('gpu.description') },
+      '/network-stats': {
+        title: t('home.network'),
+        description: t('networkStats.description'),
+      },
+      '/startup': {
+        title: t('startup.title'),
+        description: t('startup.description'),
+      },
+      '/behaviour': {
+        title: t('behaviour.title'),
+        description: t('behaviour.description'),
+      },
+      '/appearance': {
+        title: t('appearance.title'),
+        description: t('appearance.description'),
+      },
+      '/security': {
+        title: t('security.title'),
+        description: t('security.description'),
+      },
+      '/network': {
+        title: t('network.title'),
+        description: t('network.description'),
+      },
+      '/performance': {
+        title: t('performance.title'),
+        description: t('performance.description'),
+      },
+      '/input': {
+        title: t('input.title'),
+        description: t('input.description'),
+      },
+      '/tools': {
+        title: t('tools.title'),
+        description: t('tools.description'),
+      },
+      '/settings': {
+        title: t('settings.title'),
+        description: t('settings.description'),
+      },
+      '/backup': {
+        title: t('backup.title'),
+        description: t('backup.description'),
+      },
+    }),
+    [t],
+  )
+  if (staticMap[pathname]) return staticMap[pathname]
 
   // ── CPU: /cpu ────────────────────────────────────────────────────────────────
   if (pathname === '/cpu') {
@@ -47,7 +83,9 @@ export function usePageHeader(pathname: string): PageHeader {
               </span>
             </span>
           )
-        : t('home.cpu'),
+        : (
+            t('home.cpu')
+          ),
       description: t('cpu.description'),
     }
   }
@@ -76,7 +114,9 @@ export function usePageHeader(pathname: string): PageHeader {
               </span>
             </span>
           )
-        : label,
+        : (
+            label
+          ),
       description: t('gpu.description'),
     }
   }
@@ -84,9 +124,13 @@ export function usePageHeader(pathname: string): PageHeader {
   // ── Disk detail: /storage/C … ────────────────────────────────────────────────
   if (pathname.startsWith('/storage/')) {
     const param = pathname.replace('/storage/', '')
-    const idx = staticInfo?.disks.findIndex(d => mountToParam(d.mountPoint) === param) ?? -1
-    const disk = idx >= 0 ? staticInfo?.disks[idx] ?? null : null
-    const diskLabel = idx >= 0 ? t('storage.diskLabel', { index: idx }) : param.toUpperCase()
+    const idx
+      = staticInfo?.disks.findIndex(
+        d => mountToParam(d.mountPoint) === param,
+      ) ?? -1
+    const disk = idx >= 0 ? (staticInfo?.disks[idx] ?? null) : null
+    const diskLabel
+      = idx >= 0 ? t('storage.diskLabel', { index: idx }) : param.toUpperCase()
     const diskSub = disk
       ? disk.volumeLabel
         ? `${mountLabel(disk.mountPoint)} - ${disk.volumeLabel}`
@@ -104,14 +148,20 @@ export function usePageHeader(pathname: string): PageHeader {
               </span>
             </span>
           )
-        : diskLabel,
+        : (
+            diskLabel
+          ),
       description: t('storage.description'),
     }
   }
 
   if (pathname.startsWith('/network-stats/')) {
-    const adapterName = decodeURIComponent(pathname.replace('/network-stats/', ''))
-    const adapter = staticInfo?.networkAdapters.find(entry => entry.name === adapterName) ?? null
+    const adapterName = decodeURIComponent(
+      pathname.replace('/network-stats/', ''),
+    )
+    const adapter
+      = staticInfo?.networkAdapters.find(entry => entry.name === adapterName)
+        ?? null
     const adapterLabel = adapter?.adapterDescription || adapter?.name || null
     return {
       title: adapterLabel
@@ -125,7 +175,9 @@ export function usePageHeader(pathname: string): PageHeader {
               </span>
             </span>
           )
-        : t('home.network'),
+        : (
+            t('home.network')
+          ),
       description: t('networkStats.description'),
     }
   }

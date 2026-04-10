@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tauri + React + Typescript</title>
     <script>
-      (() => {
+      ;(() => {
         const DEFAULT_THEME = 'dark'
         const DEFAULT_WEBVIEW_MATERIAL = 'none'
         const STORAGE_KEY = 'winsentials-preferences-bootstrap'
@@ -18,28 +18,26 @@
           const persisted = raw ? JSON.parse(raw) : null
           const state = persisted && typeof persisted === 'object' ? persisted.state : null
 
-          const themePreference = state && typeof state.theme === 'string'
-            ? state.theme
-            : DEFAULT_THEME
+          const themePreference = state && typeof state.theme === 'string' ? state.theme : DEFAULT_THEME
           const normalizeWebviewMaterial = (value) => {
             if (value === 'micaAlt') return 'tabbed'
             if (value === 'blur') return 'none'
             return value
           }
 
-          const webviewMaterial = state && typeof state.webviewMaterial === 'string'
-            ? normalizeWebviewMaterial(state.webviewMaterial)
-            : state && typeof state.chromeMaterial === 'string'
-              ? normalizeWebviewMaterial(state.chromeMaterial)
-            : state && state.chromeAcrylic === true
-              ? 'acrylic'
-              : DEFAULT_WEBVIEW_MATERIAL
+          const webviewMaterial =
+            state && typeof state.webviewMaterial === 'string'
+              ? normalizeWebviewMaterial(state.webviewMaterial)
+              : state && typeof state.chromeMaterial === 'string'
+                ? normalizeWebviewMaterial(state.chromeMaterial)
+                : state && state.chromeAcrylic === true
+                  ? 'acrylic'
+                  : DEFAULT_WEBVIEW_MATERIAL
 
           root.dataset.theme = themePreference === 'light' ? 'light' : 'dark'
           root.dataset.webviewMaterial = webviewMaterial
           root.style.colorScheme = themePreference === 'light' ? 'light' : 'dark'
-        }
-        catch {
+        } catch {
           root.dataset.theme = DEFAULT_THEME
           root.dataset.webviewMaterial = DEFAULT_WEBVIEW_MATERIAL
           root.style.colorScheme = DEFAULT_THEME

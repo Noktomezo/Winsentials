@@ -25,7 +25,7 @@ export function ThemeSelect({ className }: { className?: string }) {
   return (
     <div className={cn('w-full', className)}>
       <Select value={theme} onValueChange={value => setTheme(value as typeof theme)}>
-        <SelectTrigger className="w-full justify-between">
+        <SelectTrigger className="w-full justify-between !border-border/60 !bg-accent/55 !text-accent-foreground shadow-xs [&_svg:not([class*='text-'])]:!text-accent-foreground/70">
           <SelectValue placeholder={t('settings.mode')} />
         </SelectTrigger>
         <SelectContent>

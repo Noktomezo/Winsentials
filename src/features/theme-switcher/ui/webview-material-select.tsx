@@ -46,7 +46,7 @@ export function WebviewMaterialSelect({ className }: { className?: string }) {
         </div>
         <div className={cn('w-full sm:w-[163px]', className)}>
           <Select value={webviewMaterial} onValueChange={value => setWebviewMaterial(value as typeof webviewMaterial)}>
-            <SelectTrigger className="w-full justify-between">
+            <SelectTrigger className="w-full justify-between !border-border/60 !bg-accent/55 !text-accent-foreground shadow-xs [&_svg:not([class*='text-'])]:!text-accent-foreground/70">
               <SelectValue placeholder={t('settings.windowMaterial')} />
             </SelectTrigger>
             <SelectContent>

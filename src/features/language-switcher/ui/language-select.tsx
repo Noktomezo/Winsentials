@@ -33,7 +33,7 @@ export function LanguageSelect({ className }: { className?: string }) {
   return (
     <div className={cn('w-full', className)}>
       <Select value={language} onValueChange={value => setLanguage(value as typeof language)}>
-        <SelectTrigger className="w-full justify-between">
+        <SelectTrigger className="w-full justify-between !border-border/60 !bg-accent/55 !text-accent-foreground shadow-xs [&_svg:not([class*='text-'])]:!text-accent-foreground/70">
           <SelectValue placeholder={t('settings.language')} />
         </SelectTrigger>
         <SelectContent>

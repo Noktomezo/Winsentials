@@ -22,11 +22,11 @@ interface Crumb { label: string, href?: string }
 
 const titlebarControlClassName = 'h-8 w-8 cursor-pointer rounded-md border border-transparent p-0 text-sidebar-foreground/82 transition-[background-color,border-color,color,box-shadow] hover:border-sidebar-border hover:bg-[color:color-mix(in_oklch,var(--sidebar-accent)_72%,transparent)] hover:text-sidebar-accent-foreground focus-visible:border-sidebar-border focus-visible:bg-[color:color-mix(in_oklch,var(--sidebar-accent)_72%,transparent)] focus-visible:text-sidebar-accent-foreground focus-visible:ring-sidebar-ring/30'
 
-const titlebarMinimizeControlClassName = 'h-8 w-8 cursor-pointer rounded-md border border-transparent p-0 text-sidebar-foreground/82 transition-[background-color,border-color,color,box-shadow] hover:border-[color:color-mix(in_oklch,var(--warning)_30%,transparent)] hover:bg-[color:color-mix(in_oklch,var(--warning)_16%,transparent)] hover:text-[var(--warning)] focus-visible:border-[color:color-mix(in_oklch,var(--warning)_30%,transparent)] focus-visible:bg-[color:color-mix(in_oklch,var(--warning)_16%,transparent)] focus-visible:text-[var(--warning)] focus-visible:ring-[color:color-mix(in_oklch,var(--warning)_24%,transparent)]'
+const titlebarMinimizeControlClassName = 'h-8 w-8 cursor-pointer rounded-md border border-transparent p-0 text-sidebar-foreground/82 transition-[background-color,border-color,color,box-shadow] hover:border-[color:color-mix(in_oklch,var(--warning)_56%,transparent)] hover:bg-[color:color-mix(in_oklch,var(--warning)_28%,transparent)] hover:text-[var(--warning)] focus-visible:border-[color:color-mix(in_oklch,var(--warning)_56%,transparent)] focus-visible:bg-[color:color-mix(in_oklch,var(--warning)_28%,transparent)] focus-visible:text-[var(--warning)] focus-visible:ring-[color:color-mix(in_oklch,var(--warning)_36%,transparent)]'
 
-const titlebarMaximizeControlClassName = 'h-8 w-8 cursor-pointer rounded-md border border-transparent p-0 text-sidebar-foreground/82 transition-[background-color,border-color,color,box-shadow] hover:border-[color:color-mix(in_oklch,var(--success)_30%,transparent)] hover:bg-[color:color-mix(in_oklch,var(--success)_16%,transparent)] hover:text-[var(--success)] focus-visible:border-[color:color-mix(in_oklch,var(--success)_30%,transparent)] focus-visible:bg-[color:color-mix(in_oklch,var(--success)_16%,transparent)] focus-visible:text-[var(--success)] focus-visible:ring-[color:color-mix(in_oklch,var(--success)_24%,transparent)]'
+const titlebarMaximizeControlClassName = 'h-8 w-8 cursor-pointer rounded-md border border-transparent p-0 text-sidebar-foreground/82 transition-[background-color,border-color,color,box-shadow] hover:border-[color:color-mix(in_oklch,var(--success)_56%,transparent)] hover:bg-[color:color-mix(in_oklch,var(--success)_28%,transparent)] hover:text-[var(--success)] focus-visible:border-[color:color-mix(in_oklch,var(--success)_56%,transparent)] focus-visible:bg-[color:color-mix(in_oklch,var(--success)_28%,transparent)] focus-visible:text-[var(--success)] focus-visible:ring-[color:color-mix(in_oklch,var(--success)_36%,transparent)]'
 
-const titlebarCloseControlClassName = 'h-8 w-8 cursor-pointer rounded-md border border-transparent p-0 text-sidebar-foreground/82 transition-[background-color,border-color,color,box-shadow] hover:border-[color:color-mix(in_oklch,var(--badge-red)_30%,transparent)] hover:bg-[color:color-mix(in_oklch,var(--badge-red)_16%,transparent)] hover:text-[var(--badge-red)] focus-visible:border-[color:color-mix(in_oklch,var(--badge-red)_30%,transparent)] focus-visible:bg-[color:color-mix(in_oklch,var(--badge-red)_16%,transparent)] focus-visible:text-[var(--badge-red)] focus-visible:ring-[color:color-mix(in_oklch,var(--badge-red)_24%,transparent)]'
+const titlebarCloseControlClassName = 'h-8 w-8 cursor-pointer rounded-md border border-transparent p-0 text-sidebar-foreground/82 transition-[background-color,border-color,color,box-shadow] hover:border-[color:color-mix(in_oklch,var(--destructive)_58%,transparent)] hover:bg-[color:color-mix(in_oklch,var(--destructive)_30%,transparent)] hover:text-[var(--destructive)] focus-visible:border-[color:color-mix(in_oklch,var(--destructive)_58%,transparent)] focus-visible:bg-[color:color-mix(in_oklch,var(--destructive)_30%,transparent)] focus-visible:text-[var(--destructive)] focus-visible:ring-[color:color-mix(in_oklch,var(--destructive)_38%,transparent)]'
 
 function useBreadcrumbs(): Crumb[] {
   const pathname = useRouterState({ select: s => s.location.pathname })
@@ -35,7 +35,7 @@ function useBreadcrumbs(): Crumb[] {
 
   const home: Crumb = { label: t('home.title'), href: '/home' }
 
-  if (pathname === '/home') { return [{ label: t('home.title') }] }
+  if (pathname === '/home') return [{ label: t('home.title') }]
 
   const hardwareMap: Record<string, string> = {
     '/cpu': t('home.cpu'),
@@ -43,13 +43,12 @@ function useBreadcrumbs(): Crumb[] {
     '/gpu': t('home.gpu'),
     '/network-stats': t('home.network'),
   }
-  if (hardwareMap[pathname]) { return [home, { label: hardwareMap[pathname] }] }
+  if (hardwareMap[pathname]) return [home, { label: hardwareMap[pathname] }]
 
   if (pathname.startsWith('/gpu/')) {
     const idx = Number(pathname.replace('/gpu/', ''))
-    if (!Number.isInteger(idx) || idx < 0 || (staticInfo && idx >= staticInfo.gpus.length)) {
+    if (!Number.isInteger(idx) || idx < 0 || (staticInfo && idx >= staticInfo.gpus.length))
       return [home, { label: t('home.gpu') }]
-    }
     return [home, { label: t('gpu.gpuLabel', { index: idx }) }]
   }
 
@@ -74,7 +73,7 @@ function useBreadcrumbs(): Crumb[] {
     '/tools': t('tools.title'),
     '/settings': t('settings.title'),
   }
-  if (topLevel[pathname]) { return [{ label: topLevel[pathname] }] }
+  if (topLevel[pathname]) return [{ label: topLevel[pathname] }]
 
   if (pathname === '/startup') {
     return [

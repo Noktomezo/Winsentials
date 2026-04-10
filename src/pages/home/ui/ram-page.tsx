@@ -18,7 +18,7 @@ function formatBytes(bytes: number, locale: string, t: ReturnType<typeof useTran
 
 /** Format `bytes` as a plain number in the same unit as `reference`, no unit suffix. */
 function formatBytesNumberOnly(bytes: number, reference: number): string {
-  if (reference === 0) { return '0' }
+  if (reference === 0) return '0'
   const k = 1024
   const i = Math.floor(Math.log(Math.max(reference, 1)) / Math.log(k))
   return Number.parseFloat((bytes / k ** i).toFixed(2)).toString()
@@ -54,7 +54,7 @@ function StripBar({
   totalBytes: number
 }) {
   const { t, i18n } = useTranslation()
-  if (totalBytes === 0) { return null }
+  if (totalBytes === 0) return null
 
   // "Other" = neither used nor available (kernel, cache, hardware reserved etc.)
   const otherBytes = Math.max(0, totalBytes - usedBytes - availableBytes)
@@ -64,9 +64,9 @@ function StripBar({
   const otherPct = Math.max(0, 100 - usedPct - availablePct)
 
   const segments = [
-    { pct: usedPct, color: 'bg-[var(--metric-accent)]', label: t('ram.used'), value: toGb(usedBytes, i18n.language, t) },
-    { pct: otherPct, color: 'bg-[var(--metric-warning)]', label: t('ram.other'), value: toGb(otherBytes, i18n.language, t) },
-    { pct: availablePct, color: 'bg-[var(--metric-good)]', label: t('ram.available'), value: toGb(availableBytes, i18n.language, t) },
+    { pct: usedPct, color: 'metric-bg-accent', label: t('ram.used'), value: toGb(usedBytes, i18n.language, t) },
+    { pct: otherPct, color: 'metric-bg-warning', label: t('ram.other'), value: toGb(otherBytes, i18n.language, t) },
+    { pct: availablePct, color: 'metric-bg-good', label: t('ram.available'), value: toGb(availableBytes, i18n.language, t) },
   ]
 
   return (

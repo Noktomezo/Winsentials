@@ -147,9 +147,9 @@ const StartupCard = memo(({
 
   return (
     <section className="rounded-lg border border-border/70 bg-card p-4">
-      <div className="min-w-0 flex items-start gap-3">
+      <div className="min-w-0 flex items-center gap-3">
         <span className={cn(
-          'flex size-9 shrink-0 items-center justify-center rounded-lg',
+          'flex size-9 shrink-0 items-center justify-center self-center rounded-lg',
           sourceColor(entry.source),
         )}
         >
@@ -157,8 +157,8 @@ const StartupCard = memo(({
             ? <img alt="" className="size-4 object-contain" src={entry.iconDataUrl} />
             : <Icon className="size-4" />}
         </span>
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex flex-1 items-center justify-between gap-4">
+          <div className="min-w-0 flex-1 space-y-1">
             <div className="min-w-0 flex flex-wrap items-center gap-2">
               <h2 className="truncate text-sm font-medium text-foreground">{entry.displayName}</h2>
               <Tooltip>
@@ -209,125 +209,118 @@ const StartupCard = memo(({
                 </Tooltip>
               )}
             </div>
-            <div className="flex shrink-0 items-center gap-1 self-start">
-              <Tooltip>
+            <p className="truncate text-xs leading-5 text-muted-foreground">
+              {publisherSummary(entry, t)}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1 self-center">
+            <LabeledSwitch
+              aria-label={entry.status === 'enabled'
+                ? t('startup.actions.disable')
+                : t('startup.actions.enable')}
+              checked={entry.status === 'enabled'}
+              disabled={isPending}
+              onCheckedChange={checked => void (checked ? onEnable() : onDisable())}
+            />
+            <Tooltip>
+              <DropdownMenu>
                 <TooltipTrigger asChild>
-                  <span className="flex items-center">
-                    <LabeledSwitch
-                      aria-label={entry.status === 'enabled'
-                        ? t('startup.actions.disable')
-                        : t('startup.actions.enable')}
-                      checked={entry.status === 'enabled'}
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      aria-label={t('startup.actions.more')}
+                      className="ui-soft-surface size-9 rounded-md text-accent-foreground hover:bg-accent/70 hover:text-accent-foreground"
                       disabled={isPending}
-                      onCheckedChange={checked => void (checked ? onEnable() : onDisable())}
-                    />
-                  </span>
+                      size="icon-xs"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <MoreHorizontal className="size-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
                 </TooltipTrigger>
-                <TooltipContent sideOffset={8}>
-                  {entry.status === 'enabled'
-                    ? t('startup.actions.disable')
-                    : t('startup.actions.enable')}
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <DropdownMenu>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        aria-label={t('startup.actions.more')}
-                        disabled={isPending}
-                        size="icon-xs"
-                        type="button"
-                        variant="ghost"
-                      >
-                        <MoreHorizontal className="size-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent sideOffset={8}>{t('startup.actions.more')}</TooltipContent>
-                  <DropdownMenuContent align="end">
-                    {entry.source === 'registry' && (
-                      <>
-                        <DropdownMenuItem
-                          disabled={!entry.command}
-                          onSelect={() => onCopy(entry.command, 'startup.success.copyCommand')}
-                        >
-                          <Copy className="size-3.5" />
-                          {t('startup.actions.copyCommand')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={!entry.registryPath}
-                          onSelect={() => onCopy(entry.registryPath, 'startup.success.copyRegistryPath')}
-                        >
-                          <Copy className="size-3.5" />
-                          {t('startup.actions.copyRegistryPath')}
-                        </DropdownMenuItem>
-                      </>
-                    )}
-
-                    {entry.source === 'startup_folder' && (
-                      <>
-                        <DropdownMenuItem
-                          disabled={!entry.targetPath}
-                          onSelect={() => onReveal(entry.targetPath)}
-                        >
-                          <FolderUp className="size-3.5" />
-                          {t('startup.actions.openContainingFolder')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={!entry.targetPath}
-                          onSelect={() => onCopy(entry.targetPath, 'startup.success.copyPath')}
-                        >
-                          <Copy className="size-3.5" />
-                          {t('startup.actions.copyPath')}
-                        </DropdownMenuItem>
-                      </>
-                    )}
-
-                    {entry.source === 'scheduled_task' && (
+                <TooltipContent sideOffset={8}>{t('startup.actions.more')}</TooltipContent>
+                <DropdownMenuContent
+                  align="end"
+                  className="min-w-[12.5rem] rounded-[10px] p-1.5"
+                >
+                  {entry.source === 'registry' && (
+                    <>
                       <DropdownMenuItem
-                        disabled={!entry.taskPath}
-                        onSelect={() => onCopy(entry.taskPath, 'startup.success.copyTaskPath')}
+                        disabled={!entry.command}
+                        onSelect={() => onCopy(entry.command, 'startup.success.copyCommand')}
                       >
                         <Copy className="size-3.5" />
-                        {t('startup.actions.copyTaskPath')}
+                        {t('startup.actions.copyCommand')}
                       </DropdownMenuItem>
-                    )}
-
-                    {entry.source !== 'scheduled_task' && <DropdownMenuSeparator />}
-                    {entry.source === 'startup_folder' && (
                       <DropdownMenuItem
-                        disabled={!entry.locationLabel}
-                        onSelect={() => onOpenLocation(entry.locationLabel)}
+                        disabled={!entry.registryPath}
+                        onSelect={() => onCopy(entry.registryPath, 'startup.success.copyRegistryPath')}
+                      >
+                        <Copy className="size-3.5" />
+                        {t('startup.actions.copyRegistryPath')}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+
+                  {entry.source === 'startup_folder' && (
+                    <>
+                      <DropdownMenuItem
+                        disabled={!entry.targetPath}
+                        onSelect={() => onReveal(entry.targetPath)}
                       >
                         <FolderUp className="size-3.5" />
-                        {t('startup.actions.openLocation')}
+                        {t('startup.actions.openContainingFolder')}
                       </DropdownMenuItem>
-                    )}
+                      <DropdownMenuItem
+                        disabled={!entry.targetPath}
+                        onSelect={() => onCopy(entry.targetPath, 'startup.success.copyPath')}
+                      >
+                        <Copy className="size-3.5" />
+                        {t('startup.actions.copyPath')}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+
+                  {entry.source === 'scheduled_task' && (
                     <DropdownMenuItem
-                      disabled={!entry.locationLabel}
-                      onSelect={() => onCopy(entry.locationLabel, 'startup.success.copyPath')}
+                      disabled={!entry.taskPath}
+                      onSelect={() => onCopy(entry.taskPath, 'startup.success.copyTaskPath')}
                     >
                       <Copy className="size-3.5" />
-                      {t('startup.actions.copyLocation')}
+                      {t('startup.actions.copyTaskPath')}
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
+                  )}
+
+                  {entry.source !== 'scheduled_task' && <DropdownMenuSeparator />}
+                  {entry.source === 'startup_folder' && (
                     <DropdownMenuItem
-                      disabled={isPending}
-                      onSelect={onDelete}
-                      variant="destructive"
+                      disabled={!entry.locationLabel}
+                      onSelect={() => onOpenLocation(entry.locationLabel)}
                     >
-                      <Trash2 className="size-3.5" />
-                      {t('startup.actions.delete')}
+                      <FolderUp className="size-3.5" />
+                      {t('startup.actions.openLocation')}
                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </Tooltip>
-            </div>
+                  )}
+                  <DropdownMenuItem
+                    disabled={!entry.locationLabel}
+                    onSelect={() => onCopy(entry.locationLabel, 'startup.success.copyPath')}
+                  >
+                    <Copy className="size-3.5" />
+                    {t('startup.actions.copyLocation')}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={isPending}
+                    onSelect={onDelete}
+                    variant="destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                    {t('startup.actions.delete')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </Tooltip>
           </div>
-          <p className="text-xs leading-5 text-muted-foreground">
-            {publisherSummary(entry, t)}
-          </p>
         </div>
       </div>
     </section>

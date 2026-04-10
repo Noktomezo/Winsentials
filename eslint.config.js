@@ -1,6 +1,5 @@
 // @ts-check
 import antfu from '@antfu/eslint-config'
-import oxlint from 'eslint-plugin-oxlint'
 
 export default antfu({
   ignores: [
@@ -12,12 +11,11 @@ export default antfu({
     'src-tauri',
   ],
   lessOpinionated: true,
+  formatters: true,
+}).append({
+  files: ['**/*.{js,jsx,ts,tsx}'],
+  rules: {
+    'e18e/prefer-static-regex': 'off',
+    'curly': 'off',
+  },
 })
-  .append(oxlint.configs['flat/recommended'])
-  .append({
-    files: ['**/*.{js,jsx,ts,tsx}'],
-    rules: {
-      'style/max-statements-per-line': 'off',
-      'e18e/prefer-static-regex': 'off',
-    },
-  })

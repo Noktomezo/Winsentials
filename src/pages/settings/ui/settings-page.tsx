@@ -27,11 +27,11 @@ function SettingsSection({
       <div
         className={cn(
           'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between',
-          withDivider && 'border-b border-border/40 pb-3',
+          withDivider && 'border-b border-border/70 pb-3',
         )}
       >
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex size-9 shrink-0 self-center items-center justify-center rounded-md bg-accent/60 text-accent-foreground">
+          <span className="ui-soft-surface flex size-9 shrink-0 self-center items-center justify-center rounded-md">
             <Icon className="size-4" />
           </span>
           <div className="min-w-0 flex-1">

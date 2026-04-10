@@ -21,6 +21,7 @@ import {
   LogOut,
   Menu,
   Mouse,
+  MousePointer2,
   Network,
   PanelsTopLeft,
   Power,
@@ -81,6 +82,7 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   disable_fault_tolerant_heap: Gauge,
   disable_game_dvr: Gamepad2,
   disable_mouse_acceleration: Mouse,
+  raw_mouse_throttle: MousePointer2,
   optimize_mmcss: Zap,
   fast_keyboard_repeat: Keyboard,
   enable_bbr2_congestion_control: Zap,
@@ -144,7 +146,7 @@ function metadataChipClassName(
   tone: 'default' | 'details' | 'action' | 'warning' | 'danger' | 'system' = 'default',
 ) {
   if (tone === 'details') {
-    return 'border-border/70 bg-secondary text-muted-foreground'
+    return 'border-border/60 bg-accent/55 text-muted-foreground'
   }
 
   if (tone === 'action') {
@@ -222,7 +224,7 @@ function MetadataChip({
 }>) {
   return (
     <span
-      className={`inline-flex items-center rounded-md border px-2 py-0.75 text-[10px] font-medium ${metadataChipClassName(tone)}`}
+      className={`inline-flex items-center rounded-[6px] border px-2 py-0.75 text-[10px] font-medium ${metadataChipClassName(tone)}`}
     >
       {Icon && <Icon className="mr-1 size-[11px]" />}
       {children}
@@ -344,13 +346,13 @@ export function TweakCard({
 
   return (
     <article
-      className="h-full rounded-lg border border-border/70 bg-card/95 p-4 shadow-[0_14px_36px_rgb(15_23_42_/_0.07)]"
+      className="h-full rounded-lg border border-border/70 bg-card/95 p-4 shadow-[0_14px_36px_rgb(16_15_15_/_0.08)]"
       data-marquee-group="true"
     >
       <div className="flex h-full min-w-0 flex-col">
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-4">
           <div className="flex min-h-9 min-w-0 items-center gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border/60 bg-accent/55 text-accent-foreground shadow-xs">
+            <span className="ui-soft-surface flex size-9 shrink-0 items-center justify-center rounded-md">
               <Icon className="size-4" />
             </span>
             <h2 className="min-w-0 flex-1 text-sm font-medium leading-5 text-foreground">
@@ -365,7 +367,7 @@ export function TweakCard({
             <div className="flex h-9 items-center justify-end gap-2">
               <Button
                 aria-label={t('tweaks.actions.resetToDefault')}
-                className="size-9 rounded-md border-border/70 text-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                className="size-9 rounded-md !border-border/60 !bg-accent/55 !text-accent-foreground shadow-xs transition-colors hover:!bg-destructive/10 hover:!text-destructive"
                 disabled={isPending || isAtDefault || isUnsupported}
                 onClick={() => onApplyValue(tweak.defaultValue)}
                 size="icon"
@@ -379,7 +381,9 @@ export function TweakCard({
                 <LabeledSwitch
                   aria-label={t(tweak.name)}
                   checked={isEnabled}
+                  containerClassName="!border-border/60 !bg-accent/55 !text-accent-foreground shadow-xs"
                   disabled={isPending || isUnsupported}
+                  labelClassName="!text-accent-foreground"
                   onCheckedChange={checked =>
                     onApplyValue(checked ? 'enabled' : 'disabled')}
                 />
@@ -390,7 +394,7 @@ export function TweakCard({
                   onValueChange={value => onApplyValue(value)}
                   value={tweak.currentValue}
                 >
-                  <SelectTrigger className="h-9 min-w-[11rem] justify-between rounded-md border-border/70 px-3 text-xs font-medium shadow-xs [&_svg]:size-3.5">
+                  <SelectTrigger className="h-9 min-w-[11rem] justify-between rounded-md !border-border/60 !bg-accent/55 px-3 text-xs font-medium !text-accent-foreground shadow-xs [&_svg]:size-3.5 [&_svg:not([class*='text-'])]:!text-accent-foreground/70">
                     {selectedDropdownOption
                       ? (
                           <span className="flex min-w-0 items-center gap-2">
@@ -573,7 +577,7 @@ export function TweakCard({
 
 export function TweakCardSkeleton() {
   return (
-    <article className="h-full rounded-lg border border-border/70 bg-card/95 p-4 shadow-[0_14px_36px_rgb(15_23_42_/_0.07)]">
+    <article className="h-full rounded-lg border border-border/70 bg-card/95 p-4 shadow-[0_14px_36px_rgb(16_15_15_/_0.08)]">
       <div className="flex h-full min-w-0 flex-col">
         <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-4">
           <div className="flex min-h-9 min-w-0 items-center gap-3">

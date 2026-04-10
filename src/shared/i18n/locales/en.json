@@ -150,7 +150,7 @@
   },
   "tools": {
     "title": "Tools",
-    "description": "Open standalone utilities for startup entries and tweak backups.",
+    "description": "Additional sections and system utilities of the app.",
     "eyebrow": "Standalone utility",
     "open": "Open section"
   },
@@ -220,6 +220,12 @@
         "name": "Disable Mouse Acceleration",
         "riskDescription": "If you are used to Windows cursor acceleration, the pointer may initially feel slower or require more desk movement, especially at lower DPI settings. If it becomes uncomfortable, reset the tweak and reboot Windows.",
         "shortDescription": "Turns off Enhance Pointer Precision for a more consistent 1:1 mouse feel."
+      },
+      "rawMouseThrottle": {
+        "detailDescription": "Windows already groups very high-rate mouse events before passing them through the system, usually at about 125 Hz. This tweak makes that grouping more aggressive by switching it to 50 Hz. Your mouse does not physically become 50 Hz, but Windows spends less time processing huge bursts of mouse events from 2000-8000 Hz devices. That can noticeably reduce CPU and DPC overhead and make FPS drops during fast mouse movement much less severe after a full reboot.",
+        "name": "Reduce High Polling Rate Mouse Overhead",
+        "riskDescription": "This is a tradeoff. Windows compresses mouse events more aggressively, so some users may feel slightly worse theoretical responsiveness or less precise motion in games that already behaved well. If mouse input feels worse after rebooting, reset the tweak and restart Windows.",
+        "shortDescription": "Makes Windows compress high-rate mouse events more aggressively to reduce FPS drops and CPU load."
       },
       "fastKeyboardRepeat": {
         "detailDescription": "Changes how quickly a held key starts repeating and how fast repeated characters are produced after that. Faster presets make input feel more responsive in games, code editors, and general navigation, while slower presets stay more comfortable for everyday typing. After changing this setting, it is best to sign out and back in so Windows fully applies the new profile.",
