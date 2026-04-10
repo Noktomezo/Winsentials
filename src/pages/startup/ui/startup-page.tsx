@@ -3,6 +3,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener'
 import {
   CalendarClock,
+  ChevronDown,
   Clock3,
   Copy,
   Database,
@@ -416,6 +417,7 @@ export function StartupPage() {
   const anyLoading = startupSources.some(source => sourceLoading[source])
   const anyLoaded = startupSources.some(source => hasSettledSource[source])
   const allLoaded = startupSources.every(source => hasSettledSource[source])
+  const hasActiveFilters = sourceFilter !== 'all' || statusFilter !== 'all'
   const localizedError = localizeStartupError(error, t)
 
   function handleCopy(value: string | null | undefined, successKey: string) {
@@ -541,13 +543,37 @@ export function StartupPage() {
           <Button
             aria-expanded={filtersOpen}
             aria-label={t('startup.filters.source')}
-            className="shrink-0"
+            className={cn(
+              'shrink-0 relative overflow-visible',
+              (filtersOpen || hasActiveFilters)
+              && 'border-[color:color-mix(in_oklch,var(--border)_58%,var(--primary)_42%)] bg-[color:color-mix(in_oklch,var(--secondary)_72%,var(--primary)_28%)] text-foreground hover:bg-[color:color-mix(in_oklch,var(--secondary)_62%,var(--primary)_38%)]',
+            )}
             onClick={() => setFiltersOpen(open => !open)}
             size="icon-sm"
             type="button"
             variant="outline"
           >
-            <Filter className="size-4" />
+            <span className="relative inline-flex size-4 items-center justify-center">
+              <Filter
+                className={cn(
+                  'size-4 transition-transform duration-200 ease-out',
+                  filtersOpen && '-translate-y-px scale-95',
+                )}
+              />
+              <ChevronDown
+                className={cn(
+                  'absolute -right-1 -bottom-1 size-2.5 rounded-full bg-background/85 text-muted-foreground transition-all duration-200 ease-out',
+                  filtersOpen ? 'rotate-180 text-foreground' : 'rotate-0',
+                )}
+              />
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'absolute -top-0.5 -right-0.5 size-2 rounded-full border border-background transition-all duration-200 ease-out',
+                  hasActiveFilters ? 'scale-100 bg-primary opacity-100' : 'scale-0 opacity-0',
+                )}
+              />
+            </span>
           </Button>
         </div>
 

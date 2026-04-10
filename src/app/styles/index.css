@@ -638,8 +638,8 @@ body {
 
 /* ─── Sonner Toast Theme ────────────────────────────────────────────────── */
 
-/* Sonner layout — keep icon + content native, but move actions into a footer row under the text. */
-[data-sonner-toast][data-styled='true'] {
+/* Sonner injects its own runtime CSS, so toast overrides need stronger specificity in release builds. */
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'] {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: start;
@@ -647,37 +647,67 @@ body {
   row-gap: 10px;
 }
 
-[data-sonner-toast][data-styled='true'] [data-content] {
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'] .winsentials-sonner-content {
   min-width: 0;
+  width: 100%;
   grid-column: 2 / 4;
   grid-row: 1;
 }
 
-[data-sonner-toast][data-styled='true'] [data-icon] {
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'] .winsentials-sonner-title,
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'] .winsentials-sonner-description {
+  min-width: 0;
+  width: 100%;
+}
+
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'] .winsentials-sonner-icon {
   grid-column: 1;
   grid-row: 1 / span 2;
   align-self: flex-start;
   margin-top: 0.125rem;
 }
 
-[data-sonner-toast][data-styled='true'] [data-button],
-[data-sonner-toast][data-styled='true'] [data-cancel] {
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'] .winsentials-sonner-action,
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'] .winsentials-sonner-cancel {
   margin: 0;
   width: 100%;
+  min-width: 0;
   justify-content: center;
 }
 
-[data-sonner-toast][data-styled='true'] [data-action] {
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'] .winsentials-sonner-action {
   grid-column: 2;
   grid-row: 2;
 }
 
-[data-sonner-toast][data-styled='true'] [data-cancel] {
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'] .winsentials-sonner-cancel {
   grid-column: 3;
   grid-row: 2;
 }
 
-[data-sonner-toast][data-styled='true']:not(:has([data-cancel])) [data-action] {
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true']:not(:has(.winsentials-sonner-action)):not(
+    :has(.winsentials-sonner-cancel)
+  ) {
+  grid-template-columns: auto minmax(0, 1fr);
+  row-gap: 0;
+}
+
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true']:not(:has(.winsentials-sonner-action)):not(
+    :has(.winsentials-sonner-cancel)
+  )
+  .winsentials-sonner-content {
+  grid-column: 2;
+}
+
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true']:not(:has(.winsentials-sonner-action)):not(
+    :has(.winsentials-sonner-cancel)
+  )
+  .winsentials-sonner-icon {
+  grid-row: 1;
+}
+
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true']:not(:has(.winsentials-sonner-cancel))
+  .winsentials-sonner-action {
   grid-column: 2 / 4;
 }
 
@@ -701,24 +731,29 @@ body {
 }
 
 /* Window materials — translucent toast surfaces */
-[data-webview-material='acrylic'] [data-sonner-toaster] [data-sonner-toast],
-[data-webview-material='mica'] [data-sonner-toaster] [data-sonner-toast],
-[data-webview-material='tabbed'] [data-sonner-toaster] [data-sonner-toast] {
+[data-webview-material='acrylic'] [data-sonner-toaster] .winsentials-sonner-toast[data-sonner-toast],
+[data-webview-material='mica'] [data-sonner-toaster] .winsentials-sonner-toast[data-sonner-toast],
+[data-webview-material='tabbed'] [data-sonner-toaster] .winsentials-sonner-toast[data-sonner-toast] {
   background: var(--popover);
-  backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
   border-color: color-mix(in oklch, var(--border) 80%, var(--primary) 20%);
 }
 
-[data-sonner-toast] [data-title] {
+.winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-title {
   color: var(--foreground);
 }
 
-[data-sonner-toast] [data-description] {
+.winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-description {
   color: var(--muted-foreground);
 }
 
-[data-sonner-toast] [data-button] {
+.winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-action,
+.winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-cancel {
+  border-radius: var(--radius-md);
+}
+
+.winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-action {
   background: color-mix(in oklch, var(--primary) 84%, black 16%);
   color: var(--primary-foreground);
   border: 1px solid color-mix(in oklch, var(--primary) 56%, var(--border) 44%);
@@ -727,17 +762,17 @@ body {
     0 1px 0 rgb(226 240 255 / 0.08) inset;
 }
 
-[data-sonner-toast] [data-button]:hover {
+.winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-action:hover {
   background: color-mix(in oklch, var(--primary) 90%, black 10%);
 }
 
-[data-sonner-toast] [data-cancel] {
+.winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-cancel {
   background: color-mix(in oklch, var(--card) 68%, var(--accent) 32%);
   color: var(--accent-foreground);
   border: 1px solid var(--border);
 }
 
-[data-sonner-toast] [data-cancel]:hover {
+.winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-cancel:hover {
   background: color-mix(in oklch, var(--accent) 90%, var(--background) 10%);
 }
 
@@ -746,8 +781,8 @@ body {
 [data-webview-material='mica'] [data-slot='tooltip-content'],
 [data-webview-material='tabbed'] [data-slot='tooltip-content'] {
   background: var(--popover);
-  backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
   border-color: var(--tooltip-border-color, var(--border));
 }
 
@@ -755,16 +790,16 @@ body {
 [data-webview-material='mica'] [data-slot='select-content'],
 [data-webview-material='tabbed'] [data-slot='select-content'] {
   background: var(--secondary);
-  backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
 }
 
 [data-webview-material='acrylic'] [data-slot='dialog-content'],
 [data-webview-material='mica'] [data-slot='dialog-content'],
 [data-webview-material='tabbed'] [data-slot='dialog-content'] {
   background: var(--popover);
-  backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
   border-color: var(--border);
 }
 

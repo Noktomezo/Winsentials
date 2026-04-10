@@ -7,7 +7,18 @@ export function Toaster({ resolvedTheme }: { resolvedTheme: ResolvedTheme }) {
       position="bottom-right"
       theme={resolvedTheme}
       gap={8}
-      toastOptions={{ duration: 4000 }}
+      toastOptions={{
+        duration: 4000,
+        classNames: {
+          actionButton: 'winsentials-sonner-action',
+          cancelButton: 'winsentials-sonner-cancel',
+          content: 'winsentials-sonner-content',
+          description: 'winsentials-sonner-description',
+          icon: 'winsentials-sonner-icon',
+          title: 'winsentials-sonner-title',
+          toast: 'winsentials-sonner-toast',
+        },
+      }}
     />
   )
 }

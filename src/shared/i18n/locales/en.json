@@ -197,6 +197,12 @@
         "riskDescription": "Windows may stop reliably showing the no-internet warning icon, captive portal detection can break, and some Microsoft apps or services may react worse to connectivity changes until you restore the default behavior.",
         "shortDescription": "Stops Windows from periodically pinging Microsoft endpoints to detect internet access."
       },
+      "disableNdu": {
+        "detailDescription": "Disables the built-in NDU component that tracks network data usage. On some systems, especially after Windows updates, it can start adding unnecessary memory usage and latency spikes that show up as microstutter. After a full reboot this often helps the system and games feel more stable.",
+        "name": "Disable NDU",
+        "riskDescription": "Windows data usage statistics may become less accurate or stop updating while this tweak is enabled. If you rely on the built-in traffic usage counters, restore the default setting and reboot.",
+        "shortDescription": "Turns off the network usage tracking service that can add overhead and microstutter on some systems."
+      },
       "disableQosBandwidthLimit": {
         "detailDescription": "Windows reserves a portion of your connection for system services by default. This tweak sets the QoS reservation to 0%, allowing browsers, games, and download managers to use 100% of your available bandwidth.",
         "name": "Disable QoS Bandwidth Limit",

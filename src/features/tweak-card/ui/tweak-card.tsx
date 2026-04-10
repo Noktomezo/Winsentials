@@ -79,6 +79,7 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   disable_open_file_warning: ShieldOff,
   disable_user_account_control: Shield,
   disable_ncsi_active_probing: CircleAlert,
+  disable_ndu: Network,
   configure_kernel_timing_chain: Clock3,
   disable_fault_tolerant_heap: Gauge,
   disable_game_dvr: Gamepad2,
