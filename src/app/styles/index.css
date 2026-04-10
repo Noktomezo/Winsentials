@@ -748,7 +748,7 @@ body {
   background: var(--popover);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-color: var(--border);
+  border-color: var(--tooltip-border-color, var(--border));
 }
 
 [data-webview-material='acrylic'] [data-slot='select-content'],

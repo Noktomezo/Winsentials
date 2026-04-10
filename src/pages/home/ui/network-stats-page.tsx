@@ -6,7 +6,6 @@ import { useDeviceInventory, useLiveNetwork } from '@/entities/system-info/model
 import { formatRateLocalized } from '@/shared/lib/format-size'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 import { networkAdapterToParam } from '@/shared/lib/mount-utils'
-import { safeDecodeSegment } from '@/shared/lib/safe-decode-segment'
 import { Button, Skeleton } from '@/shared/ui'
 import { LiveChart } from '@/shared/ui/live-chart'
 
@@ -167,9 +166,7 @@ function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
 export function NetworkStatsPage() {
   const { t, i18n } = useTranslation()
   const params = useParams({ strict: false })
-  const adapterParam = params.adapterName !== undefined
-    ? safeDecodeSegment(params.adapterName)
-    : null
+  const adapterParam = params.adapterName ?? null
   const { data: liveInfo, error: liveError, isFetching, retry, throughputHistory: storeThroughput } = useLiveNetwork()
   const {
     data: deviceInventory,

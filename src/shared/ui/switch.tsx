@@ -45,15 +45,18 @@ function LabeledSwitch(allProps: LabeledSwitchProps) {
     checked,
     className,
     containerClassName,
+    defaultChecked,
     falseLabel,
     labelClassName,
+    onCheckedChange,
     size = 'default',
     trueLabel,
     ...props
   } = allProps
   const { t } = useTranslation()
   const isControlled = 'checked' in allProps
-  const effectiveChecked = isControlled ? checked : (props.defaultChecked ?? false)
+  const [internalChecked, setInternalChecked] = React.useState(defaultChecked ?? false)
+  const effectiveChecked = isControlled ? checked : internalChecked
   const stateLabel = effectiveChecked
     ? (trueLabel ?? t('common.on'))
     : (falseLabel ?? t('common.off'))
@@ -77,7 +80,15 @@ function LabeledSwitch(allProps: LabeledSwitchProps) {
       </span>
       <Switch
         className={className}
+        defaultChecked={defaultChecked}
         size={size}
+        onCheckedChange={(value) => {
+          if (!isControlled) {
+            setInternalChecked(value)
+          }
+
+          onCheckedChange?.(value)
+        }}
         {...(isControlled ? { checked } : {})}
         {...props}
       />

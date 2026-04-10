@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import type { TweakMeta, WindowsVersion } from '@/entities/tweak/model/types'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import {
@@ -166,6 +167,32 @@ function metadataChipClassName(
   }
 
   return 'border-border/70 bg-secondary text-muted-foreground'
+}
+
+function metadataTooltipBorderStyle(
+  tone: 'default' | 'details' | 'action' | 'warning' | 'danger' | 'system' = 'default',
+): CSSProperties {
+  if (tone === 'details') {
+    return { '--tooltip-border-color': 'color-mix(in oklch, var(--border) 60%, transparent)' } as CSSProperties
+  }
+
+  if (tone === 'action') {
+    return { '--tooltip-border-color': 'color-mix(in oklch, var(--badge-blue) 28%, transparent)' } as CSSProperties
+  }
+
+  if (tone === 'warning') {
+    return { '--tooltip-border-color': 'color-mix(in oklch, var(--badge-yellow) 28%, transparent)' } as CSSProperties
+  }
+
+  if (tone === 'danger') {
+    return { '--tooltip-border-color': 'color-mix(in oklch, var(--badge-red) 28%, transparent)' } as CSSProperties
+  }
+
+  if (tone === 'system') {
+    return { '--tooltip-border-color': 'color-mix(in oklch, var(--badge-purple) 28%, transparent)' } as CSSProperties
+  }
+
+  return { '--tooltip-border-color': 'color-mix(in oklch, var(--border) 70%, transparent)' } as CSSProperties
 }
 
 function requiresActionBadge(
@@ -457,7 +484,11 @@ export function TweakCard({
                     {t('tweaks.meta.details')}
                   </MetadataChipButton>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-80 text-pretty" sideOffset={8}>
+                <TooltipContent
+                  className="max-w-80 text-pretty"
+                  sideOffset={8}
+                  style={metadataTooltipBorderStyle('details')}
+                >
                   {t(tweak.detailDescription)}
                 </TooltipContent>
               </Tooltip>
@@ -476,6 +507,7 @@ export function TweakCard({
                   <TooltipContent
                     className="max-w-80 text-pretty whitespace-pre-line"
                     sideOffset={8}
+                    style={metadataTooltipBorderStyle('action')}
                   >
                     {requiresBadge.tooltip}
                   </TooltipContent>
@@ -497,6 +529,7 @@ export function TweakCard({
                     <TooltipContent
                       className="max-w-80 text-pretty whitespace-pre-line"
                       sideOffset={8}
+                      style={metadataTooltipBorderStyle('warning')}
                     >
                       <Trans
                         components={{
@@ -531,6 +564,7 @@ export function TweakCard({
                   <TooltipContent
                     className="max-w-80 text-pretty whitespace-pre-line"
                     sideOffset={8}
+                    style={metadataTooltipBorderStyle('danger')}
                   >
                     {conflicts.length === 1
                       ? (
@@ -562,7 +596,10 @@ export function TweakCard({
                       {t('tweaks.requires.windowsBuild', { build: minBuild })}
                     </MetadataChipButton>
                   </TooltipTrigger>
-                  <TooltipContent sideOffset={8}>
+                  <TooltipContent
+                    sideOffset={8}
+                    style={metadataTooltipBorderStyle('system')}
+                  >
                     {t('tweaks.requires.windowsBuild', { build: minBuild })}
                   </TooltipContent>
                 </Tooltip>
