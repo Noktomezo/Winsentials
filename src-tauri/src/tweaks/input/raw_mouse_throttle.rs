@@ -105,6 +105,13 @@ impl RawMouseThrottleTweak {
             && state.duration == DEFAULT_RAW_MOUSE_THROTTLE_DURATION
             && state.leeway == DEFAULT_RAW_MOUSE_THROTTLE_LEEWAY
     }
+
+    fn write_values(enabled: u32, forced: u32, duration: u32, leeway: u32) -> Result<(), AppError> {
+        MOUSE_KEY.set_dword("RawMouseThrottleEnabled", enabled)?;
+        MOUSE_KEY.set_dword("RawMouseThrottleForced", forced)?;
+        MOUSE_KEY.set_dword("RawMouseThrottleDuration", duration)?;
+        MOUSE_KEY.set_dword("RawMouseThrottleLeeway", leeway)
+    }
 }
 
 impl Tweak for RawMouseThrottleTweak {
@@ -118,15 +125,12 @@ impl Tweak for RawMouseThrottleTweak {
 
     fn apply(&self, value: &str) -> Result<(), AppError> {
         match value {
-            ENABLED_VALUE => {
-                MOUSE_KEY.set_dword("RawMouseThrottleEnabled", TWEAK_RAW_MOUSE_THROTTLE_ENABLED)?;
-                MOUSE_KEY.set_dword("RawMouseThrottleForced", TWEAK_RAW_MOUSE_THROTTLE_FORCED)?;
-                MOUSE_KEY.set_dword(
-                    "RawMouseThrottleDuration",
-                    TWEAK_RAW_MOUSE_THROTTLE_DURATION,
-                )?;
-                MOUSE_KEY.set_dword("RawMouseThrottleLeeway", TWEAK_RAW_MOUSE_THROTTLE_LEEWAY)
-            }
+            ENABLED_VALUE => Self::write_values(
+                TWEAK_RAW_MOUSE_THROTTLE_ENABLED,
+                TWEAK_RAW_MOUSE_THROTTLE_FORCED,
+                TWEAK_RAW_MOUSE_THROTTLE_DURATION,
+                TWEAK_RAW_MOUSE_THROTTLE_LEEWAY,
+            ),
             DISABLED_VALUE => self.reset(),
             _ => Err(AppError::message(format!(
                 "unsupported value `{value}` for {}",
@@ -136,16 +140,12 @@ impl Tweak for RawMouseThrottleTweak {
     }
 
     fn reset(&self) -> Result<(), AppError> {
-        MOUSE_KEY.set_dword(
-            "RawMouseThrottleEnabled",
+        Self::write_values(
             DEFAULT_RAW_MOUSE_THROTTLE_ENABLED,
-        )?;
-        MOUSE_KEY.set_dword("RawMouseThrottleForced", DEFAULT_RAW_MOUSE_THROTTLE_FORCED)?;
-        MOUSE_KEY.set_dword(
-            "RawMouseThrottleDuration",
+            DEFAULT_RAW_MOUSE_THROTTLE_FORCED,
             DEFAULT_RAW_MOUSE_THROTTLE_DURATION,
-        )?;
-        MOUSE_KEY.set_dword("RawMouseThrottleLeeway", DEFAULT_RAW_MOUSE_THROTTLE_LEEWAY)
+            DEFAULT_RAW_MOUSE_THROTTLE_LEEWAY,
+        )
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {

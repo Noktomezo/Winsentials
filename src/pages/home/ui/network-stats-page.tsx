@@ -49,13 +49,22 @@ function getLiveAdapter(liveInfo: NetworkIfaceStats[] | null, adapter: NetworkAd
   return liveInfo?.find(entry => entry.name === adapter.name) ?? null
 }
 
-function getPrimaryIpv6Address(addresses: string[]): string | null {
+function decodeRouteSegmentSafely(value: string): string {
+  try {
+    return decodeURIComponent(value)
+  }
+  catch {
+    return value
+  }
+}
+
+function formatIpv6Addresses(addresses: string[]): string | null {
   if (addresses.length === 0) {
     return null
   }
 
-  const preferred = addresses.find(address => !address.toLowerCase().startsWith('fe80:'))
-  return preferred ?? addresses[0] ?? null
+  const preferred = addresses.filter(address => !address.toLowerCase().startsWith('fe80:'))
+  return (preferred.length > 0 ? preferred : addresses).join(', ')
 }
 
 interface RowProps {
@@ -166,7 +175,9 @@ function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
 export function NetworkStatsPage() {
   const { t, i18n } = useTranslation()
   const params = useParams({ strict: false })
-  const adapterParam = params.adapterName !== undefined ? decodeURIComponent(params.adapterName) : null
+  const adapterParam = params.adapterName !== undefined
+    ? decodeRouteSegmentSafely(params.adapterName)
+    : null
   const { data: liveInfo, error: liveError, isFetching, retry, throughputHistory: storeThroughput } = useLiveNetwork()
   const {
     data: deviceInventory,
@@ -275,7 +286,7 @@ export function NetworkStatsPage() {
             />
             <Row
               label={t('networkStats.ipv6')}
-              value={getPrimaryIpv6Address(selectedAdapter.ipv6Addresses) ?? <EmptyValue />}
+              value={formatIpv6Addresses(selectedAdapter.ipv6Addresses) ?? <EmptyValue />}
             />
             {selectedAdapter.isWifi && (
               <Row label={t('networkStats.ssid')} value={selectedAdapter.ssid ?? <EmptyValue />} />

@@ -558,9 +558,7 @@ export function GpuPage() {
   // ── Overview (all GPUs, no index selected) ───────────────────────────────────
   const gpusToShow
     = gpuIndex !== null
-      ? staticInfo.gpus[gpuIndex]
-        ? [{ gpu: staticInfo.gpus[gpuIndex], idx: gpuIndex }]
-        : []
+      ? [{ gpu: staticInfo.gpus[gpuIndex], idx: gpuIndex }]
       : staticInfo.gpus.map((g, idx) => ({ gpu: g, idx }))
 
   if (liveInfo === null && isFetching) {

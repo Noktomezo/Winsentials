@@ -9,6 +9,15 @@ export interface PageHeader {
   description: string
 }
 
+function decodePathSegmentSafely(value: string): string {
+  try {
+    return decodeURIComponent(value)
+  }
+  catch {
+    return value
+  }
+}
+
 export function usePageHeader(pathname: string): PageHeader {
   const { t } = useTranslation()
   const staticInfo = useStaticInfo()
@@ -156,7 +165,7 @@ export function usePageHeader(pathname: string): PageHeader {
   }
 
   if (pathname.startsWith('/network-stats/')) {
-    const adapterName = decodeURIComponent(
+    const adapterName = decodePathSegmentSafely(
       pathname.replace('/network-stats/', ''),
     )
     const adapter
