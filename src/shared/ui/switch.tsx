@@ -40,18 +40,21 @@ type LabeledSwitchProps = SwitchProps & {
   labelClassName?: string
 }
 
-function LabeledSwitch({
-  checked = false,
-  className,
-  containerClassName,
-  falseLabel,
-  labelClassName,
-  size = 'default',
-  trueLabel,
-  ...props
-}: LabeledSwitchProps) {
+function LabeledSwitch(allProps: LabeledSwitchProps) {
+  const {
+    checked,
+    className,
+    containerClassName,
+    falseLabel,
+    labelClassName,
+    size = 'default',
+    trueLabel,
+    ...props
+  } = allProps
   const { t } = useTranslation()
-  const stateLabel = checked
+  const isControlled = 'checked' in allProps
+  const effectiveChecked = isControlled ? checked : (props.defaultChecked ?? false)
+  const stateLabel = effectiveChecked
     ? (trueLabel ?? t('common.on'))
     : (falseLabel ?? t('common.off'))
 
@@ -73,9 +76,9 @@ function LabeledSwitch({
         {stateLabel}
       </span>
       <Switch
-        checked={checked}
         className={className}
         size={size}
+        {...(isControlled ? { checked } : {})}
         {...props}
       />
     </div>

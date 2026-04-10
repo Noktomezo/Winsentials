@@ -6,6 +6,7 @@ import { useDeviceInventory, useLiveNetwork } from '@/entities/system-info/model
 import { formatRateLocalized } from '@/shared/lib/format-size'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 import { networkAdapterToParam } from '@/shared/lib/mount-utils'
+import { safeDecodeSegment } from '@/shared/lib/safe-decode-segment'
 import { Button, Skeleton } from '@/shared/ui'
 import { LiveChart } from '@/shared/ui/live-chart'
 
@@ -47,15 +48,6 @@ interface LiveNetworkErrorStateProps {
 
 function getLiveAdapter(liveInfo: NetworkIfaceStats[] | null, adapter: NetworkAdapterInfo): NetworkIfaceStats | null {
   return liveInfo?.find(entry => entry.name === adapter.name) ?? null
-}
-
-function decodeRouteSegmentSafely(value: string): string {
-  try {
-    return decodeURIComponent(value)
-  }
-  catch {
-    return value
-  }
 }
 
 function formatIpv6Addresses(addresses: string[]): string | null {
@@ -176,7 +168,7 @@ export function NetworkStatsPage() {
   const { t, i18n } = useTranslation()
   const params = useParams({ strict: false })
   const adapterParam = params.adapterName !== undefined
-    ? decodeRouteSegmentSafely(params.adapterName)
+    ? safeDecodeSegment(params.adapterName)
     : null
   const { data: liveInfo, error: liveError, isFetching, retry, throughputHistory: storeThroughput } = useLiveNetwork()
   const {

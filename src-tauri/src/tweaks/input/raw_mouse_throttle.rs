@@ -30,6 +30,11 @@ struct RawMouseThrottleState {
     leeway: u32,
 }
 
+enum DwordSnapshot {
+    Missing,
+    Present(u32),
+}
+
 pub struct RawMouseThrottleTweak {
     meta: TweakMeta,
 }
@@ -106,11 +111,50 @@ impl RawMouseThrottleTweak {
             && state.leeway == DEFAULT_RAW_MOUSE_THROTTLE_LEEWAY
     }
 
-    fn write_values(enabled: u32, forced: u32, duration: u32, leeway: u32) -> Result<(), AppError> {
+    fn snapshot_dword(name: &str) -> Result<DwordSnapshot, AppError> {
+        match MOUSE_KEY.get_dword(name) {
+            Ok(value) => Ok(DwordSnapshot::Present(value)),
+            Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {
+                Ok(DwordSnapshot::Missing)
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    fn restore_dword(name: &str, snapshot: &DwordSnapshot) -> Result<(), AppError> {
+        match snapshot {
+            DwordSnapshot::Missing => MOUSE_KEY.delete_value(name),
+            DwordSnapshot::Present(value) => MOUSE_KEY.set_dword(name, *value),
+        }
+    }
+
+    fn write_values_unchecked(
+        enabled: u32,
+        forced: u32,
+        duration: u32,
+        leeway: u32,
+    ) -> Result<(), AppError> {
         MOUSE_KEY.set_dword("RawMouseThrottleEnabled", enabled)?;
         MOUSE_KEY.set_dword("RawMouseThrottleForced", forced)?;
         MOUSE_KEY.set_dword("RawMouseThrottleDuration", duration)?;
         MOUSE_KEY.set_dword("RawMouseThrottleLeeway", leeway)
+    }
+
+    fn write_values(enabled: u32, forced: u32, duration: u32, leeway: u32) -> Result<(), AppError> {
+        let enabled_snapshot = Self::snapshot_dword("RawMouseThrottleEnabled")?;
+        let forced_snapshot = Self::snapshot_dword("RawMouseThrottleForced")?;
+        let duration_snapshot = Self::snapshot_dword("RawMouseThrottleDuration")?;
+        let leeway_snapshot = Self::snapshot_dword("RawMouseThrottleLeeway")?;
+
+        if let Err(error) = Self::write_values_unchecked(enabled, forced, duration, leeway) {
+            let _ = Self::restore_dword("RawMouseThrottleEnabled", &enabled_snapshot);
+            let _ = Self::restore_dword("RawMouseThrottleForced", &forced_snapshot);
+            let _ = Self::restore_dword("RawMouseThrottleDuration", &duration_snapshot);
+            let _ = Self::restore_dword("RawMouseThrottleLeeway", &leeway_snapshot);
+            return Err(error);
+        }
+
+        Ok(())
     }
 }
 

@@ -3,19 +3,11 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStaticInfo } from '@/entities/system-info/model/static-system-info'
 import { mountLabel, mountToParam } from '@/shared/lib/mount-utils'
+import { safeDecodeSegment } from '@/shared/lib/safe-decode-segment'
 
 export interface PageHeader {
   title: ReactNode
   description: string
-}
-
-function decodePathSegmentSafely(value: string): string {
-  try {
-    return decodeURIComponent(value)
-  }
-  catch {
-    return value
-  }
 }
 
 export function usePageHeader(pathname: string): PageHeader {
@@ -165,7 +157,7 @@ export function usePageHeader(pathname: string): PageHeader {
   }
 
   if (pathname.startsWith('/network-stats/')) {
-    const adapterName = decodePathSegmentSafely(
+    const adapterName = safeDecodeSegment(
       pathname.replace('/network-stats/', ''),
     )
     const adapter
