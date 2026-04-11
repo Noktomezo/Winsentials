@@ -1,5 +1,12 @@
 import type { BackupEntry } from '@/entities/backup/model/types'
-import { ArchiveRestore, ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from 'lucide-react'
+import {
+  ArchiveRestore,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -113,7 +120,7 @@ export function BackupPage() {
   }
 
   async function handleRename() {
-    if (!renameTarget) { return }
+    if (!renameTarget) return
     const newLabel = renameLabel.trim()
     if (newLabel === '') {
       toast.error(t('backup.errors.rename'))
@@ -139,11 +146,14 @@ export function BackupPage() {
   }
 
   async function handleDelete() {
-    if (!deleteTarget) { return }
+    if (!deleteTarget) return
+
     setIsDeleting(true)
     try {
       await deleteBackup(deleteTarget.filename)
-      setBackups(prev => prev.filter(b => b.filename !== deleteTarget.filename))
+      setBackups(prev =>
+        prev.filter(b => b.filename !== deleteTarget.filename),
+      )
       setExpandedCards((prev) => {
         const next = new Set(prev)
         next.delete(deleteTarget.filename)
@@ -161,13 +171,16 @@ export function BackupPage() {
   }
 
   async function handleApply() {
-    if (!applyTarget) { return }
+    if (!applyTarget) return
+
     setIsApplying(true)
     try {
       const report = await restoreBackup(applyTarget.filename)
       setApplyTarget(null)
       if (report.failed.length === 0) {
-        toast.success(t('backup.snapshotRestored', { applied: report.applied }))
+        toast.success(
+          t('backup.snapshotRestored', { applied: report.applied }),
+        )
       }
       else {
         toast.warning(
@@ -188,11 +201,7 @@ export function BackupPage() {
 
   function formatDate(iso: string) {
     const date = new Date(iso)
-
-    if (Number.isNaN(date.getTime())) {
-      return iso
-    }
-
+    if (Number.isNaN(date.getTime())) return iso
     return date.toLocaleString(i18n.language || undefined)
   }
 
@@ -220,7 +229,12 @@ export function BackupPage() {
               <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
                 <ArchiveRestore className="size-10 opacity-40" />
                 <p className="text-sm">{t('backup.errors.load')}</p>
-                <Button onClick={() => void loadBackups()} size="sm" type="button" variant="outline">
+                <Button
+                  onClick={() => void loadBackups()}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
                   {t('tweaks.actions.retry')}
                 </Button>
               </div>
@@ -241,8 +255,12 @@ export function BackupPage() {
                     return (
                       <Card key={backup.filename} className="gap-0 p-4">
                         <CardHeader className="p-0">
-                          <CardTitle className="truncate text-sm">{backup.label}</CardTitle>
-                          <CardDescription className="text-xs">{formatDate(backup.createdAt)}</CardDescription>
+                          <CardTitle className="truncate text-sm">
+                            {backup.label}
+                          </CardTitle>
+                          <CardDescription className="text-xs">
+                            {formatDate(backup.createdAt)}
+                          </CardDescription>
                           <CardAction className="flex items-center gap-1.5">
                             <Button
                               size="sm"
@@ -297,8 +315,12 @@ export function BackupPage() {
                             onClick={() => toggleExpand(backup.filename)}
                           >
                             {expanded
-                              ? <ChevronUp className="size-3.5" />
-                              : <ChevronDown className="size-3.5" />}
+                              ? (
+                                  <ChevronUp className="size-3.5" />
+                                )
+                              : (
+                                  <ChevronDown className="size-3.5" />
+                                )}
                             {t('backup.tweakValues')}
                             {' '}
                             (
@@ -307,7 +329,11 @@ export function BackupPage() {
                           </Button>
 
                           {expanded && (
-                            <ScrollArea className="mt-2 h-48 rounded-lg border border-border/50 bg-muted/30" data-lenis-prevent id={panelId}>
+                            <ScrollArea
+                              className="mt-2 h-48 rounded-lg border border-border/50 bg-muted/30"
+                              data-lenis-prevent
+                              id={panelId}
+                            >
                               <table className="w-full text-xs">
                                 <thead className="sr-only">
                                   <tr>
@@ -317,7 +343,10 @@ export function BackupPage() {
                                 </thead>
                                 <tbody>
                                   {tweakEntries.map(([id, value]) => (
-                                    <tr key={id} className="border-b border-border/30 last:border-0">
+                                    <tr
+                                      key={id}
+                                      className="border-b border-border/30 last:border-0"
+                                    >
                                       <td className="px-3 py-1.5 font-mono text-muted-foreground">
                                         {id}
                                       </td>
@@ -350,14 +379,17 @@ export function BackupPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('backup.createSnapshot')}</DialogTitle>
-            <DialogDescription>{t('backup.labelPlaceholder')}</DialogDescription>
+            <DialogDescription>
+              {t('backup.labelPlaceholder')}
+            </DialogDescription>
           </DialogHeader>
           <Input
             aria-label={t('backup.createSnapshot')}
             value={createLabel}
             onChange={e => setCreateLabel(e.target.value)}
             placeholder={t('backup.labelPlaceholder')}
-            onKeyDown={e => e.key === 'Enter' && !isCreating && void handleCreate()}
+            onKeyDown={e =>
+              e.key === 'Enter' && !isCreating && void handleCreate()}
           />
           <DialogFooter>
             <Button
@@ -380,7 +412,9 @@ export function BackupPage() {
       <Dialog
         open={renameTarget !== null}
         onOpenChange={(open) => {
-          if (!open) { setRenameTarget(null) }
+          if (!open) {
+            setRenameTarget(null)
+          }
         }}
       >
         <DialogContent>
@@ -391,7 +425,8 @@ export function BackupPage() {
             aria-label={t('backup.rename')}
             value={renameLabel}
             onChange={e => setRenameLabel(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !isRenaming && void handleRename()}
+            onKeyDown={e =>
+              e.key === 'Enter' && !isRenaming && void handleRename()}
           />
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenameTarget(null)}>
@@ -411,7 +446,9 @@ export function BackupPage() {
       <Dialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open) { setDeleteTarget(null) }
+          if (!open) {
+            setDeleteTarget(null)
+          }
         }}
       >
         <DialogContent>
@@ -438,7 +475,9 @@ export function BackupPage() {
       <Dialog
         open={applyTarget !== null}
         onOpenChange={(open) => {
-          if (!open) { setApplyTarget(null) }
+          if (!open) {
+            setApplyTarget(null)
+          }
         }}
       >
         <DialogContent>

@@ -6,7 +6,7 @@ import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStaticInfo } from '@/entities/system-info/model/static-system-info'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
-import { mountLabel, mountToParam } from '@/shared/lib/mount-utils'
+import { mountToParam } from '@/shared/lib/mount-utils'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -27,7 +27,7 @@ function useBreadcrumbs(): Crumb[] {
 
   const home: Crumb = { label: t('home.title'), href: '/home' }
 
-  if (pathname === '/home') { return [{ label: t('home.title') }] }
+  if (pathname === '/home') return [{ label: t('home.title') }]
 
   const hardwareMap: Record<string, string> = {
     '/cpu': t('home.cpu'),
@@ -35,46 +35,51 @@ function useBreadcrumbs(): Crumb[] {
     '/gpu': t('home.gpu'),
     '/network-stats': t('home.network'),
   }
-  if (hardwareMap[pathname]) { return [home, { label: hardwareMap[pathname] }] }
+  if (hardwareMap[pathname]) return [home, { label: hardwareMap[pathname] }]
 
   if (pathname.startsWith('/gpu/')) {
     const idx = Number(pathname.replace('/gpu/', ''))
-    if (!Number.isInteger(idx) || idx < 0 || (staticInfo && idx >= staticInfo.gpus.length)) {
+    if (!Number.isInteger(idx) || idx < 0 || (staticInfo && idx >= staticInfo.gpus.length))
       return [home, { label: t('home.gpu') }]
-    }
     return [home, { label: t('gpu.gpuLabel', { index: idx }) }]
   }
 
   if (pathname.startsWith('/network-stats/')) {
-    const adapterName = decodeURIComponent(pathname.replace('/network-stats/', ''))
-    const adapter = staticInfo?.networkAdapters.find(entry => entry.name === adapterName)
-    return [home, { label: adapter ? `${t('home.network')} (${adapter.name})` : t('home.network') }]
+    return [home, { label: t('home.network') }]
   }
 
   if (pathname.startsWith('/storage/')) {
     const param = pathname.replace('/storage/', '')
     const idx = staticInfo?.disks.findIndex(d => mountToParam(d.mountPoint) === param) ?? -1
-    const disk = idx >= 0 ? staticInfo!.disks[idx] : null
-    const base = idx >= 0 ? t('storage.diskLabel', { index: idx }) : param.toUpperCase()
-    const sub = disk
-      ? disk.volumeLabel ? `${mountLabel(disk.mountPoint)} - ${disk.volumeLabel}` : mountLabel(disk.mountPoint)
-      : null
-    const label = sub ? `${base} (${sub})` : base
+    const label = idx >= 0 ? t('storage.diskLabel', { index: idx }) : param.toUpperCase()
     return [home, { label }]
   }
 
   const topLevel: Record<string, string> = {
     '/appearance': t('appearance.title'),
-    '/backup': t('backup.title'),
     '/behaviour': t('behaviour.title'),
     '/security': t('security.title'),
     '/network': t('network.title'),
     '/performance': t('performance.title'),
     '/input': t('input.title'),
-    '/startup': t('startup.title'),
+    '/tools': t('tools.title'),
     '/settings': t('settings.title'),
   }
-  if (topLevel[pathname]) { return [{ label: topLevel[pathname] }] }
+  if (topLevel[pathname]) return [{ label: topLevel[pathname] }]
+
+  if (pathname === '/startup') {
+    return [
+      { label: t('tools.title'), href: '/tools' },
+      { label: t('startup.title') },
+    ]
+  }
+
+  if (pathname === '/backup') {
+    return [
+      { label: t('tools.title'), href: '/tools' },
+      { label: t('backup.title') },
+    ]
+  }
 
   return [{ label: t('app.title') }]
 }
@@ -140,14 +145,17 @@ export function AppTitlebar() {
   }
 
   return (
-    <header className="relative flex h-10 shrink-0 items-center bg-sidebar px-2 text-sidebar-foreground">
+    <header
+      className="relative flex h-10 shrink-0 items-center bg-transparent px-2 text-sidebar-foreground"
+      data-slot="app-titlebar"
+    >
       <SidebarTrigger
-        className="size-8 cursor-pointer rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        className="titlebar-control"
         iconClassName="size-3.5"
       />
 
       {/* Absolutely centred breadcrumb — independent of left/right button widths */}
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
         <div className="pointer-events-auto max-w-[min(40rem,calc(100%-9rem))] overflow-hidden">
           <Breadcrumb>
             <BreadcrumbList className="max-w-full flex-nowrap gap-1 overflow-hidden text-xs sm:gap-1.5">
@@ -165,7 +173,12 @@ export function AppTitlebar() {
                               asChild
                               className="max-w-full truncate text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground"
                             >
-                              <Link to={crumb.href}>{crumb.label}</Link>
+                              <Link
+                                className="max-w-full cursor-pointer truncate"
+                                to={crumb.href}
+                              >
+                                {crumb.label}
+                              </Link>
                             </BreadcrumbLink>
                           )
                         : (
@@ -188,7 +201,7 @@ export function AppTitlebar() {
       <div className="flex items-center gap-1">
         <TitlebarButton
           aria-label={t('titlebar.minimize')}
-          className="h-8 w-8 cursor-pointer rounded-md p-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          className="titlebar-control titlebar-control--warning"
           onClick={() => {
             void handleMinimize()
           }}
@@ -197,7 +210,7 @@ export function AppTitlebar() {
         </TitlebarButton>
         <TitlebarButton
           aria-label={isMaximized ? t('titlebar.restore') : t('titlebar.maximize')}
-          className="h-8 w-8 cursor-pointer rounded-md p-0 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          className="titlebar-control titlebar-control--good"
           onClick={() => {
             void handleToggleMaximize()
           }}
@@ -206,7 +219,7 @@ export function AppTitlebar() {
         </TitlebarButton>
         <TitlebarButton
           aria-label={t('titlebar.close')}
-          className="h-8 w-8 cursor-pointer rounded-md p-0 text-sidebar-foreground hover:bg-destructive hover:text-white focus-visible:ring-destructive/20 dark:hover:bg-destructive/60 dark:focus-visible:ring-destructive/40"
+          className="titlebar-control titlebar-control--danger"
           onClick={() => {
             void handleClose()
           }}

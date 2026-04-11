@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use windows::Win32::Foundation::{RPC_E_CHANGED_MODE, VARIANT_BOOL};
 use windows::Win32::System::Com::{
     CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx, CoUninitialize,
@@ -20,6 +18,7 @@ use crate::error::AppError;
 use crate::startup::presentation::{
     scheduled_task_presentation, scheduled_task_presentation_light,
 };
+use crate::startup::shell_hosts::is_shell_host_path;
 use crate::startup::types::{
     StartupEntry, StartupEntryDetails, StartupScope, StartupSource, StartupStatus,
 };
@@ -400,23 +399,6 @@ fn is_system_task(
                 .filter(|value| !is_shell_host_path(value))
                 .map(is_system_command)
                 .unwrap_or(false))
-}
-
-fn is_shell_host_path(path: &str) -> bool {
-    const HOSTS: &[&str] = &[
-        "powershell.exe",
-        "pwsh.exe",
-        "cmd.exe",
-        "wscript.exe",
-        "cscript.exe",
-        "mshta.exe",
-    ];
-
-    Path::new(path)
-        .file_name()
-        .and_then(|value| value.to_str())
-        .map(|value| HOSTS.contains(&value.to_ascii_lowercase().as_str()))
-        .unwrap_or(false)
 }
 
 unsafe fn collect_action_info(

@@ -127,23 +127,23 @@ export function CpuPage() {
           />
           <Row
             label={t('cpu.currentFreq')}
-            value={<span className="text-primary tabular-nums">{liveInfo ? formatMhz(liveInfo.cpuCurrentFreqMhz) : '—'}</span>}
+            value={<span className="metric-text-accent tabular-nums">{liveInfo ? formatMhz(liveInfo.cpuCurrentFreqMhz) : '—'}</span>}
           />
           <Row
             label={t('cpu.processes')}
-            value={<span className="text-primary tabular-nums">{liveInfo ? liveInfo.cpuProcessCount.toLocaleString() : '—'}</span>}
+            value={<span className="metric-text-accent tabular-nums">{liveInfo ? liveInfo.cpuProcessCount.toLocaleString() : '—'}</span>}
           />
           <Row
             label={t('cpu.threads')}
-            value={<span className="text-primary tabular-nums">{liveInfo ? liveInfo.cpuThreadCount.toLocaleString() : '—'}</span>}
+            value={<span className="metric-text-accent tabular-nums">{liveInfo ? liveInfo.cpuThreadCount.toLocaleString() : '—'}</span>}
           />
           <Row
             label={t('cpu.handles')}
-            value={<span className="text-primary tabular-nums">{liveInfo ? liveInfo.cpuHandleCount.toLocaleString() : '—'}</span>}
+            value={<span className="metric-text-accent tabular-nums">{liveInfo ? liveInfo.cpuHandleCount.toLocaleString() : '—'}</span>}
           />
           <Row
             label={t('cpu.uptime')}
-            value={<span className="text-primary tabular-nums">{liveInfo ? formatUptime(liveInfo.cpuUptimeSecs) : '—'}</span>}
+            value={<span className="metric-text-accent tabular-nums">{liveInfo ? formatUptime(liveInfo.cpuUptimeSecs) : '—'}</span>}
           />
           <Row
             label={t('home.baseFreq')}
@@ -164,7 +164,7 @@ export function CpuPage() {
           <Row
             label={t('cpu.virtualization')}
             value={(
-              <span className={cpu.virtualization ? 'text-success' : 'text-muted-foreground'}>
+              <span className={cpu.virtualization ? 'metric-text-good' : 'text-muted-foreground'}>
                 {cpu.virtualization ? t('cpu.virtualizationOn') : t('cpu.virtualizationOff')}
               </span>
             )}

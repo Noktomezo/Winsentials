@@ -1,10 +1,11 @@
 import type { LucideIcon } from 'lucide-react'
-import { MoonStar, SunMedium } from 'lucide-react'
+import { Laptop, MoonStar, SunMedium } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { usePreferencesStore } from '@/entities/settings/model/preferences-store'
 import { APP_THEMES } from '@/shared/config/app'
 import { cn } from '@/shared/lib/utils'
 import {
+  filledSelectTriggerClassName,
   Select,
   SelectContent,
   SelectItem,
@@ -13,6 +14,7 @@ import {
 } from '@/shared/ui/'
 
 const THEME_ICONS: Record<(typeof APP_THEMES)[number], LucideIcon> = {
+  system: Laptop,
   light: SunMedium,
   dark: MoonStar,
 }
@@ -25,7 +27,7 @@ export function ThemeSelect({ className }: { className?: string }) {
   return (
     <div className={cn('w-full', className)}>
       <Select value={theme} onValueChange={value => setTheme(value as typeof theme)}>
-        <SelectTrigger className="w-full justify-between aria-expanded:border-primary/40 aria-expanded:ring-1 aria-expanded:ring-primary/50 focus-visible:border-primary/40 focus-visible:ring-primary/50">
+        <SelectTrigger className={filledSelectTriggerClassName}>
           <SelectValue placeholder={t('settings.mode')} />
         </SelectTrigger>
         <SelectContent>

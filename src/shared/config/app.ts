@@ -1,8 +1,9 @@
 export const APP_NAME = 'Winsentials'
 
-export const APP_THEMES = ['light', 'dark'] as const
+export const APP_THEMES = ['system', 'light', 'dark'] as const
 export type AppTheme = (typeof APP_THEMES)[number]
-export type ResolvedTheme = AppTheme
+export const RESOLVED_THEMES = ['light', 'dark'] as const
+export type ResolvedTheme = (typeof RESOLVED_THEMES)[number]
 
 export const APP_WEBVIEW_MATERIALS = ['none', 'acrylic', 'mica', 'tabbed'] as const
 export type AppWebviewMaterial = (typeof APP_WEBVIEW_MATERIALS)[number]
@@ -15,4 +16,4 @@ export const LANGUAGE_PREFERENCES = ['system', ...SUPPORTED_LANGUAGES] as const
 export type AppLanguagePreference = (typeof LANGUAGE_PREFERENCES)[number]
 
 export const DEFAULT_LANGUAGE: AppLanguage = 'en'
-export const DEFAULT_THEME: AppTheme = 'dark'
+export const DEFAULT_THEME: AppTheme = 'system'

@@ -2,6 +2,7 @@ pub mod disabled_store;
 pub mod presentation;
 pub mod registry;
 pub mod scheduled_tasks;
+pub mod shell_hosts;
 pub mod startup_folder;
 pub mod types;
 

@@ -5,6 +5,7 @@ import { usePreferencesStore } from '@/entities/settings/model/preferences-store
 import { APP_WEBVIEW_MATERIALS } from '@/shared/config/app'
 import { cn } from '@/shared/lib/utils'
 import {
+  filledSelectTriggerClassName,
   Select,
   SelectContent,
   SelectItem,
@@ -30,7 +31,7 @@ export function WebviewMaterialSelect({ className }: { className?: string }) {
   return (
     <div className="space-y-2">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex shrink-0 items-center gap-2 text-sm font-medium text-foreground">
+        <div className="flex shrink-0 items-center gap-2 self-center text-sm font-medium text-foreground">
           <Layers className="size-4 text-muted-foreground" />
           {t('settings.windowMaterial')}
           <Tooltip>
@@ -46,7 +47,7 @@ export function WebviewMaterialSelect({ className }: { className?: string }) {
         </div>
         <div className={cn('w-full sm:w-[163px]', className)}>
           <Select value={webviewMaterial} onValueChange={value => setWebviewMaterial(value as typeof webviewMaterial)}>
-            <SelectTrigger className="w-full justify-between aria-expanded:border-primary/40 aria-expanded:ring-1 aria-expanded:ring-primary/50 focus-visible:border-primary/40 focus-visible:ring-primary/50">
+            <SelectTrigger className={filledSelectTriggerClassName}>
               <SelectValue placeholder={t('settings.windowMaterial')} />
             </SelectTrigger>
             <SelectContent>

@@ -4,6 +4,10 @@ import { initAppUpdater } from '@/features/app-updater/ui/app-updater-effect'
 import i18n from '@/shared/i18n'
 import { resolveLanguage } from '@/shared/i18n/resolve-language'
 import { syncWebviewMaterial } from '@/shared/lib/desktop/window-effects'
+import {
+  resolveThemePreference,
+  subscribeToSystemThemeChange,
+} from '@/shared/lib/theme/resolve-theme'
 import { toast } from '@/shared/lib/toast'
 
 function applyDocumentAppearance(state: PreferencesState) {
@@ -11,9 +15,11 @@ function applyDocumentAppearance(state: PreferencesState) {
     return
   }
 
-  document.documentElement.dataset.theme = state.theme
+  const resolvedTheme = resolveThemePreference(state.theme)
+
+  document.documentElement.dataset.theme = resolvedTheme
   document.documentElement.dataset.webviewMaterial = state.webviewMaterial
-  document.documentElement.style.colorScheme = state.theme
+  document.documentElement.style.colorScheme = resolvedTheme
 }
 
 function createLanguageManager() {
@@ -59,10 +65,11 @@ function createWebviewMaterialManager() {
     }
 
     const requestId = ++applyRequestId
+    const resolvedTheme = resolveThemePreference(state.theme)
 
     void syncWebviewMaterial({
       material: state.webviewMaterial,
-      theme: state.theme,
+      theme: resolvedTheme,
     }).then((applied) => {
       if (requestId !== applyRequestId) {
         return
@@ -87,6 +94,25 @@ function createWebviewMaterialManager() {
   return { syncMaterial }
 }
 
+function createThemeManager(onSystemThemeChange: () => void) {
+  let removeThemeListener: (() => void) | null = null
+
+  const syncTheme = (state: PreferencesState) => {
+    if (removeThemeListener) {
+      removeThemeListener()
+      removeThemeListener = null
+    }
+
+    if (!state.hasHydrated || state.theme !== 'system') {
+      return
+    }
+
+    removeThemeListener = subscribeToSystemThemeChange(onSystemThemeChange)
+  }
+
+  return { syncTheme }
+}
+
 let initialized = false
 
 export function initAppServices() {
@@ -98,11 +124,17 @@ export function initAppServices() {
 
   const languageManager = createLanguageManager()
   const materialManager = createWebviewMaterialManager()
+  const themeManager = createThemeManager(() => {
+    const state = usePreferencesStore.getState()
+    applyDocumentAppearance(state)
+    materialManager.syncMaterial(state)
+  })
 
   const syncAll = () => {
     const state = usePreferencesStore.getState()
     applyDocumentAppearance(state)
     languageManager.syncLanguage(state)
+    themeManager.syncTheme(state)
   }
 
   const syncMaterial = () => {

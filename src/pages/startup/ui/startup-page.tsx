@@ -3,6 +3,7 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener'
 import {
   CalendarClock,
+  ChevronDown,
   Clock3,
   Copy,
   Database,
@@ -34,6 +35,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
+  LabeledSwitch,
   Select,
   SelectContent,
   SelectItem,
@@ -41,7 +43,6 @@ import {
   SelectValue,
   Separator,
   Skeleton,
-  Switch,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -63,22 +64,22 @@ function sourceIcon(source: StartupSource) {
 function sourceColor(source: StartupSource) {
   switch (source) {
     case 'registry':
-      return 'bg-sky-500/12 text-sky-700 dark:text-sky-300'
+      return '!border-[color:color-mix(in_oklch,var(--badge-blue)_28%,transparent)] !bg-[color:color-mix(in_oklch,var(--badge-blue)_12%,transparent)] text-[var(--badge-blue)]'
     case 'startup_folder':
-      return 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300'
+      return '!border-[color:color-mix(in_oklch,var(--success)_28%,transparent)] !bg-[color:color-mix(in_oklch,var(--success)_12%,transparent)] text-[var(--success)]'
     case 'scheduled_task':
-      return 'bg-amber-500/12 text-amber-700 dark:text-amber-300'
+      return '!border-[color:color-mix(in_oklch,var(--warning)_28%,transparent)] !bg-[color:color-mix(in_oklch,var(--warning)_12%,transparent)] text-[var(--warning)]'
   }
 }
 
 function sourceMetaColor(source: StartupSource) {
   switch (source) {
     case 'registry':
-      return 'text-sky-700 transition-[color,filter] hover:text-sky-800 hover:drop-shadow-[0_0_8px_currentColor] dark:text-sky-300 dark:hover:text-sky-200'
+      return 'text-[var(--metric-accent-text)] transition-[color,filter] hover:brightness-110 hover:drop-shadow-[0_0_8px_currentColor]'
     case 'startup_folder':
-      return 'text-emerald-700 transition-[color,filter] hover:text-emerald-800 hover:drop-shadow-[0_0_8px_currentColor] dark:text-emerald-300 dark:hover:text-emerald-200'
+      return 'text-[var(--success)] transition-[color,filter] hover:brightness-110 hover:drop-shadow-[0_0_8px_currentColor]'
     case 'scheduled_task':
-      return 'text-amber-700 transition-[color,filter] hover:text-amber-800 hover:drop-shadow-[0_0_8px_currentColor] dark:text-amber-300 dark:hover:text-amber-200'
+      return 'text-[var(--warning)] transition-[color,filter] hover:brightness-110 hover:drop-shadow-[0_0_8px_currentColor]'
   }
 }
 
@@ -147,18 +148,18 @@ const StartupCard = memo(({
 
   return (
     <section className="rounded-lg border border-border/70 bg-card p-4">
-      <div className="min-w-0 flex items-start gap-3">
+      <div className="min-w-0 flex items-center gap-3">
         <span className={cn(
-          'flex size-9 shrink-0 items-center justify-center rounded-lg',
+          'ui-soft-surface flex size-9 shrink-0 items-center justify-center self-center rounded-md',
           sourceColor(entry.source),
         )}
         >
           {entry.iconDataUrl
-            ? <img alt="" className="size-4 object-contain" src={entry.iconDataUrl} />
-            : <Icon className="size-4" />}
+            ? <img alt="" className="max-h-[72%] max-w-[72%] object-contain" src={entry.iconDataUrl} />
+            : <Icon className="size-[72%]" />}
         </span>
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex flex-1 items-center justify-between gap-4">
+          <div className="min-w-0 flex-1 space-y-1">
             <div className="min-w-0 flex flex-wrap items-center gap-2">
               <h2 className="truncate text-sm font-medium text-foreground">{entry.displayName}</h2>
               <Tooltip>
@@ -209,125 +210,118 @@ const StartupCard = memo(({
                 </Tooltip>
               )}
             </div>
-            <div className="flex shrink-0 items-center gap-1 self-start">
-              <Tooltip>
+            <p className="truncate text-xs leading-5 text-muted-foreground">
+              {publisherSummary(entry, t)}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1 self-center">
+            <LabeledSwitch
+              aria-label={entry.status === 'enabled'
+                ? t('startup.actions.disable')
+                : t('startup.actions.enable')}
+              checked={entry.status === 'enabled'}
+              disabled={isPending}
+              onCheckedChange={checked => void (checked ? onEnable() : onDisable())}
+            />
+            <Tooltip>
+              <DropdownMenu>
                 <TooltipTrigger asChild>
-                  <span className="flex h-6 items-center">
-                    <Switch
-                      aria-label={entry.status === 'enabled'
-                        ? t('startup.actions.disable')
-                        : t('startup.actions.enable')}
-                      checked={entry.status === 'enabled'}
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      aria-label={t('startup.actions.more')}
+                      className="ui-soft-surface size-9 rounded-md text-accent-foreground hover:bg-accent/70 hover:text-accent-foreground"
                       disabled={isPending}
-                      onCheckedChange={checked => void (checked ? onEnable() : onDisable())}
-                    />
-                  </span>
+                      size="icon-xs"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <MoreHorizontal className="size-3.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
                 </TooltipTrigger>
-                <TooltipContent sideOffset={8}>
-                  {entry.status === 'enabled'
-                    ? t('startup.actions.disable')
-                    : t('startup.actions.enable')}
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <DropdownMenu>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        aria-label={t('startup.actions.more')}
-                        disabled={isPending}
-                        size="icon-xs"
-                        type="button"
-                        variant="ghost"
-                      >
-                        <MoreHorizontal className="size-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent sideOffset={8}>{t('startup.actions.more')}</TooltipContent>
-                  <DropdownMenuContent align="end">
-                    {entry.source === 'registry' && (
-                      <>
-                        <DropdownMenuItem
-                          disabled={!entry.command}
-                          onSelect={() => onCopy(entry.command, 'startup.success.copyCommand')}
-                        >
-                          <Copy className="size-3.5" />
-                          {t('startup.actions.copyCommand')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={!entry.registryPath}
-                          onSelect={() => onCopy(entry.registryPath, 'startup.success.copyRegistryPath')}
-                        >
-                          <Copy className="size-3.5" />
-                          {t('startup.actions.copyRegistryPath')}
-                        </DropdownMenuItem>
-                      </>
-                    )}
-
-                    {entry.source === 'startup_folder' && (
-                      <>
-                        <DropdownMenuItem
-                          disabled={!entry.targetPath}
-                          onSelect={() => onReveal(entry.targetPath)}
-                        >
-                          <FolderUp className="size-3.5" />
-                          {t('startup.actions.openContainingFolder')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={!entry.targetPath}
-                          onSelect={() => onCopy(entry.targetPath, 'startup.success.copyPath')}
-                        >
-                          <Copy className="size-3.5" />
-                          {t('startup.actions.copyPath')}
-                        </DropdownMenuItem>
-                      </>
-                    )}
-
-                    {entry.source === 'scheduled_task' && (
+                <TooltipContent sideOffset={8}>{t('startup.actions.more')}</TooltipContent>
+                <DropdownMenuContent
+                  align="end"
+                  className="min-w-[12.5rem] rounded-[10px] p-1.5"
+                >
+                  {entry.source === 'registry' && (
+                    <>
                       <DropdownMenuItem
-                        disabled={!entry.taskPath}
-                        onSelect={() => onCopy(entry.taskPath, 'startup.success.copyTaskPath')}
+                        disabled={!entry.command}
+                        onSelect={() => onCopy(entry.command, 'startup.success.copyCommand')}
                       >
                         <Copy className="size-3.5" />
-                        {t('startup.actions.copyTaskPath')}
+                        {t('startup.actions.copyCommand')}
                       </DropdownMenuItem>
-                    )}
-
-                    {entry.source !== 'scheduled_task' && <DropdownMenuSeparator />}
-                    {entry.source === 'startup_folder' && (
                       <DropdownMenuItem
-                        disabled={!entry.locationLabel}
-                        onSelect={() => onOpenLocation(entry.locationLabel)}
+                        disabled={!entry.registryPath}
+                        onSelect={() => onCopy(entry.registryPath, 'startup.success.copyRegistryPath')}
+                      >
+                        <Copy className="size-3.5" />
+                        {t('startup.actions.copyRegistryPath')}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+
+                  {entry.source === 'startup_folder' && (
+                    <>
+                      <DropdownMenuItem
+                        disabled={!entry.targetPath}
+                        onSelect={() => onReveal(entry.targetPath)}
                       >
                         <FolderUp className="size-3.5" />
-                        {t('startup.actions.openLocation')}
+                        {t('startup.actions.openContainingFolder')}
                       </DropdownMenuItem>
-                    )}
+                      <DropdownMenuItem
+                        disabled={!entry.targetPath}
+                        onSelect={() => onCopy(entry.targetPath, 'startup.success.copyPath')}
+                      >
+                        <Copy className="size-3.5" />
+                        {t('startup.actions.copyPath')}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+
+                  {entry.source === 'scheduled_task' && (
                     <DropdownMenuItem
-                      disabled={!entry.locationLabel}
-                      onSelect={() => onCopy(entry.locationLabel, 'startup.success.copyPath')}
+                      disabled={!entry.taskPath}
+                      onSelect={() => onCopy(entry.taskPath, 'startup.success.copyTaskPath')}
                     >
                       <Copy className="size-3.5" />
-                      {t('startup.actions.copyLocation')}
+                      {t('startup.actions.copyTaskPath')}
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
+                  )}
+
+                  {entry.source !== 'scheduled_task' && <DropdownMenuSeparator />}
+                  {entry.source === 'startup_folder' && (
                     <DropdownMenuItem
-                      disabled={isPending}
-                      onSelect={onDelete}
-                      variant="destructive"
+                      disabled={!entry.locationLabel}
+                      onSelect={() => onOpenLocation(entry.locationLabel)}
                     >
-                      <Trash2 className="size-3.5" />
-                      {t('startup.actions.delete')}
+                      <FolderUp className="size-3.5" />
+                      {t('startup.actions.openLocation')}
                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </Tooltip>
-            </div>
+                  )}
+                  <DropdownMenuItem
+                    disabled={!entry.locationLabel}
+                    onSelect={() => onCopy(entry.locationLabel, 'startup.success.copyPath')}
+                  >
+                    <Copy className="size-3.5" />
+                    {t('startup.actions.copyLocation')}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={isPending}
+                    onSelect={onDelete}
+                    variant="destructive"
+                  >
+                    <Trash2 className="size-3.5" />
+                    {t('startup.actions.delete')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </Tooltip>
           </div>
-          <p className="text-xs leading-5 text-muted-foreground">
-            {publisherSummary(entry, t)}
-          </p>
         </div>
       </div>
     </section>
@@ -423,6 +417,7 @@ export function StartupPage() {
   const anyLoading = startupSources.some(source => sourceLoading[source])
   const anyLoaded = startupSources.some(source => hasSettledSource[source])
   const allLoaded = startupSources.every(source => hasSettledSource[source])
+  const hasActiveFilters = sourceFilter !== 'all' || statusFilter !== 'all'
   const localizedError = localizeStartupError(error, t)
 
   function handleCopy(value: string | null | undefined, successKey: string) {
@@ -548,13 +543,37 @@ export function StartupPage() {
           <Button
             aria-expanded={filtersOpen}
             aria-label={t('startup.filters.source')}
-            className="shrink-0"
+            className={cn(
+              'shrink-0 relative overflow-visible',
+              (filtersOpen || hasActiveFilters)
+              && 'border-[color:color-mix(in_oklch,var(--border)_58%,var(--primary)_42%)] bg-[color:color-mix(in_oklch,var(--secondary)_72%,var(--primary)_28%)] text-foreground hover:bg-[color:color-mix(in_oklch,var(--secondary)_62%,var(--primary)_38%)]',
+            )}
             onClick={() => setFiltersOpen(open => !open)}
             size="icon-sm"
             type="button"
             variant="outline"
           >
-            <Filter className="size-4" />
+            <span className="relative inline-flex size-4 items-center justify-center">
+              <Filter
+                className={cn(
+                  'size-4 transition-transform duration-200 ease-out',
+                  filtersOpen && '-translate-y-px scale-95',
+                )}
+              />
+              <ChevronDown
+                className={cn(
+                  'absolute -right-1 -bottom-1 size-2.5 rounded-full bg-background/85 text-muted-foreground transition-all duration-200 ease-out',
+                  filtersOpen ? 'rotate-180 text-foreground' : 'rotate-0',
+                )}
+              />
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'absolute -top-0.5 -right-0.5 size-2 rounded-full border border-background transition-all duration-200 ease-out',
+                  hasActiveFilters ? 'scale-100 bg-primary opacity-100' : 'scale-0 opacity-0',
+                )}
+              />
+            </span>
           </Button>
         </div>
 
@@ -616,7 +635,7 @@ export function StartupPage() {
               {Array.from({ length: 4 }).map((_, index) => (
                 <section className="rounded-lg border border-border/70 bg-card p-4" key={index}>
                   <div className="min-w-0 flex items-start gap-3">
-                    <Skeleton className="size-9 shrink-0 rounded-lg" />
+                    <Skeleton className="size-9 shrink-0 rounded-md" />
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0 flex flex-wrap items-center gap-2">

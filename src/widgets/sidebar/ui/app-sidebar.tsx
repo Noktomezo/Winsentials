@@ -54,7 +54,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar
-      className="h-full min-h-0 shrink-0 [&>[data-slot=sidebar-inner]]:bg-transparent"
+      className="h-full min-h-0 shrink-0"
       collapsible="icon"
       style={
         {

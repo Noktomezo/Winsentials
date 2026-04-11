@@ -65,7 +65,7 @@ export const usePreferencesStore = create<PreferencesState>()(
           ?? (legacyAcrylic || state.chromeAcrylic === true || state.sidebarAcrylic === true
             ? 'acrylic'
             : DEFAULT_WEBVIEW_MATERIAL)
-        const normalizedTheme = state.theme === 'light' || state.theme === 'dark'
+        const normalizedTheme = state.theme === 'system' || state.theme === 'light' || state.theme === 'dark'
           ? state.theme
           : DEFAULT_THEME
 

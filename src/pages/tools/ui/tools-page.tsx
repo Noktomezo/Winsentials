@@ -43,7 +43,7 @@ function ToolCard({
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent/60 text-accent-foreground">
+          <span className="ui-soft-surface flex size-9 shrink-0 items-center justify-center rounded-md">
             <Icon className="size-4" />
           </span>
           <div className="min-w-0">
@@ -59,15 +59,6 @@ function ToolCard({
       <p className="text-sm leading-6 text-muted-foreground">
         {description}
       </p>
-
-      <div className="mt-auto flex items-center justify-between gap-3 border-t border-border/60 pt-4">
-        <span className="text-xs font-medium text-foreground">
-          {t('tools.open')}
-        </span>
-        <span className="rounded-md border border-border/60 bg-background/70 px-2 py-1 text-[11px] font-medium text-muted-foreground">
-          {title}
-        </span>
-      </div>
     </button>
   )
 }

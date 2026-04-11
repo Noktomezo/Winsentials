@@ -1,35 +1,65 @@
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
-import type { GpuInfo, LiveGpuInfo, LiveHomeInfo, NetworkAdapterInfo, StaticSystemInfo } from '@/entities/system-info/model/types'
+import type {
+  GpuInfo,
+  LiveGpuInfo,
+  LiveHomeInfo,
+  NetworkAdapterInfo,
+  StaticSystemInfo,
+} from '@/entities/system-info/model/types'
 import { useNavigate, useRouter } from '@tanstack/react-router'
-import { ChevronRight, Cpu, HardDrive, Layers, Monitor, Network, Server } from 'lucide-react'
+import {
+  ChevronRight,
+  Cpu,
+  HardDrive,
+  Layers,
+  Monitor,
+  Network,
+  Server,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useLiveHome } from '@/entities/system-info/model/live-system-store'
 import { useStaticSystemInfo } from '@/entities/system-info/model/static-system-info'
-import { formatBytesLocalized, formatRateLocalized } from '@/shared/lib/format-size'
+import {
+  formatBytesLocalized,
+  formatRateLocalized,
+} from '@/shared/lib/format-size'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
-import { mountLabel, mountToParam, networkAdapterToParam } from '@/shared/lib/mount-utils'
+import {
+  mountLabel,
+  mountToParam,
+  networkAdapterToParam,
+} from '@/shared/lib/mount-utils'
 import { Button, Skeleton } from '@/shared/ui'
 import { MarqueeText } from '@/shared/ui/marquee-text'
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
 function loadColor(pct: number): string {
-  if (pct >= 85) { return 'text-destructive' }
-  if (pct >= 60) { return 'text-warning' }
-  return 'text-success'
+  if (pct >= 85) return 'metric-text-danger'
+  if (pct >= 60) return 'metric-text-warning'
+  return 'metric-text-good'
 }
 
 function usagePct(used: number, total: number): number {
-  if (total === 0) { return 0 }
+  if (total === 0) return 0
   return Math.round((used / total) * 100)
 }
 
-function formatBytes(bytes: number, t: ReturnType<typeof useTranslation>['t'], locale: string, decimals = 1): string {
+function formatBytes(
+  bytes: number,
+  t: ReturnType<typeof useTranslation>['t'],
+  locale: string,
+  decimals = 1,
+): string {
   return formatBytesLocalized(bytes, { decimals, locale, t })
 }
 
-function formatRate(bytes: number, t: ReturnType<typeof useTranslation>['t'], locale: string): string {
+function formatRate(
+  bytes: number,
+  t: ReturnType<typeof useTranslation>['t'],
+  locale: string,
+): string {
   return formatRateLocalized(bytes, { locale, t })
 }
 
@@ -38,8 +68,30 @@ function mergeVisibleNetworkAdapters(
   live: LiveHomeInfo | null,
 ): NetworkAdapterInfo[] {
   return (live?.network ?? [])
-    .map(entry => staticAdapters.find(adapter => adapter.name === entry.name) ?? null)
+    .map(
+      entry =>
+        staticAdapters.find(adapter => adapter.name === entry.name) ?? null,
+    )
     .filter((adapter): adapter is NetworkAdapterInfo => adapter !== null)
+}
+
+function createSummaryNavHandlers(
+  navigate: ReturnType<typeof useNavigate>,
+  router: ReturnType<typeof useRouter>,
+  preloadRouteIntent: ReturnType<typeof useRouteIntentPreload>,
+  to: string,
+  params?: Record<string, string>,
+) {
+  const route = params ? { to, params } : { to }
+
+  return {
+    onNavigate: () => {
+      void navigate(route as never)
+    },
+    onPointerIntent: () => {
+      preloadRouteIntent(() => router.preloadRoute(route as never))
+    },
+  }
 }
 
 // ─── OS card (static, full-width) ─────────────────────────────────────────────
@@ -62,7 +114,9 @@ function Row({ label, value }: RowProps) {
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-right text-xs font-medium text-foreground">{value}</span>
+      <span className="text-right text-xs font-medium text-foreground">
+        {value}
+      </span>
     </div>
   )
 }
@@ -79,7 +133,10 @@ function WindowsCard({ s }: { s: StaticSystemInfo }) {
         <h2 className="text-sm font-medium text-foreground">{t('home.os')}</h2>
       </div>
       <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-        <Row label={t('home.version')} value={`${w.productName} ${w.displayVersion}`} />
+        <Row
+          label={t('home.version')}
+          value={`${w.productName} ${w.displayVersion}`}
+        />
         <Row label={t('home.build')} value={`${w.build}.${w.ubr}`} />
         <Row label={t('home.hostname')} value={w.hostname} />
         <Row label={t('home.username')} value={w.username} />
@@ -87,11 +144,16 @@ function WindowsCard({ s }: { s: StaticSystemInfo }) {
         <Row
           label={t('home.activation')}
           value={(
-            <span className={({
-              activated: 'text-success',
-              not_activated: 'text-destructive',
-              grace_period: 'text-warning',
-            } as Record<string, string>)[w.activationStatus] ?? 'text-muted-foreground'}
+            <span
+              className={
+                (
+                  {
+                    activated: 'metric-text-good',
+                    not_activated: 'metric-text-danger',
+                    grace_period: 'metric-text-warning',
+                  } as Record<string, string>
+                )[w.activationStatus] ?? 'text-muted-foreground'
+              }
             >
               {t(`home.activationStatus.${w.activationStatus}`)}
             </span>
@@ -126,7 +188,9 @@ function SummaryCard({
           <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent/60 text-accent-foreground">
             <Icon className="size-3.5" />
           </span>
-          <h2 className="min-w-0 text-sm font-medium text-foreground">{title}</h2>
+          <h2 className="min-w-0 text-sm font-medium text-foreground">
+            {title}
+          </h2>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {stat}
@@ -138,36 +202,64 @@ function SummaryCard({
   )
 }
 
-function CpuSummary({ live, s }: { live: LiveHomeInfo | null, s: StaticSystemInfo }) {
+function CpuSummary({
+  live,
+  s,
+}: {
+  live: LiveHomeInfo | null
+  s: StaticSystemInfo
+}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const router = useRouter()
   const preloadRouteIntent = useRouteIntentPreload()
   const pct = live ? Math.round(live.cpuUsagePercent) : null
+  const navHandlers = createSummaryNavHandlers(
+    navigate,
+    router,
+    preloadRouteIntent,
+    '/cpu',
+  )
   return (
     <SummaryCard
       icon={Cpu}
-      onNavigate={() => void navigate({ to: '/cpu' })}
-      onPointerIntent={() => preloadRouteIntent(() => router.preloadRoute({ to: '/cpu' }))}
-      stat={pct === null
-        ? <span className="text-xs font-medium text-muted-foreground">{t('home.livePending')}</span>
-        : (
-            <span className={`text-xs font-medium tabular-nums ${loadColor(pct)}`}>
-              {pct}
-              %
-            </span>
-          )}
+      {...navHandlers}
+      stat={
+        pct === null
+          ? (
+              <span className="text-xs font-medium text-muted-foreground">
+                {t('home.livePending')}
+              </span>
+            )
+          : (
+              <span
+                className={`text-xs font-medium tabular-nums ${loadColor(pct)}`}
+              >
+                {pct}
+                %
+              </span>
+            )
+      }
       title={(
         <span className="flex min-w-0 items-baseline gap-1">
           <span className="shrink-0">{t('home.cpu')}</span>
-          <MarqueeText className="font-normal text-muted-foreground" text={`(${s.cpu.model})`} />
+          <MarqueeText
+            className="font-normal text-muted-foreground"
+            text={`(${s.cpu.model})`}
+          />
         </span>
       )}
     />
   )
 }
 
-function RamSummary({ live, s }: { live: LiveHomeInfo | null, s: StaticSystemInfo }) {
+function RamSummary({
+  live,
+  s,
+}: {
+  live: LiveHomeInfo | null
+  s: StaticSystemInfo
+}) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const router = useRouter()
@@ -175,40 +267,67 @@ function RamSummary({ live, s }: { live: LiveHomeInfo | null, s: StaticSystemInf
   const total = s.ram.totalBytes
   const used = live?.ramUsedBytes ?? null
   const pct = used === null ? null : usagePct(used, total)
+  const navHandlers = createSummaryNavHandlers(
+    navigate,
+    router,
+    preloadRouteIntent,
+    '/ram',
+  )
   return (
     <SummaryCard
       icon={Server}
-      onNavigate={() => void navigate({ to: '/ram' })}
-      onPointerIntent={() => preloadRouteIntent(() => router.preloadRoute({ to: '/ram' }))}
-      stat={used === null || pct === null
-        ? <span className="text-xs font-medium text-muted-foreground">{t('home.livePending')}</span>
-        : (
-            <span className={`text-xs font-medium tabular-nums ${loadColor(pct)}`}>
-              {t('home.usedOf', {
-                used: formatBytes(used, t, i18n.language),
-                total: formatBytes(total, t, i18n.language),
-              })}
-            </span>
-          )}
+      {...navHandlers}
+      stat={
+        used === null || pct === null
+          ? (
+              <span className="text-xs font-medium text-muted-foreground">
+                {t('home.livePending')}
+              </span>
+            )
+          : (
+              <span
+                className={`text-xs font-medium tabular-nums ${loadColor(pct)}`}
+              >
+                {t('home.usedOf', {
+                  used: formatBytes(used, t, i18n.language),
+                  total: formatBytes(total, t, i18n.language),
+                })}
+              </span>
+            )
+      }
       title={t('home.ram')}
     />
   )
 }
 
-function DiskSummary({ disk, index }: { disk: StaticSystemInfo['disks'][number], index: number }) {
+function DiskSummary({
+  disk,
+  index,
+}: {
+  disk: StaticSystemInfo['disks'][number]
+  index: number
+}) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const router = useRouter()
   const preloadRouteIntent = useRouteIntentPreload()
   const used = disk.totalBytes - disk.availableBytes
   const param = mountToParam(disk.mountPoint)
+  const navHandlers = createSummaryNavHandlers(
+    navigate,
+    router,
+    preloadRouteIntent,
+    '/storage/$disk',
+    { disk: param },
+  )
   return (
     <SummaryCard
       icon={HardDrive}
-      onNavigate={() => void navigate({ to: '/storage/$disk', params: { disk: param } })}
-      onPointerIntent={() => preloadRouteIntent(() => router.preloadRoute({ to: '/storage/$disk', params: { disk: param } }))}
+      {...navHandlers}
       stat={(
-        <span className={`text-xs font-medium tabular-nums ${loadColor(usagePct(used, disk.totalBytes))}`}>
+        <span
+          className={`text-xs font-medium tabular-nums ${loadColor(usagePct(used, disk.totalBytes))}`}
+        >
           {t('home.usedOf', {
             used: formatBytes(used, t, i18n.language),
             total: formatBytes(disk.totalBytes, t, i18n.language),
@@ -220,9 +339,11 @@ function DiskSummary({ disk, index }: { disk: StaticSystemInfo['disks'][number],
           <span className="shrink-0">{t('storage.diskLabel', { index })}</span>
           <MarqueeText
             className="font-normal text-muted-foreground"
-            text={disk.volumeLabel
-              ? `(${mountLabel(disk.mountPoint)} - ${disk.volumeLabel})`
-              : `(${mountLabel(disk.mountPoint)})`}
+            text={
+              disk.volumeLabel
+                ? `(${mountLabel(disk.mountPoint)} - ${disk.volumeLabel})`
+                : `(${mountLabel(disk.mountPoint)})`
+            }
           />
         </span>
       )}
@@ -243,18 +364,24 @@ function NetworkSummary({
   const preloadRouteIntent = useRouteIntentPreload()
   const traffic = live?.network.find(entry => entry.name === adapter.name)
   const adapterName = networkAdapterToParam(adapter.name)
+  const navHandlers = createSummaryNavHandlers(
+    navigate,
+    router,
+    preloadRouteIntent,
+    '/network-stats/$adapterName',
+    { adapterName },
+  )
   return (
     <SummaryCard
       icon={Network}
-      onNavigate={() => void navigate({ to: '/network-stats/$adapterName', params: { adapterName } })}
-      onPointerIntent={() => preloadRouteIntent(() => router.preloadRoute({ to: '/network-stats/$adapterName', params: { adapterName } }))}
+      {...navHandlers}
       stat={(
         <div className="flex gap-2">
-          <span className="text-xs tabular-nums text-primary">
+          <span className="metric-text-accent text-xs tabular-nums">
             ↓
             {formatRate(traffic?.rxBytesPerSec ?? 0, t, i18n.language)}
           </span>
-          <span className="text-xs tabular-nums text-primary">
+          <span className="metric-text-accent text-xs tabular-nums">
             ↑
             {formatRate(traffic?.txBytesPerSec ?? 0, t, i18n.language)}
           </span>
@@ -263,18 +390,42 @@ function NetworkSummary({
       title={(
         <span className="flex min-w-0 items-baseline gap-1">
           <span className="shrink-0">{t('home.network')}</span>
-          <MarqueeText className="font-normal text-muted-foreground" text={`(${adapter.adapterDescription})`} />
+          <MarqueeText
+            className="font-normal text-muted-foreground"
+            text={`(${adapter.adapterDescription})`}
+          />
         </span>
       )}
     />
   )
 }
 
-function gpuUsage(gpu: Pick<LiveGpuInfo, 'util3d' | 'utilCopy' | 'utilEncode' | 'utilDecode' | 'utilHighPriority3d' | 'utilHighPriorityCompute'>): number {
-  return Math.max(gpu.util3d, gpu.utilCopy, gpu.utilEncode, gpu.utilDecode, gpu.utilHighPriority3d, gpu.utilHighPriorityCompute)
+function gpuUsage(
+  gpu: Pick<
+    LiveGpuInfo,
+    | 'util3d'
+    | 'utilCopy'
+    | 'utilEncode'
+    | 'utilDecode'
+    | 'utilHighPriority3d'
+    | 'utilHighPriorityCompute'
+  >,
+): number {
+  return Math.max(
+    gpu.util3d,
+    gpu.utilCopy,
+    gpu.utilEncode,
+    gpu.utilDecode,
+    gpu.utilHighPriority3d,
+    gpu.utilHighPriorityCompute,
+  )
 }
 
-function GpuSummary({ gpu, index, gpuLive }: {
+function GpuSummary({
+  gpu,
+  index,
+  gpuLive,
+}: {
   gpu: GpuInfo
   index: number
   gpuLive: LiveGpuInfo | null
@@ -285,23 +436,36 @@ function GpuSummary({ gpu, index, gpuLive }: {
   const preloadRouteIntent = useRouteIntentPreload()
   const gpuIndex = String(index)
   const usage = gpuLive ? gpuUsage(gpuLive) : null
+  const navHandlers = createSummaryNavHandlers(
+    navigate,
+    router,
+    preloadRouteIntent,
+    '/gpu/$gpuIndex',
+    { gpuIndex },
+  )
   return (
     <SummaryCard
       icon={Layers}
-      onNavigate={() => void navigate({ to: '/gpu/$gpuIndex', params: { gpuIndex } })}
-      onPointerIntent={() => preloadRouteIntent(() => router.preloadRoute({ to: '/gpu/$gpuIndex', params: { gpuIndex } }))}
-      stat={usage != null
-        ? (
-            <span className={`text-xs font-medium tabular-nums ${loadColor(usage)}`}>
-              {usage}
-              %
-            </span>
-          )
-        : undefined}
+      {...navHandlers}
+      stat={
+        usage != null
+          ? (
+              <span
+                className={`text-xs font-medium tabular-nums ${loadColor(usage)}`}
+              >
+                {usage}
+                %
+              </span>
+            )
+          : undefined
+      }
       title={(
         <span className="flex min-w-0 items-baseline gap-1">
           <span className="shrink-0">{t('gpu.gpuLabel', { index })}</span>
-          <MarqueeText className="font-normal text-muted-foreground" text={`(${gpu.name})`} />
+          <MarqueeText
+            className="font-normal text-muted-foreground"
+            text={`(${gpu.name})`}
+          />
         </span>
       )}
     />
@@ -325,7 +489,10 @@ function HomeSkeleton() {
         </div>
       </section>
       {Array.from({ length: 4 }).map((_, i) => (
-        <section className="rounded-lg border border-border/70 bg-card p-4" key={i}>
+        <section
+          className="rounded-lg border border-border/70 bg-card p-4"
+          key={i}
+        >
           <div className="mb-3 flex items-center gap-2">
             <Skeleton className="size-7 rounded-md" />
             <Skeleton className="h-4 w-24" />
@@ -364,7 +531,12 @@ export function HomePage() {
             <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
               <p className="text-sm text-muted-foreground">{t('home.loadError')}</p>
               <div>
-                <Button onClick={retryStaticInfo} size="sm" type="button" variant="outline">
+                <Button
+                  onClick={retryStaticInfo}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
                   {t('tweaks.actions.retry')}
                 </Button>
               </div>
@@ -383,10 +555,19 @@ export function HomePage() {
                   <DiskSummary disk={disk} index={i} key={disk.mountPoint} />
                 ))}
                 {networkCards.map(adapter => (
-                  <NetworkSummary adapter={adapter} key={`network-${adapter.name}`} live={liveInfo} />
+                  <NetworkSummary
+                    adapter={adapter}
+                    key={`network-${adapter.name}`}
+                    live={liveInfo}
+                  />
                 ))}
                 {staticInfo.gpus.map((gpu, i) => (
-                  <GpuSummary gpu={gpu} gpuLive={liveInfo?.gpus[i] ?? null} index={i} key={`gpu-${i}`} />
+                  <GpuSummary
+                    gpu={gpu}
+                    gpuLive={liveInfo?.gpus[i] ?? null}
+                    index={i}
+                    key={`gpu-${i}`}
+                  />
                 ))}
               </div>
             )}

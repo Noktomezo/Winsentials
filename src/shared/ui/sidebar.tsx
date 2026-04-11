@@ -172,7 +172,7 @@ function Sidebar({
       <div
         data-slot="sidebar"
         className={cn(
-          'flex h-full w-(--sidebar-width) flex-col bg-sidebar text-sidebar-foreground',
+          'flex h-full w-(--sidebar-width) flex-col bg-transparent text-sidebar-foreground',
           className,
         )}
         {...props}
@@ -189,7 +189,7 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+          className="w-(--sidebar-width) bg-transparent p-0 text-sidebar-foreground [&>button]:hidden"
           style={
             {
               '--sidebar-width': SIDEBAR_WIDTH_MOBILE,
@@ -225,7 +225,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="flex h-full min-h-0 w-full flex-col bg-sidebar"
+          className="flex h-full min-h-0 w-full flex-col bg-transparent"
         >
           {children}
         </div>
@@ -272,7 +272,7 @@ function Sidebar({
         <div
           data-sidebar="sidebar"
           data-slot="sidebar-inner"
-          className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow-sm"
+          className="flex h-full w-full flex-col bg-transparent group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow-sm"
         >
           {children}
         </div>
@@ -504,13 +504,13 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<'li'>) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  'peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md border border-transparent p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding,background-color,border-color,color,box-shadow] duration-250 ease-[cubic-bezier(0.22,1,0.36,1)] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:border-sidebar-border hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:border-sidebar-border active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:border-sidebar-border data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:border-sidebar-border data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0',
+  'peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md border border-transparent p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding,background-color,border-color,color,box-shadow] duration-250 ease-[cubic-bezier(0.22,1,0.36,1)] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:border-[color:color-mix(in_oklch,var(--state-info-strong)_26%,var(--border)_74%)] hover:bg-[color:color-mix(in_oklch,var(--state-info-strong)_18%,transparent)] hover:text-sidebar-accent-foreground focus-visible:ring-2 active:border-[color:color-mix(in_oklch,var(--state-info-strong)_54%,var(--border)_46%)] active:bg-[var(--state-info-strong)] active:text-primary-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:border-[color:color-mix(in_oklch,var(--state-info-strong)_54%,var(--border)_46%)] data-[active=true]:bg-[var(--state-info-strong)] data-[active=true]:font-medium data-[active=true]:text-primary-foreground data-[active=true]:shadow-none data-[state=open]:hover:border-[color:color-mix(in_oklch,var(--state-info-strong)_26%,var(--border)_74%)] data-[state=open]:hover:bg-[color:color-mix(in_oklch,var(--state-info-strong)_18%,transparent)] data-[state=open]:hover:text-sidebar-accent-foreground [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0',
   {
     variants: {
       variant: {
         default: 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
         outline:
-          'bg-background shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]',
+          'bg-background shadow-[0_0_0_1px_color-mix(in_oklch,var(--sidebar-border)_84%,transparent)] hover:bg-[color:color-mix(in_oklch,var(--sidebar-accent)_72%,transparent)] hover:text-sidebar-accent-foreground hover:shadow-[0_0_0_1px_color-mix(in_oklch,var(--sidebar-border)_84%,transparent)]',
       },
       size: {
         default: 'h-8 text-sm',
@@ -591,7 +591,7 @@ function SidebarMenuAction({
       data-slot="sidebar-menu-action"
       data-sidebar="menu-action"
       className={cn(
-        'absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground ring-sidebar-ring outline-hidden transition-transform peer-hover/menu-button:text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
+        'absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground ring-sidebar-ring outline-hidden transition-transform peer-hover/menu-button:text-sidebar-accent-foreground hover:bg-[color:color-mix(in_oklch,var(--sidebar-accent)_72%,transparent)] hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
         // Increases the hit area of the button on mobile.
         'after:absolute after:-inset-2 md:after:hidden',
         'peer-data-[size=sm]/menu-button:top-1',
@@ -716,8 +716,8 @@ function SidebarMenuSubButton({
       data-size={size}
       data-active={isActive}
       className={cn(
-        'flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground',
-        'data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground',
+        'flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md border border-transparent px-2 text-sidebar-foreground ring-sidebar-ring outline-hidden hover:border-[color:color-mix(in_oklch,var(--state-info-strong)_26%,var(--border)_74%)] hover:bg-[color:color-mix(in_oklch,var(--state-info-strong)_18%,transparent)] hover:text-sidebar-accent-foreground focus-visible:ring-2 active:border-[color:color-mix(in_oklch,var(--state-info-strong)_54%,var(--border)_46%)] active:bg-[var(--state-info-strong)] active:text-primary-foreground disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-accent-foreground data-[active=true]:[&_svg]:text-primary-foreground',
+        'data-[active=true]:border-[color:color-mix(in_oklch,var(--state-info-strong)_54%,var(--border)_46%)] data-[active=true]:bg-[var(--state-info-strong)] data-[active=true]:text-primary-foreground',
         size === 'sm' && 'text-xs',
         size === 'md' && 'text-sm',
         'group-data-[collapsible=icon]:hidden',

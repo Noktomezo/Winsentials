@@ -1,4 +1,5 @@
 fail_fast: true
+default_install_hook_types: [pre-commit, commit-msg]
 repos:
   # Basic checks (files, YAML, TOML, JSON, etc.)
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -46,14 +47,19 @@ repos:
         files: ^src-tauri/
         stages: [pre-commit]
 
-  # Frontend (Eslint)
+  # Frontend (staged files only)
   - repo: local
     hooks:
-      - id: eslint
-        name: eslint
-        entry: bunx eslint --fix
+      - id: lint-staged
+        name: lint-staged
+        entry: bunx lint-staged --quiet --config lint-staged.config.js
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: commitlint
+        name: commitlint
+        entry: bunx commitlint --edit
         language: system
         pass_filenames: true
-        files: \.(js|ts|jsx|tsx|vue|svelte|json|md|yaml|yml)$
-        exclude: (?:^|/)(?:node_modules|dist|src-tauri)/
-        stages: [pre-commit]
+        stages: [commit-msg]

@@ -36,11 +36,11 @@ function AppShellLayout({
 
   return (
     <SidebarProvider
-      className="h-svh min-h-svh flex-col overflow-hidden"
+      className="app-shell h-svh min-h-svh flex-col overflow-hidden"
       defaultOpen={true}
     >
       <AppTitlebar />
-      <div className="flex min-h-0 flex-1 overflow-hidden bg-sidebar">
+      <div className="flex min-h-0 flex-1 overflow-hidden bg-transparent">
         <AppSidebar />
         <SidebarInset className="min-h-0 overflow-hidden rounded-tl-[8px] border-t border-l border-border/70 bg-background">
           <SmoothScrollArea className="h-full" ref={scrollAreaRef}>
