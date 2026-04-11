@@ -1,4 +1,4 @@
-const ignoredSegments = ['/dist/', '/node_modules/', '/src-tauri/']
+const ignoredSegments = ['dist/', 'node_modules/', 'src-tauri/']
 
 function normalizePath(file) {
   return file.replaceAll('\\', '/')
@@ -12,7 +12,7 @@ function filterFrontendFiles(files) {
   return files.filter((file) => {
     const normalized = normalizePath(file)
 
-    return !ignoredSegments.some(segment => normalized.includes(segment))
+    return !ignoredSegments.some(segment => normalized.includes(segment.replace(/^\/+/, '')))
   })
 }
 
@@ -24,6 +24,6 @@ export default {
       return []
     }
 
-    return [`bunx eslint --fix ${eligibleFiles.map(quote).join(' ')}`]
+    return [`bunx eslint --fix -- ${eligibleFiles.map(quote).join(' ')}`]
   },
 }

@@ -5,6 +5,7 @@ import { usePreferencesStore } from '@/entities/settings/model/preferences-store
 import { APP_WEBVIEW_MATERIALS } from '@/shared/config/app'
 import { cn } from '@/shared/lib/utils'
 import {
+  filledSelectTriggerClassName,
   Select,
   SelectContent,
   SelectItem,
@@ -46,7 +47,7 @@ export function WebviewMaterialSelect({ className }: { className?: string }) {
         </div>
         <div className={cn('w-full sm:w-[163px]', className)}>
           <Select value={webviewMaterial} onValueChange={value => setWebviewMaterial(value as typeof webviewMaterial)}>
-            <SelectTrigger className="w-full justify-between !border-border/60 !bg-accent/55 !text-accent-foreground shadow-xs [&_svg:not([class*='text-'])]:!text-accent-foreground/70">
+            <SelectTrigger className={filledSelectTriggerClassName}>
               <SelectValue placeholder={t('settings.windowMaterial')} />
             </SelectTrigger>
             <SelectContent>

@@ -20,16 +20,6 @@ import {
 
 interface Crumb { label: string, href?: string }
 
-const titlebarControlBaseClassName = 'h-8 w-8 cursor-pointer rounded-md border border-transparent p-0 text-sidebar-foreground/82 transition-[background-color,border-color,color,box-shadow]'
-
-const titlebarControlClassName = `${titlebarControlBaseClassName} hover:border-[color:color-mix(in_oklch,var(--state-info-strong)_26%,var(--border)_74%)] hover:bg-[color:color-mix(in_oklch,var(--state-info-strong)_18%,transparent)] hover:text-sidebar-accent-foreground focus-visible:border-[color:color-mix(in_oklch,var(--state-info-strong)_26%,var(--border)_74%)] focus-visible:bg-[color:color-mix(in_oklch,var(--state-info-strong)_18%,transparent)] focus-visible:text-sidebar-accent-foreground focus-visible:ring-sidebar-ring/30`
-
-const titlebarMinimizeControlClassName = `${titlebarControlBaseClassName} hover:border-[color:color-mix(in_oklch,var(--metric-warning)_56%,transparent)] hover:bg-[color:color-mix(in_oklch,var(--metric-warning)_28%,transparent)] hover:text-[var(--metric-warning)] focus-visible:border-[color:color-mix(in_oklch,var(--metric-warning)_56%,transparent)] focus-visible:bg-[color:color-mix(in_oklch,var(--metric-warning)_28%,transparent)] focus-visible:text-[var(--metric-warning)] focus-visible:ring-[color:color-mix(in_oklch,var(--metric-warning)_36%,transparent)]`
-
-const titlebarMaximizeControlClassName = `${titlebarControlBaseClassName} hover:border-[color:color-mix(in_oklch,var(--metric-good)_56%,transparent)] hover:bg-[color:color-mix(in_oklch,var(--metric-good)_28%,transparent)] hover:text-[var(--metric-good)] focus-visible:border-[color:color-mix(in_oklch,var(--metric-good)_56%,transparent)] focus-visible:bg-[color:color-mix(in_oklch,var(--metric-good)_28%,transparent)] focus-visible:text-[var(--metric-good)] focus-visible:ring-[color:color-mix(in_oklch,var(--metric-good)_36%,transparent)]`
-
-const titlebarCloseControlClassName = `${titlebarControlBaseClassName} hover:border-[color:color-mix(in_oklch,var(--metric-danger)_58%,transparent)] hover:bg-[color:color-mix(in_oklch,var(--metric-danger)_30%,transparent)] hover:text-[var(--metric-danger)] focus-visible:border-[color:color-mix(in_oklch,var(--metric-danger)_58%,transparent)] focus-visible:bg-[color:color-mix(in_oklch,var(--metric-danger)_30%,transparent)] focus-visible:text-[var(--metric-danger)] focus-visible:ring-[color:color-mix(in_oklch,var(--metric-danger)_38%,transparent)]`
-
 function useBreadcrumbs(): Crumb[] {
   const pathname = useRouterState({ select: s => s.location.pathname })
   const { t } = useTranslation()
@@ -160,7 +150,7 @@ export function AppTitlebar() {
       data-slot="app-titlebar"
     >
       <SidebarTrigger
-        className={titlebarControlClassName}
+        className="titlebar-control"
         iconClassName="size-3.5"
       />
 
@@ -211,7 +201,7 @@ export function AppTitlebar() {
       <div className="flex items-center gap-1">
         <TitlebarButton
           aria-label={t('titlebar.minimize')}
-          className={titlebarMinimizeControlClassName}
+          className="titlebar-control titlebar-control--warning"
           onClick={() => {
             void handleMinimize()
           }}
@@ -220,7 +210,7 @@ export function AppTitlebar() {
         </TitlebarButton>
         <TitlebarButton
           aria-label={isMaximized ? t('titlebar.restore') : t('titlebar.maximize')}
-          className={titlebarMaximizeControlClassName}
+          className="titlebar-control titlebar-control--good"
           onClick={() => {
             void handleToggleMaximize()
           }}
@@ -229,7 +219,7 @@ export function AppTitlebar() {
         </TitlebarButton>
         <TitlebarButton
           aria-label={t('titlebar.close')}
-          className={titlebarCloseControlClassName}
+          className="titlebar-control titlebar-control--danger"
           onClick={() => {
             void handleClose()
           }}

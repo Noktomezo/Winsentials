@@ -6,6 +6,7 @@ import { usePreferencesStore } from '@/entities/settings/model/preferences-store
 import { LANGUAGE_PREFERENCES } from '@/shared/config/app'
 import { cn } from '@/shared/lib/utils'
 import {
+  filledSelectTriggerClassName,
   Select,
   SelectContent,
   SelectItem,
@@ -76,7 +77,7 @@ export function LanguageSelect({ className }: { className?: string }) {
   return (
     <div className={cn('w-full', className)}>
       <Select value={language} onValueChange={value => setLanguage(value as typeof language)}>
-        <SelectTrigger className="w-full justify-between !border-border/60 !bg-accent/55 !text-accent-foreground shadow-xs [&_svg:not([class*='text-'])]:!text-accent-foreground/70">
+        <SelectTrigger className={filledSelectTriggerClassName}>
           <span className="flex min-w-0 items-center gap-2">
             <LanguageBadge language={language} />
             <span className="truncate">{languageLabel(language, systemLabel)}</span>

@@ -290,6 +290,7 @@ const MetadataChipButton = forwardRef<
     </button>
   )
 })
+MetadataChipButton.displayName = 'MetadataChipButton'
 
 function RiskCodeBlock({
   children,
@@ -442,25 +443,25 @@ export function TweakCard({
                     align="end"
                     className="min-w-[var(--radix-select-trigger-width)] rounded-[10px] border text-xs font-medium"
                   >
-                    {dropdownOptions.map(option => (
-                      <SelectItem
-                        className="min-h-7 py-1 pr-7 pl-2 text-xs font-medium"
-                        disabled={option.value === 'custom'}
-                        key={option.value}
-                        value={option.value}
-                      >
-                        <span className="flex items-center gap-2">
-                          {(() => {
-                            const OptionIcon = dropdownOptionIcon(tweak.id, option.value)
+                    {dropdownOptions.map((option) => {
+                      const OptionIcon = dropdownOptionIcon(tweak.id, option.value)
 
-                            return OptionIcon
+                      return (
+                        <SelectItem
+                          className="min-h-7 py-1 pr-7 pl-2 text-xs font-medium"
+                          disabled={option.value === 'custom'}
+                          key={option.value}
+                          value={option.value}
+                        >
+                          <span className="flex items-center gap-2">
+                            {OptionIcon
                               ? <OptionIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                              : null
-                          })()}
-                          <span>{t(option.label)}</span>
-                        </span>
-                      </SelectItem>
-                    ))}
+                              : null}
+                            <span>{t(option.label)}</span>
+                          </span>
+                        </SelectItem>
+                      )
+                    })}
                   </SelectContent>
                 </Select>
               )}

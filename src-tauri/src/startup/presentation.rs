@@ -257,7 +257,11 @@ fn shell_host_payload_path(
     if POWERSHELL_HOSTS.contains(&host.as_str()) {
         let candidate =
             token_after_switch(&tokens, &["-file", "/file", "-f", "/f"]).or_else(|| {
-                first_path_like_token(tokens.iter().skip_while(|token| token.starts_with('-')))
+                first_path_like_token(
+                    tokens
+                        .iter()
+                        .skip_while(|token| token.starts_with('-') || token.starts_with('/')),
+                )
             })?;
         return Some(resolve_relative_task_path(
             PathBuf::from(candidate),

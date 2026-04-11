@@ -75,6 +75,25 @@ function mergeVisibleNetworkAdapters(
     .filter((adapter): adapter is NetworkAdapterInfo => adapter !== null)
 }
 
+function createSummaryNavHandlers(
+  navigate: ReturnType<typeof useNavigate>,
+  router: ReturnType<typeof useRouter>,
+  preloadRouteIntent: ReturnType<typeof useRouteIntentPreload>,
+  to: string,
+  params?: Record<string, string>,
+) {
+  const route = params ? { to, params } : { to }
+
+  return {
+    onNavigate: () => {
+      void navigate(route as never)
+    },
+    onPointerIntent: () => {
+      preloadRouteIntent(() => router.preloadRoute(route as never))
+    },
+  }
+}
+
 // ─── OS card (static, full-width) ─────────────────────────────────────────────
 
 interface RowProps {
@@ -195,12 +214,16 @@ function CpuSummary({
   const router = useRouter()
   const preloadRouteIntent = useRouteIntentPreload()
   const pct = live ? Math.round(live.cpuUsagePercent) : null
+  const navHandlers = createSummaryNavHandlers(
+    navigate,
+    router,
+    preloadRouteIntent,
+    '/cpu',
+  )
   return (
     <SummaryCard
       icon={Cpu}
-      onNavigate={() => void navigate({ to: '/cpu' })}
-      onPointerIntent={() =>
-        preloadRouteIntent(() => router.preloadRoute({ to: '/cpu' }))}
+      {...navHandlers}
       stat={
         pct === null
           ? (
@@ -244,12 +267,16 @@ function RamSummary({
   const total = s.ram.totalBytes
   const used = live?.ramUsedBytes ?? null
   const pct = used === null ? null : usagePct(used, total)
+  const navHandlers = createSummaryNavHandlers(
+    navigate,
+    router,
+    preloadRouteIntent,
+    '/ram',
+  )
   return (
     <SummaryCard
       icon={Server}
-      onNavigate={() => void navigate({ to: '/ram' })}
-      onPointerIntent={() =>
-        preloadRouteIntent(() => router.preloadRoute({ to: '/ram' }))}
+      {...navHandlers}
       stat={
         used === null || pct === null
           ? (
@@ -286,18 +313,17 @@ function DiskSummary({
   const preloadRouteIntent = useRouteIntentPreload()
   const used = disk.totalBytes - disk.availableBytes
   const param = mountToParam(disk.mountPoint)
+  const navHandlers = createSummaryNavHandlers(
+    navigate,
+    router,
+    preloadRouteIntent,
+    '/storage/$disk',
+    { disk: param },
+  )
   return (
     <SummaryCard
       icon={HardDrive}
-      onNavigate={() =>
-        void navigate({ to: '/storage/$disk', params: { disk: param } })}
-      onPointerIntent={() =>
-        preloadRouteIntent(() =>
-          router.preloadRoute({
-            to: '/storage/$disk',
-            params: { disk: param },
-          }),
-        )}
+      {...navHandlers}
       stat={(
         <span
           className={`text-xs font-medium tabular-nums ${loadColor(usagePct(used, disk.totalBytes))}`}
@@ -338,21 +364,17 @@ function NetworkSummary({
   const preloadRouteIntent = useRouteIntentPreload()
   const traffic = live?.network.find(entry => entry.name === adapter.name)
   const adapterName = networkAdapterToParam(adapter.name)
+  const navHandlers = createSummaryNavHandlers(
+    navigate,
+    router,
+    preloadRouteIntent,
+    '/network-stats/$adapterName',
+    { adapterName },
+  )
   return (
     <SummaryCard
       icon={Network}
-      onNavigate={() =>
-        void navigate({
-          to: '/network-stats/$adapterName',
-          params: { adapterName },
-        })}
-      onPointerIntent={() =>
-        preloadRouteIntent(() =>
-          router.preloadRoute({
-            to: '/network-stats/$adapterName',
-            params: { adapterName },
-          }),
-        )}
+      {...navHandlers}
       stat={(
         <div className="flex gap-2">
           <span className="metric-text-accent text-xs tabular-nums">
@@ -414,15 +436,17 @@ function GpuSummary({
   const preloadRouteIntent = useRouteIntentPreload()
   const gpuIndex = String(index)
   const usage = gpuLive ? gpuUsage(gpuLive) : null
+  const navHandlers = createSummaryNavHandlers(
+    navigate,
+    router,
+    preloadRouteIntent,
+    '/gpu/$gpuIndex',
+    { gpuIndex },
+  )
   return (
     <SummaryCard
       icon={Layers}
-      onNavigate={() =>
-        void navigate({ to: '/gpu/$gpuIndex', params: { gpuIndex } })}
-      onPointerIntent={() =>
-        preloadRouteIntent(() =>
-          router.preloadRoute({ to: '/gpu/$gpuIndex', params: { gpuIndex } }),
-        )}
+      {...navHandlers}
       stat={
         usage != null
           ? (

@@ -92,5 +92,7 @@ A cold, modern palette inspired by snow and midnight skies. Designed for Fluent/
 
 1. **Blue undertone everywhere** — neutrals use slate/navy base, never warm gray
 2. **High contrast accents** — vivid saturated colors for badges and semantic states
-3. **Fluent-compatible** — works with acrylic, mica, and tabbed window materials
+3. **Fluent-compatible modifiers** — works with acrylic, mica, and tabbed window modifiers
 4. **No warm grays** — the entire palette stays in cool territory
+
+Materials such as acrylic or mica are modifiers applied on top of existing light/dark themes, not standalone themes.

@@ -90,6 +90,8 @@
   --metric-good: var(--state-good-strong);
   --metric-warning: var(--state-warning-strong);
   --metric-danger: var(--state-danger-strong);
+  --scrollbar-thumb: oklch(0.55 0.02 240 / 0.35);
+  --scrollbar-thumb-hover: oklch(0.55 0.02 240 / 0.55);
 }
 
 [data-theme='dark'] {
@@ -233,11 +235,6 @@ body {
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) transparent;
-}
-
-:root {
-  --scrollbar-thumb: oklch(0.55 0.02 240 / 0.35);
-  --scrollbar-thumb-hover: oklch(0.55 0.02 240 / 0.55);
 }
 
 [data-theme='dark'] {
@@ -574,6 +571,57 @@ body {
   background: var(--secondary);
   color: var(--accent-foreground);
   box-shadow: var(--shadow-xs);
+}
+
+.titlebar-control {
+  --titlebar-control-border-hover: color-mix(in oklch, var(--state-info-strong) 26%, var(--border) 74%);
+  --titlebar-control-bg-hover: color-mix(in oklch, var(--state-info-strong) 18%, transparent);
+  --titlebar-control-fg-hover: var(--sidebar-accent-foreground);
+  --titlebar-control-ring: color-mix(in oklch, var(--sidebar-ring) 30%, transparent);
+  height: 2rem;
+  width: 2rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius) - 2px);
+  padding: 0;
+  color: color-mix(in oklch, var(--sidebar-foreground) 82%, transparent);
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.titlebar-control:is(:hover, :focus-visible) {
+  border-color: var(--titlebar-control-border-hover);
+  background: var(--titlebar-control-bg-hover);
+  color: var(--titlebar-control-fg-hover);
+}
+
+.titlebar-control:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--titlebar-control-ring);
+}
+
+.titlebar-control--warning {
+  --titlebar-control-border-hover: color-mix(in oklch, var(--metric-warning) 56%, transparent);
+  --titlebar-control-bg-hover: color-mix(in oklch, var(--metric-warning) 28%, transparent);
+  --titlebar-control-fg-hover: var(--metric-warning);
+  --titlebar-control-ring: color-mix(in oklch, var(--metric-warning) 36%, transparent);
+}
+
+.titlebar-control--good {
+  --titlebar-control-border-hover: color-mix(in oklch, var(--metric-good) 56%, transparent);
+  --titlebar-control-bg-hover: color-mix(in oklch, var(--metric-good) 28%, transparent);
+  --titlebar-control-fg-hover: var(--metric-good);
+  --titlebar-control-ring: color-mix(in oklch, var(--metric-good) 36%, transparent);
+}
+
+.titlebar-control--danger {
+  --titlebar-control-border-hover: color-mix(in oklch, var(--metric-danger) 58%, transparent);
+  --titlebar-control-bg-hover: color-mix(in oklch, var(--metric-danger) 30%, transparent);
+  --titlebar-control-fg-hover: var(--metric-danger);
+  --titlebar-control-ring: color-mix(in oklch, var(--metric-danger) 38%, transparent);
 }
 
 @supports (color: color-mix(in oklch, black 50%, white)) {

@@ -133,6 +133,77 @@ impl ConfigureKernelTimingChainTweak {
 
         Ok(())
     }
+
+    fn set_value(key: &str, value: &str) -> Result<(), AppError> {
+        Self::run_bcdedit(&["/set", "{current}", key, value])?;
+        Ok(())
+    }
+
+    fn restore_value(
+        current_value: &Option<String>,
+        original_value: &Option<String>,
+        key: &str,
+    ) -> Result<(), AppError> {
+        match original_value {
+            Some(value) => Self::set_value(key, value),
+            None => Self::delete_if_present(current_value, key),
+        }
+    }
+
+    fn apply_enabled_state() -> Result<(), AppError> {
+        Self::set_value(USE_PLATFORM_CLOCK, "no")?;
+        Self::set_value(USE_PLATFORM_TICK, "yes")?;
+        Self::set_value(DISABLE_DYNAMIC_TICK, "yes")?;
+        Ok(())
+    }
+
+    fn rollback_state(original_state: &KernelTimingState) -> Result<(), AppError> {
+        let current_state = Self::read_current_state()?;
+        let mut errors = Vec::new();
+
+        if let Err(error) = Self::restore_value(
+            &current_state.use_platform_clock,
+            &original_state.use_platform_clock,
+            USE_PLATFORM_CLOCK,
+        ) {
+            errors.push(format!("{USE_PLATFORM_CLOCK}: {error}"));
+        }
+
+        if let Err(error) = Self::restore_value(
+            &current_state.use_platform_tick,
+            &original_state.use_platform_tick,
+            USE_PLATFORM_TICK,
+        ) {
+            errors.push(format!("{USE_PLATFORM_TICK}: {error}"));
+        }
+
+        if let Err(error) = Self::restore_value(
+            &current_state.disable_dynamic_tick,
+            &original_state.disable_dynamic_tick,
+            DISABLE_DYNAMIC_TICK,
+        ) {
+            errors.push(format!("{DISABLE_DYNAMIC_TICK}: {error}"));
+        }
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(AppError::message(format!(
+                "rollback failed for {}",
+                errors.join("; ")
+            )))
+        }
+    }
+
+    fn read_current_state() -> Result<KernelTimingState, AppError> {
+        let output = Self::run_bcdedit(&["/enum", "{current}"])?;
+
+        Ok(KernelTimingState {
+            use_platform_clock: Self::parse_boot_value(&output, USE_PLATFORM_CLOCK),
+            use_platform_tick: Self::parse_boot_value(&output, USE_PLATFORM_TICK),
+            disable_dynamic_tick: Self::parse_boot_value(&output, DISABLE_DYNAMIC_TICK),
+        })
+    }
 }
 
 impl Tweak for ConfigureKernelTimingChainTweak {
@@ -147,10 +218,18 @@ impl Tweak for ConfigureKernelTimingChainTweak {
     fn apply(&self, value: &str) -> Result<(), AppError> {
         match value {
             ENABLED_VALUE => {
-                Self::run_bcdedit(&["/set", "{current}", USE_PLATFORM_CLOCK, "no"])?;
-                Self::run_bcdedit(&["/set", "{current}", USE_PLATFORM_TICK, "yes"])?;
-                Self::run_bcdedit(&["/set", "{current}", DISABLE_DYNAMIC_TICK, "yes"])?;
-                Ok(())
+                let original_state = self.read_state()?;
+
+                match Self::apply_enabled_state() {
+                    Ok(()) => Ok(()),
+                    Err(apply_error) => match Self::rollback_state(&original_state) {
+                        Ok(()) => Err(apply_error),
+                        Err(rollback_error) => Err(AppError::message(format!(
+                            "failed to apply {}: {apply_error}; rollback failed: {rollback_error}",
+                            self.id()
+                        ))),
+                    },
+                }
             }
             DISABLED_VALUE => self.reset(),
             _ => Err(AppError::message(format!(
