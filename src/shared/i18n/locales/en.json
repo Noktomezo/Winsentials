@@ -327,8 +327,9 @@
       "tabbed": "Tabbed"
     },
     "theme": "Theme",
-    "themeDescription": "Choose between the clean light and deep dark application appearances.",
+    "themeDescription": "Choose the system, light, or dark app appearance.",
     "themes": {
+      "system": "System",
       "dark": "Dark",
       "light": "Light"
     },

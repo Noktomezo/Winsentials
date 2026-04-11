@@ -815,7 +815,7 @@ body {
   [data-slot='button'][data-variant='secondary'],
 [data-theme='light'] :is([data-slot='dialog-content'], [data-slot='sheet-content']) [data-slot='input'],
 [data-theme='light'] :is([data-slot='dialog-content'], [data-slot='sheet-content']) [data-slot='textarea'] {
-  background: #eef2f7;
+  background: var(--background);
 }
 
 [data-theme='light'] [data-slot='select-trigger'] {

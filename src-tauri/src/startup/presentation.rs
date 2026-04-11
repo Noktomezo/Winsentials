@@ -29,6 +29,8 @@ use windows::Win32::UI::WindowsAndMessaging::{DI_NORMAL, DestroyIcon, DrawIconEx
 use windows::core::Interface;
 use windows::core::PCWSTR;
 
+use crate::startup::shell_hosts::{COMMAND_HOSTS, POWERSHELL_HOSTS, SCRIPT_HOSTS};
+
 #[derive(Debug, Clone, Default)]
 pub struct ParsedCommand {
     pub raw: String,
@@ -252,44 +254,43 @@ fn shell_host_payload_path(
         .map(|value| value.to_ascii_lowercase())?;
     let tokens = tokenize_windows_arguments(arguments?);
 
-    match host.as_str() {
-        "powershell.exe" | "pwsh.exe" => {
-            let candidate =
-                token_after_switch(&tokens, &["-file", "/file", "-f", "/f"]).or_else(|| {
-                    first_path_like_token(tokens.iter().skip_while(|token| token.starts_with('-')))
-                })?;
-            Some(resolve_relative_task_path(
-                PathBuf::from(candidate),
-                working_directory,
-            ))
-        }
-        "cmd.exe" => {
-            let start_index = tokens
-                .iter()
-                .position(|token| {
-                    token.eq_ignore_ascii_case("/c") || token.eq_ignore_ascii_case("/k")
-                })
-                .map(|index| index + 1)
-                .unwrap_or(0);
-            let candidate = first_path_like_token(tokens.iter().skip(start_index))?;
-            Some(resolve_relative_task_path(
-                PathBuf::from(candidate),
-                working_directory,
-            ))
-        }
-        "wscript.exe" | "cscript.exe" | "mshta.exe" => {
-            let candidate = first_path_like_token(
-                tokens
-                    .iter()
-                    .filter(|token| !token.starts_with('-') && !token.starts_with('/')),
-            )?;
-            Some(resolve_relative_task_path(
-                PathBuf::from(candidate),
-                working_directory,
-            ))
-        }
-        _ => None,
+    if POWERSHELL_HOSTS.contains(&host.as_str()) {
+        let candidate =
+            token_after_switch(&tokens, &["-file", "/file", "-f", "/f"]).or_else(|| {
+                first_path_like_token(tokens.iter().skip_while(|token| token.starts_with('-')))
+            })?;
+        return Some(resolve_relative_task_path(
+            PathBuf::from(candidate),
+            working_directory,
+        ));
     }
+
+    if COMMAND_HOSTS.contains(&host.as_str()) {
+        let start_index = tokens
+            .iter()
+            .position(|token| token.eq_ignore_ascii_case("/c") || token.eq_ignore_ascii_case("/k"))
+            .map(|index| index + 1)
+            .unwrap_or(0);
+        let candidate = first_path_like_token(tokens.iter().skip(start_index))?;
+        return Some(resolve_relative_task_path(
+            PathBuf::from(candidate),
+            working_directory,
+        ));
+    }
+
+    if SCRIPT_HOSTS.contains(&host.as_str()) {
+        let candidate = first_path_like_token(
+            tokens
+                .iter()
+                .filter(|token| !token.starts_with('-') && !token.starts_with('/')),
+        )?;
+        return Some(resolve_relative_task_path(
+            PathBuf::from(candidate),
+            working_directory,
+        ));
+    }
+
+    None
 }
 
 fn resolve_relative_task_path(path: PathBuf, working_directory: Option<&str>) -> PathBuf {
@@ -328,24 +329,57 @@ fn tokenize_windows_arguments(input: &str) -> Vec<String> {
     let mut tokens = Vec::new();
     let mut current = String::new();
     let mut quote_char: Option<char> = None;
+    let chars: Vec<char> = input.chars().collect();
+    let mut index = 0;
 
-    for ch in input.chars() {
+    while index < chars.len() {
+        let ch = chars[index];
+
+        if let Some(active_quote) = quote_char {
+            if ch == '\\' {
+                if chars.get(index + 1) == Some(&active_quote) {
+                    current.push(active_quote);
+                    index += 2;
+                    continue;
+                }
+
+                current.push(ch);
+                index += 1;
+                continue;
+            }
+
+            if ch == active_quote {
+                if active_quote == '"' && chars.get(index + 1) == Some(&'"') {
+                    current.push('"');
+                    index += 2;
+                    continue;
+                }
+
+                quote_char = None;
+                index += 1;
+                continue;
+            }
+
+            current.push(ch);
+            index += 1;
+            continue;
+        }
+
         match ch {
             '"' | '\'' => {
-                if quote_char == Some(ch) {
-                    quote_char = None;
-                } else if quote_char.is_none() {
-                    quote_char = Some(ch);
-                } else {
-                    current.push(ch);
-                }
+                quote_char = Some(ch);
+                index += 1;
             }
-            value if value.is_whitespace() && quote_char.is_none() => {
+            value if value.is_whitespace() => {
                 if !current.is_empty() {
                     tokens.push(std::mem::take(&mut current));
                 }
+                index += 1;
             }
-            _ => current.push(ch),
+            _ => {
+                current.push(ch);
+                index += 1;
+            }
         }
     }
 
@@ -1032,6 +1066,34 @@ mod tests {
                 "Bypass".to_string(),
                 "-File".to_string(),
                 r#"C:\ProgramData\Winhance\Scripts\BloatRemoval.ps1"#.to_string(),
+            ],
+        );
+    }
+
+    #[test]
+    fn tokenizes_backslash_escaped_quotes_inside_quoted_segment() {
+        let tokens =
+            tokenize_windows_arguments(r#""C:\Tools\script.cmd" "value with \"quote\" inside""#);
+
+        assert_eq!(
+            tokens,
+            vec![
+                r#"C:\Tools\script.cmd"#.to_string(),
+                r#"value with "quote" inside"#.to_string(),
+            ],
+        );
+    }
+
+    #[test]
+    fn tokenizes_double_quotes_escaped_by_double_quote_pairs() {
+        let tokens =
+            tokenize_windows_arguments(r#""C:\Tools\script.cmd" "value with ""quote"" inside""#);
+
+        assert_eq!(
+            tokens,
+            vec![
+                r#"C:\Tools\script.cmd"#.to_string(),
+                r#"value with "quote" inside"#.to_string(),
             ],
         );
     }

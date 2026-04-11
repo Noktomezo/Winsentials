@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { MoonStar, SunMedium } from 'lucide-react'
+import { Laptop, MoonStar, SunMedium } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { usePreferencesStore } from '@/entities/settings/model/preferences-store'
 import { APP_THEMES } from '@/shared/config/app'
@@ -13,6 +13,7 @@ import {
 } from '@/shared/ui/'
 
 const THEME_ICONS: Record<(typeof APP_THEMES)[number], LucideIcon> = {
+  system: Laptop,
   light: SunMedium,
   dark: MoonStar,
 }
