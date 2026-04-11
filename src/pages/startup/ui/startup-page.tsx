@@ -64,22 +64,22 @@ function sourceIcon(source: StartupSource) {
 function sourceColor(source: StartupSource) {
   switch (source) {
     case 'registry':
-      return 'bg-sky-500/12 text-sky-700 dark:text-sky-300'
+      return '!border-[color:color-mix(in_oklch,var(--badge-blue)_28%,transparent)] !bg-[color:color-mix(in_oklch,var(--badge-blue)_12%,transparent)] text-[var(--badge-blue)]'
     case 'startup_folder':
-      return 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300'
+      return '!border-[color:color-mix(in_oklch,var(--success)_28%,transparent)] !bg-[color:color-mix(in_oklch,var(--success)_12%,transparent)] text-[var(--success)]'
     case 'scheduled_task':
-      return 'bg-amber-500/12 text-amber-700 dark:text-amber-300'
+      return '!border-[color:color-mix(in_oklch,var(--warning)_28%,transparent)] !bg-[color:color-mix(in_oklch,var(--warning)_12%,transparent)] text-[var(--warning)]'
   }
 }
 
 function sourceMetaColor(source: StartupSource) {
   switch (source) {
     case 'registry':
-      return 'text-sky-700 transition-[color,filter] hover:text-sky-800 hover:drop-shadow-[0_0_8px_currentColor] dark:text-sky-300 dark:hover:text-sky-200'
+      return 'text-[var(--metric-accent-text)] transition-[color,filter] hover:brightness-110 hover:drop-shadow-[0_0_8px_currentColor]'
     case 'startup_folder':
-      return 'text-emerald-700 transition-[color,filter] hover:text-emerald-800 hover:drop-shadow-[0_0_8px_currentColor] dark:text-emerald-300 dark:hover:text-emerald-200'
+      return 'text-[var(--success)] transition-[color,filter] hover:brightness-110 hover:drop-shadow-[0_0_8px_currentColor]'
     case 'scheduled_task':
-      return 'text-amber-700 transition-[color,filter] hover:text-amber-800 hover:drop-shadow-[0_0_8px_currentColor] dark:text-amber-300 dark:hover:text-amber-200'
+      return 'text-[var(--warning)] transition-[color,filter] hover:brightness-110 hover:drop-shadow-[0_0_8px_currentColor]'
   }
 }
 
@@ -150,13 +150,13 @@ const StartupCard = memo(({
     <section className="rounded-lg border border-border/70 bg-card p-4">
       <div className="min-w-0 flex items-center gap-3">
         <span className={cn(
-          'flex size-9 shrink-0 items-center justify-center self-center rounded-lg',
+          'ui-soft-surface flex size-9 shrink-0 items-center justify-center self-center rounded-md',
           sourceColor(entry.source),
         )}
         >
           {entry.iconDataUrl
-            ? <img alt="" className="size-4 object-contain" src={entry.iconDataUrl} />
-            : <Icon className="size-4" />}
+            ? <img alt="" className="max-h-[72%] max-w-[72%] object-contain" src={entry.iconDataUrl} />
+            : <Icon className="size-[72%]" />}
         </span>
         <div className="min-w-0 flex flex-1 items-center justify-between gap-4">
           <div className="min-w-0 flex-1 space-y-1">
@@ -635,7 +635,7 @@ export function StartupPage() {
               {Array.from({ length: 4 }).map((_, index) => (
                 <section className="rounded-lg border border-border/70 bg-card p-4" key={index}>
                   <div className="min-w-0 flex items-start gap-3">
-                    <Skeleton className="size-9 shrink-0 rounded-lg" />
+                    <Skeleton className="size-9 shrink-0 rounded-md" />
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0 flex flex-wrap items-center gap-2">

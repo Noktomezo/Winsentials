@@ -179,10 +179,8 @@ pub fn scheduled_task_presentation(
     arguments: Option<&str>,
     working_directory: Option<&str>,
 ) -> StartupPresentation {
-    let executable = command
-        .map(PathBuf::from)
-        .filter(|path| !path.as_os_str().is_empty());
-    let metadata = executable.as_deref().map(file_presentation_for_path);
+    let target = scheduled_task_target_path(command, arguments, working_directory);
+    let metadata = target.as_deref().map(file_presentation_for_path);
 
     StartupPresentation {
         display_name: metadata
@@ -193,7 +191,7 @@ pub fn scheduled_task_presentation(
         icon_data_url: metadata
             .as_ref()
             .and_then(|value| value.icon_data_url.clone()),
-        target_path: executable.as_deref().map(path_to_string),
+        target_path: target.as_deref().map(path_to_string),
         arguments: arguments
             .map(str::trim)
             .filter(|value| !value.is_empty())
@@ -211,16 +209,13 @@ pub fn scheduled_task_presentation_light(
     arguments: Option<&str>,
     working_directory: Option<&str>,
 ) -> StartupPresentation {
-    let executable = command
-        .map(PathBuf::from)
-        .filter(|path| !path.as_os_str().is_empty());
+    let target = scheduled_task_target_path(command, arguments, working_directory);
 
     StartupPresentation {
-        display_name: file_stem(executable.as_deref())
-            .unwrap_or_else(|| normalize_task_name(raw_name)),
+        display_name: file_stem(target.as_deref()).unwrap_or_else(|| normalize_task_name(raw_name)),
         publisher: None,
         icon_data_url: None,
-        target_path: executable.as_deref().map(path_to_string),
+        target_path: target.as_deref().map(path_to_string),
         arguments: arguments
             .map(str::trim)
             .filter(|value| !value.is_empty())
@@ -230,6 +225,147 @@ pub fn scheduled_task_presentation_light(
             .filter(|value| !value.is_empty())
             .map(str::to_string),
     }
+}
+
+fn scheduled_task_target_path(
+    command: Option<&str>,
+    arguments: Option<&str>,
+    working_directory: Option<&str>,
+) -> Option<PathBuf> {
+    let executable = command
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)?;
+
+    shell_host_payload_path(&executable, arguments, working_directory)
+        .or_else(|| Some(resolve_relative_task_path(executable, working_directory)))
+}
+
+fn shell_host_payload_path(
+    executable: &Path,
+    arguments: Option<&str>,
+    working_directory: Option<&str>,
+) -> Option<PathBuf> {
+    let host = executable
+        .file_name()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_ascii_lowercase())?;
+    let tokens = tokenize_windows_arguments(arguments?);
+
+    match host.as_str() {
+        "powershell.exe" | "pwsh.exe" => {
+            let candidate =
+                token_after_switch(&tokens, &["-file", "/file", "-f", "/f"]).or_else(|| {
+                    first_path_like_token(tokens.iter().skip_while(|token| token.starts_with('-')))
+                })?;
+            Some(resolve_relative_task_path(
+                PathBuf::from(candidate),
+                working_directory,
+            ))
+        }
+        "cmd.exe" => {
+            let start_index = tokens
+                .iter()
+                .position(|token| {
+                    token.eq_ignore_ascii_case("/c") || token.eq_ignore_ascii_case("/k")
+                })
+                .map(|index| index + 1)
+                .unwrap_or(0);
+            let candidate = first_path_like_token(tokens.iter().skip(start_index))?;
+            Some(resolve_relative_task_path(
+                PathBuf::from(candidate),
+                working_directory,
+            ))
+        }
+        "wscript.exe" | "cscript.exe" | "mshta.exe" => {
+            let candidate = first_path_like_token(
+                tokens
+                    .iter()
+                    .filter(|token| !token.starts_with('-') && !token.starts_with('/')),
+            )?;
+            Some(resolve_relative_task_path(
+                PathBuf::from(candidate),
+                working_directory,
+            ))
+        }
+        _ => None,
+    }
+}
+
+fn resolve_relative_task_path(path: PathBuf, working_directory: Option<&str>) -> PathBuf {
+    if path.is_absolute() {
+        return path;
+    }
+
+    working_directory
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .map(|base| base.join(&path))
+        .unwrap_or(path)
+}
+
+fn token_after_switch<'a>(tokens: &'a [String], switches: &[&str]) -> Option<&'a str> {
+    tokens
+        .windows(2)
+        .find(|window| {
+            switches
+                .iter()
+                .any(|switch| window[0].eq_ignore_ascii_case(switch))
+        })
+        .map(|window| window[1].as_str())
+        .filter(|value| !value.trim().is_empty())
+}
+
+fn first_path_like_token<'a>(tokens: impl IntoIterator<Item = &'a String>) -> Option<&'a str> {
+    tokens
+        .into_iter()
+        .map(String::as_str)
+        .find(|token| looks_like_task_target(token))
+}
+
+fn tokenize_windows_arguments(input: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    let mut quote_char: Option<char> = None;
+
+    for ch in input.chars() {
+        match ch {
+            '"' | '\'' => {
+                if quote_char == Some(ch) {
+                    quote_char = None;
+                } else if quote_char.is_none() {
+                    quote_char = Some(ch);
+                } else {
+                    current.push(ch);
+                }
+            }
+            value if value.is_whitespace() && quote_char.is_none() => {
+                if !current.is_empty() {
+                    tokens.push(std::mem::take(&mut current));
+                }
+            }
+            _ => current.push(ch),
+        }
+    }
+
+    if !current.is_empty() {
+        tokens.push(current);
+    }
+
+    tokens
+}
+
+fn looks_like_task_target(value: &str) -> bool {
+    let normalized = value.trim().trim_matches('"').trim_matches('\'');
+    if normalized.is_empty() {
+        return false;
+    }
+
+    let lower = normalized.to_ascii_lowercase();
+    command_extensions()
+        .iter()
+        .any(|extension| lower.ends_with(extension))
 }
 
 fn parse_quoted_command(raw: &str) -> Option<ParsedCommand> {
@@ -842,5 +978,61 @@ impl Drop for ComGuard {
                 CoUninitialize();
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{scheduled_task_presentation_light, tokenize_windows_arguments};
+
+    #[test]
+    fn scheduled_task_light_uses_powershell_file_payload_for_name_and_target() {
+        let presentation = scheduled_task_presentation_light(
+            "BloatRemoval",
+            Some("powershell.exe"),
+            Some(
+                r#"-ExecutionPolicy Bypass -File "C:\ProgramData\Winhance\Scripts\BloatRemoval.ps1""#,
+            ),
+            None,
+        );
+
+        assert_eq!(presentation.display_name, "BloatRemoval");
+        assert_eq!(
+            presentation.target_path.as_deref(),
+            Some(r#"C:\ProgramData\Winhance\Scripts\BloatRemoval.ps1"#),
+        );
+    }
+
+    #[test]
+    fn scheduled_task_light_resolves_relative_cmd_payload_from_working_directory() {
+        let presentation = scheduled_task_presentation_light(
+            "Runner",
+            Some(r#"C:\Windows\System32\cmd.exe"#),
+            Some(r#"/c "Scripts\Runner.cmd" /silent"#),
+            Some(r#"C:\ProgramData\Winhance"#),
+        );
+
+        assert_eq!(presentation.display_name, "Runner");
+        assert_eq!(
+            presentation.target_path.as_deref(),
+            Some(r#"C:\ProgramData\Winhance\Scripts\Runner.cmd"#),
+        );
+    }
+
+    #[test]
+    fn tokenizes_quoted_windows_arguments_without_losing_script_path() {
+        let tokens = tokenize_windows_arguments(
+            r#"-ExecutionPolicy Bypass -File "C:\ProgramData\Winhance\Scripts\BloatRemoval.ps1""#,
+        );
+
+        assert_eq!(
+            tokens,
+            vec![
+                "-ExecutionPolicy".to_string(),
+                "Bypass".to_string(),
+                "-File".to_string(),
+                r#"C:\ProgramData\Winhance\Scripts\BloatRemoval.ps1"#.to_string(),
+            ],
+        );
     }
 }
