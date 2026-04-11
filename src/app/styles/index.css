@@ -214,16 +214,19 @@
 }
 
 html,
-body,
-#root {
+body {
   min-height: 100%;
-  overflow: hidden;
   overscroll-behavior: none;
 }
 
 html,
 body {
   background: transparent;
+}
+
+#root {
+  min-height: 100%;
+  overflow: hidden;
 }
 
 /* Scrollbar theming — Arctic cool tones */

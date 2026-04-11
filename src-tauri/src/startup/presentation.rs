@@ -252,7 +252,7 @@ fn shell_host_payload_path(
         .file_name()
         .and_then(|value| value.to_str())
         .map(|value| value.to_ascii_lowercase())?;
-    let tokens = tokenize_windows_arguments(arguments?);
+    let tokens = tokenize_windows_arguments(arguments?, POWERSHELL_HOSTS.contains(&host.as_str()));
 
     if POWERSHELL_HOSTS.contains(&host.as_str()) {
         let candidate =
@@ -325,7 +325,7 @@ fn first_path_like_token<'a>(tokens: impl IntoIterator<Item = &'a String>) -> Op
         .find(|token| looks_like_task_target(token))
 }
 
-fn tokenize_windows_arguments(input: &str) -> Vec<String> {
+fn tokenize_windows_arguments(input: &str, shell_is_powershell: bool) -> Vec<String> {
     let mut tokens = Vec::new();
     let mut current = String::new();
     let mut quote_char: Option<char> = None;
@@ -366,8 +366,12 @@ fn tokenize_windows_arguments(input: &str) -> Vec<String> {
         }
 
         match ch {
-            '"' | '\'' => {
-                quote_char = Some(ch);
+            '"' => {
+                quote_char = Some('"');
+                index += 1;
+            }
+            '\'' if shell_is_powershell => {
+                quote_char = Some('\'');
                 index += 1;
             }
             value if value.is_whitespace() => {
@@ -1057,6 +1061,7 @@ mod tests {
     fn tokenizes_quoted_windows_arguments_without_losing_script_path() {
         let tokens = tokenize_windows_arguments(
             r#"-ExecutionPolicy Bypass -File "C:\ProgramData\Winhance\Scripts\BloatRemoval.ps1""#,
+            true,
         );
 
         assert_eq!(
@@ -1072,8 +1077,10 @@ mod tests {
 
     #[test]
     fn tokenizes_backslash_escaped_quotes_inside_quoted_segment() {
-        let tokens =
-            tokenize_windows_arguments(r#""C:\Tools\script.cmd" "value with \"quote\" inside""#);
+        let tokens = tokenize_windows_arguments(
+            r#""C:\Tools\script.cmd" "value with \"quote\" inside""#,
+            false,
+        );
 
         assert_eq!(
             tokens,
@@ -1086,8 +1093,10 @@ mod tests {
 
     #[test]
     fn tokenizes_double_quotes_escaped_by_double_quote_pairs() {
-        let tokens =
-            tokenize_windows_arguments(r#""C:\Tools\script.cmd" "value with ""quote"" inside""#);
+        let tokens = tokenize_windows_arguments(
+            r#""C:\Tools\script.cmd" "value with ""quote"" inside""#,
+            false,
+        );
 
         assert_eq!(
             tokens,
@@ -1095,6 +1104,36 @@ mod tests {
                 r#"C:\Tools\script.cmd"#.to_string(),
                 r#"value with "quote" inside"#.to_string(),
             ],
+        );
+    }
+
+    #[test]
+    fn cmd_style_single_quotes_remain_literal_characters() {
+        let tokens = tokenize_windows_arguments(r#"/c 'Scripts\Runner.cmd' /silent"#, false);
+
+        assert_eq!(
+            tokens,
+            vec![
+                "/c".to_string(),
+                "'Scripts\\Runner.cmd'".to_string(),
+                "/silent".to_string(),
+            ],
+        );
+    }
+
+    #[test]
+    fn scheduled_task_light_resolves_relative_wscript_payload_from_working_directory() {
+        let presentation = scheduled_task_presentation_light(
+            "ScriptHost",
+            Some(r#"C:\Windows\System32\wscript.exe"#),
+            Some(r#""Scripts\Login.vbs" //b"#),
+            Some(r#"C:\ProgramData\Winhance"#),
+        );
+
+        assert_eq!(presentation.display_name, "Login");
+        assert_eq!(
+            presentation.target_path.as_deref(),
+            Some(r#"C:\ProgramData\Winhance\Scripts\Login.vbs"#),
         );
     }
 }

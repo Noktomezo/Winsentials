@@ -6,10 +6,14 @@ import {
   subscribeToSystemThemeChange,
 } from '@/shared/lib/theme/resolve-theme'
 
+function subscribeNever() {
+  return () => {}
+}
+
 export function useResolvedTheme() {
   const theme = usePreferencesStore(state => state.theme)
   const systemTheme = useSyncExternalStore(
-    subscribeToSystemThemeChange,
+    theme === 'system' ? subscribeToSystemThemeChange : subscribeNever,
     getSystemResolvedTheme,
     getSystemResolvedTheme,
   )

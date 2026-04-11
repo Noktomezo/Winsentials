@@ -25,7 +25,7 @@ export function subscribeToSystemThemeChange(callback: () => void) {
     return () => {}
   }
 
-  const listener = () => callback()
+  const listener = callback
   mediaQueryList.addEventListener('change', listener)
 
   return () => {
