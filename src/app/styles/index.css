@@ -1,4 +1,3 @@
-@import 'https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap';
 @import 'tailwindcss';
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
@@ -368,7 +367,7 @@ body {
 }
 
 .emoji-flag {
-  font-family: 'Noto Color Emoji', 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif;
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
 }
 
 .scrollbar-hidden {
@@ -413,7 +412,7 @@ body {
 }
 
 .toast-root--success {
-  border-color: color-mix(in oklch, var(--border) 72%, var(--primary));
+  border-color: color-mix(in oklch, var(--border) 72%, var(--success));
 }
 
 .toast-root--info {
@@ -462,7 +461,7 @@ body {
 }
 
 .toast-icon--success {
-  color: var(--primary);
+  color: var(--success);
 }
 
 .toast-icon--info {
