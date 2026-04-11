@@ -64,6 +64,7 @@
   --input: #c4cdd9;
   --ring: #2563eb;
   --radius: 0.625rem;
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.05);
   --sidebar: #dfe5ee;
   --sidebar-foreground: #0c1425;
   --sidebar-primary: #2563eb;
