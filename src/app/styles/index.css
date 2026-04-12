@@ -520,10 +520,16 @@ body {
 }
 
 .tweak-card-grid {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(25rem, 100%), 1fr));
   align-items: stretch;
+}
+
+.tweak-card-grid > * {
+  min-width: min(100%, var(--tweak-card-width, 32rem));
+  flex: var(--tweak-card-grow, 1) 1 var(--tweak-card-width, 32rem);
+  align-self: stretch;
 }
 
 .network-adapter-card:hover {

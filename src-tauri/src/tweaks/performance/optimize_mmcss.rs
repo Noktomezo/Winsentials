@@ -24,11 +24,6 @@ const OPTIMIZED_PRO_AUDIO_GPU_PRIORITY: u32 = 8;
 const DEFAULT_PRO_AUDIO_SFIO_PRIORITY: &str = "Normal";
 const OPTIMIZED_PRO_AUDIO_SFIO_PRIORITY: &str = "High";
 
-const SYSTEM_PROFILE_KEY: RegKey = RegKey {
-    hive: Hive::LocalMachine,
-    path: r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile",
-};
-
 const GAMES_TASK_KEY: RegKey = RegKey {
     hive: Hive::LocalMachine,
     path: r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile\Tasks\Games",
@@ -53,7 +48,6 @@ enum StringSnapshot {
 
 #[derive(Clone)]
 struct MmcssSnapshot {
-    system_responsiveness: DwordSnapshot,
     games_scheduling_category: StringSnapshot,
     games_priority: DwordSnapshot,
     games_gpu_priority: DwordSnapshot,
@@ -115,7 +109,6 @@ impl OptimizeMmcssTweak {
             .map_err(|_| AppError::message("failed to acquire MMCSS operation lock"))?;
         let snapshot = self.capture_snapshot()?;
         self.apply_with_rollback(snapshot, || {
-            SYSTEM_PROFILE_KEY.delete_value("SystemResponsiveness")?;
             GAMES_TASK_KEY
                 .set_string("Scheduling Category", OPTIMIZED_GAMES_SCHEDULING_CATEGORY)?;
             GAMES_TASK_KEY.set_dword("Priority", OPTIMIZED_GAMES_PRIORITY)?;
@@ -140,7 +133,6 @@ impl OptimizeMmcssTweak {
             .map_err(|_| AppError::message("failed to acquire MMCSS operation lock"))?;
         let snapshot = self.capture_snapshot()?;
         self.apply_with_rollback(snapshot, || {
-            SYSTEM_PROFILE_KEY.delete_value("SystemResponsiveness")?;
             GAMES_TASK_KEY.set_string("Scheduling Category", DEFAULT_GAMES_SCHEDULING_CATEGORY)?;
             GAMES_TASK_KEY.set_dword("Priority", DEFAULT_GAMES_PRIORITY)?;
             GAMES_TASK_KEY.set_dword("GPU Priority", DEFAULT_GAMES_GPU_PRIORITY)?;
@@ -158,10 +150,6 @@ impl OptimizeMmcssTweak {
 
     fn capture_snapshot(&self) -> Result<MmcssSnapshot, AppError> {
         Ok(MmcssSnapshot {
-            system_responsiveness: Self::snapshot_dword(
-                &SYSTEM_PROFILE_KEY,
-                "SystemResponsiveness",
-            )?,
             games_scheduling_category: Self::snapshot_string(
                 &GAMES_TASK_KEY,
                 "Scheduling Category",
@@ -203,14 +191,6 @@ impl OptimizeMmcssTweak {
     fn restore_snapshot(snapshot: &MmcssSnapshot) -> Vec<String> {
         let mut errors = Vec::new();
 
-        Self::push_restore_error(
-            &mut errors,
-            Self::restore_dword(
-                &SYSTEM_PROFILE_KEY,
-                "SystemResponsiveness",
-                &snapshot.system_responsiveness,
-            ),
-        );
         Self::push_restore_error(
             &mut errors,
             Self::restore_string(
