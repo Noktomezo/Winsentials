@@ -1,6 +1,7 @@
 pub mod appearance;
 pub mod behaviour;
 pub mod input;
+pub mod memory;
 pub mod network;
 pub mod performance;
 pub mod privacy;
@@ -71,6 +72,7 @@ pub struct TweakMeta {
     pub requires_action: RequiresAction,
     pub min_os_build: Option<u32>,
     pub min_os_ubr: Option<u32>,
+    pub min_required_memory_gb: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -112,6 +114,7 @@ fn build_tweak_registry() -> Vec<Arc<dyn Tweak>> {
     tweaks.extend(appearance::tweaks().into_iter().map(Arc::from));
     tweaks.extend(behaviour::tweaks().into_iter().map(Arc::from));
     tweaks.extend(input::tweaks().into_iter().map(Arc::from));
+    tweaks.extend(memory::tweaks().into_iter().map(Arc::from));
     tweaks.extend(network::tweaks().into_iter().map(Arc::from));
     tweaks.extend(performance::tweaks().into_iter().map(Arc::from));
     tweaks.extend(privacy::tweaks().into_iter().map(Arc::from));

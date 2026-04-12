@@ -1,7 +1,5 @@
-use windows::Win32::Foundation::{RPC_E_CHANGED_MODE, VARIANT_BOOL};
-use windows::Win32::System::Com::{
-    CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx, CoUninitialize,
-};
+use windows::Win32::Foundation::VARIANT_BOOL;
+use windows::Win32::System::Com::{CLSCTX_INPROC_SERVER, CoCreateInstance};
 use windows::Win32::System::TaskScheduler::{
     IAction, IActionCollection, IExecAction, IRegisteredTask, ITaskDefinition, ITaskFolder,
     ITaskService, ITriggerCollection, TASK_ACTION_COM_HANDLER, TASK_ACTION_EXEC,
@@ -14,6 +12,7 @@ use windows::Win32::System::TaskScheduler::{
 use windows::Win32::System::Variant::VARIANT;
 use windows::core::{BSTR, Interface};
 
+use crate::com::ComGuard;
 use crate::error::AppError;
 use crate::startup::presentation::{
     scheduled_task_presentation, scheduled_task_presentation_light,
@@ -124,7 +123,7 @@ struct TaskSchedulerSession {
 
 impl TaskSchedulerSession {
     fn connect() -> Result<Self, AppError> {
-        let com = ComGuard::new()?;
+        let com = ComGuard::new().map_err(AppError::from)?;
         let service: ITaskService =
             unsafe { CoCreateInstance(&TaskScheduler, None, CLSCTX_INPROC_SERVER)? };
         unsafe {
@@ -154,36 +153,6 @@ impl TaskSchedulerSession {
             folder
                 .GetTask(&BSTR::from(task_name))
                 .map_err(AppError::from)
-        }
-    }
-}
-
-struct ComGuard {
-    owned: bool,
-}
-
-impl ComGuard {
-    fn new() -> Result<Self, AppError> {
-        let status = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
-        if status.is_ok() {
-            return Ok(Self { owned: true });
-        }
-
-        if status == RPC_E_CHANGED_MODE {
-            return Ok(Self { owned: false });
-        }
-
-        status.ok()?;
-        unreachable!("successful COM initialization should have returned earlier")
-    }
-}
-
-impl Drop for ComGuard {
-    fn drop(&mut self) {
-        if self.owned {
-            unsafe {
-                CoUninitialize();
-            }
         }
     }
 }

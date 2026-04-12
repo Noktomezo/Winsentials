@@ -42,6 +42,7 @@ impl HideGalleryNavigationPaneTweak {
                 requires_action: RequiresAction::None,
                 min_os_build: Some(22621),
                 min_os_ubr: Some(2361),
+                min_required_memory_gb: None,
             },
         }
     }

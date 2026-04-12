@@ -1,7 +1,8 @@
 import type { TweakMeta } from '@/entities/tweak/model/types'
-import { AppWindow } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useStaticInfo } from '@/entities/system-info/model/static-system-info'
 import {
   applyTweak,
   logoutUser,
@@ -48,6 +49,7 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
   const updateCachedTweak = useTweakCacheStore(
     state => state.updateCachedTweak,
   )
+  const staticInfo = useStaticInfo()
   const [pendingIds, setPendingIds] = useState<string[]>([])
   const categoryState = cachedCategory ?? EMPTY_CATEGORY
 
@@ -83,9 +85,7 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
             appName: tweak.requiresAction.appName,
           }),
           {
-            icon: tweak.requiresAction.appName === 'Explorer'
-              ? <AppWindow className="size-4" />
-              : undefined,
+            icon: <RotateCcw className="size-4" />,
           },
         )
       }
@@ -188,6 +188,7 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
             <TweakCard
               key={tweak.id}
               currentBuild={currentBuild}
+              currentInstalledMemoryBytes={staticInfo?.ram.totalBytes ?? null}
               isPending={pendingIds.includes(tweak.id)}
               onApplyValue={value => void handleApplyValue(tweak, value)}
               tweak={tweak}

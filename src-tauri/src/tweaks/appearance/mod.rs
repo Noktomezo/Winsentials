@@ -1,4 +1,5 @@
 pub mod classic_context_menu;
+pub mod disable_wallpaper_jpeg_compression;
 pub mod fast_taskbar_thumbnails;
 pub mod faster_cursor_blink_rate;
 pub mod hide_gallery_navigation_pane;
@@ -12,6 +13,7 @@ use crate::tweaks::Tweak;
 pub fn tweaks() -> Vec<Box<dyn Tweak>> {
     vec![
         Box::new(classic_context_menu::ClassicContextMenuTweak::new()),
+        Box::new(disable_wallpaper_jpeg_compression::DisableWallpaperJpegCompressionTweak::new()),
         Box::new(fast_taskbar_thumbnails::FastTaskbarThumbnailsTweak::new()),
         Box::new(faster_cursor_blink_rate::FasterCursorBlinkRateTweak::new()),
         Box::new(remove_shortcut_arrows::RemoveShortcutArrowsTweak::new()),

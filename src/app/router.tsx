@@ -139,6 +139,15 @@ const securityRoute = createRoute({
   ),
 })
 
+const privacyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'privacy',
+  component: lazyRouteComponent(
+    () => import('@/pages/privacy/ui/privacy-page'),
+    'PrivacyPage',
+  ),
+})
+
 const networkRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'network',
@@ -154,6 +163,15 @@ const performanceRoute = createRoute({
   component: lazyRouteComponent(
     () => import('@/pages/performance/ui/performance-page'),
     'PerformancePage',
+  ),
+})
+
+const memoryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'memory',
+  component: lazyRouteComponent(
+    () => import('@/pages/memory/ui/memory-page'),
+    'MemoryPage',
   ),
 })
 
@@ -262,8 +280,10 @@ const routeTree = rootRoute.addChildren([
   behaviourRoute,
   appearanceRoute,
   securityRoute,
+  privacyRoute,
   networkRoute,
   performanceRoute,
+  memoryRoute,
   inputRoute,
   toolsRoute,
   startupRoute,

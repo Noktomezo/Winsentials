@@ -18,6 +18,7 @@ interface BackendTweakMeta {
   detail_description: string
   id: string
   min_os_build?: number
+  min_required_memory_gb?: number
   min_os_ubr?: number
   name: string
   recommended_value: string
@@ -72,6 +73,7 @@ function mapTweakMeta(meta: BackendTweakMeta): TweakMeta {
     detailDescription: meta.detail_description,
     id: meta.id,
     minOsBuild: meta.min_os_build,
+    minRequiredMemoryGb: meta.min_required_memory_gb,
     minOsUbr: meta.min_os_ubr,
     name: meta.name,
     recommendedValue: meta.recommended_value,

@@ -56,6 +56,12 @@
         "name": "Classic Context Menu",
         "shortDescription": "Restores the classic context menu layout in Windows 11."
       },
+      "disableWallpaperJpegCompression": {
+        "detailDescription": "Disables the automatic JPEG compression Windows applies when you set an image as your desktop wallpaper. This helps preserve full image quality, which is especially noticeable on high-resolution 4K and 8K wallpapers with gradients, textures, and fine detail.",
+        "name": "Disable Wallpaper JPEG Compression",
+        "riskDescription": "This tweak usually has no real downside. At most, the wallpaper copy Windows keeps may take a bit more space because it is stored at higher quality.",
+        "shortDescription": "Sets JPEG wallpaper import quality to 100% without extra compression."
+      },
       "fastTaskbarThumbnails": {
         "detailDescription": "Reduces the delay before open app previews appear on hover. The interface feels more responsive.",
         "name": "Fast Taskbar Thumbnails",
@@ -141,8 +147,10 @@
     "behaviour": "Behaviour",
     "home": "Home",
     "input": "Input",
+    "memory": "Memory",
     "network": "Network",
     "performance": "Performance",
+    "privacy": "Privacy",
     "security": "Security",
     "startup": "Startup",
     "tools": "Tools",
@@ -221,17 +229,17 @@
     "description": "General settings for input devices and responsiveness.",
     "title": "Input",
     "tweaks": {
+      "csrssHighPriority": {
+        "detailDescription": "Raises CPU and I/O priority for csrss.exe, the process involved in handling windows, mouse input, and keyboard input. It also enables a few related multimedia profile settings so Windows is less conservative around the input path. On some systems this can make control feel more responsive, especially in games and with high polling rate devices.",
+        "name": "CSRSS High Priority",
+        "riskDescription": "This is an aggressive system tweak. On some PCs it may provide little benefit or slightly increase overall CPU usage. If the system feels worse after rebooting, reset the tweak and return to the default values.",
+        "shortDescription": "Raises CSRSS priority and related input settings to reduce mouse and keyboard latency."
+      },
       "disableMouseAcceleration": {
         "detailDescription": "Disables Windows mouse acceleration so cursor movement stays 1:1 with the physical movement of your mouse. This is especially useful for FPS games, aiming, and precise desktop work where you want consistent muscle memory instead of the pointer speeding up during faster swipes.",
         "name": "Disable Mouse Acceleration",
         "riskDescription": "If you are used to Windows cursor acceleration, the pointer may initially feel slower or require more desk movement, especially at lower DPI settings. If it becomes uncomfortable, reset the tweak and reboot Windows.",
         "shortDescription": "Turns off Enhance Pointer Precision for a more consistent 1:1 mouse feel."
-      },
-      "rawMouseThrottle": {
-        "detailDescription": "Windows already groups very high-rate mouse events before passing them through the system, usually at about 125 Hz. This tweak makes that grouping more aggressive by switching it to 50 Hz. Your mouse does not physically become 50 Hz, but Windows spends less time processing huge bursts of mouse events from 2000-8000 Hz devices. That can noticeably reduce CPU and DPC overhead and make FPS drops during fast mouse movement much less severe after a full reboot.",
-        "name": "Reduce High Polling Rate Mouse Overhead",
-        "riskDescription": "This is a tradeoff. Windows compresses mouse events more aggressively, so some users may feel slightly worse theoretical responsiveness or less precise motion in games that already behaved well. If mouse input feels worse after rebooting, reset the tweak and restart Windows.",
-        "shortDescription": "Makes Windows compress high-rate mouse events more aggressively to reduce FPS drops and CPU load."
       },
       "fastKeyboardRepeat": {
         "detailDescription": "Changes how quickly a held key starts repeating and how fast repeated characters are produced after that. Faster presets make input feel more responsive in games, code editors, and general navigation, while slower presets stay more comfortable for everyday typing. After changing this setting, it is best to sign out and back in so Windows fully applies the new profile.",
@@ -244,6 +252,24 @@
         },
         "riskDescription": "Very aggressive repeat timing can feel too sensitive for normal typing, remote desktops, or applications that react poorly to rapid repeated input. If typing starts to feel erratic, switch back to a slower preset or restore the default profile.",
         "shortDescription": "Lets you choose a ready-made keyboard repeat profile, from the Windows default to faster and more responsive presets."
+      }
+    }
+  },
+  "memory": {
+    "description": "Memory-related tweaks for Windows service behavior on systems with enough RAM.",
+    "title": "Memory",
+    "tweaks": {
+      "disableFaultTolerantHeap": {
+        "detailDescription": "Disables Windows Fault Tolerant Heap (FTH), a compatibility layer that Windows can automatically enable for apps that crash often. FTH tries to keep unstable apps alive, but that can increase memory overhead and keep unnecessary compatibility workarounds active.",
+        "name": "Disable Fault Tolerant Heap (FTH)",
+        "riskDescription": "Apps that truly depend on FTH for crash mitigation may become unstable again after you disable it. If a specific program starts crashing more often, reset this tweak and reboot Windows.",
+        "shortDescription": "Turns off the global FTH compatibility heap and clears saved app assignments."
+      },
+      "svcHostSplitThreshold": {
+        "detailDescription": "Raises the RAM threshold Windows uses when deciding whether to split services into separate svchost.exe processes. On systems with enough memory this makes service crashes easier to isolate, improves diagnostics, and reduces the chance that one unstable service drags several others down with it. The tweak automatically uses your installed RAM size, so it fits the current system instead of relying on one fixed preset.",
+        "name": "Increase Service Host Split Threshold",
+        "riskDescription": "On low-memory systems this can increase RAM usage because Windows will keep more services in separate processes. If memory pressure becomes worse after enabling it, reset the tweak and reboot.",
+        "shortDescription": "Makes Windows split services into separate svchost.exe processes on systems with enough RAM."
       }
     }
   },
@@ -274,6 +300,83 @@
         "name": "Optimize MMCSS",
         "riskDescription": "Background audio, video playback, streaming helpers, or other non-game multimedia tasks can become less stable while this profile is active. If you notice worse multitasking behavior, reset the tweak and reboot Windows.",
         "shortDescription": "Can reduce microstutter and make games feel more responsive by favoring gaming and low-latency audio."
+      },
+      "rawMouseThrottle": {
+        "detailDescription": "Windows already groups very high-rate mouse events before passing them through the system, usually at about 125 Hz. This tweak makes that grouping more aggressive by switching it to 50 Hz. Your mouse does not physically become 50 Hz, but Windows spends less time processing huge bursts of mouse events from 2000-8000 Hz devices. That can noticeably reduce CPU and DPC overhead and make FPS drops during fast mouse movement much less severe after a full reboot.",
+        "name": "Reduce High Polling Rate Mouse Overhead",
+        "riskDescription": "This is a tradeoff. Windows compresses mouse events more aggressively, so some users may feel slightly worse theoretical responsiveness or less precise motion in games that already behaved well. If mouse input feels worse after rebooting, reset the tweak and restart Windows.",
+        "shortDescription": "Makes Windows compress high-rate mouse events more aggressively to reduce FPS drops and CPU load."
+      }
+    }
+  },
+  "privacy": {
+    "description": "Privacy-related tweaks that reduce Windows diagnostics and background data collection.",
+    "title": "Privacy",
+    "tweaks": {
+      "disableCloudSync": {
+        "detailDescription": "Disables Microsoft account sync so Windows stops syncing settings, passwords, and related data across your devices. You can choose a softer partial mode or fully block cloud sync.",
+        "name": "Disable Cloud Sync",
+        "options": {
+          "default": "Default",
+          "full": "Full disable",
+          "partial": "Partial disable"
+        },
+        "riskDescription": "Syncing settings, passwords, and some personal data between Windows devices will be reduced or fully disabled. If you use multiple PCs with the same Microsoft account, this can be noticeable.",
+        "shortDescription": "Turns off syncing of settings and data between devices through a Microsoft account."
+      },
+      "disableInputDataCollection": {
+        "detailDescription": "Disables collection of typing and handwriting data so Windows no longer keeps gathering this information for personalization and diagnostics. This reduces background data collection related to text input and writing habits.",
+        "name": "Disable Input Data Collection",
+        "riskDescription": "Windows may become slightly less effective at personalizing typing suggestions, handwriting recognition, or related language improvements to your input habits. In normal everyday use this is usually barely noticeable.",
+        "shortDescription": "Turns off typing, handwriting, and typography data collection."
+      },
+      "disableInventoryCollector": {
+        "detailDescription": "Disables Inventory Collector so Windows stops gathering inventory data about installed software for compatibility and diagnostics. This reduces background collection of system composition details.",
+        "name": "Disable Inventory Collector",
+        "riskDescription": "Some Windows compatibility checks and diagnostic scenarios will receive less information about installed software. In normal everyday use this usually has no noticeable impact.",
+        "shortDescription": "Turns off collection of inventory data about installed software."
+      },
+      "disableLocationDataCollection": {
+        "detailDescription": "Disables system access to location data through Windows policies so apps and system components can no longer use geolocation. This reduces background collection and use of your location data.",
+        "name": "Disable Location Data Collection",
+        "riskDescription": "Apps and Windows features that rely on location will no longer be able to determine where you are. This can be noticeable for maps, weather, find-my-device, and similar features.",
+        "shortDescription": "Fully disables Windows access to location data."
+      },
+      "disableTargetedAdvertising": {
+        "detailDescription": "Disables the Windows Advertising ID so Microsoft and apps can no longer use it for personalized ads. This reduces ad profiling inside Windows and supported apps.",
+        "name": "Disable Targeted Advertising",
+        "riskDescription": "Personalized ads in Windows and some apps will stop working. In rare cases this can affect integrations such as Phone Link if they depend on the Advertising ID.",
+        "shortDescription": "Turns off the Advertising ID and personalized ads in Windows."
+      },
+      "disableDotnetTelemetry": {
+        "detailDescription": "Disables .NET Framework telemetry so apps built on it stop sending extra diagnostic usage data back to Microsoft. This is useful if you want less background data collection without changing normal .NET app startup and day-to-day behavior.",
+        "name": "Disable .NET Framework Telemetry",
+        "riskDescription": "Some .NET Framework diagnostic reporting will no longer be available, so a few troubleshooting or debugging scenarios may become less informative. For normal everyday use this usually has little to no visible impact.",
+        "shortDescription": "Turns off .NET Framework diagnostic data collection and telemetry."
+      },
+      "disablePowershellTelemetry": {
+        "detailDescription": "Disables PowerShell telemetry and also turns off Script Block Logging, which means PowerShell stops sending some diagnostic data and also stops keeping detailed logs of executed script content.",
+        "name": "Disable PowerShell Telemetry and Script Logging",
+        "riskDescription": "This is no longer just a privacy tweak. It also disables Script Block Logging, so useful logs for auditing, incident response, and malicious script investigation will no longer be collected. Only enable it if you intentionally want to give up that visibility.",
+        "shortDescription": "Turns off PowerShell telemetry and Script Block Logging."
+      },
+      "disableTelemetryScheduledTasks": {
+        "detailDescription": "Disables the scheduled tasks Windows uses for compatibility analysis, CEIP, and periodic telemetry-related uploads. This stops common telemetry jobs such as Microsoft Compatibility Appraiser, ProgramDataUpdater, Consolidator, UsbCeip, KernelCeipTask, and Uploader from running in the background.",
+        "name": "Disable Telemetry Scheduled Tasks",
+        "riskDescription": "Some Microsoft compatibility checks and customer experience data collection jobs will no longer run while this tweak is enabled. In normal use this has little impact, but if you want the default diagnostics flow back, reset the tweak.",
+        "shortDescription": "Turns off the main scheduled tasks used for telemetry, CEIP, and compatibility data collection."
+      },
+      "disableWindowsErrorReporting": {
+        "detailDescription": "Fully disables Windows Error Reporting so the system stops collecting and sending crash reports for apps and Windows components. This reduces the amount of diagnostic data Windows stores or can send after failures.",
+        "name": "Disable Windows Error Reporting",
+        "riskDescription": "With WER disabled, Windows will be less helpful at collecting standard crash details for apps and system components. This usually does not matter in everyday use, but built-in troubleshooting becomes less informative when something crashes.",
+        "shortDescription": "Turns off Windows Error Reporting and crash report submission."
+      },
+      "disableWindowsTelemetry": {
+        "detailDescription": "Disables the main Windows telemetry and diagnostics paths by lowering telemetry policy values and disabling the Connected User Experiences and Telemetry services. This reduces how much diagnostic and metadata information Windows can send back to Microsoft in the background.",
+        "name": "Disable Windows Telemetry",
+        "riskDescription": "Some built-in diagnostics, troubleshooting, or metadata-driven features may become less informative while this tweak is enabled. If you rely on Windows diagnostic data for support or debugging, restore the default settings and reboot.",
+        "shortDescription": "Turns off the main Windows telemetry services and registry-based diagnostics settings."
       }
     }
   },
@@ -626,6 +729,7 @@
       "risk": "Risks"
     },
     "requires": {
+      "memoryGb": "Requires at least {{gb}} GB of RAM",
       "restartExplorer": "Requires Explorer restart",
       "restartPc": "Requires PC restart",
       "windowsBuild": "Requires Windows build {{build}} or newer"

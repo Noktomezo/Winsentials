@@ -43,6 +43,7 @@ impl UnlockLockScreenTimeoutSettingTweak {
                 requires_action: RequiresAction::None,
                 min_os_build: Some(9600),
                 min_os_ubr: None,
+                min_required_memory_gb: None,
             },
         }
     }

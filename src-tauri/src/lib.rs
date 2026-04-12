@@ -1,4 +1,5 @@
 pub mod backup;
+pub mod com;
 pub mod commands;
 pub mod error;
 pub mod registry;

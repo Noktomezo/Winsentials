@@ -8,7 +8,7 @@ use std::sync::{Mutex, OnceLock};
 use base64::Engine;
 use png::{BitDepth, ColorType, Encoder};
 use regex::Regex;
-use windows::Win32::Foundation::{MAX_PATH, RPC_E_CHANGED_MODE};
+use windows::Win32::Foundation::MAX_PATH;
 use windows::Win32::Graphics::Gdi::{
     BI_RGB, BITMAPINFO, BITMAPINFOHEADER, CreateCompatibleDC, CreateDIBSection, DIB_RGB_COLORS,
     DeleteDC, DeleteObject, GetDIBits, HGDIOBJ, SelectObject,
@@ -18,8 +18,7 @@ use windows::Win32::Storage::FileSystem::{
     VerQueryValueW,
 };
 use windows::Win32::System::Com::{
-    CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx, CoUninitialize,
-    IPersistFile, STGM_READ,
+    CLSCTX_INPROC_SERVER, CoCreateInstance, IPersistFile, STGM_READ,
 };
 use windows::Win32::UI::Shell::{
     IShellLinkW, SHFILEINFOW, SHGFI_ICON, SHGFI_SMALLICON, SHGFI_USEFILEATTRIBUTES, SHGetFileInfoW,
@@ -29,6 +28,7 @@ use windows::Win32::UI::WindowsAndMessaging::{DI_NORMAL, DestroyIcon, DrawIconEx
 use windows::core::Interface;
 use windows::core::PCWSTR;
 
+use crate::com::ComGuard;
 use crate::startup::shell_hosts::{COMMAND_HOSTS, POWERSHELL_HOSTS, SCRIPT_HOSTS};
 
 #[derive(Debug, Clone, Default)]
@@ -991,36 +991,6 @@ fn wide_buffer_to_string(buffer: &[u16]) -> Option<String> {
         .unwrap_or(buffer.len());
     let value = String::from_utf16_lossy(&buffer[..end]).trim().to_string();
     (!value.is_empty()).then_some(value)
-}
-
-struct ComGuard {
-    initialized: bool,
-}
-
-impl ComGuard {
-    fn new() -> windows::core::Result<Self> {
-        let status = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
-        if status.is_ok() {
-            return Ok(Self { initialized: true });
-        }
-
-        if status == RPC_E_CHANGED_MODE {
-            return Ok(Self { initialized: false });
-        }
-
-        status.ok()?;
-        unreachable!("successful COM initialization should have returned earlier")
-    }
-}
-
-impl Drop for ComGuard {
-    fn drop(&mut self) {
-        if self.initialized {
-            unsafe {
-                CoUninitialize();
-            }
-        }
-    }
 }
 
 #[cfg(test)]
