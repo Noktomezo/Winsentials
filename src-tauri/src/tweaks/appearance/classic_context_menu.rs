@@ -51,6 +51,7 @@ impl ClassicContextMenuTweak {
                 },
                 min_os_build: Some(22000),
                 min_os_ubr: None,
+                min_required_memory_gb: None,
             },
         }
     }

@@ -72,6 +72,7 @@ pub struct TweakMeta {
     pub requires_action: RequiresAction,
     pub min_os_build: Option<u32>,
     pub min_os_ubr: Option<u32>,
+    pub min_required_memory_gb: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -78,6 +78,7 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   hide_home_navigation_pane: House,
   hide_network_navigation_pane: Network,
   disable_8dot3_name_creation: FileType,
+  disable_wallpaper_jpeg_compression: Images,
   disable_startup_delay: Power,
   disable_recent_items_and_frequent_places: History,
   open_explorer_to_this_pc: HardDrive,
@@ -142,14 +143,6 @@ function isBelowMinBuild(currentBuild: WindowsVersion, tweak: TweakMeta) {
   }
 
   return currentBuild.ubr < tweak.minOsUbr
-}
-
-function requiredInstalledMemoryGb(tweak: TweakMeta) {
-  if (tweak.id === 'svchost_split_threshold') {
-    return 8
-  }
-
-  return null
 }
 
 function dropdownOptionIcon(
@@ -380,7 +373,7 @@ export function TweakCard({
   const isEnabled = tweak.currentValue === 'enabled'
   const isAtDefault = tweak.currentValue === tweak.defaultValue
   const isBelowBuildRequirement = isBelowMinBuild(currentBuild, tweak)
-  const minInstalledMemoryGb = requiredInstalledMemoryGb(tweak)
+  const minInstalledMemoryGb = tweak.minRequiredMemoryGb ?? null
   const isBelowMemoryRequirement = minInstalledMemoryGb !== null
     && currentInstalledMemoryBytes !== null
     && currentInstalledMemoryBytes < minInstalledMemoryGb * BYTES_PER_GIB

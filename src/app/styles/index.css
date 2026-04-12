@@ -672,23 +672,27 @@ body {
 }
 
 .winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='success'] {
-  background: var(--winsentials-sonner-success-bg) !important;
-  border-color: var(--winsentials-sonner-success-border) !important;
+  --winsentials-sonner-bg: var(--winsentials-sonner-success-bg);
+  --winsentials-sonner-border: var(--winsentials-sonner-success-border);
+  --winsentials-sonner-text: var(--winsentials-sonner-success-text);
 }
 
 .winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='info'] {
-  background: var(--winsentials-sonner-info-bg) !important;
-  border-color: var(--winsentials-sonner-info-border) !important;
+  --winsentials-sonner-bg: var(--winsentials-sonner-info-bg);
+  --winsentials-sonner-border: var(--winsentials-sonner-info-border);
+  --winsentials-sonner-text: var(--winsentials-sonner-info-text);
 }
 
 .winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='warning'] {
-  background: var(--winsentials-sonner-warning-bg) !important;
-  border-color: var(--winsentials-sonner-warning-border) !important;
+  --winsentials-sonner-bg: var(--winsentials-sonner-warning-bg);
+  --winsentials-sonner-border: var(--winsentials-sonner-warning-border);
+  --winsentials-sonner-text: var(--winsentials-sonner-warning-text);
 }
 
 .winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='error'] {
-  background: var(--winsentials-sonner-error-bg) !important;
-  border-color: var(--winsentials-sonner-error-border) !important;
+  --winsentials-sonner-bg: var(--winsentials-sonner-error-bg);
+  --winsentials-sonner-border: var(--winsentials-sonner-error-border);
+  --winsentials-sonner-text: var(--winsentials-sonner-error-text);
 }
 
 .winsentials-sonner-toast[data-sonner-toast][data-styled='true'] .winsentials-sonner-content {
@@ -778,10 +782,9 @@ body {
 [data-webview-material='acrylic'] [data-sonner-toaster] .winsentials-sonner-toast[data-sonner-toast],
 [data-webview-material='mica'] [data-sonner-toaster] .winsentials-sonner-toast[data-sonner-toast],
 [data-webview-material='tabbed'] [data-sonner-toaster] .winsentials-sonner-toast[data-sonner-toast] {
-  background: color-mix(in oklch, var(--accent) 55%, transparent) !important;
+  --winsentials-sonner-bg: color-mix(in oklch, var(--accent) 55%, transparent);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid color-mix(in oklch, var(--border) 80%, var(--primary) 20%) !important;
 }
 
 .winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-title {
@@ -790,6 +793,30 @@ body {
 
 .winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-description {
   color: var(--muted-foreground);
+}
+
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='success'] .winsentials-sonner-title,
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='success'] .winsentials-sonner-description,
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='success'] .winsentials-sonner-icon {
+  color: var(--winsentials-sonner-success-text);
+}
+
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='info'] .winsentials-sonner-title,
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='info'] .winsentials-sonner-description,
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='info'] .winsentials-sonner-icon {
+  color: var(--winsentials-sonner-info-text);
+}
+
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='warning'] .winsentials-sonner-title,
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='warning'] .winsentials-sonner-description,
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='warning'] .winsentials-sonner-icon {
+  color: var(--winsentials-sonner-warning-text);
+}
+
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='error'] .winsentials-sonner-title,
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='error'] .winsentials-sonner-description,
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='error'] .winsentials-sonner-icon {
+  color: var(--winsentials-sonner-error-text);
 }
 
 .winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-action,

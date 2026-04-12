@@ -1,21 +1,23 @@
 use crate::error::AppError;
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
-use windows::Win32::Foundation::{RPC_E_CHANGED_MODE, VARIANT_BOOL};
-use windows::Win32::System::Com::{
-    CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx, CoUninitialize,
-};
+use windows::Win32::Foundation::VARIANT_BOOL;
+use windows::Win32::System::Com::{CLSCTX_INPROC_SERVER, CoCreateInstance};
 use windows::Win32::System::TaskScheduler::{
     IRegisteredTask, ITaskFolder, ITaskService, TaskScheduler,
 };
 use windows::Win32::System::Variant::VARIANT;
 use windows::core::{BSTR, Error as WindowsError};
 
+use crate::com::ComGuard;
+
 const ENABLED_VALUE: &str = "enabled";
 const DISABLED_VALUE: &str = "disabled";
 const CUSTOM_VALUE: &str = "custom";
 
 const MIN_WINDOWS_10_BUILD: u32 = 10240;
-const TASK_SCHEDULER_NOT_FOUND_HRESULT: i32 = -2147216615;
+// SCHED_E_SERVICE_NOT_FOUND is treated as "missing" so the tweak stays idempotent
+// when the Task Scheduler service or a task registration is unavailable.
+const SCHED_E_SERVICE_NOT_FOUND_HRESULT: i32 = -2147216615;
 const FILE_NOT_FOUND_HRESULT: i32 = -2147024894;
 
 #[derive(Clone, Copy)]
@@ -91,12 +93,15 @@ impl DisableTelemetryScheduledTasksTweak {
                 requires_action: RequiresAction::None,
                 min_os_build: Some(MIN_WINDOWS_10_BUILD),
                 min_os_ubr: None,
+                min_required_memory_gb: None,
             },
         }
     }
 
-    fn query_task_state(task: ScheduledTaskDefinition) -> Result<ScheduledTaskState, AppError> {
-        let session = TaskSchedulerSession::connect()?;
+    fn query_task_state_with_session(
+        session: &TaskSchedulerSession,
+        task: ScheduledTaskDefinition,
+    ) -> Result<ScheduledTaskState, AppError> {
         let registered_task = match session.get_task(&task.full_path()) {
             Ok(task) => task,
             Err(AppError::Windows(error)) if is_task_missing_error(&error) => {
@@ -114,8 +119,11 @@ impl DisableTelemetryScheduledTasksTweak {
         })
     }
 
-    fn set_task_enabled(task: ScheduledTaskDefinition, enabled: bool) -> Result<(), AppError> {
-        let session = TaskSchedulerSession::connect()?;
+    fn set_task_enabled_with_session(
+        session: &TaskSchedulerSession,
+        task: ScheduledTaskDefinition,
+        enabled: bool,
+    ) -> Result<(), AppError> {
         let registered_task = match session.get_task(&task.full_path()) {
             Ok(task) => task,
             Err(AppError::Windows(error)) if is_task_missing_error(&error) => return Ok(()),
@@ -130,10 +138,11 @@ impl DisableTelemetryScheduledTasksTweak {
     }
 
     fn collect_states(&self) -> Result<Vec<ScheduledTaskState>, AppError> {
+        let session = TaskSchedulerSession::connect()?;
         TELEMETRY_TASKS
             .iter()
             .copied()
-            .map(Self::query_task_state)
+            .map(|task| Self::query_task_state_with_session(&session, task))
             .collect()
     }
 }
@@ -149,10 +158,13 @@ impl Tweak for DisableTelemetryScheduledTasksTweak {
 
     fn apply(&self, value: &str) -> Result<(), AppError> {
         match value {
-            ENABLED_VALUE => TELEMETRY_TASKS
-                .iter()
-                .copied()
-                .try_for_each(|task| Self::set_task_enabled(task, false)),
+            ENABLED_VALUE => {
+                let session = TaskSchedulerSession::connect()?;
+                TELEMETRY_TASKS
+                    .iter()
+                    .copied()
+                    .try_for_each(|task| Self::set_task_enabled_with_session(&session, task, false))
+            }
             DISABLED_VALUE => self.reset(),
             _ => Err(AppError::message(format!(
                 "unsupported value `{value}` for {}",
@@ -162,10 +174,11 @@ impl Tweak for DisableTelemetryScheduledTasksTweak {
     }
 
     fn reset(&self) -> Result<(), AppError> {
+        let session = TaskSchedulerSession::connect()?;
         TELEMETRY_TASKS
             .iter()
             .copied()
-            .try_for_each(|task| Self::set_task_enabled(task, true))
+            .try_for_each(|task| Self::set_task_enabled_with_session(&session, task, true))
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {
@@ -209,7 +222,7 @@ struct TaskSchedulerSession {
 
 impl TaskSchedulerSession {
     fn connect() -> Result<Self, AppError> {
-        let com = ComGuard::new()?;
+        let com = ComGuard::new().map_err(AppError::from)?;
         let service: ITaskService =
             unsafe { CoCreateInstance(&TaskScheduler, None, CLSCTX_INPROC_SERVER)? };
         unsafe {
@@ -239,36 +252,6 @@ impl TaskSchedulerSession {
     }
 }
 
-struct ComGuard {
-    owned: bool,
-}
-
-impl ComGuard {
-    fn new() -> Result<Self, AppError> {
-        let status = unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) };
-        if status.is_ok() {
-            return Ok(Self { owned: true });
-        }
-
-        if status == RPC_E_CHANGED_MODE {
-            return Ok(Self { owned: false });
-        }
-
-        status.ok()?;
-        unreachable!("successful COM initialization should have returned earlier")
-    }
-}
-
-impl Drop for ComGuard {
-    fn drop(&mut self) {
-        if self.owned {
-            unsafe {
-                CoUninitialize();
-            }
-        }
-    }
-}
-
 fn split_task_identity(full_path: &str) -> (String, String) {
     let index = full_path.rfind('\\').unwrap_or(0);
     let name = full_path[(index + 1)..].to_string();
@@ -283,6 +266,6 @@ fn split_task_identity(full_path: &str) -> (String, String) {
 fn is_task_missing_error(error: &WindowsError) -> bool {
     matches!(
         error.code().0,
-        TASK_SCHEDULER_NOT_FOUND_HRESULT | FILE_NOT_FOUND_HRESULT
+        SCHED_E_SERVICE_NOT_FOUND_HRESULT | FILE_NOT_FOUND_HRESULT
     )
 }

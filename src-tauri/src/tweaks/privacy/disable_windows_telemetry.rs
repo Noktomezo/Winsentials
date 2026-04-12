@@ -51,6 +51,15 @@ pub struct DisableWindowsTelemetryTweak {
     meta: TweakMeta,
 }
 
+struct TelemetryState {
+    policy_allow_telemetry: u32,
+    current_allow_telemetry: u32,
+    policy_restrict_metadata: u32,
+    current_restrict_metadata: u32,
+    diagtrack_start: u32,
+    dmwappushservice_start: u32,
+}
+
 struct ServiceHandle(SC_HANDLE);
 
 impl Drop for ServiceHandle {
@@ -90,6 +99,7 @@ impl DisableWindowsTelemetryTweak {
                 requires_action: RequiresAction::RestartPc,
                 min_os_build: Some(MIN_WINDOWS_10_1809_BUILD),
                 min_os_ubr: None,
+                min_required_memory_gb: None,
             },
         }
     }
@@ -147,78 +157,57 @@ impl DisableWindowsTelemetryTweak {
         }
     }
 
-    fn is_enabled(&self) -> Result<bool, AppError> {
-        let policy_allow_telemetry = Self::read_dword_or_default(
-            &POLICY_DATA_COLLECTION_KEY,
-            "AllowTelemetry",
-            DEFAULT_ALLOW_TELEMETRY,
-        )?;
-        let current_allow_telemetry = Self::read_dword_or_default(
-            &CURRENT_DATA_COLLECTION_KEY,
-            "AllowTelemetry",
-            DEFAULT_ALLOW_TELEMETRY,
-        )?;
-        let policy_restrict_metadata = Self::read_dword_or_default(
-            &POLICY_DATA_COLLECTION_KEY,
-            "RestrictDeviceMetadata",
-            DEFAULT_RESTRICT_DEVICE_METADATA,
-        )?;
-        let current_restrict_metadata = Self::read_dword_or_default(
-            &CURRENT_DATA_COLLECTION_KEY,
-            "RestrictDeviceMetadata",
-            DEFAULT_RESTRICT_DEVICE_METADATA,
-        )?;
-        let diagtrack_start =
-            Self::read_dword_or_default(&DIAGTRACK_SERVICE_KEY, "Start", DIAGTRACK_DEFAULT_START)?;
-        let dmwappushservice_start = Self::read_dword_or_default(
-            &DMWAPPUSHSERVICE_KEY,
-            "Start",
-            DMWAPPUSHSERVICE_DEFAULT_START,
-        )?;
-
-        Ok(policy_allow_telemetry == DISABLED_ALLOW_TELEMETRY
-            && current_allow_telemetry == DISABLED_ALLOW_TELEMETRY
-            && policy_restrict_metadata == ENABLED_RESTRICT_DEVICE_METADATA
-            && current_restrict_metadata == ENABLED_RESTRICT_DEVICE_METADATA
-            && diagtrack_start == DISABLED_SERVICE_START
-            && dmwappushservice_start == DISABLED_SERVICE_START)
+    fn read_state(&self) -> Result<TelemetryState, AppError> {
+        Ok(TelemetryState {
+            policy_allow_telemetry: Self::read_dword_or_default(
+                &POLICY_DATA_COLLECTION_KEY,
+                "AllowTelemetry",
+                DEFAULT_ALLOW_TELEMETRY,
+            )?,
+            current_allow_telemetry: Self::read_dword_or_default(
+                &CURRENT_DATA_COLLECTION_KEY,
+                "AllowTelemetry",
+                DEFAULT_ALLOW_TELEMETRY,
+            )?,
+            policy_restrict_metadata: Self::read_dword_or_default(
+                &POLICY_DATA_COLLECTION_KEY,
+                "RestrictDeviceMetadata",
+                DEFAULT_RESTRICT_DEVICE_METADATA,
+            )?,
+            current_restrict_metadata: Self::read_dword_or_default(
+                &CURRENT_DATA_COLLECTION_KEY,
+                "RestrictDeviceMetadata",
+                DEFAULT_RESTRICT_DEVICE_METADATA,
+            )?,
+            diagtrack_start: Self::read_dword_or_default(
+                &DIAGTRACK_SERVICE_KEY,
+                "Start",
+                DIAGTRACK_DEFAULT_START,
+            )?,
+            dmwappushservice_start: Self::read_dword_or_default(
+                &DMWAPPUSHSERVICE_KEY,
+                "Start",
+                DMWAPPUSHSERVICE_DEFAULT_START,
+            )?,
+        })
     }
 
-    fn is_default(&self) -> Result<bool, AppError> {
-        let policy_allow_telemetry = Self::read_dword_or_default(
-            &POLICY_DATA_COLLECTION_KEY,
-            "AllowTelemetry",
-            DEFAULT_ALLOW_TELEMETRY,
-        )?;
-        let current_allow_telemetry = Self::read_dword_or_default(
-            &CURRENT_DATA_COLLECTION_KEY,
-            "AllowTelemetry",
-            DEFAULT_ALLOW_TELEMETRY,
-        )?;
-        let policy_restrict_metadata = Self::read_dword_or_default(
-            &POLICY_DATA_COLLECTION_KEY,
-            "RestrictDeviceMetadata",
-            DEFAULT_RESTRICT_DEVICE_METADATA,
-        )?;
-        let current_restrict_metadata = Self::read_dword_or_default(
-            &CURRENT_DATA_COLLECTION_KEY,
-            "RestrictDeviceMetadata",
-            DEFAULT_RESTRICT_DEVICE_METADATA,
-        )?;
-        let diagtrack_start =
-            Self::read_dword_or_default(&DIAGTRACK_SERVICE_KEY, "Start", DIAGTRACK_DEFAULT_START)?;
-        let dmwappushservice_start = Self::read_dword_or_default(
-            &DMWAPPUSHSERVICE_KEY,
-            "Start",
-            DMWAPPUSHSERVICE_DEFAULT_START,
-        )?;
+    fn is_enabled(state: &TelemetryState) -> bool {
+        state.policy_allow_telemetry == DISABLED_ALLOW_TELEMETRY
+            && state.current_allow_telemetry == DISABLED_ALLOW_TELEMETRY
+            && state.policy_restrict_metadata == ENABLED_RESTRICT_DEVICE_METADATA
+            && state.current_restrict_metadata == ENABLED_RESTRICT_DEVICE_METADATA
+            && state.diagtrack_start == DISABLED_SERVICE_START
+            && state.dmwappushservice_start == DISABLED_SERVICE_START
+    }
 
-        Ok(policy_allow_telemetry == DEFAULT_ALLOW_TELEMETRY
-            && current_allow_telemetry == DEFAULT_ALLOW_TELEMETRY
-            && policy_restrict_metadata == DEFAULT_RESTRICT_DEVICE_METADATA
-            && current_restrict_metadata == DEFAULT_RESTRICT_DEVICE_METADATA
-            && diagtrack_start == DIAGTRACK_DEFAULT_START
-            && dmwappushservice_start == DMWAPPUSHSERVICE_DEFAULT_START)
+    fn is_default(state: &TelemetryState) -> bool {
+        state.policy_allow_telemetry == DEFAULT_ALLOW_TELEMETRY
+            && state.current_allow_telemetry == DEFAULT_ALLOW_TELEMETRY
+            && state.policy_restrict_metadata == DEFAULT_RESTRICT_DEVICE_METADATA
+            && state.current_restrict_metadata == DEFAULT_RESTRICT_DEVICE_METADATA
+            && state.diagtrack_start == DIAGTRACK_DEFAULT_START
+            && state.dmwappushservice_start == DMWAPPUSHSERVICE_DEFAULT_START
     }
 }
 
@@ -256,8 +245,9 @@ impl Tweak for DisableWindowsTelemetryTweak {
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {
-        let is_enabled = self.is_enabled()?;
-        let is_default = self.is_default()?;
+        let state = self.read_state()?;
+        let is_enabled = Self::is_enabled(&state);
+        let is_default = Self::is_default(&state);
 
         Ok(TweakStatus {
             current_value: if is_enabled {

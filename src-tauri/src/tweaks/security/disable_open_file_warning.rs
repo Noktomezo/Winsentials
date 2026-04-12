@@ -40,6 +40,7 @@ impl DisableOpenFileWarningTweak {
                 requires_action: RequiresAction::None,
                 min_os_build: Some(10240),
                 min_os_ubr: None,
+                min_required_memory_gb: None,
             },
         }
     }

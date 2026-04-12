@@ -74,6 +74,7 @@ impl CsrssHighPriorityTweak {
                 requires_action: RequiresAction::RestartPc,
                 min_os_build: Some(MIN_WINDOWS_10_1809_BUILD),
                 min_os_ubr: None,
+                min_required_memory_gb: None,
             },
         }
     }

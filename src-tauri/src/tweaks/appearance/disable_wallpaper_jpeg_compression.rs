@@ -1,48 +1,52 @@
+use std::io::ErrorKind;
+
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
-use crate::shell::set_mouse_hover_time;
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
 
 const ENABLED_VALUE: &str = "enabled";
 const DISABLED_VALUE: &str = "disabled";
-const FAST_HOVER_TIME: &str = "100";
-const DEFAULT_HOVER_TIME: &str = "400";
+const MIN_WINDOWS_10_BUILD: u32 = 10240;
 
-const MOUSE_KEY: RegKey = RegKey {
+const MAX_JPEG_IMPORT_QUALITY: u32 = 100;
+
+const DESKTOP_KEY: RegKey = RegKey {
     hive: Hive::CurrentUser,
-    path: r"Control Panel\Mouse",
+    path: r"Control Panel\Desktop",
 };
 
-pub struct FastTaskbarThumbnailsTweak {
+pub struct DisableWallpaperJpegCompressionTweak {
     meta: TweakMeta,
 }
 
-impl Default for FastTaskbarThumbnailsTweak {
+impl Default for DisableWallpaperJpegCompressionTweak {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl FastTaskbarThumbnailsTweak {
+impl DisableWallpaperJpegCompressionTweak {
     pub fn new() -> Self {
         Self {
             meta: TweakMeta {
-                id: "fast_taskbar_thumbnails".into(),
+                id: "disable_wallpaper_jpeg_compression".into(),
                 category: "appearance".into(),
-                name: "appearance.tweaks.fastTaskbarThumbnails.name".into(),
-                short_description: "appearance.tweaks.fastTaskbarThumbnails.shortDescription"
-                    .into(),
-                detail_description: "appearance.tweaks.fastTaskbarThumbnails.detailDescription"
-                    .into(),
+                name: "appearance.tweaks.disableWallpaperJpegCompression.name".into(),
+                short_description:
+                    "appearance.tweaks.disableWallpaperJpegCompression.shortDescription".into(),
+                detail_description:
+                    "appearance.tweaks.disableWallpaperJpegCompression.detailDescription".into(),
                 control: TweakControlType::Toggle,
                 current_value: DISABLED_VALUE.into(),
                 default_value: DISABLED_VALUE.into(),
-                recommended_value: DISABLED_VALUE.into(),
+                recommended_value: ENABLED_VALUE.into(),
                 risk: RiskLevel::None,
-                risk_description: None,
+                risk_description: Some(
+                    "appearance.tweaks.disableWallpaperJpegCompression.riskDescription".into(),
+                ),
                 conflicts: None,
-                requires_action: RequiresAction::None,
-                min_os_build: Some(10240),
+                requires_action: RequiresAction::Logout,
+                min_os_build: Some(MIN_WINDOWS_10_BUILD),
                 min_os_ubr: None,
                 min_required_memory_gb: None,
             },
@@ -50,15 +54,15 @@ impl FastTaskbarThumbnailsTweak {
     }
 
     fn is_enabled(&self) -> Result<bool, AppError> {
-        match MOUSE_KEY.get_string("MouseHoverTime") {
-            Ok(value) => Ok(value == FAST_HOVER_TIME),
-            Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+        match DESKTOP_KEY.get_dword("JPEGImportQuality") {
+            Ok(value) => Ok(value == MAX_JPEG_IMPORT_QUALITY),
+            Err(AppError::Io(error)) if error.kind() == ErrorKind::NotFound => Ok(false),
             Err(error) => Err(error),
         }
     }
 }
 
-impl Tweak for FastTaskbarThumbnailsTweak {
+impl Tweak for DisableWallpaperJpegCompressionTweak {
     fn id(&self) -> &str {
         &self.meta.id
     }
@@ -69,10 +73,7 @@ impl Tweak for FastTaskbarThumbnailsTweak {
 
     fn apply(&self, value: &str) -> Result<(), AppError> {
         match value {
-            ENABLED_VALUE => {
-                MOUSE_KEY.set_string("MouseHoverTime", FAST_HOVER_TIME)?;
-                set_mouse_hover_time(100)
-            }
+            ENABLED_VALUE => DESKTOP_KEY.set_dword("JPEGImportQuality", MAX_JPEG_IMPORT_QUALITY),
             DISABLED_VALUE => self.reset(),
             _ => Err(AppError::message(format!(
                 "unsupported value `{value}` for {}",
@@ -82,8 +83,7 @@ impl Tweak for FastTaskbarThumbnailsTweak {
     }
 
     fn reset(&self) -> Result<(), AppError> {
-        MOUSE_KEY.set_string("MouseHoverTime", DEFAULT_HOVER_TIME)?;
-        set_mouse_hover_time(400)
+        DESKTOP_KEY.delete_value("JPEGImportQuality")
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {

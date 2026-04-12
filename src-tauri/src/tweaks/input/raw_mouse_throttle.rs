@@ -50,20 +50,23 @@ impl RawMouseThrottleTweak {
         Self {
             meta: TweakMeta {
                 id: "raw_mouse_throttle".into(),
-                category: "input".into(),
-                name: "input.tweaks.rawMouseThrottle.name".into(),
-                short_description: "input.tweaks.rawMouseThrottle.shortDescription".into(),
-                detail_description: "input.tweaks.rawMouseThrottle.detailDescription".into(),
+                category: "performance".into(),
+                name: "performance.tweaks.rawMouseThrottle.name".into(),
+                short_description: "performance.tweaks.rawMouseThrottle.shortDescription".into(),
+                detail_description: "performance.tweaks.rawMouseThrottle.detailDescription".into(),
                 control: TweakControlType::Toggle,
                 current_value: DISABLED_VALUE.into(),
                 default_value: DISABLED_VALUE.into(),
                 recommended_value: ENABLED_VALUE.into(),
                 risk: RiskLevel::Medium,
-                risk_description: Some("input.tweaks.rawMouseThrottle.riskDescription".into()),
+                risk_description: Some(
+                    "performance.tweaks.rawMouseThrottle.riskDescription".into(),
+                ),
                 conflicts: None,
                 requires_action: RequiresAction::RestartPc,
                 min_os_build: Some(MIN_WINDOWS_10_22H2_BUILD),
                 min_os_ubr: None,
+                min_required_memory_gb: None,
             },
         }
     }

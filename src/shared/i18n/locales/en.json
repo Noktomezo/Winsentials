@@ -56,6 +56,12 @@
         "name": "Classic Context Menu",
         "shortDescription": "Restores the classic context menu layout in Windows 11."
       },
+      "disableWallpaperJpegCompression": {
+        "detailDescription": "Disables the automatic JPEG compression Windows applies when you set an image as your desktop wallpaper. This helps preserve full image quality, which is especially noticeable on high-resolution 4K and 8K wallpapers with gradients, textures, and fine detail.",
+        "name": "Disable Wallpaper JPEG Compression",
+        "riskDescription": "This tweak usually has no real downside. At most, the wallpaper copy Windows keeps may take a bit more space because it is stored at higher quality.",
+        "shortDescription": "Sets JPEG wallpaper import quality to 100% without extra compression."
+      },
       "fastTaskbarThumbnails": {
         "detailDescription": "Reduces the delay before open app previews appear on hover. The interface feels more responsive.",
         "name": "Fast Taskbar Thumbnails",
@@ -235,12 +241,6 @@
         "riskDescription": "If you are used to Windows cursor acceleration, the pointer may initially feel slower or require more desk movement, especially at lower DPI settings. If it becomes uncomfortable, reset the tweak and reboot Windows.",
         "shortDescription": "Turns off Enhance Pointer Precision for a more consistent 1:1 mouse feel."
       },
-      "rawMouseThrottle": {
-        "detailDescription": "Windows already groups very high-rate mouse events before passing them through the system, usually at about 125 Hz. This tweak makes that grouping more aggressive by switching it to 50 Hz. Your mouse does not physically become 50 Hz, but Windows spends less time processing huge bursts of mouse events from 2000-8000 Hz devices. That can noticeably reduce CPU and DPC overhead and make FPS drops during fast mouse movement much less severe after a full reboot.",
-        "name": "Reduce High Polling Rate Mouse Overhead",
-        "riskDescription": "This is a tradeoff. Windows compresses mouse events more aggressively, so some users may feel slightly worse theoretical responsiveness or less precise motion in games that already behaved well. If mouse input feels worse after rebooting, reset the tweak and restart Windows.",
-        "shortDescription": "Makes Windows compress high-rate mouse events more aggressively to reduce FPS drops and CPU load."
-      },
       "fastKeyboardRepeat": {
         "detailDescription": "Changes how quickly a held key starts repeating and how fast repeated characters are produced after that. Faster presets make input feel more responsive in games, code editors, and general navigation, while slower presets stay more comfortable for everyday typing. After changing this setting, it is best to sign out and back in so Windows fully applies the new profile.",
         "name": "Fast Keyboard Repeat",
@@ -300,6 +300,12 @@
         "name": "Optimize MMCSS",
         "riskDescription": "Background audio, video playback, streaming helpers, or other non-game multimedia tasks can become less stable while this profile is active. If you notice worse multitasking behavior, reset the tweak and reboot Windows.",
         "shortDescription": "Can reduce microstutter and make games feel more responsive by favoring gaming and low-latency audio."
+      },
+      "rawMouseThrottle": {
+        "detailDescription": "Windows already groups very high-rate mouse events before passing them through the system, usually at about 125 Hz. This tweak makes that grouping more aggressive by switching it to 50 Hz. Your mouse does not physically become 50 Hz, but Windows spends less time processing huge bursts of mouse events from 2000-8000 Hz devices. That can noticeably reduce CPU and DPC overhead and make FPS drops during fast mouse movement much less severe after a full reboot.",
+        "name": "Reduce High Polling Rate Mouse Overhead",
+        "riskDescription": "This is a tradeoff. Windows compresses mouse events more aggressively, so some users may feel slightly worse theoretical responsiveness or less precise motion in games that already behaved well. If mouse input feels worse after rebooting, reset the tweak and restart Windows.",
+        "shortDescription": "Makes Windows compress high-rate mouse events more aggressively to reduce FPS drops and CPU load."
       }
     }
   },
@@ -349,10 +355,10 @@
         "shortDescription": "Turns off .NET Framework diagnostic data collection and telemetry."
       },
       "disablePowershellTelemetry": {
-        "detailDescription": "Disables PowerShell policies related to telemetry and script block logging, reducing how much diagnostic and command execution data PowerShell can collect and retain on the system.",
-        "name": "Disable PowerShell Telemetry",
-        "riskDescription": "Script Block Logging and some PowerShell diagnostics will be turned off, so certain auditing and troubleshooting workflows may become less detailed. For normal personal use this is usually not a major issue.",
-        "shortDescription": "Turns off PowerShell telemetry and related diagnostic policies."
+        "detailDescription": "Disables PowerShell telemetry and also turns off Script Block Logging, which means PowerShell stops sending some diagnostic data and also stops keeping detailed logs of executed script content.",
+        "name": "Disable PowerShell Telemetry and Script Logging",
+        "riskDescription": "This is no longer just a privacy tweak. It also disables Script Block Logging, so useful logs for auditing, incident response, and malicious script investigation will no longer be collected. Only enable it if you intentionally want to give up that visibility.",
+        "shortDescription": "Turns off PowerShell telemetry and Script Block Logging."
       },
       "disableTelemetryScheduledTasks": {
         "detailDescription": "Disables the scheduled tasks Windows uses for compatibility analysis, CEIP, and periodic telemetry-related uploads. This stops common telemetry jobs such as Microsoft Compatibility Appraiser, ProgramDataUpdater, Consolidator, UsbCeip, KernelCeipTask, and Uploader from running in the background.",

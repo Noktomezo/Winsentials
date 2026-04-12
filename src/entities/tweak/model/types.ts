@@ -37,6 +37,7 @@ export interface TweakMeta {
   conflicts?: TweakConflict[]
   requiresAction: RequiresAction
   minOsBuild?: number
+  minRequiredMemoryGb?: number
   minOsUbr?: number
 }
 
