@@ -501,7 +501,7 @@ export function TweakCard({
 
                       return (
                         <SelectItem
-                          className="min-h-7 py-1 pr-7 pl-2 text-xs font-medium"
+                          className="min-h-7 px-2 py-1 text-xs font-medium"
                           disabled={option.value === 'custom'}
                           key={option.value}
                           value={option.value}
