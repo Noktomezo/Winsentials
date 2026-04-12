@@ -382,6 +382,7 @@ export function TweakCard({
   const isUnsupported = isBelowBuildRequirement
     || isBelowMemoryRequirement
     || isMemoryRequirementPending
+  const isApplyBlocked = isUnsupported && isAtDefault
   const minBuild = formatMinBuild(tweak)
   const copyableRiskCommand = COPYABLE_RISK_COMMANDS[tweak.id]
   const conflicts = tweak.conflicts ?? []
@@ -443,7 +444,7 @@ export function TweakCard({
               <Button
                 aria-label={t('tweaks.actions.resetToDefault')}
                 className="size-9 rounded-md !border-border/60 !bg-accent/55 !text-accent-foreground shadow-xs transition-colors hover:!bg-destructive/10 hover:!text-destructive"
-                disabled={isPending || isAtDefault || isUnsupported}
+                disabled={isPending || isAtDefault}
                 onClick={() => onApplyValue(tweak.defaultValue)}
                 size="icon"
                 type="button"
@@ -457,7 +458,7 @@ export function TweakCard({
                   aria-label={t(tweak.name)}
                   checked={isEnabled}
                   containerClassName="!border-border/60 !bg-accent/55 !text-accent-foreground shadow-xs"
-                  disabled={isPending || isUnsupported}
+                  disabled={isPending || isApplyBlocked}
                   labelClassName="!text-accent-foreground"
                   onCheckedChange={checked =>
                     onApplyValue(checked ? 'enabled' : 'disabled')}
@@ -465,8 +466,14 @@ export function TweakCard({
               )}
               {tweak.control.kind === 'dropdown' && (
                 <Select
-                  disabled={isPending || isUnsupported}
-                  onValueChange={value => onApplyValue(value)}
+                  disabled={isPending || isApplyBlocked}
+                  onValueChange={(value) => {
+                    if (isUnsupported && value !== tweak.defaultValue) {
+                      return
+                    }
+
+                    onApplyValue(value)
+                  }}
                   value={tweak.currentValue}
                 >
                   <SelectTrigger className="h-9 min-w-[11rem] justify-between rounded-md !border-border/60 !bg-accent/55 px-3 text-xs font-medium !text-accent-foreground shadow-xs [&_svg]:size-3.5 [&_svg:not([class*='text-'])]:!text-accent-foreground/70">
@@ -495,7 +502,7 @@ export function TweakCard({
                       return (
                         <SelectItem
                           className="min-h-7 px-2 py-1 text-xs font-medium"
-                          disabled={option.value === 'custom'}
+                          disabled={option.value === 'custom' || (isUnsupported && option.value !== tweak.defaultValue)}
                           key={option.value}
                           value={option.value}
                         >

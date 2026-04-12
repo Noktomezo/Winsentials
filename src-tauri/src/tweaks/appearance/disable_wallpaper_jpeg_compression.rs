@@ -6,6 +6,7 @@ use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMet
 
 const ENABLED_VALUE: &str = "enabled";
 const DISABLED_VALUE: &str = "disabled";
+const CUSTOM_VALUE: &str = "custom";
 const MIN_WINDOWS_10_BUILD: u32 = 10240;
 
 const MAX_JPEG_IMPORT_QUALITY: u32 = 100;
@@ -53,12 +54,20 @@ impl DisableWallpaperJpegCompressionTweak {
         }
     }
 
-    fn is_enabled(&self) -> Result<bool, AppError> {
+    fn current_jpeg_import_quality(&self) -> Result<Option<u32>, AppError> {
         match DESKTOP_KEY.get_dword("JPEGImportQuality") {
-            Ok(value) => Ok(value == MAX_JPEG_IMPORT_QUALITY),
-            Err(AppError::Io(error)) if error.kind() == ErrorKind::NotFound => Ok(false),
+            Ok(value) => Ok(Some(value)),
+            Err(AppError::Io(error)) if error.kind() == ErrorKind::NotFound => Ok(None),
             Err(error) => Err(error),
         }
+    }
+
+    fn current_value(&self) -> Result<&'static str, AppError> {
+        Ok(match self.current_jpeg_import_quality()? {
+            None => DISABLED_VALUE,
+            Some(MAX_JPEG_IMPORT_QUALITY) => ENABLED_VALUE,
+            Some(_) => CUSTOM_VALUE,
+        })
     }
 }
 
@@ -87,15 +96,11 @@ impl Tweak for DisableWallpaperJpegCompressionTweak {
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {
-        let is_enabled = self.is_enabled()?;
+        let current_value = self.current_value()?;
 
         Ok(TweakStatus {
-            current_value: if is_enabled {
-                ENABLED_VALUE.into()
-            } else {
-                DISABLED_VALUE.into()
-            },
-            is_default: !is_enabled,
+            current_value: current_value.into(),
+            is_default: current_value == DISABLED_VALUE,
         })
     }
 }

@@ -6,6 +6,7 @@ use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMet
 
 const ENABLED_VALUE: &str = "enabled";
 const DISABLED_VALUE: &str = "disabled";
+const CUSTOM_VALUE: &str = "custom";
 const MIN_WINDOWS_10_BUILD: u32 = 10240;
 
 const DISABLED_LOCATION_VALUE: u32 = 1;
@@ -64,8 +65,12 @@ impl DisableLocationDataCollectionTweak {
         }
     }
 
-    fn is_enabled(&self) -> Result<bool, AppError> {
-        Ok(self.current_disabled_value()? == DISABLED_LOCATION_VALUE)
+    fn current_value(&self) -> Result<&'static str, AppError> {
+        Ok(match self.current_disabled_value()? {
+            DISABLED_LOCATION_VALUE => ENABLED_VALUE,
+            DEFAULT_LOCATION_VALUE => DISABLED_VALUE,
+            _ => CUSTOM_VALUE,
+        })
     }
 }
 
@@ -96,15 +101,11 @@ impl Tweak for DisableLocationDataCollectionTweak {
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {
-        let is_enabled = self.is_enabled()?;
+        let current_value = self.current_value()?;
 
         Ok(TweakStatus {
-            current_value: if is_enabled {
-                ENABLED_VALUE.into()
-            } else {
-                DISABLED_VALUE.into()
-            },
-            is_default: !is_enabled,
+            current_value: current_value.into(),
+            is_default: current_value == DISABLED_VALUE,
         })
     }
 }

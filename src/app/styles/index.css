@@ -795,26 +795,18 @@ body {
   color: var(--muted-foreground);
 }
 
-.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='success'] .winsentials-sonner-title,
-.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='success'] .winsentials-sonner-description,
 .winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='success'] .winsentials-sonner-icon {
   color: var(--winsentials-sonner-success-text);
 }
 
-.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='info'] .winsentials-sonner-title,
-.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='info'] .winsentials-sonner-description,
 .winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='info'] .winsentials-sonner-icon {
   color: var(--winsentials-sonner-info-text);
 }
 
-.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='warning'] .winsentials-sonner-title,
-.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='warning'] .winsentials-sonner-description,
 .winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='warning'] .winsentials-sonner-icon {
   color: var(--winsentials-sonner-warning-text);
 }
 
-.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='error'] .winsentials-sonner-title,
-.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='error'] .winsentials-sonner-description,
 .winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='error'] .winsentials-sonner-icon {
   color: var(--winsentials-sonner-error-text);
 }

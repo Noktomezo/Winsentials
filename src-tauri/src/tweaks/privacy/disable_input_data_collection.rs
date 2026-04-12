@@ -1,4 +1,5 @@
 use std::io::ErrorKind;
+use std::sync::{Mutex, OnceLock};
 
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
@@ -126,6 +127,9 @@ impl DisableInputDataCollectionTweak {
     where
         F: FnOnce() -> Result<(), AppError>,
     {
+        let _lock = input_data_collection_operation_lock()
+            .lock()
+            .map_err(|_| AppError::message("failed to acquire input data collection lock"))?;
         let restrict_snapshot =
             Self::snapshot_dword(&INPUT_PERSONALIZATION_KEY, "RestrictImplicitTextCollection")?;
         let harvested_words_snapshot =
@@ -192,6 +196,11 @@ impl DisableInputDataCollectionTweak {
             CUSTOM_VALUE
         })
     }
+}
+
+fn input_data_collection_operation_lock() -> &'static Mutex<()> {
+    static OPERATION_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    OPERATION_LOCK.get_or_init(|| Mutex::new(()))
 }
 
 impl Tweak for DisableInputDataCollectionTweak {
