@@ -666,6 +666,29 @@ body {
   align-items: start;
   column-gap: 8px;
   row-gap: 10px;
+  background: var(--winsentials-sonner-bg) !important;
+  border: 1px solid var(--winsentials-sonner-border) !important;
+  color: var(--winsentials-sonner-text) !important;
+}
+
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='success'] {
+  background: var(--winsentials-sonner-success-bg) !important;
+  border-color: var(--winsentials-sonner-success-border) !important;
+}
+
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='info'] {
+  background: var(--winsentials-sonner-info-bg) !important;
+  border-color: var(--winsentials-sonner-info-border) !important;
+}
+
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='warning'] {
+  background: var(--winsentials-sonner-warning-bg) !important;
+  border-color: var(--winsentials-sonner-warning-border) !important;
+}
+
+.winsentials-sonner-toast[data-sonner-toast][data-styled='true'][data-type='error'] {
+  background: var(--winsentials-sonner-error-bg) !important;
+  border-color: var(--winsentials-sonner-error-border) !important;
 }
 
 .winsentials-sonner-toast[data-sonner-toast][data-styled='true'] .winsentials-sonner-content {
@@ -732,33 +755,33 @@ body {
   grid-column: 2 / 4;
 }
 
-/* Light (default — inherits from :root CSS vars) */
-[data-sonner-toaster] {
-  --normal-bg: color-mix(in oklch, var(--card) 86%, var(--accent) 14%);
-  --normal-text: var(--foreground);
-  --normal-border: color-mix(in oklch, var(--border) 76%, var(--primary) 24%);
-  --success-bg: color-mix(in oklch, var(--card) 84%, var(--success) 16%);
-  --success-text: var(--success);
-  --success-border: color-mix(in oklch, var(--border) 58%, var(--success) 42%);
-  --error-bg: color-mix(in oklch, var(--card) 84%, var(--destructive) 16%);
-  --error-text: var(--destructive);
-  --error-border: color-mix(in oklch, var(--border) 58%, var(--destructive) 42%);
-  --warning-bg: color-mix(in oklch, var(--card) 84%, var(--warning) 16%);
-  --warning-text: var(--warning);
-  --warning-border: color-mix(in oklch, var(--border) 58%, var(--warning) 42%);
-  --info-bg: color-mix(in oklch, var(--card) 82%, var(--primary) 18%);
-  --info-text: var(--primary);
-  --info-border: color-mix(in oklch, var(--border) 56%, var(--primary) 44%);
+[data-sonner-toaster][data-sonner-theme='light'],
+[data-sonner-toaster][data-sonner-theme='dark'] {
+  --winsentials-sonner-bg: color-mix(in oklch, var(--accent) 55%, var(--card) 45%);
+  --winsentials-sonner-text: var(--foreground);
+  --winsentials-sonner-border: color-mix(in oklch, var(--border) 76%, var(--primary) 24%);
+  --winsentials-sonner-success-bg: color-mix(in oklch, var(--accent) 55%, var(--card) 45%);
+  --winsentials-sonner-success-text: var(--success);
+  --winsentials-sonner-success-border: color-mix(in oklch, var(--border) 58%, var(--success) 42%);
+  --winsentials-sonner-error-bg: color-mix(in oklch, var(--accent) 55%, var(--card) 45%);
+  --winsentials-sonner-error-text: var(--destructive);
+  --winsentials-sonner-error-border: color-mix(in oklch, var(--border) 58%, var(--destructive) 42%);
+  --winsentials-sonner-warning-bg: color-mix(in oklch, var(--accent) 55%, var(--card) 45%);
+  --winsentials-sonner-warning-text: var(--warning);
+  --winsentials-sonner-warning-border: color-mix(in oklch, var(--border) 58%, var(--warning) 42%);
+  --winsentials-sonner-info-bg: color-mix(in oklch, var(--accent) 55%, var(--card) 45%);
+  --winsentials-sonner-info-text: var(--primary);
+  --winsentials-sonner-info-border: color-mix(in oklch, var(--border) 56%, var(--primary) 44%);
 }
 
 /* Window materials — translucent toast surfaces */
 [data-webview-material='acrylic'] [data-sonner-toaster] .winsentials-sonner-toast[data-sonner-toast],
 [data-webview-material='mica'] [data-sonner-toaster] .winsentials-sonner-toast[data-sonner-toast],
 [data-webview-material='tabbed'] [data-sonner-toaster] .winsentials-sonner-toast[data-sonner-toast] {
-  background: var(--popover);
+  background: color-mix(in oklch, var(--accent) 55%, transparent) !important;
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
-  border-color: color-mix(in oklch, var(--border) 80%, var(--primary) 20%);
+  border: 1px solid color-mix(in oklch, var(--border) 80%, var(--primary) 20%) !important;
 }
 
 .winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-title {
@@ -771,7 +794,7 @@ body {
 
 .winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-action,
 .winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-cancel {
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
 }
 
 .winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-action {
@@ -788,13 +811,15 @@ body {
 }
 
 .winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-cancel {
-  background: color-mix(in oklch, var(--card) 68%, var(--accent) 32%);
-  color: var(--accent-foreground);
-  border: 1px solid var(--border);
+  background: color-mix(in oklch, var(--accent) 55%, var(--card) 45%) !important;
+  color: var(--accent-foreground) !important;
+  border: 1px solid var(--border) !important;
 }
 
 .winsentials-sonner-toast[data-sonner-toast] .winsentials-sonner-cancel:hover {
-  background: color-mix(in oklch, var(--accent) 90%, var(--background) 10%);
+  background: color-mix(in oklch, var(--accent) 72%, var(--state-info-strong) 28%) !important;
+  border-color: color-mix(in oklch, var(--border) 62%, var(--state-info-strong) 38%) !important;
+  color: var(--accent-foreground) !important;
 }
 
 /* Tooltips render in a portal, so they need their own global material blur. */

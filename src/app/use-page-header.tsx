@@ -40,6 +40,10 @@ export function usePageHeader(pathname: string): PageHeader {
         title: t('security.title'),
         description: t('security.description'),
       },
+      '/privacy': {
+        title: t('privacy.title'),
+        description: t('privacy.description'),
+      },
       '/network': {
         title: t('network.title'),
         description: t('network.description'),
@@ -47,6 +51,10 @@ export function usePageHeader(pathname: string): PageHeader {
       '/performance': {
         title: t('performance.title'),
         description: t('performance.description'),
+      },
+      '/memory': {
+        title: t('memory.title'),
+        description: t('memory.description'),
       },
       '/input': {
         title: t('input.title'),

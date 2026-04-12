@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
-import { FolderCog, Gauge, House, Keyboard, Network, Palette, Settings2, Shield, Wrench } from 'lucide-react'
+import { EyeOff, FolderCog, Gauge, House, Keyboard, MemoryStick, Network, Palette, Settings2, Shield, Wrench } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 import {
@@ -13,7 +13,7 @@ import {
   SidebarMenuItem,
 } from '@/shared/ui'
 
-type SidebarRoute = '/home' | '/appearance' | '/backup' | '/behaviour' | '/security' | '/network' | '/performance' | '/input' | '/startup' | '/tools' | '/settings'
+type SidebarRoute = '/home' | '/appearance' | '/backup' | '/behaviour' | '/security' | '/privacy' | '/network' | '/performance' | '/memory' | '/input' | '/startup' | '/tools' | '/settings'
 
 export function AppSidebar() {
   const { t } = useTranslation()
@@ -100,6 +100,20 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               className="cursor-pointer"
+              isActive={pathname === '/privacy'}
+              onClick={event => handleMenuClick(event, '/privacy')}
+              onFocus={() => handlePointerIntent('/privacy')}
+              onMouseEnter={() => handlePointerIntent('/privacy')}
+              tooltip={t('navigation.privacy')}
+              type="button"
+            >
+              <EyeOff />
+              <span data-sidebar-label>{t('navigation.privacy')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="cursor-pointer"
               isActive={pathname === '/behaviour'}
               onClick={event => handleMenuClick(event, '/behaviour')}
               onFocus={() => handlePointerIntent('/behaviour')}
@@ -137,6 +151,20 @@ export function AppSidebar() {
             >
               <Gauge />
               <span data-sidebar-label>{t('navigation.performance')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="cursor-pointer"
+              isActive={pathname === '/memory'}
+              onClick={event => handleMenuClick(event, '/memory')}
+              onFocus={() => handlePointerIntent('/memory')}
+              onMouseEnter={() => handlePointerIntent('/memory')}
+              tooltip={t('navigation.memory')}
+              type="button"
+            >
+              <MemoryStick />
+              <span data-sidebar-label>{t('navigation.memory')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

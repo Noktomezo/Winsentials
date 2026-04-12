@@ -7,9 +7,12 @@ import {
   BellOff,
   CircleAlert,
   Clock3,
+  CloudOff,
   Copy,
   Cpu,
   ExternalLink,
+  EyeOff,
+  FileSearch,
   FileType,
   Gamepad2,
   Gauge,
@@ -19,7 +22,10 @@ import {
   Images,
   Info,
   Keyboard,
+  ListX,
   LogOut,
+  MapPinned,
+  MemoryStick,
   Menu,
   Mouse,
   MousePointer2,
@@ -30,6 +36,7 @@ import {
   Settings,
   Shield,
   ShieldOff,
+  Terminal,
   TextCursor,
   TriangleAlert,
   Type,
@@ -55,10 +62,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
 
 interface TweakCardProps {
   currentBuild: WindowsVersion
+  currentInstalledMemoryBytes?: number | null
   isPending?: boolean
   onApplyValue: (value: string) => void
   tweak: TweakMeta
 }
+
+const BYTES_PER_GIB = 1024 ** 3
 
 const TWEAK_ICONS: Record<string, LucideIcon> = {
   classic_context_menu: Menu,
@@ -83,6 +93,18 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   configure_kernel_timing_chain: Clock3,
   disable_fault_tolerant_heap: Gauge,
   disable_game_dvr: Gamepad2,
+  disable_telemetry_scheduled_tasks: ListX,
+  disable_cloud_sync: CloudOff,
+  disable_input_data_collection: Keyboard,
+  disable_inventory_collector: FileSearch,
+  disable_location_data_collection: MapPinned,
+  disable_targeted_advertising: BellOff,
+  disable_dotnet_telemetry: FileType,
+  disable_powershell_telemetry: Terminal,
+  disable_windows_error_reporting: TriangleAlert,
+  disable_windows_telemetry: EyeOff,
+  svchost_split_threshold: MemoryStick,
+  csrss_high_priority: Zap,
   disable_mouse_acceleration: Mouse,
   raw_mouse_throttle: MousePointer2,
   optimize_mmcss: Zap,
@@ -122,26 +144,47 @@ function isBelowMinBuild(currentBuild: WindowsVersion, tweak: TweakMeta) {
   return currentBuild.ubr < tweak.minOsUbr
 }
 
+function requiredInstalledMemoryGb(tweak: TweakMeta) {
+  if (tweak.id === 'svchost_split_threshold') {
+    return 8
+  }
+
+  return null
+}
+
 function dropdownOptionIcon(
   tweakId: string,
   optionValue: string,
 ): LucideIcon | null {
-  if (tweakId !== 'fast_keyboard_repeat') {
-    return null
+  if (tweakId === 'fast_keyboard_repeat') {
+    switch (optionValue) {
+      case 'default':
+        return Settings
+      case 'balanced':
+        return Gauge
+      case 'fast':
+        return Keyboard
+      case 'ultra_fast':
+        return Zap
+      default:
+        return null
+    }
   }
 
-  switch (optionValue) {
-    case 'default':
-      return Settings
-    case 'balanced':
-      return Gauge
-    case 'fast':
-      return Keyboard
-    case 'ultra_fast':
-      return Zap
-    default:
-      return null
+  if (tweakId === 'disable_cloud_sync') {
+    switch (optionValue) {
+      case 'default':
+        return Settings
+      case 'partial':
+        return BellOff
+      case 'full':
+        return CloudOff
+      default:
+        return null
+    }
   }
+
+  return null
 }
 
 function metadataChipClassName(
@@ -327,6 +370,7 @@ function RiskCodeBlock({
 
 export function TweakCard({
   currentBuild,
+  currentInstalledMemoryBytes = null,
   isPending = false,
   onApplyValue,
   tweak,
@@ -335,7 +379,16 @@ export function TweakCard({
   const Icon = TWEAK_ICONS[tweak.id] ?? Info
   const isEnabled = tweak.currentValue === 'enabled'
   const isAtDefault = tweak.currentValue === tweak.defaultValue
-  const isUnsupported = isBelowMinBuild(currentBuild, tweak)
+  const isBelowBuildRequirement = isBelowMinBuild(currentBuild, tweak)
+  const minInstalledMemoryGb = requiredInstalledMemoryGb(tweak)
+  const isBelowMemoryRequirement = minInstalledMemoryGb !== null
+    && currentInstalledMemoryBytes !== null
+    && currentInstalledMemoryBytes < minInstalledMemoryGb * BYTES_PER_GIB
+  const isMemoryRequirementPending = minInstalledMemoryGb !== null
+    && currentInstalledMemoryBytes === null
+  const isUnsupported = isBelowBuildRequirement
+    || isBelowMemoryRequirement
+    || isMemoryRequirementPending
   const minBuild = formatMinBuild(tweak)
   const copyableRiskCommand = COPYABLE_RISK_COMMANDS[tweak.id]
   const conflicts = tweak.conflicts ?? []
@@ -585,7 +638,7 @@ export function TweakCard({
                 </Tooltip>
               )}
 
-              {isUnsupported && minBuild && (
+              {isBelowBuildRequirement && minBuild && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <MetadataChipButton
@@ -603,6 +656,28 @@ export function TweakCard({
                     style={metadataTooltipBorderStyle('system')}
                   >
                     {t('tweaks.requires.windowsBuild', { build: minBuild })}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+
+              {(isBelowMemoryRequirement || isMemoryRequirementPending) && minInstalledMemoryGb && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <MetadataChipButton
+                      ariaLabel={t('tweaks.requires.memoryGb', {
+                        gb: minInstalledMemoryGb,
+                      })}
+                      icon={CircleAlert}
+                      tone="system"
+                    >
+                      {t('tweaks.requires.memoryGb', { gb: minInstalledMemoryGb })}
+                    </MetadataChipButton>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    sideOffset={8}
+                    style={metadataTooltipBorderStyle('system')}
+                  >
+                    {t('tweaks.requires.memoryGb', { gb: minInstalledMemoryGb })}
                   </TooltipContent>
                 </Tooltip>
               )}

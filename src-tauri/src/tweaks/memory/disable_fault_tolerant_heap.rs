@@ -35,11 +35,10 @@ impl DisableFaultTolerantHeapTweak {
         Self {
             meta: TweakMeta {
                 id: "disable_fault_tolerant_heap".into(),
-                category: "performance".into(),
-                name: "performance.tweaks.disableFaultTolerantHeap.name".into(),
-                short_description: "performance.tweaks.disableFaultTolerantHeap.shortDescription"
-                    .into(),
-                detail_description: "performance.tweaks.disableFaultTolerantHeap.detailDescription"
+                category: "memory".into(),
+                name: "memory.tweaks.disableFaultTolerantHeap.name".into(),
+                short_description: "memory.tweaks.disableFaultTolerantHeap.shortDescription".into(),
+                detail_description: "memory.tweaks.disableFaultTolerantHeap.detailDescription"
                     .into(),
                 control: TweakControlType::Toggle,
                 current_value: DISABLED_VALUE.into(),
@@ -47,7 +46,7 @@ impl DisableFaultTolerantHeapTweak {
                 recommended_value: ENABLED_VALUE.into(),
                 risk: RiskLevel::Low,
                 risk_description: Some(
-                    "performance.tweaks.disableFaultTolerantHeap.riskDescription".into(),
+                    "memory.tweaks.disableFaultTolerantHeap.riskDescription".into(),
                 ),
                 conflicts: None,
                 requires_action: RequiresAction::RestartPc,

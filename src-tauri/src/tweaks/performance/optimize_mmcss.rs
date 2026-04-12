@@ -6,9 +6,6 @@ use std::sync::{Mutex, OnceLock};
 const ENABLED_VALUE: &str = "enabled";
 const DISABLED_VALUE: &str = "disabled";
 
-const DEFAULT_SYSTEM_RESPONSIVENESS: u32 = 20;
-const OPTIMIZED_SYSTEM_RESPONSIVENESS: u32 = 0;
-
 const DEFAULT_GAMES_SCHEDULING_CATEGORY: &str = "Medium";
 const OPTIMIZED_GAMES_SCHEDULING_CATEGORY: &str = "High";
 const DEFAULT_GAMES_PRIORITY: u32 = 2;
@@ -26,11 +23,6 @@ const DEFAULT_PRO_AUDIO_GPU_PRIORITY: u32 = 8;
 const OPTIMIZED_PRO_AUDIO_GPU_PRIORITY: u32 = 8;
 const DEFAULT_PRO_AUDIO_SFIO_PRIORITY: &str = "Normal";
 const OPTIMIZED_PRO_AUDIO_SFIO_PRIORITY: &str = "High";
-
-const SYSTEM_PROFILE_KEY: RegKey = RegKey {
-    hive: Hive::LocalMachine,
-    path: r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile",
-};
 
 const GAMES_TASK_KEY: RegKey = RegKey {
     hive: Hive::LocalMachine,
@@ -56,7 +48,6 @@ enum StringSnapshot {
 
 #[derive(Clone)]
 struct MmcssSnapshot {
-    system_responsiveness: DwordSnapshot,
     games_scheduling_category: StringSnapshot,
     games_priority: DwordSnapshot,
     games_gpu_priority: DwordSnapshot,
@@ -68,7 +59,6 @@ struct MmcssSnapshot {
 }
 
 struct MmcssValues {
-    system_responsiveness: u32,
     games_scheduling_category: String,
     games_priority: u32,
     games_gpu_priority: u32,
@@ -118,9 +108,6 @@ impl OptimizeMmcssTweak {
             .map_err(|_| AppError::message("failed to acquire MMCSS operation lock"))?;
         let snapshot = self.capture_snapshot()?;
         self.apply_with_rollback(snapshot, || {
-            SYSTEM_PROFILE_KEY
-                .set_dword("SystemResponsiveness", OPTIMIZED_SYSTEM_RESPONSIVENESS)?;
-
             GAMES_TASK_KEY
                 .set_string("Scheduling Category", OPTIMIZED_GAMES_SCHEDULING_CATEGORY)?;
             GAMES_TASK_KEY.set_dword("Priority", OPTIMIZED_GAMES_PRIORITY)?;
@@ -145,8 +132,6 @@ impl OptimizeMmcssTweak {
             .map_err(|_| AppError::message("failed to acquire MMCSS operation lock"))?;
         let snapshot = self.capture_snapshot()?;
         self.apply_with_rollback(snapshot, || {
-            SYSTEM_PROFILE_KEY.set_dword("SystemResponsiveness", DEFAULT_SYSTEM_RESPONSIVENESS)?;
-
             GAMES_TASK_KEY.set_string("Scheduling Category", DEFAULT_GAMES_SCHEDULING_CATEGORY)?;
             GAMES_TASK_KEY.set_dword("Priority", DEFAULT_GAMES_PRIORITY)?;
             GAMES_TASK_KEY.set_dword("GPU Priority", DEFAULT_GAMES_GPU_PRIORITY)?;
@@ -164,10 +149,6 @@ impl OptimizeMmcssTweak {
 
     fn capture_snapshot(&self) -> Result<MmcssSnapshot, AppError> {
         Ok(MmcssSnapshot {
-            system_responsiveness: Self::snapshot_dword(
-                &SYSTEM_PROFILE_KEY,
-                "SystemResponsiveness",
-            )?,
             games_scheduling_category: Self::snapshot_string(
                 &GAMES_TASK_KEY,
                 "Scheduling Category",
@@ -209,14 +190,6 @@ impl OptimizeMmcssTweak {
     fn restore_snapshot(snapshot: &MmcssSnapshot) -> Vec<String> {
         let mut errors = Vec::new();
 
-        Self::push_restore_error(
-            &mut errors,
-            Self::restore_dword(
-                &SYSTEM_PROFILE_KEY,
-                "SystemResponsiveness",
-                &snapshot.system_responsiveness,
-            ),
-        );
         Self::push_restore_error(
             &mut errors,
             Self::restore_string(
@@ -323,11 +296,6 @@ impl OptimizeMmcssTweak {
 
     fn read_current_values(&self) -> Result<MmcssValues, AppError> {
         Ok(MmcssValues {
-            system_responsiveness: Self::read_dword_or_default(
-                &SYSTEM_PROFILE_KEY,
-                "SystemResponsiveness",
-                DEFAULT_SYSTEM_RESPONSIVENESS,
-            )?,
             games_scheduling_category: Self::read_string_or_default(
                 &GAMES_TASK_KEY,
                 "Scheduling Category",
@@ -372,8 +340,7 @@ impl OptimizeMmcssTweak {
     }
 
     fn is_default_values(values: &MmcssValues) -> bool {
-        values.system_responsiveness == DEFAULT_SYSTEM_RESPONSIVENESS
-            && values.games_scheduling_category == DEFAULT_GAMES_SCHEDULING_CATEGORY
+        values.games_scheduling_category == DEFAULT_GAMES_SCHEDULING_CATEGORY
             && values.games_priority == DEFAULT_GAMES_PRIORITY
             && values.games_gpu_priority == DEFAULT_GAMES_GPU_PRIORITY
             && values.games_sfio_priority == DEFAULT_GAMES_SFIO_PRIORITY
@@ -384,8 +351,7 @@ impl OptimizeMmcssTweak {
     }
 
     fn is_optimized_values(values: &MmcssValues) -> bool {
-        values.system_responsiveness == OPTIMIZED_SYSTEM_RESPONSIVENESS
-            && values.games_scheduling_category == OPTIMIZED_GAMES_SCHEDULING_CATEGORY
+        values.games_scheduling_category == OPTIMIZED_GAMES_SCHEDULING_CATEGORY
             && values.games_priority == OPTIMIZED_GAMES_PRIORITY
             && values.games_gpu_priority == OPTIMIZED_GAMES_GPU_PRIORITY
             && values.games_sfio_priority == OPTIMIZED_GAMES_SFIO_PRIORITY
