@@ -532,12 +532,37 @@ body {
   align-self: stretch;
 }
 
+.system-info-grid {
+  position: relative;
+}
+
+@media (width >= 40rem) {
+  .system-info-grid {
+    column-gap: 1.5rem;
+  }
+
+  .system-info-grid::before {
+    content: '';
+    position: absolute;
+    top: 0.125rem;
+    bottom: 0.125rem;
+    left: 50%;
+    width: 1px;
+    background: color-mix(in oklch, var(--border) 82%, transparent);
+    pointer-events: none;
+  }
+}
+
 .network-adapter-card:hover {
   border-color: var(--ring);
 }
 
 .metric-text-accent {
   color: var(--metric-accent-text);
+}
+
+.metric-text-accent-muted {
+  color: color-mix(in oklch, var(--metric-accent-text) 58%, var(--muted-foreground) 42%);
 }
 
 .metric-text-good {

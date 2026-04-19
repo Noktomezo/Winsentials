@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-**Winsentials** is a desktop application for Windows 10/11 that allows users to tune system settings with just one click.
+**Winsentials** desktop app for Windows 10/11. Tune system settings with one click.
 
-The app exposes a clean, friendly UI on top of low-level OS operations (registry edits, COM commands, service control, etc.). Every tweak has a typed contract on both frontend and backend (apply, revert, get current state, backup mechanism, etc.)
+App exposes clean UI over low-level OS ops (registry edits, COM commands, service control, etc.). Every tweak has typed contract on frontend + backend (`apply`, `revert`, current state, backup, etc.)
 
 ## Tech Stack
 
@@ -26,40 +26,38 @@ The app exposes a clean, friendly UI on top of low-level OS operations (registry
 
 ## Folder Structure
 
-- Frontend — Feature-Sliced Design (FSD)
-- Backend — Vertical Slice Design
+- Frontend: Feature-Sliced Design (FSD)
+- Backend: Vertical Slice Design
 
 ## Dependency & Runtime Rules
 
 ### Frontend
 
-- **Runtime:** `bun` only. Never use `npm`, `pnpm`, `node` directly.
+- **Runtime:** `bun` only. Never use `npm`, `pnpm`, `node`.
 - Install packages: `bun add <pkg>`
 - Dev packages: `bun add -d <pkg>`
 - Run scripts: `bunx <tool>` or `bun run <script>`
-- Do **not** commit `package-lock.json` or `pnpm-lock.yaml` — only `bun.lockb`
-- Treat window materials as modifiers, not standalone themes. `acrylic`, `mica`, and `tabbed` must stay modeled via `data-webview-material` on the root element together with the existing `light`/`dark` theme values in `data-theme`; never replace the theme key with a material value.
-- When changing theme or appearance code, preserve the invariant that theme selection (`light`/`dark`/`system`) and material selection (`none`/`acrylic`/`mica`/`tabbed`) are combined, not merged into one field.
+- Never commit `package-lock.json` or `pnpm-lock.yaml`. Use `bun.lock` only.
 
 ### Backend (Rust)
 
-- Add dependencies: `cargo add <crate>` — never manually edit `Cargo.toml` version strings
+- Add dependencies: `cargo add <crate>`. Never edit `Cargo.toml` version strings by hand.
 - When adding a crate with features: `cargo add <crate> --features <feat1>,<feat2>`
-- After adding deps, always run `cargo check` to verify the build compiles
+- After adding deps, run `cargo check`
 
 ### Tauri
 
-- Use Tauri v2 APIs — do not use v1 patterns (different plugin system, command registration, etc.)
+- Use Tauri v2 APIs. Do not use v1 patterns (plugin system, command registration, etc.)
 - Register all commands in `lib.rs` via `tauri::Builder::default().invoke_handler(tauri::generate_handler![...])`
 - Use `tauri::command` macro on all public Rust handlers
 
 ## Post-Task Checks
 
-Run these after **every** completed task before considering it done. Do not skip even for "small" changes.
+Run after every task. Do not skip, even for small changes.
 
 ### Frontend
 
-Order matters — format first so typecheck sees clean code:
+Order matters: format first so typecheck sees clean code:
 
 ```bash
 # 1. Fix formatting and lint errors
@@ -73,11 +71,11 @@ bun run typecheck
 bunx tsc --noEmit
 ```
 
-> `eslint-stylistic` is used for formatting — it replaces Prettier. `bun run format` runs `eslint --fix`, not a separate formatter.
+> `eslint-stylistic` handles formatting. It replaces Prettier. `bun run format` runs `eslint --fix`, not separate formatter.
 
 ### Backend
 
-Order matters — fmt before clippy so clippy sees formatted code; check after clippy fix to confirm the build is clean:
+Order matters: `fmt` before `clippy`; run `check` after `clippy` fix to confirm clean build:
 
 ```bash
 # 1. Format

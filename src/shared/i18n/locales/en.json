@@ -217,6 +217,12 @@
         "riskDescription": "May slightly affect QoS-aware applications that rely on bandwidth reservation for prioritized traffic.",
         "shortDescription": "Removes the 20% bandwidth reservation Windows holds back for system services."
       },
+      "fastUdpOptimization": {
+        "detailDescription": "Raises the fast-send and fast-copy thresholds for UDP handling so Windows spends less time bottlenecking datagram processing. This can help keep latency and jitter more stable in online games and other network-sensitive workloads.",
+        "name": "Fast UDP Optimization",
+        "riskDescription": "Usually safe, but the real effect depends on your network driver, route, and the application itself. If network behavior gets worse after rebooting, reset the tweak and return to the default values.",
+        "shortDescription": "Speeds up UDP send and receive handling to reduce latency and jitter."
+      },
       "enableNetworkOffloadingRss": {
         "detailDescription": "Enables Receive Side Scaling (RSS) and TCP Offload, moving network packet processing from the CPU to the network adapter's own controller. This frees up CPU resources and can reduce latency in games or during heavy file transfers. A PC restart is required for the change to take full effect.",
         "name": "Enable Network Card Offloading (RSS)",
@@ -588,6 +594,7 @@
     "driverVersion": "Driver version",
     "driverDate": "Driver date",
     "directx": "DirectX",
+    "info": "Graphics info",
     "totalRam": "GPU RAM",
     "pciLocation": "Location",
     "pciBus": "PCI bus",
@@ -608,7 +615,7 @@
     "connectionType": "Connection type",
     "description": "Network adapters and live throughput.",
     "dnsName": "DNS name",
-    "info": "Information",
+    "info": "Network info",
     "ipv4": "IPv4",
     "ipv6": "IPv6",
     "liveLoadError": "Failed to load live network telemetry.",
