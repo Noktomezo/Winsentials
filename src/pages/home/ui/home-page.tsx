@@ -43,7 +43,10 @@ const SUMMARY_MIN_CARD_WIDTH = 360
 const SUMMARY_MAX_CARD_WIDTH = 760
 
 let summaryMeasureCanvas: HTMLCanvasElement | null = null
+const summaryWidthCache = new Map<string, number>()
 
+// Font metrics here approximate the rendered UI font. If fonts or text styles
+// change at runtime, this cache may need invalidation to re-measure accurately.
 function measureSummaryTextWidth(text: string, font: string) {
   if (typeof document === 'undefined') {
     return text.length * 8
@@ -61,6 +64,13 @@ function measureSummaryTextWidth(text: string, font: string) {
 }
 
 function summaryCardWidth(titleText: string, secondaryText?: string) {
+  const cacheKey = `${titleText}|${secondaryText ?? ''}`
+  const cachedWidth = summaryWidthCache.get(cacheKey)
+
+  if (cachedWidth) {
+    return cachedWidth
+  }
+
   const titleWidth = measureSummaryTextWidth(
     titleText,
     '500 14px "IBM Plex Sans", "Segoe UI Variable Text", "Segoe UI", sans-serif',
@@ -80,10 +90,13 @@ function summaryCardWidth(titleText: string, secondaryText?: string) {
       + SUMMARY_CHEVRON_WIDTH
       + SUMMARY_HORIZONTAL_PADDING
 
-  return Math.max(
+  const width = Math.max(
     SUMMARY_MIN_CARD_WIDTH,
     Math.min(SUMMARY_MAX_CARD_WIDTH, headerWidth),
   )
+
+  summaryWidthCache.set(cacheKey, width)
+  return width
 }
 
 function loadColor(pct: number): string {

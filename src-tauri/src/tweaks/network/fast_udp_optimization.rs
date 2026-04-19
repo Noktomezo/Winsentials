@@ -18,6 +18,12 @@ const AFD_PARAMETERS_KEY: RegKey = RegKey {
 const FAST_SEND_VALUE_NAME: &str = "FastSendDatagramThreshold";
 const FAST_COPY_VALUE_NAME: &str = "FastCopyReceiveThreshold";
 
+#[derive(Clone, Copy)]
+enum DwordSnapshot {
+    Missing,
+    Present(u32),
+}
+
 pub struct FastUdpOptimizationTweak {
     meta: TweakMeta,
 }
@@ -52,21 +58,39 @@ impl FastUdpOptimizationTweak {
         }
     }
 
-    fn read_dword_or_default(value_name: &str) -> Result<u32, AppError> {
+    fn read_dword_snapshot(value_name: &str) -> Result<DwordSnapshot, AppError> {
         match AFD_PARAMETERS_KEY.get_dword(value_name) {
-            Ok(value) => Ok(value),
+            Ok(value) => Ok(DwordSnapshot::Present(value)),
             Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {
-                Ok(DEFAULT_THRESHOLD_VALUE)
+                Ok(DwordSnapshot::Missing)
             }
             Err(error) => Err(error),
         }
     }
 
-    fn read_state(&self) -> Result<(u32, u32), AppError> {
+    fn read_state(&self) -> Result<(DwordSnapshot, DwordSnapshot), AppError> {
         Ok((
-            Self::read_dword_or_default(FAST_SEND_VALUE_NAME)?,
-            Self::read_dword_or_default(FAST_COPY_VALUE_NAME)?,
+            Self::read_dword_snapshot(FAST_SEND_VALUE_NAME)?,
+            Self::read_dword_snapshot(FAST_COPY_VALUE_NAME)?,
         ))
+    }
+
+    fn snapshot_value(snapshot: DwordSnapshot) -> u32 {
+        match snapshot {
+            DwordSnapshot::Missing => DEFAULT_THRESHOLD_VALUE,
+            DwordSnapshot::Present(value) => value,
+        }
+    }
+
+    fn restore_snapshot(value_name: &str, snapshot: DwordSnapshot) -> Result<(), AppError> {
+        match snapshot {
+            DwordSnapshot::Missing => match AFD_PARAMETERS_KEY.delete_value(value_name) {
+                Ok(()) => Ok(()),
+                Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+                Err(error) => Err(error),
+            },
+            DwordSnapshot::Present(value) => AFD_PARAMETERS_KEY.set_dword(value_name, value),
+        }
     }
 
     fn write_values(&self, fast_send: u32, fast_copy: u32) -> Result<(), AppError> {
@@ -79,8 +103,8 @@ impl FastUdpOptimizationTweak {
         })();
 
         if let Err(error) = write_result {
-            let _ = AFD_PARAMETERS_KEY.set_dword(FAST_SEND_VALUE_NAME, original_fast_send);
-            let _ = AFD_PARAMETERS_KEY.set_dword(FAST_COPY_VALUE_NAME, original_fast_copy);
+            let _ = Self::restore_snapshot(FAST_SEND_VALUE_NAME, original_fast_send);
+            let _ = Self::restore_snapshot(FAST_COPY_VALUE_NAME, original_fast_copy);
             return Err(error);
         }
 
@@ -89,6 +113,8 @@ impl FastUdpOptimizationTweak {
 
     fn current_value(&self) -> Result<&'static str, AppError> {
         let (fast_send, fast_copy) = self.read_state()?;
+        let fast_send = Self::snapshot_value(fast_send);
+        let fast_copy = Self::snapshot_value(fast_copy);
 
         Ok(
             if fast_send == OPTIMIZED_THRESHOLD_VALUE && fast_copy == OPTIMIZED_THRESHOLD_VALUE {

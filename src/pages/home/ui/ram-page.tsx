@@ -16,7 +16,7 @@ function formatBytes(bytes: number, locale: string, t: ReturnType<typeof useTran
   return formatBytesLocalized(bytes, { decimals, locale, t })
 }
 
-/** Format `bytes` as a plain number in the same unit as `reference`, no unit suffix. */
+/** Formats compressed memory with localized units, using 1 decimal for GiB+ and 0 otherwise. */
 function formatCompressedBytes(
   bytes: number,
   locale: string,
