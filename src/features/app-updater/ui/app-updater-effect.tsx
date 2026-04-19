@@ -17,6 +17,7 @@ export function initAppUpdater() {
   initialized = true
 
   let activeToastId: string | undefined
+  let installingToastId: string | number | undefined
   let intervalId: number | null = null
   let isChecking = false
   let isInstalling = false
@@ -29,14 +30,23 @@ export function initAppUpdater() {
     }
   }
 
+  const dismissInstallingToast = () => {
+    if (installingToastId !== undefined) {
+      toast.dismiss(installingToastId)
+      installingToastId = undefined
+    }
+  }
+
   const showUpdatePrompt = (update: Update) => {
     activeToastId = toast.action(i18n.t('settings.updatePromptTitle'), {
       action: {
         label: i18n.t('settings.updateNow'),
         onClick: async () => {
           isInstalling = true
-          activeToastId = undefined
-          toast.message(i18n.t('settings.installingUpdate'))
+          dismissActiveToast()
+          installingToastId = toast.message(i18n.t('settings.installingUpdate'), {
+            duration: Number.POSITIVE_INFINITY,
+          })
 
           try {
             await update.downloadAndInstall()
@@ -44,6 +54,7 @@ export function initAppUpdater() {
           }
           catch (error) {
             promptedVersion = null
+            dismissInstallingToast()
             console.warn('Failed to install update', error)
             toast.error(i18n.t('settings.updateInstallFailed'))
           }
@@ -115,6 +126,7 @@ export function initAppUpdater() {
 
       promptedVersion = null
       dismissActiveToast()
+      dismissInstallingToast()
       return
     }
 

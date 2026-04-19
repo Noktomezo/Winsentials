@@ -117,7 +117,7 @@ export function DiskDetailPage() {
 
       <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
         <h3 className="text-sm font-medium text-foreground">{t('storage.diskInfo')}</h3>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="system-info-grid grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Row label={t('storage.activeTime')} value={`${diskLive?.activeTimePercent ?? 0}%`} />
           <Row label={t('storage.avgResponseTime')} value={`${avgResponseTime} ms`} />
           <Row label={t('storage.readSpeed')} value={formatRate(diskLive?.readBytesPerSec ?? 0, i18n.language, t)} />

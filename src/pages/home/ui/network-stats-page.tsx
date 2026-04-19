@@ -262,7 +262,7 @@ export function NetworkStatsPage() {
 
         <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
           <h3 className="text-sm font-medium text-foreground">{t('networkStats.info')}</h3>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="system-info-grid grid grid-cols-1 gap-2 sm:grid-cols-2">
             <Row label={t('networkStats.send')} value={formatRate(traffic?.txBytesPerSec ?? 0, i18n.language, t)} />
             <Row label={t('networkStats.receive')} value={formatRate(traffic?.rxBytesPerSec ?? 0, i18n.language, t)} />
             <Row label={t('networkStats.adapter')} value={selectedAdapter.name} />

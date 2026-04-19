@@ -16,16 +16,41 @@ function formatBytes(bytes: number, locale: string, t: ReturnType<typeof useTran
   return formatBytesLocalized(bytes, { decimals, locale, t })
 }
 
-/** Format `bytes` as a plain number in the same unit as `reference`, no unit suffix. */
-function formatBytesNumberOnly(bytes: number, reference: number): string {
-  if (reference === 0) return '0'
-  const k = 1024
-  const i = Math.floor(Math.log(Math.max(reference, 1)) / Math.log(k))
-  return Number.parseFloat((bytes / k ** i).toFixed(2)).toString()
+/** Formats compressed memory with localized units, using 1 decimal for GiB+ and 0 otherwise. */
+function formatCompressedBytes(
+  bytes: number,
+  locale: string,
+  t: ReturnType<typeof useTranslation>['t'],
+): string {
+  return formatBytesLocalized(bytes, {
+    decimals: bytes >= 1024 ** 3 ? 1 : 0,
+    locale,
+    t,
+  })
 }
 
 function toGb(bytes: number, locale: string, t: ReturnType<typeof useTranslation>['t']): string {
   return formatBytesLocalized(bytes, { decimals: 1, locale, t })
+}
+
+function loadColor(pct: number): string {
+  if (pct >= 85) {
+    return 'metric-text-danger'
+  }
+  if (pct >= 60) {
+    return 'metric-text-warning'
+  }
+  return 'metric-text-good'
+}
+
+function inverseLoadColor(pct: number): string {
+  if (pct <= 15) {
+    return 'metric-text-danger'
+  }
+  if (pct <= 40) {
+    return 'metric-text-warning'
+  }
+  return 'metric-text-good'
 }
 
 interface RowProps {
@@ -158,6 +183,9 @@ export function RamPage() {
   // Hardware reserved: physical BIOS reservation = WMI total - sysinfo (used + available)
   const sysTotal = used + available
   const hwReserved = sysTotal > 0 ? Math.max(0, total - sysTotal) : 0
+  const usedPercent = total > 0 ? (used / total) * 100 : 0
+  const availablePercent = total > 0 ? (available / total) * 100 : 0
+  const committedPercent = commitLimit > 0 ? (committed / commitLimit) * 100 : 0
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
@@ -190,17 +218,15 @@ export function RamPage() {
       {/* Info card — 2 columns */}
       <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
         <h3 className="text-sm font-medium text-foreground">{t('ram.info')}</h3>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="system-info-grid grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Row
-            label={t('ram.used')}
+            label={`${t('ram.used')} (${t('ram.compressed')})`}
             value={(
-              <span className="tabular-nums">
+              <span className={`${loadColor(usedPercent)} tabular-nums`}>
                 {formatBytes(used, i18n.language, t)}
-                <span className="ml-1 font-normal text-muted-foreground">
+                <span className="metric-text-accent ml-1 font-normal">
                   (
-                  {formatBytesNumberOnly(compressed, used)}
-                  {' '}
-                  {t('ram.compressed')}
+                  {formatCompressedBytes(compressed, i18n.language, t)}
                   )
                 </span>
               </span>
@@ -208,12 +234,12 @@ export function RamPage() {
           />
           <Row
             label={t('ram.available')}
-            value={<span className="tabular-nums">{formatBytes(available, i18n.language, t)}</span>}
+            value={<span className={`${inverseLoadColor(availablePercent)} tabular-nums`}>{formatBytes(available, i18n.language, t)}</span>}
           />
           <Row
             label={t('ram.committed')}
             value={(
-              <span className="tabular-nums">
+              <span className={`${loadColor(committedPercent)} tabular-nums`}>
                 {formatBytes(committed, i18n.language, t)}
                 {' / '}
                 {formatBytes(commitLimit > 0 ? commitLimit : total, i18n.language, t)}
@@ -222,15 +248,15 @@ export function RamPage() {
           />
           <Row
             label={t('ram.cached')}
-            value={<span className="tabular-nums">{formatBytes(cached, i18n.language, t)}</span>}
+            value={<span className="metric-text-accent tabular-nums">{formatBytes(cached, i18n.language, t)}</span>}
           />
           <Row
             label={t('ram.pagedPool')}
-            value={<span className="tabular-nums">{formatBytes(pagedPool, i18n.language, t)}</span>}
+            value={<span className="metric-text-accent tabular-nums">{formatBytes(pagedPool, i18n.language, t)}</span>}
           />
           <Row
             label={t('ram.nonPagedPool')}
-            value={<span className="tabular-nums">{formatBytes(nonPagedPool, i18n.language, t)}</span>}
+            value={<span className="metric-text-accent tabular-nums">{formatBytes(nonPagedPool, i18n.language, t)}</span>}
           />
           {ram.speedMhz != null && (
             <Row label={t('home.speed')} value={`${ram.speedMhz} MHz`} />

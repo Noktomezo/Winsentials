@@ -4,6 +4,7 @@ import type { TweakMeta, WindowsVersion } from '@/entities/tweak/model/types'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import {
   AlertTriangle,
+  ArrowLeftRight,
   BellOff,
   CircleAlert,
   Clock3,
@@ -101,6 +102,7 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   disable_user_account_control: Shield,
   disable_ncsi_active_probing: CircleAlert,
   disable_ndu: Network,
+  fast_udp_optimization: ArrowLeftRight,
   configure_kernel_timing_chain: Clock3,
   disable_fault_tolerant_heap: Gauge,
   disable_game_dvr: Gamepad2,

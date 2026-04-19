@@ -484,7 +484,8 @@ export function GpuPage() {
         </div>
 
         {/* Single info card */}
-        <section className="flex flex-col gap-2.5 rounded-lg border border-border/70 bg-card p-4">
+        <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
+          <h3 className="text-sm font-medium text-foreground">{t('gpu.info')}</h3>
           {gpu.vendor && gpu.vendor !== 'Unknown' && (
             <Row label={t('home.vendor')} value={gpu.vendor} />
           )}

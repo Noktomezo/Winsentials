@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type {
   GpuInfo,
   LiveGpuInfo,
@@ -31,9 +31,73 @@ import {
   networkAdapterToParam,
 } from '@/shared/lib/mount-utils'
 import { Button, Skeleton } from '@/shared/ui'
-import { MarqueeText } from '@/shared/ui/marquee-text'
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
+
+const SUMMARY_ICON_WIDTH = 36
+const SUMMARY_ICON_GAP = 12
+const SUMMARY_HEADER_GAP = 8
+const SUMMARY_CHEVRON_WIDTH = 14
+const SUMMARY_HORIZONTAL_PADDING = 32
+const SUMMARY_MIN_CARD_WIDTH = 360
+const SUMMARY_MAX_CARD_WIDTH = 760
+
+let summaryMeasureCanvas: HTMLCanvasElement | null = null
+const summaryWidthCache = new Map<string, number>()
+
+// Font metrics here approximate the rendered UI font. If fonts or text styles
+// change at runtime, this cache may need invalidation to re-measure accurately.
+function measureSummaryTextWidth(text: string, font: string) {
+  if (typeof document === 'undefined') {
+    return text.length * 8
+  }
+
+  summaryMeasureCanvas ??= document.createElement('canvas')
+  const context = summaryMeasureCanvas.getContext('2d')
+
+  if (!context) {
+    return text.length * 8
+  }
+
+  context.font = font
+  return Math.ceil(context.measureText(text).width)
+}
+
+function summaryCardWidth(titleText: string, secondaryText?: string) {
+  const cacheKey = `${titleText}|${secondaryText ?? ''}`
+  const cachedWidth = summaryWidthCache.get(cacheKey)
+
+  if (cachedWidth) {
+    return cachedWidth
+  }
+
+  const titleWidth = measureSummaryTextWidth(
+    titleText,
+    '500 14px "IBM Plex Sans", "Segoe UI Variable Text", "Segoe UI", sans-serif',
+  )
+  const secondaryWidth = secondaryText
+    ? measureSummaryTextWidth(
+        secondaryText,
+        '400 14px "IBM Plex Sans", "Segoe UI Variable Text", "Segoe UI", sans-serif',
+      )
+    : 0
+
+  const headerWidth
+    = SUMMARY_ICON_WIDTH
+      + SUMMARY_ICON_GAP
+      + titleWidth
+      + (secondaryWidth ? SUMMARY_HEADER_GAP + secondaryWidth : 0)
+      + SUMMARY_CHEVRON_WIDTH
+      + SUMMARY_HORIZONTAL_PADDING
+
+  const width = Math.max(
+    SUMMARY_MIN_CARD_WIDTH,
+    Math.min(SUMMARY_MAX_CARD_WIDTH, headerWidth),
+  )
+
+  summaryWidthCache.set(cacheKey, width)
+  return width
+}
 
 function loadColor(pct: number): string {
   if (pct >= 85) return 'metric-text-danger'
@@ -104,7 +168,10 @@ interface RowProps {
 interface SummaryCardProps {
   icon: LucideIcon
   title: ReactNode
+  secondaryText?: string
+  titleText: string
   stat?: ReactNode
+  statText?: string
   onNavigate: () => void
   onPointerIntent?: () => void
   children?: ReactNode
@@ -125,14 +192,18 @@ function WindowsCard({ s }: { s: StaticSystemInfo }) {
   const { t } = useTranslation()
   const w = s.windows
   return (
-    <section className="col-span-2 flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
-      <div className="flex items-center gap-2">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent/60 text-accent-foreground">
-          <Monitor className="size-3.5" />
-        </span>
-        <h2 className="text-sm font-medium text-foreground">{t('home.os')}</h2>
+    <section className="rounded-lg border border-border/70 bg-card p-4">
+      <div className="mb-3 border-b border-border/70 pb-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="ui-soft-surface flex size-9 shrink-0 items-center justify-center rounded-md">
+            <Monitor className="size-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-medium text-foreground">{t('home.os')}</h2>
+          </div>
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+      <div className="system-info-grid grid grid-cols-2 gap-x-8 gap-y-2">
         <Row
           label={t('home.version')}
           value={`${w.productName} ${w.displayVersion}`}
@@ -169,33 +240,43 @@ function WindowsCard({ s }: { s: StaticSystemInfo }) {
 function SummaryCard({
   icon: Icon,
   title,
+  secondaryText,
+  titleText,
   stat,
   onNavigate,
   onPointerIntent,
   children,
 }: SummaryCardProps) {
+  const cardWidth = summaryCardWidth(titleText, secondaryText)
+  const cardStyle = {
+    '--tweak-card-width': `${cardWidth}px`,
+    '--tweak-card-grow': `${cardWidth}`,
+  } as CSSProperties
+
   return (
     <button
-      className="group/summary flex cursor-pointer flex-col gap-3 rounded-lg border border-border/70 bg-card p-4 text-left transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      data-marquee-group="true"
+      className="group/summary flex h-full cursor-pointer flex-col gap-3 rounded-lg border border-border/70 bg-card p-4 text-left transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       onClick={onNavigate}
       onFocus={onPointerIntent}
       onMouseEnter={onPointerIntent}
+      style={cardStyle}
       type="button"
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent/60 text-accent-foreground">
-            <Icon className="size-3.5" />
-          </span>
-          <h2 className="min-w-0 text-sm font-medium text-foreground">
+      <div className="flex items-center gap-3">
+        <span className="ui-soft-surface flex size-9 shrink-0 items-center justify-center rounded-md self-center">
+          <Icon className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-sm font-medium text-foreground">
             {title}
           </h2>
+          {stat && (
+            <div className="mt-0.5 min-w-0 text-xs font-medium text-foreground">
+              {stat}
+            </div>
+          )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {stat}
-          <ChevronRight className="size-3.5 text-muted-foreground transition-transform group-hover/summary:translate-x-0.5" />
-        </div>
+        <ChevronRight className="size-4 shrink-0 self-center text-muted-foreground transition-transform group-hover/summary:translate-x-0.5" />
       </div>
       {children}
     </button>
@@ -240,15 +321,16 @@ function CpuSummary({
               </span>
             )
       }
+      secondaryText={s.cpu.model}
       title={(
         <span className="flex min-w-0 items-baseline gap-1">
           <span className="shrink-0">{t('home.cpu')}</span>
-          <MarqueeText
-            className="font-normal text-muted-foreground"
-            text={`(${s.cpu.model})`}
-          />
+          <span className="truncate font-normal text-muted-foreground">
+            {`(${s.cpu.model})`}
+          </span>
         </span>
       )}
+      titleText={t('home.cpu')}
     />
   )
 }
@@ -296,6 +378,7 @@ function RamSummary({
             )
       }
       title={t('home.ram')}
+      titleText={t('home.ram')}
     />
   )
 }
@@ -334,19 +417,22 @@ function DiskSummary({
           })}
         </span>
       )}
+      secondaryText={
+        disk.volumeLabel
+          ? `${mountLabel(disk.mountPoint)} - ${disk.volumeLabel}`
+          : mountLabel(disk.mountPoint)
+      }
       title={(
         <span className="flex min-w-0 items-baseline gap-1">
           <span className="shrink-0">{t('storage.diskLabel', { index })}</span>
-          <MarqueeText
-            className="font-normal text-muted-foreground"
-            text={
-              disk.volumeLabel
-                ? `(${mountLabel(disk.mountPoint)} - ${disk.volumeLabel})`
-                : `(${mountLabel(disk.mountPoint)})`
-            }
-          />
+          <span className="truncate font-normal text-muted-foreground">
+            {disk.volumeLabel
+              ? `(${mountLabel(disk.mountPoint)} - ${disk.volumeLabel})`
+              : `(${mountLabel(disk.mountPoint)})`}
+          </span>
         </span>
       )}
+      titleText={t('storage.diskLabel', { index })}
     />
   )
 }
@@ -387,15 +473,16 @@ function NetworkSummary({
           </span>
         </div>
       )}
+      secondaryText={adapter.adapterDescription}
       title={(
         <span className="flex min-w-0 items-baseline gap-1">
           <span className="shrink-0">{t('home.network')}</span>
-          <MarqueeText
-            className="font-normal text-muted-foreground"
-            text={`(${adapter.adapterDescription})`}
-          />
+          <span className="truncate font-normal text-muted-foreground">
+            {`(${adapter.adapterDescription})`}
+          </span>
         </span>
       )}
+      titleText={t('home.network')}
     />
   )
 }
@@ -459,15 +546,16 @@ function GpuSummary({
             )
           : undefined
       }
+      secondaryText={gpu.name}
       title={(
         <span className="flex min-w-0 items-baseline gap-1">
           <span className="shrink-0">{t('gpu.gpuLabel', { index })}</span>
-          <MarqueeText
-            className="font-normal text-muted-foreground"
-            text={`(${gpu.name})`}
-          />
+          <span className="truncate font-normal text-muted-foreground">
+            {`(${gpu.name})`}
+          </span>
         </span>
       )}
+      titleText={t('gpu.gpuLabel', { index })}
     />
   )
 }
@@ -476,8 +564,8 @@ function GpuSummary({
 
 function HomeSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <section className="col-span-2 rounded-lg border border-border/70 bg-card p-4">
+    <div className="flex flex-col gap-4">
+      <section className="rounded-lg border border-border/70 bg-card p-4">
         <div className="mb-3 flex items-center gap-2">
           <Skeleton className="size-7 rounded-md" />
           <Skeleton className="h-4 w-24" />
@@ -488,21 +576,29 @@ function HomeSkeleton() {
           ))}
         </div>
       </section>
-      {Array.from({ length: 4 }).map((_, i) => (
-        <section
-          className="rounded-lg border border-border/70 bg-card p-4"
-          key={i}
-        >
-          <div className="mb-3 flex items-center gap-2">
-            <Skeleton className="size-7 rounded-md" />
-            <Skeleton className="h-4 w-24" />
-          </div>
-          <div className="space-y-2.5">
-            <Skeleton className="h-3 w-full" />
-            <Skeleton className="h-3 w-4/5" />
-          </div>
-        </section>
-      ))}
+      <div className="tweak-card-grid">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <section
+            className="rounded-lg border border-border/70 bg-card p-4"
+            key={i}
+            style={
+              {
+                '--tweak-card-width': '22.5rem',
+                '--tweak-card-grow': '360',
+              } as CSSProperties
+            }
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <Skeleton className="size-7 rounded-md" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <div className="space-y-2.5">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-4/5" />
+            </div>
+          </section>
+        ))}
+      </div>
     </div>
   )
 }
@@ -547,28 +643,30 @@ export function HomePage() {
               <HomeSkeleton />
             )
           : (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-4">
                 <WindowsCard s={staticInfo} />
-                <CpuSummary live={liveInfo} s={staticInfo} />
-                <RamSummary live={liveInfo} s={staticInfo} />
-                {disks.map((disk, i) => (
-                  <DiskSummary disk={disk} index={i} key={disk.mountPoint} />
-                ))}
-                {networkCards.map(adapter => (
-                  <NetworkSummary
-                    adapter={adapter}
-                    key={`network-${adapter.name}`}
-                    live={liveInfo}
-                  />
-                ))}
-                {staticInfo.gpus.map((gpu, i) => (
-                  <GpuSummary
-                    gpu={gpu}
-                    gpuLive={liveInfo?.gpus[i] ?? null}
-                    index={i}
-                    key={`gpu-${i}`}
-                  />
-                ))}
+                <div className="tweak-card-grid">
+                  <CpuSummary live={liveInfo} s={staticInfo} />
+                  <RamSummary live={liveInfo} s={staticInfo} />
+                  {disks.map((disk, i) => (
+                    <DiskSummary disk={disk} index={i} key={disk.mountPoint} />
+                  ))}
+                  {networkCards.map(adapter => (
+                    <NetworkSummary
+                      adapter={adapter}
+                      key={`network-${adapter.name}`}
+                      live={liveInfo}
+                    />
+                  ))}
+                  {staticInfo.gpus.map((gpu, i) => (
+                    <GpuSummary
+                      gpu={gpu}
+                      gpuLive={liveInfo?.gpus[i] ?? null}
+                      index={i}
+                      key={`gpu-${i}`}
+                    />
+                  ))}
+                </div>
               </div>
             )}
     </section>
