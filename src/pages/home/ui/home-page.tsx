@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { CSSProperties, ReactNode } from 'react'
 import type {
+  DeviceInventoryInfo,
   GpuInfo,
   LiveGpuInfo,
   LiveHomeInfo,
@@ -17,10 +18,13 @@ import {
   Network,
   Server,
 } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDeviceInventory, useLiveHome } from '@/entities/system-info/model/live-system-store'
+import { getDeviceInventoryInfo } from '@/entities/system-info/api'
+import { useLiveHome } from '@/entities/system-info/model/live-system-store'
 import { useStaticSystemInfo } from '@/entities/system-info/model/static-system-info'
 import { useTweakCacheStore } from '@/entities/tweak/model/tweak-cache-store'
+import { TWEAK_CATEGORIES } from '@/shared/config/app'
 import {
   formatBytesLocalized,
   formatRateLocalized,
@@ -43,7 +47,7 @@ const SUMMARY_CHEVRON_WIDTH = 14
 const SUMMARY_HORIZONTAL_PADDING = 32
 const SUMMARY_MIN_CARD_WIDTH = 360
 const SUMMARY_MAX_CARD_WIDTH = 760
-const HOME_TWEAK_CATEGORIES = ['appearance', 'behaviour', 'security', 'privacy', 'network', 'performance', 'memory', 'input'] as const
+const HOME_DEVICE_INVENTORY_POLL_INTERVAL_MS = 5000
 
 let summaryMeasureCanvas: HTMLCanvasElement | null = null
 const summaryWidthCache = new Map<string, number>()
@@ -622,13 +626,50 @@ export function HomePage() {
     retry: retryStaticInfo,
   } = useStaticSystemInfo()
   const { data: liveInfo } = useLiveHome()
-  const { data: deviceInventory } = useDeviceInventory()
+  const [deviceInventory, setDeviceInventory] = useState<DeviceInventoryInfo | null>(null)
   const tweakCategories = useTweakCacheStore(state => state.categories)
 
   useMountEffect(() => {
     const store = useTweakCacheStore.getState()
-    for (const category of HOME_TWEAK_CATEGORIES) {
+    for (const category of TWEAK_CATEGORIES) {
       void store.ensureCategory(category)
+    }
+  })
+
+  useMountEffect(() => {
+    let cancelled = false
+
+    const refreshDeviceInventory = async () => {
+      try {
+        const inventory = await getDeviceInventoryInfo()
+        if (!cancelled) {
+          setDeviceInventory(inventory)
+        }
+      }
+      catch (error) {
+        console.error(error)
+      }
+    }
+
+    const handleVisibilityRefresh = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshDeviceInventory()
+      }
+    }
+
+    void refreshDeviceInventory()
+    const intervalId = window.setInterval(() => {
+      void refreshDeviceInventory()
+    }, HOME_DEVICE_INVENTORY_POLL_INTERVAL_MS)
+
+    window.addEventListener('focus', handleVisibilityRefresh)
+    document.addEventListener('visibilitychange', handleVisibilityRefresh)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', handleVisibilityRefresh)
+      document.removeEventListener('visibilitychange', handleVisibilityRefresh)
     }
   })
 
@@ -636,15 +677,15 @@ export function HomePage() {
   let totalTweaks = 0
   let tweaksReady = true
 
-  for (const category of HOME_TWEAK_CATEGORIES) {
+  for (const category of TWEAK_CATEGORIES) {
     const cached = tweakCategories[category]
-    if (!cached?.hasLoaded) {
+    if (!cached?.hasLoaded && !cached?.error) {
       tweaksReady = false
       continue
     }
 
-    totalTweaks += cached.tweaks.length
-    appliedTweaks += cached.tweaks.filter(tweak => tweak.currentValue !== tweak.defaultValue).length
+    totalTweaks += cached?.tweaks?.length ?? 0
+    appliedTweaks += cached?.tweaks?.filter(tweak => tweak.currentValue !== tweak.defaultValue).length ?? 0
   }
 
   const networkCards = deviceInventory?.networkAdapters ?? staticInfo?.networkAdapters ?? []

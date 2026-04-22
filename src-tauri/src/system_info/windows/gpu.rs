@@ -760,6 +760,10 @@ fn pdh_collect_gpu_memory(counter_raw: isize) -> Result<GpuMemoryByLuid, PdhGpuU
     const PDH_CSTATUS_VALID_DATA: u32 = 0x00000000;
     const PDH_MORE_DATA: u32 = 0x800007D2;
 
+    if counter_raw == 0 {
+        return Ok(HashMap::new());
+    }
+
     unsafe {
         let counter = PDH_HCOUNTER(counter_raw as *mut _);
         let mut buf_size: u32 = 0;

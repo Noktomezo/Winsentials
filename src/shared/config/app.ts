@@ -17,3 +17,5 @@ export type AppLanguagePreference = (typeof LANGUAGE_PREFERENCES)[number]
 
 export const DEFAULT_LANGUAGE: AppLanguage = 'en'
 export const DEFAULT_THEME: AppTheme = 'system'
+
+export const TWEAK_CATEGORIES = ['appearance', 'behaviour', 'security', 'privacy', 'network', 'performance', 'memory', 'input'] as const
