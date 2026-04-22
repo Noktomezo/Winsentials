@@ -396,7 +396,7 @@ export function GpuPage() {
       )
     }
 
-    const totalMemoryMb = gpu.vramTotalMb
+    const totalMemoryMb = gpu.dedicatedVramMb + gpu.sharedSystemMb
     const dedicatedBudgetMb = gpu.dedicatedVramMb
     const dedicatedUsedMb = live?.vramUsedMb ?? 0
     const sharedUsedMb = live?.vramSharedMb ?? 0

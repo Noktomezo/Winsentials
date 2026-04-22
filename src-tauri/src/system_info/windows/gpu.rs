@@ -485,7 +485,7 @@ pub fn build_static_gpus(adapters: Vec<DxgiAdapterSnapshot>) -> Vec<GpuInfo> {
                 driver_version,
                 driver_date,
                 directx_version,
-                vram_total_mb: raw_dedicated.saturating_add(shared_system) / 1_048_576,
+                vram_total_mb: raw_dedicated / 1_048_576,
                 dedicated_vram_mb: raw_dedicated / 1_048_576,
                 shared_system_mb: shared_system / 1_048_576,
                 pci_bus,
@@ -578,13 +578,11 @@ pub fn pdh_open_gpu_query() -> Option<(isize, isize, isize, isize)> {
         }
         let mut dedicated_counter = PDH_HCOUNTER(std::ptr::null_mut());
         if PdhAddEnglishCounterW(query, dedicated_path, 0, &mut dedicated_counter) != 0 {
-            let _ = PdhCloseQuery(query);
-            return None;
+            dedicated_counter = PDH_HCOUNTER(std::ptr::null_mut());
         }
         let mut shared_counter = PDH_HCOUNTER(std::ptr::null_mut());
         if PdhAddEnglishCounterW(query, shared_path, 0, &mut shared_counter) != 0 {
-            let _ = PdhCloseQuery(query);
-            return None;
+            shared_counter = PDH_HCOUNTER(std::ptr::null_mut());
         }
         let _ = PdhCollectQueryData(query);
         Some((
@@ -672,6 +670,10 @@ fn pdh_collect_gpu_usage(counter_raw: isize) -> Result<GpuUsageByLuid, PdhGpuUsa
     const PDH_CSTATUS_NEW_DATA: u32 = 0x00000001;
     const PDH_CSTATUS_VALID_DATA: u32 = 0x00000000;
     const PDH_MORE_DATA: u32 = 0x800007D2;
+
+    if counter_raw == 0 {
+        return Ok(HashMap::new());
+    }
 
     unsafe {
         let counter = PDH_HCOUNTER(counter_raw as *mut _);

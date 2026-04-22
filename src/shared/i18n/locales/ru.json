@@ -110,6 +110,7 @@
       "unknown": "Неизвестно"
     },
     "architecture": "Архитектура",
+    "appliedTweaks": "Применено твиков",
     "baseFreq": "Базовая частота",
     "biosVendor": "Производитель BIOS",
     "biosVersion": "Версия BIOS",
@@ -132,6 +133,7 @@
     "slots": "Слоты",
     "speed": "Частота",
     "storage": "Накопители",
+    "system": "Система",
     "title": "Обзор",
     "total": "Всего",
     "usage": "Нагрузка",

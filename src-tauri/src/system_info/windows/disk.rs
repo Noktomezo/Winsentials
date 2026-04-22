@@ -46,13 +46,17 @@ fn query_disk_models() -> HashMap<String, String> {
     }
 
     fn wmi_drive_letter(row: &mut HashMap<String, wmi::Variant>, key: &str) -> Option<char> {
-        match row.remove(key) {
+        let candidate = match row.remove(key) {
             Some(wmi::Variant::String(value)) => value.trim().chars().next(),
             Some(wmi::Variant::UI1(value)) => char::from_u32(value as u32),
             Some(wmi::Variant::UI2(value)) => char::from_u32(value as u32),
             Some(wmi::Variant::UI4(value)) => char::from_u32(value),
             _ => None,
-        }
+        }?;
+
+        candidate
+            .is_ascii_alphabetic()
+            .then_some(candidate.to_ascii_uppercase())
     }
 
     let mut models_by_mount = HashMap::new();

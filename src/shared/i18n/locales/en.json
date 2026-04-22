@@ -110,6 +110,7 @@
       "unknown": "Unknown"
     },
     "architecture": "Architecture",
+    "appliedTweaks": "Tweaks applied",
     "baseFreq": "Base clock",
     "biosVendor": "BIOS vendor",
     "biosVersion": "BIOS version",
@@ -132,6 +133,7 @@
     "slots": "Slots",
     "speed": "Speed",
     "storage": "Storage",
+    "system": "System",
     "title": "Overview",
     "total": "Total",
     "usage": "Usage",
