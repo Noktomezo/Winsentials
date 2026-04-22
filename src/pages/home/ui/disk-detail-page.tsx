@@ -37,13 +37,20 @@ function getDiskLive(liveInfo: DiskLiveInfo[] | null, mountPoint: string): DiskL
 }
 
 function nextTransferChartMax(bytesPerSec: number): number {
-  let limit = 1024 ** 2
+  const minUnit = 1024 ** 2
+  const target = Math.max(bytesPerSec, minUnit)
+  const multipliers = [1, 2, 5, 10, 20, 50, 100, 200, 500]
 
-  while (limit <= bytesPerSec) {
-    limit *= 10
+  for (let unit = minUnit; unit <= 1024 ** 4; unit *= 1024) {
+    for (const multiplier of multipliers) {
+      const limit = unit * multiplier
+      if (target <= limit) {
+        return limit
+      }
+    }
   }
 
-  return limit
+  return 5 * 1024 ** 4
 }
 
 export function DiskDetailPage() {
