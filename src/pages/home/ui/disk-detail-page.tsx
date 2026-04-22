@@ -36,10 +36,20 @@ function getDiskLive(liveInfo: DiskLiveInfo[] | null, mountPoint: string): DiskL
   return liveInfo?.find(disk => disk.mountPoint === mountPoint) ?? null
 }
 
+function nextTransferChartMax(bytesPerSec: number): number {
+  let limit = 1024 ** 2
+
+  while (limit <= bytesPerSec) {
+    limit *= 10
+  }
+
+  return limit
+}
+
 export function DiskDetailPage() {
   const { t, i18n } = useTranslation()
   const { disk: diskParam } = useParams({ from: '/storage/$disk' })
-  const { data: liveInfo, activeHistory: storeActiveHistory } = useLiveDisks()
+  const { data: liveInfo, activeHistory: storeActiveHistory, throughputHistory: storeThroughputHistory } = useLiveDisks()
   const {
     data: deviceInventory,
     error: inventoryError,
@@ -95,6 +105,10 @@ export function DiskDetailPage() {
 
   const diskLive = getDiskLive(liveInfo, disk.mountPoint)
   const activeHistory: ChartPoint[] = (storeActiveHistory[disk.mountPoint] ?? []).map(v => ({ value: v }))
+  const throughputHistoryValues = storeThroughputHistory[disk.mountPoint] ?? []
+  const throughputHistory: ChartPoint[] = throughputHistoryValues.map(value => ({ value }))
+  const currentThroughput = (diskLive?.readBytesPerSec ?? 0) + (diskLive?.writeBytesPerSec ?? 0)
+  const throughputChartMax = nextTransferChartMax(Math.max(currentThroughput, ...throughputHistoryValues, 0))
   const avgResponseTime = new Intl.NumberFormat(i18n.language, {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
@@ -105,10 +119,27 @@ export function DiskDetailPage() {
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
       <section className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card p-4">
         <div className="flex items-baseline justify-between">
-          <span className="text-xs font-medium text-foreground">{t('storage.activeTime')}</span>
+          <span className="text-xs font-medium text-muted-foreground">{t('storage.activeTime')}</span>
           <span className="text-xs tabular-nums text-muted-foreground">100%</span>
         </div>
         <LiveChart data={activeHistory} height={96} unit="%" yDomain={[0, 100]} />
+        <div className="flex items-baseline justify-between">
+          <span className="text-xs text-muted-foreground">{t('ram.seconds', { n: 60 })}</span>
+          <span className="text-xs tabular-nums text-muted-foreground">0</span>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card p-4">
+        <div className="flex items-baseline justify-between">
+          <span className="text-xs font-medium text-muted-foreground">{t('storage.transferRate')}</span>
+          <span className="text-xs tabular-nums text-muted-foreground">{formatRate(throughputChartMax, i18n.language, t)}</span>
+        </div>
+        <LiveChart
+          data={throughputHistory}
+          formatValue={value => formatRate(value, i18n.language, t)}
+          height={96}
+          yDomain={[0, throughputChartMax]}
+        />
         <div className="flex items-baseline justify-between">
           <span className="text-xs text-muted-foreground">{t('ram.seconds', { n: 60 })}</span>
           <span className="text-xs tabular-nums text-muted-foreground">0</span>

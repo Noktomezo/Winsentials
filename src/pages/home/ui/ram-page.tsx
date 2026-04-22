@@ -96,6 +96,9 @@ function StripBar({
 
   return (
     <section className="flex flex-col gap-2 rounded-lg border border-border/70 bg-card p-4">
+      <span className="text-xs font-medium text-muted-foreground">
+        {t('ram.memoryStructure')}
+      </span>
       <div className="flex h-4 w-full overflow-hidden rounded-full">
         {segments.map(s => (
           s.pct > 0 && (
@@ -193,7 +196,7 @@ export function RamPage() {
       {/* Usage chart with corner labels */}
       <section className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card p-4">
         <div className="flex items-baseline justify-between">
-          <span className="text-xs font-medium text-foreground">
+          <span className="text-xs font-medium text-muted-foreground">
             {t('ram.memoryUsage')}
           </span>
           <span className="text-xs tabular-nums text-muted-foreground">

@@ -10,9 +10,10 @@ interface LiveChartProps {
   yDomain?: [number | 'auto' | 'dataMin' | 'dataMax', number | 'auto' | 'dataMin' | 'dataMax']
   unit?: string
   height?: number
+  formatValue?: (value: number) => string
 }
 
-export function LiveChart({ data, yDomain, unit = '', height = 80 }: LiveChartProps) {
+export function LiveChart({ data, yDomain, unit = '', height = 80, formatValue }: LiveChartProps) {
   const gradientId = useId().replace(/:/g, '-')
 
   return (
@@ -30,11 +31,12 @@ export function LiveChart({ data, yDomain, unit = '', height = 80 }: LiveChartPr
             background: 'var(--card)',
             border: '1px solid var(--border)',
             borderRadius: '6px',
+            color: 'var(--muted-foreground)',
             fontSize: '11px',
             padding: '4px 8px',
           }}
-          formatter={value => [typeof value === 'number' ? `${value.toFixed(1)}${unit}` : '', '']}
-          itemStyle={{ color: 'var(--foreground)' }}
+          formatter={value => [typeof value === 'number' ? formatValue?.(value) ?? `${value.toFixed(1)}${unit}` : '', '']}
+          itemStyle={{ color: 'var(--muted-foreground)' }}
           labelFormatter={() => ''}
           separator=""
         />

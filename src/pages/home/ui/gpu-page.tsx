@@ -118,7 +118,7 @@ function EngineChart({ label, value, data }: EngineChartProps) {
     <section className="flex flex-col gap-2 rounded-lg border border-border/70 bg-card p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
-        <span className="text-xs font-semibold tabular-nums text-foreground">
+        <span className="text-xs font-semibold tabular-nums text-muted-foreground">
           {value}
           %
         </span>
@@ -147,7 +147,7 @@ function MemChart({
     <section className="col-span-2 flex flex-col gap-2 rounded-lg border border-border/70 bg-card p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
-        <span className="text-xs font-semibold tabular-nums text-foreground">
+        <span className="text-xs font-semibold tabular-nums text-muted-foreground">
           {valueLabel}
         </span>
       </div>

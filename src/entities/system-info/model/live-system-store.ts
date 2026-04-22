@@ -49,6 +49,7 @@ interface LiveHistoryMap {
   ramHistory: number[]
   gpuHistory: Record<number, GpuEngineHistory>
   diskActiveHistory: Record<string, number[]>
+  diskThroughputHistory: Record<string, number[]>
   networkThroughputHistory: Record<string, number[]>
 }
 
@@ -106,6 +107,7 @@ export const useLiveSystemStore = create<LiveSystemStoreState>()(set => ({
   ramHistory: [],
   gpuHistory: {},
   diskActiveHistory: {},
+  diskThroughputHistory: {},
   networkThroughputHistory: {},
   setError: (slice, error) => {
     set(state => ({
@@ -172,10 +174,14 @@ export const useLiveSystemStore = create<LiveSystemStoreState>()(set => ({
       if (slice === 'disks') {
         const disks = data as DiskLiveInfo[]
         const nextActive: Record<string, number[]> = { ...state.diskActiveHistory }
+        const nextThroughput: Record<string, number[]> = { ...state.diskThroughputHistory }
         for (const disk of disks) {
           nextActive[disk.mountPoint] = [...(nextActive[disk.mountPoint] ?? []), disk.activeTimePercent].slice(-MAX_HISTORY)
+          const throughput = disk.readBytesPerSec + disk.writeBytesPerSec
+          nextThroughput[disk.mountPoint] = [...(nextThroughput[disk.mountPoint] ?? []), throughput].slice(-MAX_HISTORY)
         }
         next.diskActiveHistory = nextActive
+        next.diskThroughputHistory = nextThroughput
       }
 
       if (slice === 'network') {
@@ -319,6 +325,7 @@ export function useLiveDisks() {
   return {
     ...useLiveSlice('disks', state => state.disks),
     activeHistory: useLiveSystemStore(s => s.diskActiveHistory),
+    throughputHistory: useLiveSystemStore(s => s.diskThroughputHistory),
   }
 }
 

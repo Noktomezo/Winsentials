@@ -246,7 +246,7 @@ export function NetworkStatsPage() {
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
         <section className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card p-4">
           <div className="flex items-baseline justify-between gap-4">
-            <span className="text-xs font-medium text-foreground">{t('networkStats.throughput')}</span>
+            <span className="text-xs font-medium text-muted-foreground">{t('networkStats.throughput')}</span>
             <span className="text-xs tabular-nums text-muted-foreground">
               {t('networkStats.max60')}
               {': '}
