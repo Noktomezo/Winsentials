@@ -152,7 +152,7 @@ export const useLiveSystemStore = create<LiveSystemStoreState>()(set => ({
             dedicatedPct: [],
             sharedMb: [],
           }
-          const dedicatedBudget = gpu.vramTotalMb - gpu.vramReservedMb
+          const dedicatedBudget = gpu.dedicatedVramMb - gpu.vramReservedMb
           const dedicatedPct = dedicatedBudget > 0
             ? Math.min(100, (gpu.vramUsedMb / dedicatedBudget) * 100)
             : 0

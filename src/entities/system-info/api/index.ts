@@ -52,6 +52,8 @@ interface BackendGpuInfo {
   driver_date: string | null
   directx_version: string | null
   vram_total_mb: number
+  dedicated_vram_mb: number
+  shared_system_mb: number
   vram_used_mb: number
   vram_shared_mb: number
   vram_reserved_mb: number
@@ -191,6 +193,8 @@ interface BackendLiveRamInfo {
 interface BackendLiveGpuInfo {
   index: number
   vram_total_mb: number
+  dedicated_vram_mb: number
+  shared_system_mb: number
   vram_used_mb: number
   vram_shared_mb: number
   vram_reserved_mb: number
@@ -251,6 +255,8 @@ function mapGpu(g: BackendGpuInfo): GpuInfo {
     driverDate: g.driver_date,
     directxVersion: g.directx_version,
     vramTotalMb: g.vram_total_mb,
+    dedicatedVramMb: g.dedicated_vram_mb,
+    sharedSystemMb: g.shared_system_mb,
     vramUsedMb: g.vram_used_mb,
     vramSharedMb: g.vram_shared_mb,
     vramReservedMb: g.vram_reserved_mb,
@@ -408,6 +414,8 @@ function mapLiveGpu(g: BackendLiveGpuInfo): LiveGpuInfo {
   return {
     index: g.index,
     vramTotalMb: g.vram_total_mb,
+    dedicatedVramMb: g.dedicated_vram_mb,
+    sharedSystemMb: g.shared_system_mb,
     vramUsedMb: g.vram_used_mb,
     vramSharedMb: g.vram_shared_mb,
     vramReservedMb: g.vram_reserved_mb,

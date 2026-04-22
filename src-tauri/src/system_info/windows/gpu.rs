@@ -9,7 +9,6 @@ pub(crate) struct DxgiAdapterSnapshot {
     name: String,
     luid_low: u32,
     luid_high: i32,
-    vram: u64,
     raw_dedicated: u64,
     shared_system: u64,
     directx_version: Option<String>,
@@ -20,7 +19,6 @@ pub(crate) struct DxgiAdapterSnapshot {
     name: String,
     luid_low: u32,
     luid_high: i32,
-    vram: u64,
     raw_dedicated: u64,
     shared_system: u64,
     directx_version: Option<String>,
@@ -435,17 +433,11 @@ pub fn enumerate_dxgi_adapters() -> Vec<DxgiAdapterSnapshot> {
             let name = String::from_utf16_lossy(&desc.Description[..null_pos]);
             let raw_dedicated = desc.DedicatedVideoMemory as u64;
             let shared_system = desc.SharedSystemMemory as u64;
-            let vram = if raw_dedicated > 0 {
-                raw_dedicated
-            } else {
-                shared_system
-            };
             let directx_version = directx_version_for_adapter(&adapter);
             result.push(DxgiAdapterSnapshot {
                 name,
                 luid_low,
                 luid_high,
-                vram,
                 raw_dedicated,
                 shared_system,
                 directx_version,
@@ -465,7 +457,6 @@ pub fn build_static_gpus(adapters: Vec<DxgiAdapterSnapshot>) -> Vec<GpuInfo> {
                 name,
                 luid_low,
                 luid_high,
-                vram,
                 raw_dedicated,
                 shared_system,
                 directx_version,
@@ -494,7 +485,9 @@ pub fn build_static_gpus(adapters: Vec<DxgiAdapterSnapshot>) -> Vec<GpuInfo> {
                 driver_version,
                 driver_date,
                 directx_version,
-                vram_total_mb: vram / 1_048_576,
+                vram_total_mb: raw_dedicated.saturating_add(shared_system) / 1_048_576,
+                dedicated_vram_mb: raw_dedicated / 1_048_576,
+                shared_system_mb: shared_system / 1_048_576,
                 pci_bus,
                 pci_device,
                 pci_function,
@@ -567,26 +560,44 @@ fn luid_to_pdh_prefix(luid_low: u32, luid_high: i32) -> String {
 }
 
 #[cfg(target_os = "windows")]
-pub fn pdh_open_gpu_query() -> Option<(isize, isize)> {
+pub fn pdh_open_gpu_query() -> Option<(isize, isize, isize, isize)> {
     use windows::Win32::System::Performance::*;
     unsafe {
         let mut query = PDH_HQUERY(std::ptr::null_mut());
         if PdhOpenQueryW(windows::core::PCWSTR(std::ptr::null()), 0, &mut query) != 0 {
             return None;
         }
-        let path = windows::core::w!(r"\GPU Engine(*)\Utilization Percentage");
-        let mut counter = PDH_HCOUNTER(std::ptr::null_mut());
-        if PdhAddEnglishCounterW(query, path, 0, &mut counter) != 0 {
+        let engine_path = windows::core::w!(r"\GPU Engine(*)\Utilization Percentage");
+        let dedicated_path = windows::core::w!(r"\GPU Adapter Memory(*)\Dedicated Usage");
+        let shared_path = windows::core::w!(r"\GPU Adapter Memory(*)\Shared Usage");
+
+        let mut engine_counter = PDH_HCOUNTER(std::ptr::null_mut());
+        if PdhAddEnglishCounterW(query, engine_path, 0, &mut engine_counter) != 0 {
+            let _ = PdhCloseQuery(query);
+            return None;
+        }
+        let mut dedicated_counter = PDH_HCOUNTER(std::ptr::null_mut());
+        if PdhAddEnglishCounterW(query, dedicated_path, 0, &mut dedicated_counter) != 0 {
+            let _ = PdhCloseQuery(query);
+            return None;
+        }
+        let mut shared_counter = PDH_HCOUNTER(std::ptr::null_mut());
+        if PdhAddEnglishCounterW(query, shared_path, 0, &mut shared_counter) != 0 {
             let _ = PdhCloseQuery(query);
             return None;
         }
         let _ = PdhCollectQueryData(query);
-        Some((query.0 as isize, counter.0 as isize))
+        Some((
+            query.0 as isize,
+            engine_counter.0 as isize,
+            dedicated_counter.0 as isize,
+            shared_counter.0 as isize,
+        ))
     }
 }
 
 #[cfg(target_os = "windows")]
-pub fn pdh_close_gpu_query(handles: (isize, isize)) {
+pub fn pdh_close_gpu_query(handles: (isize, isize, isize, isize)) {
     use windows::Win32::System::Performance::{PDH_HQUERY, PdhCloseQuery};
 
     unsafe {
@@ -595,10 +606,10 @@ pub fn pdh_close_gpu_query(handles: (isize, isize)) {
 }
 
 #[cfg(not(target_os = "windows"))]
-pub fn pdh_close_gpu_query(_handles: (isize, isize)) {}
+pub fn pdh_close_gpu_query(_handles: (isize, isize, isize, isize)) {}
 
 #[cfg(not(target_os = "windows"))]
-pub fn pdh_open_gpu_query() -> Option<(isize, isize)> {
+pub fn pdh_open_gpu_query() -> Option<(isize, isize, isize, isize)> {
     None
 }
 
@@ -627,21 +638,43 @@ fn engine_type_from_name(instance: &str) -> Option<&'static str> {
 }
 
 #[cfg(target_os = "windows")]
-fn pdh_collect_gpu_usage(
-    query_raw: isize,
-    counter_raw: isize,
-) -> Result<HashMap<String, HashMap<String, f32>>, PdhGpuUsageError> {
+fn pdh_luid_prefix_from_name(name: &str) -> Option<String> {
+    let start = name.find("luid_")?;
+    let rel = name[start..].find("_phys_")?;
+    Some(name[start..start + rel].to_ascii_lowercase())
+}
+
+#[cfg(target_os = "windows")]
+type GpuUsageByLuid = HashMap<String, HashMap<String, f32>>;
+
+#[cfg(target_os = "windows")]
+type GpuMemoryByLuid = HashMap<String, u64>;
+
+#[cfg(target_os = "windows")]
+fn pdh_collect_gpu_sample(query_raw: isize) -> Result<(), PdhGpuUsageError> {
     use windows::Win32::System::Performance::*;
-    const PDH_CSTATUS_NEW_DATA: u32 = 0x00000001;
-    const PDH_CSTATUS_VALID_DATA: u32 = 0x00000000;
-    const PDH_MORE_DATA: u32 = 0x800007D2;
+
     unsafe {
         let query = PDH_HQUERY(query_raw as *mut _);
-        let counter = PDH_HCOUNTER(counter_raw as *mut _);
         let collect_status = PdhCollectQueryData(query);
         if collect_status != 0 {
             return Err(PdhGpuUsageError::CollectQueryData(collect_status));
         }
+    }
+
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn pdh_collect_gpu_usage(counter_raw: isize) -> Result<GpuUsageByLuid, PdhGpuUsageError> {
+    use windows::Win32::System::Performance::*;
+
+    const PDH_CSTATUS_NEW_DATA: u32 = 0x00000001;
+    const PDH_CSTATUS_VALID_DATA: u32 = 0x00000000;
+    const PDH_MORE_DATA: u32 = 0x800007D2;
+
+    unsafe {
+        let counter = PDH_HCOUNTER(counter_raw as *mut _);
         let mut buf_size: u32 = 0;
         let mut item_count: u32 = 0;
         let r = PdhGetFormattedCounterArrayW(
@@ -681,7 +714,7 @@ fn pdh_collect_gpu_usage(
             typed_buf = buf;
             break;
         }
-        let mut result: HashMap<String, HashMap<String, f32>> = HashMap::new();
+        let mut result: GpuUsageByLuid = HashMap::new();
         for item in &typed_buf {
             if item.FmtValue.CStatus != PDH_CSTATUS_VALID_DATA
                 && item.FmtValue.CStatus != PDH_CSTATUS_NEW_DATA
@@ -698,13 +731,7 @@ fn pdh_collect_gpu_usage(
                 .count();
             let name = String::from_utf16_lossy(std::slice::from_raw_parts(ptr, len));
             let value = (item.FmtValue.Anonymous.doubleValue as f32).max(0.0);
-            let luid_prefix = if let Some(start) = name.find("luid_") {
-                if let Some(rel) = name[start..].find("_phys_") {
-                    name[start..start + rel].to_ascii_lowercase()
-                } else {
-                    continue;
-                }
-            } else {
+            let Some(luid_prefix) = pdh_luid_prefix_from_name(&name) else {
                 continue;
             };
             let engine = match engine_type_from_name(&name) {
@@ -724,16 +751,105 @@ fn pdh_collect_gpu_usage(
 }
 
 #[cfg(target_os = "windows")]
+fn pdh_collect_gpu_memory(counter_raw: isize) -> Result<GpuMemoryByLuid, PdhGpuUsageError> {
+    use windows::Win32::System::Performance::*;
+
+    const PDH_CSTATUS_NEW_DATA: u32 = 0x00000001;
+    const PDH_CSTATUS_VALID_DATA: u32 = 0x00000000;
+    const PDH_MORE_DATA: u32 = 0x800007D2;
+
+    unsafe {
+        let counter = PDH_HCOUNTER(counter_raw as *mut _);
+        let mut buf_size: u32 = 0;
+        let mut item_count: u32 = 0;
+        let r = PdhGetFormattedCounterArrayW(
+            counter,
+            PDH_FMT_LARGE,
+            &mut buf_size,
+            &mut item_count,
+            None,
+        );
+        if r != PDH_MORE_DATA && r != 0 {
+            return Err(PdhGpuUsageError::GetFormattedCounterArray(r));
+        }
+        if buf_size == 0 {
+            return Ok(HashMap::new());
+        }
+
+        let typed_buf: Vec<PDH_FMT_COUNTERVALUE_ITEM_W>;
+        let mut attempts = 0u32;
+        loop {
+            let item_capacity =
+                (buf_size as usize).div_ceil(std::mem::size_of::<PDH_FMT_COUNTERVALUE_ITEM_W>());
+            let mut buf: Vec<PDH_FMT_COUNTERVALUE_ITEM_W> = Vec::with_capacity(item_capacity);
+            let r2 = PdhGetFormattedCounterArrayW(
+                counter,
+                PDH_FMT_LARGE,
+                &mut buf_size,
+                &mut item_count,
+                Some(buf.as_mut_ptr()),
+            );
+            if r2 == PDH_MORE_DATA && attempts < 3 {
+                attempts += 1;
+                continue;
+            }
+            if r2 != 0 {
+                return Err(PdhGpuUsageError::GetFormattedCounterArray(r2));
+            }
+            buf.set_len(item_count as usize);
+            typed_buf = buf;
+            break;
+        }
+
+        let mut result: GpuMemoryByLuid = HashMap::new();
+        for item in &typed_buf {
+            if item.FmtValue.CStatus != PDH_CSTATUS_VALID_DATA
+                && item.FmtValue.CStatus != PDH_CSTATUS_NEW_DATA
+            {
+                continue;
+            }
+            let ptr = item.szName.0;
+            if ptr.is_null() {
+                continue;
+            }
+            let max_u16_len = (buf_size as usize).div_ceil(std::mem::size_of::<u16>());
+            let len = (0usize..max_u16_len)
+                .take_while(|&j| *ptr.add(j) != 0)
+                .count();
+            let name = String::from_utf16_lossy(std::slice::from_raw_parts(ptr, len));
+            let Some(luid_prefix) = pdh_luid_prefix_from_name(&name) else {
+                continue;
+            };
+            let value = item.FmtValue.Anonymous.largeValue.max(0) as u64;
+            *result.entry(luid_prefix).or_insert(0) += value;
+        }
+
+        Ok(result)
+    }
+}
+
+#[cfg(target_os = "windows")]
 pub fn gather_gpu_live(
     gpus: &[GpuInfo],
     pdh_query: isize,
-    pdh_counter: isize,
+    pdh_engine_counter: isize,
+    pdh_dedicated_counter: isize,
+    pdh_shared_counter: isize,
 ) -> Result<Vec<LiveGpuMetrics>, PdhGpuUsageError> {
     let pdh_open = pdh_query != 0;
-    let usage_by_luid: HashMap<String, HashMap<String, f32>> = if pdh_open {
-        pdh_collect_gpu_usage(pdh_query, pdh_counter)?
+    let (usage_by_luid, dedicated_by_luid, shared_by_luid): (
+        GpuUsageByLuid,
+        GpuMemoryByLuid,
+        GpuMemoryByLuid,
+    ) = if pdh_open {
+        pdh_collect_gpu_sample(pdh_query)?;
+        (
+            pdh_collect_gpu_usage(pdh_engine_counter)?,
+            pdh_collect_gpu_memory(pdh_dedicated_counter)?,
+            pdh_collect_gpu_memory(pdh_shared_counter)?,
+        )
     } else {
-        HashMap::new()
+        (HashMap::new(), HashMap::new(), HashMap::new())
     };
 
     let temperatures: Vec<Option<u32>> = gpus
@@ -753,14 +869,17 @@ pub fn gather_gpu_live(
                 HashMap::new()
             };
             let get_eng = |key: &str| engines.get(key).copied().unwrap_or(0.0) as u32;
+            let dedicated_used_mb =
+                dedicated_by_luid.get(&luid_prefix).copied().unwrap_or(0) / 1_048_576;
+            let shared_used_mb = shared_by_luid.get(&luid_prefix).copied().unwrap_or(0) / 1_048_576;
 
             LiveGpuMetrics {
                 index: gpu.index,
                 vram_total_mb: gpu.vram_total_mb,
-                // DXGI QueryVideoMemoryInfo exposes process-scoped memory values, not adapter-wide usage.
-                // Keep the aggregate live memory fields zeroed until a correct global metric source is added.
-                vram_used_mb: 0,
-                vram_shared_mb: 0,
+                dedicated_vram_mb: gpu.dedicated_vram_mb,
+                shared_system_mb: gpu.shared_system_mb,
+                vram_used_mb: dedicated_used_mb,
+                vram_shared_mb: shared_used_mb,
                 vram_reserved_mb: 0,
                 temperature_c,
                 power_w: None,
@@ -780,7 +899,9 @@ pub fn gather_gpu_live(
 pub fn gather_gpu_live(
     _gpus: &[GpuInfo],
     _pdh_query: isize,
-    _pdh_counter: isize,
+    _pdh_engine_counter: isize,
+    _pdh_dedicated_counter: isize,
+    _pdh_shared_counter: isize,
 ) -> Vec<LiveGpuMetrics> {
     vec![]
 }

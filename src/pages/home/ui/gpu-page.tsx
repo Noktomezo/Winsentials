@@ -396,9 +396,11 @@ export function GpuPage() {
       )
     }
 
-    const dedicatedBudgetMb = live ? live.vramTotalMb - live.vramReservedMb : 0
+    const totalMemoryMb = gpu.vramTotalMb
+    const dedicatedBudgetMb = gpu.dedicatedVramMb
     const dedicatedUsedMb = live?.vramUsedMb ?? 0
     const sharedUsedMb = live?.vramSharedMb ?? 0
+    const totalUsedMb = dedicatedUsedMb + sharedUsedMb
 
     const usage = live ? gpuUsage(live) : 0
     const gpuHist = historyByIndex[gpuIndex]
@@ -461,8 +463,9 @@ export function GpuPage() {
               value={engine.value}
             />
           ))}
+        </div>
 
-          {/* Dedicated memory — full width */}
+        <div className="flex flex-col gap-4">
           {dedicatedBudgetMb > 0 && (
             <MemChart
               data={histDedicated}
@@ -472,13 +475,12 @@ export function GpuPage() {
             />
           )}
 
-          {/* Shared memory — full width */}
-          {sharedUsedMb > 0 && (
+          {gpu.sharedSystemMb > 0 && (
             <MemChart
               data={histShared}
               label={t('gpu.shared')}
               unit={` ${t('format.megabyte')}`}
-              valueLabel={formatMb(sharedUsedMb, t)}
+              valueLabel={formatMbPair(sharedUsedMb, gpu.sharedSystemMb, t)}
             />
           )}
         </div>
@@ -504,10 +506,10 @@ export function GpuPage() {
             />
           )}
 
-          {gpu.vramTotalMb > 0 && (
+          {totalMemoryMb > 0 && (
             <Row
               label={t('gpu.totalRam')}
-              value={formatMbPair(live?.vramUsedMb ?? 0, gpu.vramTotalMb, t)}
+              value={formatMbPair(totalUsedMb, totalMemoryMb, t)}
             />
           )}
 
@@ -518,10 +520,10 @@ export function GpuPage() {
             />
           )}
 
-          {(live?.vramSharedMb ?? 0) > 0 && (
+          {gpu.sharedSystemMb > 0 && (
             <Row
               label={t('gpu.shared')}
-              value={formatMb(live?.vramSharedMb ?? 0, t)}
+              value={formatMbPair(sharedUsedMb, gpu.sharedSystemMb, t)}
             />
           )}
 

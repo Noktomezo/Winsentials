@@ -30,7 +30,7 @@ function FlagFrame({
   return (
     <span
       className={cn(
-        'inline-flex h-4 w-6 shrink-0 items-center justify-center overflow-hidden rounded-[4px] border border-border/60 bg-secondary/80 shadow-[0_1px_0_rgb(255_255_255_/_0.04)_inset]',
+        'inline-flex h-4 w-6 shrink-0 items-center justify-center overflow-hidden rounded-[4px] bg-secondary/80 shadow-[0_1px_0_rgb(255_255_255_/_0.04)_inset]',
         className,
       )}
     >
@@ -39,12 +39,18 @@ function FlagFrame({
   )
 }
 
-function LanguageBadge({ language }: { language: LanguagePreference }) {
+function LanguageBadge({
+  language,
+  inverted = false,
+}: {
+  language: LanguagePreference
+  inverted?: boolean
+}) {
   switch (language) {
     case 'system':
       return (
-        <FlagFrame className="text-muted-foreground">
-          <Globe2 className="size-3.25" />
+        <FlagFrame className={inverted ? 'bg-foreground text-background' : undefined}>
+          <Globe2 className={cn('size-3.25', inverted ? 'text-background!' : 'text-muted-foreground!')} />
         </FlagFrame>
       )
 
@@ -79,7 +85,7 @@ export function LanguageSelect({ className }: { className?: string }) {
       <Select value={language} onValueChange={value => setLanguage(value as typeof language)}>
         <SelectTrigger className={filledSelectTriggerClassName}>
           <span className="flex min-w-0 items-center gap-2">
-            <LanguageBadge language={language} />
+            <LanguageBadge language={language} inverted={language === 'system'} />
             <span className="truncate">{languageLabel(language, systemLabel)}</span>
           </span>
         </SelectTrigger>
@@ -87,7 +93,7 @@ export function LanguageSelect({ className }: { className?: string }) {
           {LANGUAGE_PREFERENCES.map(item => (
             <SelectItem key={item} value={item}>
               <span className="flex min-w-0 items-center gap-2">
-                <LanguageBadge language={item} />
+                <LanguageBadge language={item} inverted={item === 'system'} />
                 <span className="truncate">{languageLabel(item, systemLabel)}</span>
               </span>
             </SelectItem>

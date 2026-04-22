@@ -17,7 +17,9 @@ use crate::system_info::windows::ram::get_ram_perf;
 #[cfg(target_os = "windows")]
 pub struct PdhHandles {
     pub gpu_query: isize,
-    pub gpu_counter: isize,
+    pub gpu_engine_counter: isize,
+    pub gpu_dedicated_memory_counter: isize,
+    pub gpu_shared_memory_counter: isize,
     pub disk_query: isize,
     pub disk_active_counter: isize,
     pub disk_response_counter: isize,
@@ -123,19 +125,24 @@ pub fn gather_live_info(
     });
 
     #[cfg(target_os = "windows")]
-    let (gpus_live, gpu_pdh_failed): (Vec<LiveGpuMetrics>, bool) =
-        match gather_gpu_live(gpus, pdh.gpu_query, pdh.gpu_counter) {
-            Ok(samples) => (samples, false),
-            Err(error) => {
-                warn!(
-                    "gpu PDH query failed with status code {}",
-                    error.status_code()
-                );
-                (gather_gpu_live(gpus, 0, 0).unwrap_or_default(), true)
-            }
-        };
+    let (gpus_live, gpu_pdh_failed): (Vec<LiveGpuMetrics>, bool) = match gather_gpu_live(
+        gpus,
+        pdh.gpu_query,
+        pdh.gpu_engine_counter,
+        pdh.gpu_dedicated_memory_counter,
+        pdh.gpu_shared_memory_counter,
+    ) {
+        Ok(samples) => (samples, false),
+        Err(error) => {
+            warn!(
+                "gpu PDH query failed with status code {}",
+                error.status_code()
+            );
+            (gather_gpu_live(gpus, 0, 0, 0, 0).unwrap_or_default(), true)
+        }
+    };
     #[cfg(not(target_os = "windows"))]
-    let gpus_live: Vec<LiveGpuMetrics> = gather_gpu_live(gpus, 0, 0);
+    let gpus_live: Vec<LiveGpuMetrics> = gather_gpu_live(gpus, 0, 0, 0, 0);
     #[cfg(not(target_os = "windows"))]
     let gpu_pdh_failed = false;
 
