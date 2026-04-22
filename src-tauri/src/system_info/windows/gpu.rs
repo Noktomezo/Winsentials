@@ -485,6 +485,7 @@ pub fn build_static_gpus(adapters: Vec<DxgiAdapterSnapshot>) -> Vec<GpuInfo> {
                 driver_version,
                 driver_date,
                 directx_version,
+                // Preserve legacy `vram_total_mb` meaning as dedicated VRAM only.
                 vram_total_mb: raw_dedicated / 1_048_576,
                 dedicated_vram_mb: raw_dedicated / 1_048_576,
                 shared_system_mb: shared_system / 1_048_576,

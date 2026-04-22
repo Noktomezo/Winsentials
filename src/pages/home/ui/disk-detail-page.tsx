@@ -50,7 +50,7 @@ function nextTransferChartMax(bytesPerSec: number): number {
     }
   }
 
-  return 5 * 1024 ** 4
+  return target
 }
 
 export function DiskDetailPage() {

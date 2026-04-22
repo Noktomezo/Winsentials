@@ -638,17 +638,27 @@ export function HomePage() {
 
   useMountEffect(() => {
     let cancelled = false
+    let inflight: Promise<void> | null = null
 
-    const refreshDeviceInventory = async () => {
-      try {
-        const inventory = await getDeviceInventoryInfo()
-        if (!cancelled) {
-          setDeviceInventory(inventory)
-        }
+    const refreshDeviceInventory = () => {
+      if (inflight) {
+        return inflight
       }
-      catch (error) {
-        console.error(error)
-      }
+
+      inflight = getDeviceInventoryInfo()
+        .then((inventory) => {
+          if (!cancelled) {
+            setDeviceInventory(inventory)
+          }
+        })
+        .catch((error) => {
+          console.error(error)
+        })
+        .finally(() => {
+          inflight = null
+        })
+
+      return inflight
     }
 
     const handleVisibilityRefresh = () => {
