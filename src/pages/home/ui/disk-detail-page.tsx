@@ -18,6 +18,18 @@ function formatRate(bytesPerSec: number, locale: string, t: ReturnType<typeof us
   return formatRateLocalized(bytesPerSec, { locale, t })
 }
 
+function activityColorClass(percent: number): string {
+  if (percent >= 85) return 'metric-text-danger'
+  if (percent >= 60) return 'metric-text-warning'
+  return 'metric-text-good'
+}
+
+function responseTimeColorClass(responseMs: number): string {
+  if (responseMs >= 50) return 'metric-text-danger'
+  if (responseMs >= 20) return 'metric-text-warning'
+  return 'metric-text-good'
+}
+
 interface RowProps {
   label: string
   value: ReactNode
@@ -131,7 +143,7 @@ export function DiskDetailPage() {
         </div>
         <LiveChart data={activeHistory} height={96} unit="%" yDomain={[0, 100]} />
         <div className="flex items-baseline justify-between">
-          <span className="text-xs text-muted-foreground">{t('ram.seconds', { n: 60 })}</span>
+          <span className="text-xs text-muted-foreground">{t('common.seconds', { n: 60 })}</span>
           <span className="text-xs tabular-nums text-muted-foreground">0</span>
         </div>
       </section>
@@ -148,7 +160,7 @@ export function DiskDetailPage() {
           yDomain={[0, throughputChartMax]}
         />
         <div className="flex items-baseline justify-between">
-          <span className="text-xs text-muted-foreground">{t('ram.seconds', { n: 60 })}</span>
+          <span className="text-xs text-muted-foreground">{t('common.seconds', { n: 60 })}</span>
           <span className="text-xs tabular-nums text-muted-foreground">0</span>
         </div>
       </section>
@@ -156,10 +168,10 @@ export function DiskDetailPage() {
       <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
         <h3 className="text-sm font-medium text-foreground">{t('storage.diskInfo')}</h3>
         <div className="system-info-grid grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <Row label={t('storage.activeTime')} value={`${diskLive?.activeTimePercent ?? 0}%`} />
-          <Row label={t('storage.avgResponseTime')} value={`${avgResponseTime} ms`} />
-          <Row label={t('storage.readSpeed')} value={formatRate(diskLive?.readBytesPerSec ?? 0, i18n.language, t)} />
-          <Row label={t('storage.writeSpeed')} value={formatRate(diskLive?.writeBytesPerSec ?? 0, i18n.language, t)} />
+          <Row label={t('storage.activeTime')} value={<span className={activityColorClass(diskLive?.activeTimePercent ?? 0)}>{`${diskLive?.activeTimePercent ?? 0}%`}</span>} />
+          <Row label={t('storage.avgResponseTime')} value={<span className={responseTimeColorClass(diskLive?.avgResponseMs ?? 0)}>{`${avgResponseTime} ms`}</span>} />
+          <Row label={t('storage.readSpeed')} value={<span className="metric-text-accent">{formatRate(diskLive?.readBytesPerSec ?? 0, i18n.language, t)}</span>} />
+          <Row label={t('storage.writeSpeed')} value={<span className="metric-text-accent">{formatRate(diskLive?.writeBytesPerSec ?? 0, i18n.language, t)}</span>} />
           <Row label={t('storage.device')} value={disk.model ?? disk.name} />
           <Row label={t('storage.capacity')} value={formatBytes(disk.totalBytes, i18n.language, t)} />
           <Row label={t('storage.format')} value={disk.fileSystem || '-'} />

@@ -111,6 +111,14 @@ function tempColorClass(temp: number): string {
   return 'metric-text-good'
 }
 
+function memoryColorClass(used: number, total: number): string {
+  if (total <= 0) {
+    return 'metric-text-accent'
+  }
+
+  return loadColor(Math.round((used / total) * 100))
+}
+
 function EngineChart({ label, value, data }: EngineChartProps) {
   const { t } = useTranslation()
 
@@ -509,21 +517,21 @@ export function GpuPage() {
           {totalMemoryMb > 0 && (
             <Row
               label={t('gpu.totalRam')}
-              value={formatMbPair(totalUsedMb, totalMemoryMb, t)}
+              value={<span className={memoryColorClass(totalUsedMb, totalMemoryMb)}>{formatMbPair(totalUsedMb, totalMemoryMb, t)}</span>}
             />
           )}
 
           {dedicatedBudgetMb > 0 && (
             <Row
               label={t('gpu.dedicated')}
-              value={formatMbPair(dedicatedUsedMb, dedicatedBudgetMb, t)}
+              value={<span className={memoryColorClass(dedicatedUsedMb, dedicatedBudgetMb)}>{formatMbPair(dedicatedUsedMb, dedicatedBudgetMb, t)}</span>}
             />
           )}
 
           {gpu.sharedSystemMb > 0 && (
             <Row
               label={t('gpu.shared')}
-              value={formatMbPair(sharedUsedMb, gpu.sharedSystemMb, t)}
+              value={<span className={memoryColorClass(sharedUsedMb, gpu.sharedSystemMb)}>{formatMbPair(sharedUsedMb, gpu.sharedSystemMb, t)}</span>}
             />
           )}
 

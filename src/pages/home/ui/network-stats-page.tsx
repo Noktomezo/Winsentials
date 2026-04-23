@@ -40,6 +40,12 @@ function ceilToNiceNumber(value: number): number {
   return Math.ceil(value / magnitude) * magnitude
 }
 
+function signalColorClass(signalPercent: number): string {
+  if (signalPercent >= 75) return 'metric-text-good'
+  if (signalPercent >= 40) return 'metric-text-warning'
+  return 'metric-text-danger'
+}
+
 interface LiveNetworkErrorStateProps {
   message: string
   onRetry: () => void
@@ -152,11 +158,11 @@ function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
       <div className="grid grid-cols-2 gap-3 text-xs">
         <div className="space-y-1">
           <span className="text-muted-foreground">{t('networkStats.receive')}</span>
-          <div className="font-medium text-foreground">{formatRate(traffic?.rxBytesPerSec ?? 0, i18n.language, t)}</div>
+          <div className="metric-text-accent font-medium">{formatRate(traffic?.rxBytesPerSec ?? 0, i18n.language, t)}</div>
         </div>
         <div className="space-y-1">
           <span className="text-muted-foreground">{t('networkStats.send')}</span>
-          <div className="font-medium text-foreground">{formatRate(traffic?.txBytesPerSec ?? 0, i18n.language, t)}</div>
+          <div className="metric-text-accent font-medium">{formatRate(traffic?.txBytesPerSec ?? 0, i18n.language, t)}</div>
         </div>
       </div>
     </button>
@@ -263,8 +269,8 @@ export function NetworkStatsPage() {
         <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
           <h3 className="text-sm font-medium text-foreground">{t('networkStats.info')}</h3>
           <div className="system-info-grid grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Row label={t('networkStats.send')} value={formatRate(traffic?.txBytesPerSec ?? 0, i18n.language, t)} />
-            <Row label={t('networkStats.receive')} value={formatRate(traffic?.rxBytesPerSec ?? 0, i18n.language, t)} />
+            <Row label={t('networkStats.send')} value={<span className="metric-text-accent">{formatRate(traffic?.txBytesPerSec ?? 0, i18n.language, t)}</span>} />
+            <Row label={t('networkStats.receive')} value={<span className="metric-text-accent">{formatRate(traffic?.rxBytesPerSec ?? 0, i18n.language, t)}</span>} />
             <Row label={t('networkStats.adapter')} value={selectedAdapter.name} />
             <Row label={t('networkStats.adapterDescription')} value={selectedAdapter.adapterDescription} />
             <Row label={t('networkStats.dnsName')} value={selectedAdapter.dnsName ?? <EmptyValue />} />
@@ -283,7 +289,14 @@ export function NetworkStatsPage() {
             {selectedAdapter.isWifi && (
               <Row
                 label={t('networkStats.signal')}
-                value={selectedAdapter.signalPercent !== null ? `${selectedAdapter.signalPercent}%` : <EmptyValue />}
+                value={selectedAdapter.signalPercent !== null
+                  ? (
+                      <span className={signalColorClass(selectedAdapter.signalPercent)}>
+                        {selectedAdapter.signalPercent}
+                        %
+                      </span>
+                    )
+                  : <EmptyValue />}
               />
             )}
           </div>

@@ -89,9 +89,9 @@ function StripBar({
   const otherPct = Math.max(0, 100 - usedPct - availablePct)
 
   const segments = [
-    { pct: usedPct, color: 'metric-bg-accent', label: t('ram.used'), value: toGb(usedBytes, i18n.language, t) },
-    { pct: otherPct, color: 'metric-bg-warning', label: t('ram.other'), value: toGb(otherBytes, i18n.language, t) },
-    { pct: availablePct, color: 'metric-bg-good', label: t('ram.available'), value: toGb(availableBytes, i18n.language, t) },
+    { pct: usedPct, color: 'metric-bg-accent', textColor: 'metric-text-accent', label: t('ram.used'), value: toGb(usedBytes, i18n.language, t) },
+    { pct: otherPct, color: 'metric-bg-warning', textColor: 'metric-text-warning', label: t('ram.other'), value: toGb(otherBytes, i18n.language, t) },
+    { pct: availablePct, color: 'metric-bg-good', textColor: 'metric-text-good', label: t('ram.available'), value: toGb(availableBytes, i18n.language, t) },
   ]
 
   return (
@@ -115,7 +115,7 @@ function StripBar({
           <div className="flex items-center gap-1.5" key={s.label}>
             <span className={`size-2 shrink-0 rounded-sm ${s.color}`} />
             <span className="text-xs text-muted-foreground">{s.label}</span>
-            <span className="text-xs font-medium tabular-nums text-foreground">{s.value}</span>
+            <span className={`text-xs font-medium tabular-nums ${s.textColor}`}>{s.value}</span>
           </div>
         ))}
       </div>
@@ -272,7 +272,7 @@ export function RamPage() {
           )}
           <Row
             label={t('ram.hardwareReserved')}
-            value={<span className="tabular-nums">{formatBytes(hwReserved, i18n.language, t)}</span>}
+            value={<span className="metric-text-warning tabular-nums">{formatBytes(hwReserved, i18n.language, t)}</span>}
           />
         </div>
       </section>

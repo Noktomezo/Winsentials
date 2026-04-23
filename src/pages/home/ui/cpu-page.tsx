@@ -31,6 +31,12 @@ function formatUptime(secs: number): string {
   return `${dd}:${hh}:${mm}:${ss}`
 }
 
+function loadColor(pct: number): string {
+  if (pct >= 85) return 'metric-text-danger'
+  if (pct >= 60) return 'metric-text-warning'
+  return 'metric-text-good'
+}
+
 interface RowProps {
   label: string
   value: ReactNode
@@ -203,7 +209,7 @@ export function CpuPage() {
                     {' '}
                     {i + 1}
                   </span>
-                  <span className="text-xs tabular-nums text-foreground">
+                  <span className={`text-xs tabular-nums ${loadColor(usage)}`}>
                     {Math.round(usage)}
                     %
                   </span>

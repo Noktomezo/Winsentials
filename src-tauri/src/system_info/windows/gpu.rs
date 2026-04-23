@@ -850,11 +850,29 @@ pub fn gather_gpu_live(
         GpuMemoryByLuid,
     ) = if pdh_open {
         pdh_collect_gpu_sample(pdh_query)?;
-        (
-            pdh_collect_gpu_usage(pdh_engine_counter)?,
-            pdh_collect_gpu_memory(pdh_dedicated_counter)?,
-            pdh_collect_gpu_memory(pdh_shared_counter)?,
-        )
+        let usage_by_luid = pdh_collect_gpu_usage(pdh_engine_counter)?;
+        let dedicated_by_luid = match pdh_collect_gpu_memory(pdh_dedicated_counter) {
+            Ok(memory) => memory,
+            Err(error) => {
+                log::warn!(
+                    "gpu dedicated-memory PDH query failed with status code {}",
+                    error.status_code()
+                );
+                HashMap::new()
+            }
+        };
+        let shared_by_luid = match pdh_collect_gpu_memory(pdh_shared_counter) {
+            Ok(memory) => memory,
+            Err(error) => {
+                log::warn!(
+                    "gpu shared-memory PDH query failed with status code {}",
+                    error.status_code()
+                );
+                HashMap::new()
+            }
+        };
+
+        (usage_by_luid, dedicated_by_luid, shared_by_luid)
     } else {
         (HashMap::new(), HashMap::new(), HashMap::new())
     };
