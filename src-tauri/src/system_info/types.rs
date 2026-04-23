@@ -67,7 +67,11 @@ pub struct GpuInfo {
     pub driver_version: Option<String>,
     pub driver_date: Option<String>,
     pub directx_version: Option<String>,
+    // Keep this field as dedicated-only VRAM for existing consumers that treat
+    // `vram_total_mb` as the adapter's physical VRAM capacity.
     pub vram_total_mb: u64,
+    pub dedicated_vram_mb: u64,
+    pub shared_system_mb: u64,
     pub vram_used_mb: u64,
     pub vram_shared_mb: u64,
     pub vram_reserved_mb: u64,
@@ -160,7 +164,10 @@ pub struct LiveRamInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LiveGpuMetrics {
     pub index: usize,
+    // Same semantics as `GpuInfo.vram_total_mb`: dedicated-only VRAM.
     pub vram_total_mb: u64,
+    pub dedicated_vram_mb: u64,
+    pub shared_system_mb: u64,
     pub vram_used_mb: u64,
     pub vram_shared_mb: u64,
     pub vram_reserved_mb: u64,
@@ -258,6 +265,8 @@ impl From<&GpuInfo> for LiveGpuMetrics {
         Self {
             index: value.index,
             vram_total_mb: value.vram_total_mb,
+            dedicated_vram_mb: value.dedicated_vram_mb,
+            shared_system_mb: value.shared_system_mb,
             vram_used_mb: value.vram_used_mb,
             vram_shared_mb: value.vram_shared_mb,
             vram_reserved_mb: value.vram_reserved_mb,

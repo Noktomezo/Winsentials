@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { CSSProperties, ReactNode } from 'react'
 import type {
+  DeviceInventoryInfo,
   GpuInfo,
   LiveGpuInfo,
   LiveHomeInfo,
@@ -17,13 +18,18 @@ import {
   Network,
   Server,
 } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getDeviceInventoryInfo } from '@/entities/system-info/api'
 import { useLiveHome } from '@/entities/system-info/model/live-system-store'
 import { useStaticSystemInfo } from '@/entities/system-info/model/static-system-info'
+import { useTweakCacheStore } from '@/entities/tweak/model/tweak-cache-store'
+import { TWEAK_CATEGORIES } from '@/shared/config/app'
 import {
   formatBytesLocalized,
   formatRateLocalized,
 } from '@/shared/lib/format-size'
+import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 import {
   mountLabel,
@@ -41,6 +47,7 @@ const SUMMARY_CHEVRON_WIDTH = 14
 const SUMMARY_HORIZONTAL_PADDING = 32
 const SUMMARY_MIN_CARD_WIDTH = 360
 const SUMMARY_MAX_CARD_WIDTH = 760
+const HOME_DEVICE_INVENTORY_POLL_INTERVAL_MS = 5000
 
 let summaryMeasureCanvas: HTMLCanvasElement | null = null
 const summaryWidthCache = new Map<string, number>()
@@ -127,18 +134,6 @@ function formatRate(
   return formatRateLocalized(bytes, { locale, t })
 }
 
-function mergeVisibleNetworkAdapters(
-  staticAdapters: NetworkAdapterInfo[],
-  live: LiveHomeInfo | null,
-): NetworkAdapterInfo[] {
-  return (live?.network ?? [])
-    .map(
-      entry =>
-        staticAdapters.find(adapter => adapter.name === entry.name) ?? null,
-    )
-    .filter((adapter): adapter is NetworkAdapterInfo => adapter !== null)
-}
-
 function createSummaryNavHandlers(
   navigate: ReturnType<typeof useNavigate>,
   router: ReturnType<typeof useRouter>,
@@ -188,7 +183,17 @@ function Row({ label, value }: RowProps) {
   )
 }
 
-function WindowsCard({ s }: { s: StaticSystemInfo }) {
+function SystemOverviewCard({
+  s,
+  appliedTweaks,
+  totalTweaks,
+  tweaksReady,
+}: {
+  s: StaticSystemInfo
+  appliedTweaks: number
+  totalTweaks: number
+  tweaksReady: boolean
+}) {
   const { t } = useTranslation()
   const w = s.windows
   return (
@@ -199,7 +204,8 @@ function WindowsCard({ s }: { s: StaticSystemInfo }) {
             <Monitor className="size-4" />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-sm font-medium text-foreground">{t('home.os')}</h2>
+            <h2 className="text-sm font-medium text-foreground">{t('home.system')}</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t('home.description')}</p>
           </div>
         </div>
       </div>
@@ -211,6 +217,12 @@ function WindowsCard({ s }: { s: StaticSystemInfo }) {
         <Row label={t('home.build')} value={`${w.build}.${w.ubr}`} />
         <Row label={t('home.hostname')} value={w.hostname} />
         <Row label={t('home.username')} value={w.username} />
+        <Row
+          label={t('home.appliedTweaks')}
+          value={tweaksReady
+            ? <span className="metric-text-accent tabular-nums">{`${appliedTweaks} / ${totalTweaks}`}</span>
+            : t('home.livePending')}
+        />
         <Row label={t('home.architecture')} value={w.architecture} />
         <Row
           label={t('home.activation')}
@@ -614,11 +626,80 @@ export function HomePage() {
     retry: retryStaticInfo,
   } = useStaticSystemInfo()
   const { data: liveInfo } = useLiveHome()
+  const [deviceInventory, setDeviceInventory] = useState<DeviceInventoryInfo | null>(null)
+  const tweakCategories = useTweakCacheStore(state => state.categories)
 
-  const networkCards = staticInfo
-    ? mergeVisibleNetworkAdapters(staticInfo.networkAdapters, liveInfo)
-    : []
-  const disks = staticInfo?.disks ?? []
+  useMountEffect(() => {
+    const store = useTweakCacheStore.getState()
+    for (const category of TWEAK_CATEGORIES) {
+      void store.ensureCategory(category)
+    }
+  })
+
+  useMountEffect(() => {
+    let cancelled = false
+    let inflight: Promise<void> | null = null
+
+    const refreshDeviceInventory = () => {
+      if (inflight) {
+        return inflight
+      }
+
+      inflight = getDeviceInventoryInfo()
+        .then((inventory) => {
+          if (!cancelled) {
+            setDeviceInventory(inventory)
+          }
+        })
+        .catch((error) => {
+          console.error(error)
+        })
+        .finally(() => {
+          inflight = null
+        })
+
+      return inflight
+    }
+
+    const handleVisibilityRefresh = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshDeviceInventory()
+      }
+    }
+
+    void refreshDeviceInventory()
+    const intervalId = window.setInterval(() => {
+      void refreshDeviceInventory()
+    }, HOME_DEVICE_INVENTORY_POLL_INTERVAL_MS)
+
+    window.addEventListener('focus', handleVisibilityRefresh)
+    document.addEventListener('visibilitychange', handleVisibilityRefresh)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', handleVisibilityRefresh)
+      document.removeEventListener('visibilitychange', handleVisibilityRefresh)
+    }
+  })
+
+  let appliedTweaks = 0
+  let totalTweaks = 0
+  let tweaksReady = true
+
+  for (const category of TWEAK_CATEGORIES) {
+    const cached = tweakCategories[category]
+    if (!cached?.hasLoaded && !cached?.error) {
+      tweaksReady = false
+      continue
+    }
+
+    totalTweaks += cached?.tweaks?.length ?? 0
+    appliedTweaks += cached?.tweaks?.filter(tweak => tweak.currentValue !== tweak.defaultValue).length ?? 0
+  }
+
+  const networkCards = deviceInventory?.networkAdapters ?? staticInfo?.networkAdapters ?? []
+  const disks = deviceInventory?.disks ?? staticInfo?.disks ?? []
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
@@ -644,7 +725,12 @@ export function HomePage() {
             )
           : (
               <div className="flex flex-col gap-4">
-                <WindowsCard s={staticInfo} />
+                <SystemOverviewCard
+                  appliedTweaks={appliedTweaks}
+                  s={staticInfo}
+                  totalTweaks={totalTweaks}
+                  tweaksReady={tweaksReady}
+                />
                 <div className="tweak-card-grid">
                   <CpuSummary live={liveInfo} s={staticInfo} />
                   <RamSummary live={liveInfo} s={staticInfo} />

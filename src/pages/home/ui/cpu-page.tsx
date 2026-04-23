@@ -31,6 +31,12 @@ function formatUptime(secs: number): string {
   return `${dd}:${hh}:${mm}:${ss}`
 }
 
+function loadColor(pct: number): string {
+  if (pct >= 85) return 'metric-text-danger'
+  if (pct >= 60) return 'metric-text-warning'
+  return 'metric-text-good'
+}
+
 interface RowProps {
   label: string
   value: ReactNode
@@ -107,7 +113,7 @@ export function CpuPage() {
       {/* Live chart */}
       <section className="flex flex-col gap-1 rounded-lg border border-border/70 bg-card p-4">
         <div className="flex items-baseline justify-between">
-          <span className="text-xs font-medium text-foreground">{t('home.usage')}</span>
+          <span className="text-xs font-medium text-muted-foreground">{t('home.usage')}</span>
           <span className="text-xs tabular-nums text-muted-foreground">100%</span>
         </div>
         <LiveChart data={history} height={96} unit="%" yDomain={[0, 100]} />
@@ -203,7 +209,7 @@ export function CpuPage() {
                     {' '}
                     {i + 1}
                   </span>
-                  <span className="text-xs tabular-nums text-foreground">
+                  <span className={`text-xs tabular-nums ${loadColor(usage)}`}>
                     {Math.round(usage)}
                     %
                   </span>

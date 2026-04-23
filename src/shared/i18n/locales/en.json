@@ -5,7 +5,8 @@
   },
   "common": {
     "off": "Off",
-    "on": "On"
+    "on": "On",
+    "seconds": "{{n}} sec"
   },
   "titlebar": {
     "maximize": "Maximize window",
@@ -110,6 +111,7 @@
       "unknown": "Unknown"
     },
     "architecture": "Architecture",
+    "appliedTweaks": "Tweaks applied",
     "baseFreq": "Base clock",
     "biosVendor": "BIOS vendor",
     "biosVersion": "BIOS version",
@@ -132,6 +134,7 @@
     "slots": "Slots",
     "speed": "Speed",
     "storage": "Storage",
+    "system": "System",
     "title": "Overview",
     "total": "Total",
     "usage": "Usage",
@@ -635,6 +638,7 @@
     "info": "Memory info",
     "title": "Memory",
     "memoryUsage": "Memory usage",
+    "memoryStructure": "Memory composition",
     "seconds": "{{n}} sec",
     "peak": "peak",
     "used": "In use",
@@ -668,6 +672,7 @@
     "readSpeed": "Read speed",
     "systemDisk": "System disk",
     "title": "Storage",
+    "transferRate": "Disk transfer rate",
     "types": {
       "hdd": "Hard disk drive",
       "ssd": "Solid-state drive",

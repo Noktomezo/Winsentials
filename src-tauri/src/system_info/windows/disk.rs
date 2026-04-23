@@ -35,17 +35,79 @@ fn query_disk_models() -> HashMap<String, String> {
         value.replace('\'', "''").replace('\\', r"\\")
     }
 
+    fn wmi_u32(row: &mut HashMap<String, wmi::Variant>, key: &str) -> Option<u32> {
+        match row.remove(key) {
+            Some(wmi::Variant::UI1(value)) => Some(value as u32),
+            Some(wmi::Variant::UI2(value)) => Some(value as u32),
+            Some(wmi::Variant::UI4(value)) => Some(value),
+            Some(wmi::Variant::UI8(value)) => u32::try_from(value).ok(),
+            _ => None,
+        }
+    }
+
+    fn wmi_drive_letter(row: &mut HashMap<String, wmi::Variant>, key: &str) -> Option<char> {
+        let candidate = match row.remove(key) {
+            Some(wmi::Variant::String(value)) => value.trim().chars().next(),
+            Some(wmi::Variant::UI1(value)) => char::from_u32(value as u32),
+            Some(wmi::Variant::UI2(value)) => char::from_u32(value as u32),
+            Some(wmi::Variant::UI4(value)) => char::from_u32(value),
+            _ => None,
+        }?;
+
+        candidate
+            .is_ascii_alphabetic()
+            .then_some(candidate.to_ascii_uppercase())
+    }
+
+    let mut models_by_mount = HashMap::new();
+
+    if let Ok(storage_wmi) = WMIConnection::with_namespace_path("ROOT\\Microsoft\\Windows\\Storage")
+    {
+        let disks = storage_wmi
+            .raw_query::<HashMap<String, wmi::Variant>>(
+                "SELECT Number, FriendlyName FROM MSFT_Disk",
+            )
+            .unwrap_or_default();
+
+        let names_by_number: HashMap<u32, String> = disks
+            .into_iter()
+            .filter_map(|mut disk| {
+                Some((
+                    wmi_u32(&mut disk, "Number")?,
+                    wmi_string(&mut disk, "FriendlyName")?,
+                ))
+            })
+            .collect();
+
+        let partitions = storage_wmi
+            .raw_query::<HashMap<String, wmi::Variant>>(
+                "SELECT DiskNumber, DriveLetter FROM MSFT_Partition",
+            )
+            .unwrap_or_default();
+
+        for mut partition in partitions {
+            let Some(disk_number) = wmi_u32(&mut partition, "DiskNumber") else {
+                continue;
+            };
+            let Some(drive_letter) = wmi_drive_letter(&mut partition, "DriveLetter") else {
+                continue;
+            };
+            let Some(name) = names_by_number.get(&disk_number) else {
+                continue;
+            };
+            models_by_mount.insert(format!("{drive_letter}:\\"), name.clone());
+        }
+    }
+
     let Ok(wmi_con) = WMIConnection::new() else {
-        return HashMap::new();
+        return models_by_mount;
     };
 
     let Ok(drives) = wmi_con
         .raw_query::<HashMap<String, wmi::Variant>>("SELECT DeviceID, Model FROM Win32_DiskDrive")
     else {
-        return HashMap::new();
+        return models_by_mount;
     };
-
-    let mut models_by_mount = HashMap::new();
 
     for mut drive in drives {
         let Some(device_id) = wmi_string(&mut drive, "DeviceID") else {
@@ -86,7 +148,9 @@ fn query_disk_models() -> HashMap<String, String> {
                     continue;
                 };
                 let mount_point = format!("{}\\", logical_disk_id.trim_end_matches('\\'));
-                models_by_mount.insert(mount_point, model.clone());
+                models_by_mount
+                    .entry(mount_point)
+                    .or_insert_with(|| model.clone());
             }
         }
     }

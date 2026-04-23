@@ -113,7 +113,9 @@ pub fn run() {
                         #[cfg(target_os = "windows")]
                         system_info::PdhHandles {
                             gpu_query: pdh.map(|p| p.0).unwrap_or(0),
-                            gpu_counter: pdh.map(|p| p.1).unwrap_or(0),
+                            gpu_engine_counter: pdh.map(|p| p.1).unwrap_or(0),
+                            gpu_dedicated_memory_counter: pdh.map(|p| p.2).unwrap_or(0),
+                            gpu_shared_memory_counter: pdh.map(|p| p.3).unwrap_or(0),
                             disk_query: disk_pdh.map(|p| p.0).unwrap_or(0),
                             disk_active_counter: disk_pdh.map(|p| p.1).unwrap_or(0),
                             disk_response_counter: disk_pdh.map(|p| p.2).unwrap_or(0),

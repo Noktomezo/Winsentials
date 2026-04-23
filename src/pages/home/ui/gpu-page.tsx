@@ -111,6 +111,14 @@ function tempColorClass(temp: number): string {
   return 'metric-text-good'
 }
 
+function memoryColorClass(used: number, total: number): string {
+  if (total <= 0) {
+    return 'metric-text-accent'
+  }
+
+  return loadColor(Math.round((used / total) * 100))
+}
+
 function EngineChart({ label, value, data }: EngineChartProps) {
   const { t } = useTranslation()
 
@@ -118,7 +126,7 @@ function EngineChart({ label, value, data }: EngineChartProps) {
     <section className="flex flex-col gap-2 rounded-lg border border-border/70 bg-card p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
-        <span className="text-xs font-semibold tabular-nums text-foreground">
+        <span className="text-xs font-semibold tabular-nums text-muted-foreground">
           {value}
           %
         </span>
@@ -147,7 +155,7 @@ function MemChart({
     <section className="col-span-2 flex flex-col gap-2 rounded-lg border border-border/70 bg-card p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
-        <span className="text-xs font-semibold tabular-nums text-foreground">
+        <span className="text-xs font-semibold tabular-nums text-muted-foreground">
           {valueLabel}
         </span>
       </div>
@@ -396,9 +404,11 @@ export function GpuPage() {
       )
     }
 
-    const dedicatedBudgetMb = live ? live.vramTotalMb - live.vramReservedMb : 0
+    const totalMemoryMb = gpu.dedicatedVramMb + gpu.sharedSystemMb
+    const dedicatedBudgetMb = gpu.dedicatedVramMb
     const dedicatedUsedMb = live?.vramUsedMb ?? 0
     const sharedUsedMb = live?.vramSharedMb ?? 0
+    const totalUsedMb = dedicatedUsedMb + sharedUsedMb
 
     const usage = live ? gpuUsage(live) : 0
     const gpuHist = historyByIndex[gpuIndex]
@@ -461,8 +471,9 @@ export function GpuPage() {
               value={engine.value}
             />
           ))}
+        </div>
 
-          {/* Dedicated memory — full width */}
+        <div className="flex flex-col gap-4">
           {dedicatedBudgetMb > 0 && (
             <MemChart
               data={histDedicated}
@@ -472,13 +483,12 @@ export function GpuPage() {
             />
           )}
 
-          {/* Shared memory — full width */}
-          {sharedUsedMb > 0 && (
+          {gpu.sharedSystemMb > 0 && (
             <MemChart
               data={histShared}
               label={t('gpu.shared')}
               unit={` ${t('format.megabyte')}`}
-              valueLabel={formatMb(sharedUsedMb, t)}
+              valueLabel={formatMbPair(sharedUsedMb, gpu.sharedSystemMb, t)}
             />
           )}
         </div>
@@ -504,24 +514,24 @@ export function GpuPage() {
             />
           )}
 
-          {gpu.vramTotalMb > 0 && (
+          {totalMemoryMb > 0 && (
             <Row
               label={t('gpu.totalRam')}
-              value={formatMbPair(live?.vramUsedMb ?? 0, gpu.vramTotalMb, t)}
+              value={<span className={memoryColorClass(totalUsedMb, totalMemoryMb)}>{formatMbPair(totalUsedMb, totalMemoryMb, t)}</span>}
             />
           )}
 
           {dedicatedBudgetMb > 0 && (
             <Row
               label={t('gpu.dedicated')}
-              value={formatMbPair(dedicatedUsedMb, dedicatedBudgetMb, t)}
+              value={<span className={memoryColorClass(dedicatedUsedMb, dedicatedBudgetMb)}>{formatMbPair(dedicatedUsedMb, dedicatedBudgetMb, t)}</span>}
             />
           )}
 
-          {(live?.vramSharedMb ?? 0) > 0 && (
+          {gpu.sharedSystemMb > 0 && (
             <Row
               label={t('gpu.shared')}
-              value={formatMb(live?.vramSharedMb ?? 0, t)}
+              value={<span className={memoryColorClass(sharedUsedMb, gpu.sharedSystemMb)}>{formatMbPair(sharedUsedMb, gpu.sharedSystemMb, t)}</span>}
             />
           )}
 

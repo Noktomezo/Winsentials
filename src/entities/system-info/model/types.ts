@@ -36,6 +36,8 @@ export interface GpuInfo {
   driverDate: string | null
   directxVersion: string | null
   vramTotalMb: number
+  dedicatedVramMb: number
+  sharedSystemMb: number
   vramUsedMb: number
   vramSharedMb: number
   vramReservedMb: number
@@ -176,6 +178,8 @@ export interface LiveRamInfo {
 export interface LiveGpuInfo {
   index: number
   vramTotalMb: number
+  dedicatedVramMb: number
+  sharedSystemMb: number
   vramUsedMb: number
   vramSharedMb: number
   vramReservedMb: number
