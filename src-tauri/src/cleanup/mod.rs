@@ -1201,7 +1201,7 @@ fn remove_ghost_device(instance_id: &str) -> Result<(), String> {
             HwProfile: 0,
         };
 
-        unsafe {
+        result = unsafe {
             SetupDiSetClassInstallParamsW(
                 device_info_set,
                 Some(&device_info),
@@ -1209,11 +1209,11 @@ fn remove_ghost_device(instance_id: &str) -> Result<(), String> {
                 size_of::<SP_REMOVEDEVICE_PARAMS>() as u32,
             )
         }
-        .map_err(|error| error.to_string())?;
-
-        result =
+        .map_err(|error| error.to_string())
+        .and_then(|()| {
             unsafe { SetupDiCallClassInstaller(DIF_REMOVE, device_info_set, Some(&device_info)) }
-                .map_err(|error| error.to_string());
+                .map_err(|error| error.to_string())
+        });
         break;
     }
 

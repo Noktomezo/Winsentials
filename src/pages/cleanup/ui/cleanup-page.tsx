@@ -79,6 +79,29 @@ function reportMapFromReports(reports: CleanupCategoryReport[]): ReportMap {
   return Object.fromEntries(reports.map(report => [report.id, report])) as ReportMap
 }
 
+function errorMessageFromReason(reason: unknown): string {
+  if (reason instanceof Error && reason.message) return reason.message
+  if (typeof reason === 'string' && reason) return reason
+  return 'Failed to scan cleanup category.'
+}
+
+function failedScanReport(categoryId: CleanupCategoryId, reason: unknown, t: ReturnType<typeof useTranslation>['t']): CleanupCategoryReport {
+  return {
+    id: categoryId,
+    entries: [
+      {
+        error: errorMessageFromReason(reason),
+        iconDataUrl: null,
+        id: `${categoryId}-scan-error`,
+        name: t(`cleanup.categories.${categoryId}.name`),
+        path: '',
+        sizeBytes: 0,
+        status: 'failed',
+      },
+    ],
+  }
+}
+
 function busyEntriesFromReports(reports: CleanupCategoryReport[]): CleanupEntry[] {
   return reports.flatMap(report => report.entries.filter(entry => entry.status === 'busy'))
 }
@@ -276,13 +299,13 @@ function CleanupPage() {
 
     return Promise.allSettled(categoryIds.map(categoryId => scanCleanupCategory(categoryId)))
       .then((results) => {
-        const categoryReports = results
-          .filter((result): result is PromiseFulfilledResult<CleanupCategoryReport> => result.status === 'fulfilled')
-          .map(result => result.value)
+        const categoryReports = results.map((result, index) => (
+          result.status === 'fulfilled'
+            ? result.value
+            : failedScanReport(categoryIds[index], result.reason, t)
+        ))
 
-        if (categoryReports.length > 0) {
-          setReports(current => ({ ...current, ...reportMapFromReports(categoryReports) }))
-        }
+        setReports(current => ({ ...current, ...reportMapFromReports(categoryReports) }))
 
         const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
         if (failures.length > 0) {

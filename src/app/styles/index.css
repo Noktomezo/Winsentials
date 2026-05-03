@@ -638,7 +638,11 @@ body {
 }
 
 [data-slot='app-titlebar'] a,
-[data-slot='app-titlebar'] button {
+[data-slot='app-titlebar'] button,
+[data-slot='app-titlebar'] [data-titlebar-no-drag] a,
+[data-slot='app-titlebar'] [data-titlebar-no-drag] a *,
+[data-slot='app-titlebar'] .titlebar-control,
+[data-slot='app-titlebar'] .titlebar-control * {
   cursor: pointer;
 }
 

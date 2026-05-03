@@ -121,6 +121,7 @@ export function AppTitlebar() {
 
   useMountEffect(() => {
     let disposed = false
+    let syncTimeout = 0
 
     const syncIfMounted = async () => {
       const maximized = await appWindow.isMaximized()
@@ -129,10 +130,20 @@ export function AppTitlebar() {
       }
     }
 
+    const scheduleSync = () => {
+      window.clearTimeout(syncTimeout)
+      syncTimeout = window.setTimeout(() => {
+        void syncIfMounted()
+      }, 100)
+    }
+
     void syncIfMounted()
+    const unlistenPromise = appWindow.listen('tauri://resize', scheduleSync)
 
     return () => {
       disposed = true
+      window.clearTimeout(syncTimeout)
+      void unlistenPromise.then(unlisten => unlisten())
     }
   })
 
