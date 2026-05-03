@@ -4,7 +4,6 @@ import type {
   TweakControlType,
   TweakMeta,
   TweakResult,
-  TweakStatus,
   WindowsVersion,
 } from '@/entities/tweak/model/types'
 import { invoke } from '@tauri-apps/api/core'
@@ -43,11 +42,6 @@ type BackendRequiresAction
 interface BackendTweakResult {
   current_value: string
   success: boolean
-}
-
-interface BackendTweakStatus {
-  current_value: string
-  is_default: boolean
 }
 
 function mapRequiresAction(action: BackendRequiresAction): RequiresAction {
@@ -91,13 +85,6 @@ function mapTweakResult(result: BackendTweakResult): TweakResult {
   }
 }
 
-function mapTweakStatus(status: BackendTweakStatus): TweakStatus {
-  return {
-    currentValue: status.current_value,
-    isDefault: status.is_default,
-  }
-}
-
 export async function getTweaksByCategory(
   category: string,
 ): Promise<TweakMeta[]> {
@@ -113,20 +100,6 @@ export async function applyTweak(
 ): Promise<TweakResult> {
   const result = await invoke<BackendTweakResult>('tweak_apply', { id, value })
   return mapTweakResult(result)
-}
-
-export async function resetTweak(id: string): Promise<TweakResult> {
-  const result = await invoke<BackendTweakResult>('tweak_reset', { id })
-  return mapTweakResult(result)
-}
-
-export async function getTweakStatus(id: string): Promise<TweakStatus> {
-  const status = await invoke<BackendTweakStatus>('tweak_status', { id })
-  return mapTweakStatus(status)
-}
-
-export async function runTweakExtra(id: string) {
-  return invoke<void>('tweak_extra', { id })
 }
 
 export async function getWindowsBuild() {

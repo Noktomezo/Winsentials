@@ -37,13 +37,3 @@ export interface CleanupAccessEntry {
 export interface CleanupAccessReport {
   entries: CleanupAccessEntry[]
 }
-
-export interface CleanupScheduleEntry {
-  error: string | null
-  path: string
-  success: boolean
-}
-
-export interface CleanupScheduleReport {
-  entries: CleanupScheduleEntry[]
-}

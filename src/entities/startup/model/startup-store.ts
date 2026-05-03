@@ -86,12 +86,6 @@ const emptySourceRequestIds: Record<StartupSource, number> = {
 const hydrationChunkSize = 12
 const inFlightSourceLoads: Partial<Record<StartupSource, Promise<void>>> = {}
 
-export function resetInFlightSourceLoads() {
-  for (const source of startupSources) {
-    delete inFlightSourceLoads[source]
-  }
-}
-
 function pushPending(current: string[], id: string) {
   return current.includes(id) ? current : [...current, id]
 }

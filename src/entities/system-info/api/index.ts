@@ -8,7 +8,6 @@ import type {
   LiveGpuInfo,
   LiveHomeInfo,
   LiveRamInfo,
-  LiveSystemInfo,
   MotherboardInfo,
   NetworkAdapterInfo,
   NetworkIfaceStats,
@@ -146,27 +145,6 @@ interface BackendNetworkIfaceStats {
   name: string
   rx_bytes_per_sec: number
   tx_bytes_per_sec: number
-}
-
-interface BackendLiveSystemInfo {
-  cpu_usage_percent: number
-  cpu_per_core: number[]
-  cpu_current_freq_mhz: number
-  cpu_process_count: number
-  cpu_thread_count: number
-  cpu_handle_count: number
-  cpu_uptime_secs: number
-  ram_used_bytes: number
-  ram_available_bytes: number
-  ram_committed_bytes: number
-  ram_commit_limit_bytes: number
-  ram_cached_bytes: number
-  ram_compressed_bytes: number
-  ram_paged_pool_bytes: number
-  ram_nonpaged_pool_bytes: number
-  disks: BackendDiskLiveInfo[]
-  network: BackendNetworkIfaceStats[]
-  gpus: BackendLiveGpuInfo[]
 }
 
 interface BackendLiveCpuInfo {
@@ -355,29 +333,6 @@ function mapNetwork(n: BackendNetworkIfaceStats): NetworkIfaceStats {
   }
 }
 
-function mapLive(raw: BackendLiveSystemInfo): LiveSystemInfo {
-  return {
-    cpuUsagePercent: raw.cpu_usage_percent,
-    cpuPerCore: raw.cpu_per_core,
-    cpuCurrentFreqMhz: raw.cpu_current_freq_mhz,
-    cpuProcessCount: raw.cpu_process_count,
-    cpuThreadCount: raw.cpu_thread_count,
-    cpuHandleCount: raw.cpu_handle_count,
-    cpuUptimeSecs: raw.cpu_uptime_secs,
-    ramUsedBytes: raw.ram_used_bytes,
-    ramAvailableBytes: raw.ram_available_bytes,
-    ramCommittedBytes: raw.ram_committed_bytes,
-    ramCommitLimitBytes: raw.ram_commit_limit_bytes,
-    ramCachedBytes: raw.ram_cached_bytes,
-    ramCompressedBytes: raw.ram_compressed_bytes,
-    ramPagedPoolBytes: raw.ram_paged_pool_bytes,
-    ramNonpagedPoolBytes: raw.ram_nonpaged_pool_bytes,
-    disks: raw.disks.map(mapDiskLive),
-    network: raw.network.map(mapNetwork),
-    gpus: raw.gpus.map(mapLiveGpu),
-  }
-}
-
 function mapDeviceInventory(raw: BackendDeviceInventoryInfo): DeviceInventoryInfo {
   return {
     networkAdapters: raw.network_adapters.map(mapNetworkAdapter),
@@ -450,11 +405,6 @@ export async function getStaticSystemInfo(): Promise<StaticSystemInfo> {
 export async function getDeviceInventoryInfo(): Promise<DeviceInventoryInfo> {
   const raw = await invoke<BackendDeviceInventoryInfo>('get_device_inventory_info')
   return mapDeviceInventory(raw)
-}
-
-export async function getLiveSystemInfo(): Promise<LiveSystemInfo> {
-  const raw = await invoke<BackendLiveSystemInfo>('get_live_system_info')
-  return mapLive(raw)
 }
 
 export async function getLiveHomeInfo(): Promise<LiveHomeInfo> {

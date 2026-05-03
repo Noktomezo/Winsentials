@@ -1,5 +1,7 @@
 import { TweakCategoryPage } from '@/widgets/tweak-list/ui/tweak-category-page'
 
-export function NetworkPage() {
+function NetworkPage() {
   return <TweakCategoryPage key="network" category="network" />
 }
+
+export default NetworkPage

@@ -624,7 +624,7 @@ function HomeSkeleton() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export function HomePage() {
+function HomePage() {
   const { t } = useTranslation()
   const {
     info: staticInfo,
@@ -765,3 +765,5 @@ export function HomePage() {
     </section>
   )
 }
+
+export default HomePage

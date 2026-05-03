@@ -282,7 +282,7 @@ function LiveGpuErrorState({ message, onRetry }: LiveGpuErrorStateProps) {
   )
 }
 
-export function GpuPage() {
+function GpuPage() {
   const { t } = useTranslation()
   const params = useParams({ strict: false })
   const parsedGpuIndex
@@ -643,3 +643,5 @@ export function GpuPage() {
     </section>
   )
 }
+
+export default GpuPage

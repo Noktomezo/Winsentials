@@ -41,7 +41,7 @@ import {
   TooltipTrigger,
 } from '@/shared/ui'
 
-export function BackupPage() {
+function BackupPage() {
   const { t, i18n } = useTranslation()
 
   const [backups, setBackups] = useState<BackupEntry[]>([])
@@ -498,3 +498,5 @@ export function BackupPage() {
     </section>
   )
 }
+
+export default BackupPage

@@ -254,7 +254,7 @@ function CleanupCard({
   )
 }
 
-export function CleanupPage() {
+function CleanupPage() {
   const { t } = useTranslation()
   const [reports, setReports] = useState<ReportMap>({})
   const [openCards, setOpenCards] = useState<Set<CleanupCategoryId>>(() => new Set())
@@ -442,3 +442,5 @@ export function CleanupPage() {
     </section>
   )
 }
+
+export default CleanupPage

@@ -106,7 +106,6 @@ const homeRoute = createRoute({
   path: 'home',
   component: lazyRouteComponent(
     () => import('@/pages/home/ui/home-page'),
-    'HomePage',
   ),
 })
 
@@ -115,7 +114,6 @@ const appearanceRoute = createRoute({
   path: 'appearance',
   component: lazyRouteComponent(
     () => import('@/pages/appearance/ui/appearance-page'),
-    'AppearancePage',
   ),
 })
 
@@ -124,7 +122,6 @@ const behaviourRoute = createRoute({
   path: 'behaviour',
   component: lazyRouteComponent(
     () => import('@/pages/behaviour/ui/behaviour-page'),
-    'BehaviourPage',
   ),
 })
 
@@ -133,7 +130,6 @@ const settingsRoute = createRoute({
   path: 'settings',
   component: lazyRouteComponent(
     () => import('@/pages/settings/ui/settings-page'),
-    'SettingsPage',
   ),
 })
 
@@ -142,7 +138,6 @@ const securityRoute = createRoute({
   path: 'security',
   component: lazyRouteComponent(
     () => import('@/pages/security/ui/security-page'),
-    'SecurityPage',
   ),
 })
 
@@ -151,7 +146,6 @@ const privacyRoute = createRoute({
   path: 'privacy',
   component: lazyRouteComponent(
     () => import('@/pages/privacy/ui/privacy-page'),
-    'PrivacyPage',
   ),
 })
 
@@ -160,7 +154,6 @@ const networkRoute = createRoute({
   path: 'network',
   component: lazyRouteComponent(
     () => import('@/pages/network/ui/network-page'),
-    'NetworkPage',
   ),
 })
 
@@ -169,7 +162,6 @@ const performanceRoute = createRoute({
   path: 'performance',
   component: lazyRouteComponent(
     () => import('@/pages/performance/ui/performance-page'),
-    'PerformancePage',
   ),
 })
 
@@ -178,7 +170,6 @@ const memoryRoute = createRoute({
   path: 'memory',
   component: lazyRouteComponent(
     () => import('@/pages/memory/ui/memory-page'),
-    'MemoryPage',
   ),
 })
 
@@ -187,7 +178,6 @@ const inputRoute = createRoute({
   path: 'input',
   component: lazyRouteComponent(
     () => import('@/pages/input/ui/input-page'),
-    'InputPage',
   ),
 })
 
@@ -196,7 +186,6 @@ const toolsRoute = createRoute({
   path: 'tools',
   component: lazyRouteComponent(
     () => import('@/pages/tools/ui/tools-page'),
-    'ToolsPage',
   ),
 })
 
@@ -205,7 +194,6 @@ const cleanupRoute = createRoute({
   path: 'cleanup',
   component: lazyRouteComponent(
     () => import('@/pages/cleanup/ui/cleanup-page'),
-    'CleanupPage',
   ),
 })
 
@@ -214,7 +202,6 @@ const cpuRoute = createRoute({
   path: 'cpu',
   component: lazyRouteComponent(
     () => import('@/pages/home/ui/cpu-page'),
-    'CpuPage',
   ),
 })
 
@@ -223,7 +210,6 @@ const ramRoute = createRoute({
   path: 'ram',
   component: lazyRouteComponent(
     () => import('@/pages/home/ui/ram-page'),
-    'RamPage',
   ),
 })
 
@@ -232,7 +218,6 @@ const gpuRoute = createRoute({
   path: 'gpu',
   component: lazyRouteComponent(
     () => import('@/pages/home/ui/gpu-page'),
-    'GpuPage',
   ),
 })
 
@@ -241,7 +226,6 @@ const gpuDetailRoute = createRoute({
   path: 'gpu/$gpuIndex',
   component: lazyRouteComponent(
     () => import('@/pages/home/ui/gpu-page'),
-    'GpuPage',
   ),
 })
 
@@ -250,7 +234,6 @@ const diskRoute = createRoute({
   path: 'storage/$disk',
   component: lazyRouteComponent(
     () => import('@/pages/home/ui/disk-detail-page'),
-    'DiskDetailPage',
   ),
 })
 
@@ -259,7 +242,6 @@ const networkStatsRoute = createRoute({
   path: 'network-stats',
   component: lazyRouteComponent(
     () => import('@/pages/home/ui/network-stats-page'),
-    'NetworkStatsPage',
   ),
 })
 
@@ -268,7 +250,6 @@ const startupRoute = createRoute({
   path: 'startup',
   component: lazyRouteComponent(
     () => import('@/pages/startup/ui/startup-page'),
-    'StartupPage',
   ),
 })
 
@@ -277,7 +258,6 @@ const backupRoute = createRoute({
   path: 'backup',
   component: lazyRouteComponent(
     () => import('@/pages/backup/ui/backup-page'),
-    'BackupPage',
   ),
 })
 
@@ -286,7 +266,6 @@ const networkAdapterRoute = createRoute({
   path: 'network-stats/$adapterName',
   component: lazyRouteComponent(
     () => import('@/pages/home/ui/network-stats-page'),
-    'NetworkStatsPage',
   ),
 })
 

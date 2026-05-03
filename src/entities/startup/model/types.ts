@@ -23,20 +23,6 @@ export interface StartupEntry {
   lastError: string | null
 }
 
-export interface StartupEntryDetails extends StartupEntry {
-  registryHive: string | null
-  registryPath: string | null
-  registryValueName: string | null
-  startupFolderPath: string | null
-  startupFilePath: string | null
-  taskPath: string | null
-  taskAuthor: string | null
-  taskDescription: string | null
-  taskTriggers: string[]
-  taskActions: string[]
-  rawXmlPreview: string | null
-}
-
 export interface StartupSourceListResponse {
   source: StartupSource
   entries: StartupEntry[]

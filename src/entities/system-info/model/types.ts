@@ -126,27 +126,6 @@ export interface NetworkIfaceStats {
   txBytesPerSec: number
 }
 
-export interface LiveSystemInfo {
-  cpuUsagePercent: number
-  cpuPerCore: number[]
-  cpuCurrentFreqMhz: number
-  cpuProcessCount: number
-  cpuThreadCount: number
-  cpuHandleCount: number
-  cpuUptimeSecs: number
-  ramUsedBytes: number
-  ramAvailableBytes: number
-  ramCommittedBytes: number
-  ramCommitLimitBytes: number
-  ramCachedBytes: number
-  ramCompressedBytes: number
-  ramPagedPoolBytes: number
-  ramNonpagedPoolBytes: number
-  disks: DiskLiveInfo[]
-  network: NetworkIfaceStats[]
-  gpus: LiveGpuInfo[]
-}
-
 export interface LiveHomeInfo {
   cpuUsagePercent: number
   ramUsedBytes: number

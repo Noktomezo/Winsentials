@@ -52,7 +52,7 @@ function Row({ label, value }: RowProps) {
   )
 }
 
-export function CpuPage() {
+function CpuPage() {
   const { t } = useTranslation()
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [staticInfoError, setStaticInfoError] = useState(false)
@@ -225,3 +225,5 @@ export function CpuPage() {
     </section>
   )
 }
+
+export default CpuPage

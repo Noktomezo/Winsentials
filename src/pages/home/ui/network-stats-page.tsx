@@ -169,7 +169,7 @@ function NetworkAdapterCard({ adapter, traffic }: NetworkAdapterCardProps) {
   )
 }
 
-export function NetworkStatsPage() {
+function NetworkStatsPage() {
   const { t, i18n } = useTranslation()
   const params = useParams({ strict: false })
   const adapterParam = params.adapterName ?? null
@@ -327,3 +327,5 @@ export function NetworkStatsPage() {
     </section>
   )
 }
+
+export default NetworkStatsPage

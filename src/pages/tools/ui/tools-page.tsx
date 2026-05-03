@@ -63,7 +63,7 @@ function ToolCard({
   )
 }
 
-export function ToolsPage() {
+function ToolsPage() {
   const { t } = useTranslation()
 
   return (
@@ -85,3 +85,5 @@ export function ToolsPage() {
     </section>
   )
 }
+
+export default ToolsPage

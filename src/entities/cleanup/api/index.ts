@@ -1,4 +1,4 @@
-import type { CleanupAccessReport, CleanupCategoryId, CleanupCategoryReport, CleanupEntry, CleanupScheduleReport } from '@/entities/cleanup/model/types'
+import type { CleanupAccessReport, CleanupCategoryId, CleanupCategoryReport, CleanupEntry } from '@/entities/cleanup/model/types'
 import { invoke } from '@tauri-apps/api/core'
 
 interface BackendCleanupEntry {
@@ -17,8 +17,6 @@ interface BackendCleanupCategoryReport {
 }
 
 interface BackendCleanupAccessReport extends CleanupAccessReport {}
-interface BackendCleanupScheduleReport extends CleanupScheduleReport {}
-
 function mapEntry(entry: BackendCleanupEntry): CleanupEntry {
   return {
     error: entry.error,
@@ -50,8 +48,4 @@ export async function cleanCleanupCategory(categoryId: CleanupCategoryId): Promi
 
 export async function prepareCleanupAccess(): Promise<CleanupAccessReport> {
   return await invoke<BackendCleanupAccessReport>('cleanup_prepare_access')
-}
-
-export async function scheduleCleanupDeleteOnReboot(paths: string[]): Promise<CleanupScheduleReport> {
-  return await invoke<BackendCleanupScheduleReport>('cleanup_schedule_delete_on_reboot', { paths })
 }

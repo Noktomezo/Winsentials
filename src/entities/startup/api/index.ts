@@ -1,6 +1,5 @@
 import type {
   StartupEntry,
-  StartupEntryDetails,
   StartupSource,
   StartupSourceListResponse,
 } from '@/entities/startup/model/types'
@@ -25,20 +24,6 @@ interface BackendStartupEntry {
   registry_path: string | null
   task_path: string | null
   last_error: string | null
-}
-
-interface BackendStartupEntryDetails extends BackendStartupEntry {
-  registry_hive: string | null
-  registry_path: string | null
-  registry_value_name: string | null
-  startup_folder_path: string | null
-  startup_file_path: string | null
-  task_path: string | null
-  task_author: string | null
-  task_description: string | null
-  task_triggers: string[]
-  task_actions: string[]
-  raw_xml_preview: string | null
 }
 
 interface BackendStartupSourceListResponse {
@@ -78,23 +63,6 @@ function mapSourceResponse(response: BackendStartupSourceListResponse): StartupS
   }
 }
 
-function mapDetails(entry: BackendStartupEntryDetails): StartupEntryDetails {
-  return {
-    ...mapEntry(entry),
-    registryHive: entry.registry_hive,
-    registryPath: entry.registry_path,
-    registryValueName: entry.registry_value_name,
-    startupFolderPath: entry.startup_folder_path,
-    startupFilePath: entry.startup_file_path,
-    taskPath: entry.task_path,
-    taskAuthor: entry.task_author,
-    taskDescription: entry.task_description,
-    taskTriggers: entry.task_triggers,
-    taskActions: entry.task_actions,
-    rawXmlPreview: entry.raw_xml_preview,
-  }
-}
-
 export async function getRegistryStartupEntries(): Promise<StartupSourceListResponse> {
   const response = await invoke<BackendStartupSourceListResponse>('startup_list_registry')
   return mapSourceResponse(response)
@@ -117,11 +85,6 @@ export async function hydrateStartupEntries(ids: string[]): Promise<StartupEntry
 
   const response = await invoke<BackendStartupEntry[]>('startup_hydrate_entries', { ids })
   return response.map(mapEntry)
-}
-
-export async function getStartupEntryDetails(id: string): Promise<StartupEntryDetails> {
-  const response = await invoke<BackendStartupEntryDetails>('startup_details', { id })
-  return mapDetails(response)
 }
 
 export async function enableStartupEntry(id: string): Promise<StartupEntry> {

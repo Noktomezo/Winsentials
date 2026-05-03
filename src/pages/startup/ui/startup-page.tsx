@@ -328,7 +328,7 @@ const StartupCard = memo(({
   )
 })
 
-export function StartupPage() {
+function StartupPage() {
   const { t } = useTranslation()
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [filtersHeight, setFiltersHeight] = useState(0)
@@ -685,3 +685,5 @@ export function StartupPage() {
     </section>
   )
 }
+
+export default StartupPage

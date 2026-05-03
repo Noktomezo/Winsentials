@@ -1,0 +1,71 @@
+entry = [
+  "src/main.tsx",
+  "src-tauri/**/*.rs",
+  "vite.config.ts",
+  "eslint.config.js",
+  "commitlint.config.js",
+  "lint-staged.config.js",
+]
+ignorePatterns = [
+  "**/*.d.ts",
+  "**/*.generated.*",
+  "dist/**",
+  "src-tauri/target/**",
+]
+ignoreDependencies = [
+  "@eslint-react/eslint-plugin",
+  "@j178/prek",
+  "eslint-plugin-format",
+  "eslint-plugin-react-hooks",
+  "eslint-plugin-react-refresh",
+  "eslint-plugin-tailwindcss",
+  "shadcn",
+]
+ignoreExportsUsedInFile = true
+production = false
+ignoreExports = [
+  { file = "src/shared/ui/breadcrumb.tsx", exports = [ "BreadcrumbEllipsis" ] },
+  { file = "src/shared/ui/card.tsx", exports = [ "CardFooter" ] },
+  { file = "src/shared/ui/dialog.tsx", exports = [ "DialogTrigger" ] },
+  { file = "src/shared/ui/dropdown-menu.tsx", exports = [ "*" ] },
+  { file = "src/shared/ui/select.tsx", exports = [
+    "SelectGroup",
+    "SelectLabel",
+    "SelectSeparator"
+  ] },
+  { file = "src/shared/ui/sheet.tsx", exports = [
+    "SheetClose",
+    "SheetFooter",
+    "SheetTrigger"
+  ] },
+  { file = "src/shared/ui/sidebar.tsx", exports = [ "*" ] },
+]
+
+[rules]
+unused-files = "error"
+unused-exports = "warn"
+unused-types = "warn"
+private-type-leaks = "off"
+unused-dependencies = "warn"
+unused-dev-dependencies = "warn"
+unresolved-imports = "warn"
+
+[duplicates]
+enabled = false
+mode = "mild"
+minTokens = 50
+minLines = 5
+threshold = 100
+ignore = [ "src/**" ]
+
+[health]
+maxCyclomatic = 999
+maxCognitive = 999
+maxCrap = 999
+ignore = [
+  "**/*.generated.*",
+  "src/**"
+]
+
+[audit]
+gate = "new-only"
