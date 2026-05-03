@@ -7,5 +7,5 @@ export function mountLabel(mountPoint: string): string {
 }
 
 export function networkAdapterToParam(name: string): string {
-  return encodeURIComponent(name)
+  return name
 }

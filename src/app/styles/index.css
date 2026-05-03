@@ -794,19 +794,19 @@ body {
 [data-sonner-toaster][data-sonner-theme='dark'] {
   --winsentials-sonner-bg: color-mix(in oklch, var(--accent) 55%, var(--card) 45%);
   --winsentials-sonner-text: var(--foreground);
-  --winsentials-sonner-border: color-mix(in oklch, var(--border) 76%, var(--primary) 24%);
+  --winsentials-sonner-border: var(--border);
   --winsentials-sonner-success-bg: color-mix(in oklch, var(--accent) 55%, var(--card) 45%);
   --winsentials-sonner-success-text: var(--success);
-  --winsentials-sonner-success-border: color-mix(in oklch, var(--border) 58%, var(--success) 42%);
+  --winsentials-sonner-success-border: var(--winsentials-sonner-border);
   --winsentials-sonner-error-bg: color-mix(in oklch, var(--accent) 55%, var(--card) 45%);
   --winsentials-sonner-error-text: var(--destructive);
-  --winsentials-sonner-error-border: color-mix(in oklch, var(--border) 58%, var(--destructive) 42%);
+  --winsentials-sonner-error-border: var(--winsentials-sonner-border);
   --winsentials-sonner-warning-bg: color-mix(in oklch, var(--accent) 55%, var(--card) 45%);
   --winsentials-sonner-warning-text: var(--warning);
-  --winsentials-sonner-warning-border: color-mix(in oklch, var(--border) 58%, var(--warning) 42%);
+  --winsentials-sonner-warning-border: var(--winsentials-sonner-border);
   --winsentials-sonner-info-bg: color-mix(in oklch, var(--accent) 55%, var(--card) 45%);
   --winsentials-sonner-info-text: var(--primary);
-  --winsentials-sonner-info-border: color-mix(in oklch, var(--border) 56%, var(--primary) 44%);
+  --winsentials-sonner-info-border: var(--winsentials-sonner-border);
 }
 
 /* Window materials — translucent toast surfaces */

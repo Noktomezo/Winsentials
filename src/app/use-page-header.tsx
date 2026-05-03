@@ -1,23 +1,52 @@
 import type { ReactNode } from 'react'
-import { useMemo } from 'react'
+import { RefreshCw, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { formatCpuModel } from '@/entities/system-info/lib/format-hardware-name'
 import { useStaticInfo } from '@/entities/system-info/model/static-system-info'
+import { formatBytesLocalized } from '@/shared/lib/format-size'
 import { mountLabel, mountToParam } from '@/shared/lib/mount-utils'
 import { safeDecodeSegment } from '@/shared/lib/safe-decode-segment'
+import { Button } from '@/shared/ui/button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
 
 export interface PageHeader {
+  actions?: ReactNode
   title: ReactNode
   description: string
 }
 
+interface CleanupSummary {
+  sizeBytes: number
+  targetCount: number
+}
+
+const CLEANUP_SUMMARY_EVENT = 'winsentials:cleanup-summary'
+
 export function usePageHeader(pathname: string): PageHeader {
-  const { t } = useTranslation()
+  const { i18n, t } = useTranslation()
   const staticInfo = useStaticInfo()
+  const [cleanupSummary, setCleanupSummary] = useState<CleanupSummary>({ sizeBytes: 0, targetCount: 0 })
+
+  useEffect(() => {
+    const handleCleanupSummary = (event: Event) => {
+      const detail = (event as CustomEvent<CleanupSummary>).detail
+      if (!detail) return
+
+      setCleanupSummary({
+        sizeBytes: detail.sizeBytes,
+        targetCount: detail.targetCount,
+      })
+    }
+
+    window.addEventListener(CLEANUP_SUMMARY_EVENT, handleCleanupSummary)
+    return () => window.removeEventListener(CLEANUP_SUMMARY_EVENT, handleCleanupSummary)
+  }, [])
 
   // ── Static pages ────────────────────────────────────────────────────────────
   const staticMap: Record<string, PageHeader> = useMemo(
     () => ({
-      '/home': { title: t('home.title'), description: t('home.description') },
+      '/home': { title: t('app.title'), description: t('app.description') },
       '/ram': { title: t('home.ram'), description: t('ram.description') },
       '/gpu': { title: t('home.gpu'), description: t('gpu.description') },
       '/network-stats': {
@@ -64,6 +93,46 @@ export function usePageHeader(pathname: string): PageHeader {
         title: t('tools.title'),
         description: t('tools.description'),
       },
+      '/cleanup': {
+        title: (
+          <span className="flex flex-wrap items-center gap-2">
+            <span>{t('cleanup.title')}</span>
+            <span className="rounded-md border border-border/60 bg-accent/45 px-1.5 py-0.5 text-xs font-normal text-muted-foreground">
+              {t('cleanup.itemsCount', { count: cleanupSummary.targetCount })}
+            </span>
+            <span className="rounded-md border border-border/60 bg-accent/45 px-1.5 py-0.5 text-xs font-normal text-muted-foreground">
+              {formatBytesLocalized(cleanupSummary.sizeBytes, { decimals: 1, locale: i18n.language, t })}
+            </span>
+          </span>
+        ),
+        description: t('cleanup.description'),
+        actions: (
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => window.dispatchEvent(new Event('winsentials:cleanup-clean-all'))}
+              size="sm"
+              type="button"
+            >
+              <Trash2 className="size-4" />
+              {t('cleanup.cleanAll')}
+            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  aria-label={t('cleanup.refreshAll')}
+                  onClick={() => window.dispatchEvent(new Event('winsentials:cleanup-refresh-all'))}
+                  size="icon-sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <RefreshCw className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent sideOffset={8}>{t('cleanup.refreshAll')}</TooltipContent>
+            </Tooltip>
+          </div>
+        ),
+      },
       '/settings': {
         title: t('settings.title'),
         description: t('settings.description'),
@@ -73,22 +142,20 @@ export function usePageHeader(pathname: string): PageHeader {
         description: t('backup.description'),
       },
     }),
-    [t],
+    [cleanupSummary.sizeBytes, cleanupSummary.targetCount, i18n.language, t],
   )
   if (staticMap[pathname]) return staticMap[pathname]
 
   // ── CPU: /cpu ────────────────────────────────────────────────────────────────
   if (pathname === '/cpu') {
-    const model = staticInfo?.cpu.model
+    const model = staticInfo ? formatCpuModel(staticInfo.cpu.model) : null
     return {
       title: model
         ? (
             <span className="flex items-baseline gap-1.5">
               <span>{t('home.cpu')}</span>
               <span className="text-base font-normal text-muted-foreground">
-                (
-                {model}
-                )
+                {`(${model})`}
               </span>
             </span>
           )

@@ -47,6 +47,7 @@ export const SmoothScrollArea = function SmoothScrollArea({ ref, children, class
       gestureOrientation: 'vertical',
       lerp: 0.08,
       orientation: 'vertical',
+      prevent: node => node instanceof HTMLElement && node.closest('[data-lenis-prevent]') !== null,
       smoothWheel: true,
       syncTouch: false,
       wheelMultiplier: 0.95,

@@ -25,9 +25,9 @@ function useBreadcrumbs(): Crumb[] {
   const { t } = useTranslation()
   const staticInfo = useStaticInfo()
 
-  const home: Crumb = { label: t('home.title'), href: '/home' }
+  const home: Crumb = { label: t('navigation.home'), href: '/home' }
 
-  if (pathname === '/home') return [{ label: t('home.title') }]
+  if (pathname === '/home') return [{ label: t('navigation.home') }]
 
   const hardwareMap: Record<string, string> = {
     '/cpu': t('home.cpu'),

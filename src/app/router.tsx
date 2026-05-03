@@ -46,14 +46,21 @@ function AppShellLayout({
           <SmoothScrollArea className="h-full" ref={scrollAreaRef}>
             <div key={pathname} className="page-shell-transition flex min-h-full flex-col">
               <header className="px-4 pt-4 pb-3 md:px-6 md:pt-4 md:pb-4">
-                <div className="space-y-0.5">
-                  <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                    {pageHeader.title}
-                  </h1>
-                  {pageHeader.description && (
-                    <p className="text-xs leading-5 text-muted-foreground">
-                      {pageHeader.description}
-                    </p>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0 space-y-0.5">
+                    <h1 className="text-xl font-semibold tracking-tight text-foreground">
+                      {pageHeader.title}
+                    </h1>
+                    {pageHeader.description && (
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        {pageHeader.description}
+                      </p>
+                    )}
+                  </div>
+                  {pageHeader.actions && (
+                    <div className="flex shrink-0 items-center gap-2">
+                      {pageHeader.actions}
+                    </div>
                   )}
                 </div>
               </header>
@@ -193,6 +200,15 @@ const toolsRoute = createRoute({
   ),
 })
 
+const cleanupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'cleanup',
+  component: lazyRouteComponent(
+    () => import('@/pages/cleanup/ui/cleanup-page'),
+    'CleanupPage',
+  ),
+})
+
 const cpuRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'cpu',
@@ -286,6 +302,7 @@ const routeTree = rootRoute.addChildren([
   memoryRoute,
   inputRoute,
   toolsRoute,
+  cleanupRoute,
   startupRoute,
   backupRoute,
   settingsRoute,
