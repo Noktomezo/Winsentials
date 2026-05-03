@@ -58,6 +58,7 @@ function useBreadcrumbs(): Crumb[] {
   const topLevel: Record<string, string> = {
     '/appearance': t('appearance.title'),
     '/behaviour': t('behaviour.title'),
+    '/cleanup': t('cleanup.title'),
     '/security': t('security.title'),
     '/privacy': t('privacy.title'),
     '/network': t('network.title'),

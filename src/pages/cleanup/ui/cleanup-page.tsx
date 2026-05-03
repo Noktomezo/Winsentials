@@ -261,6 +261,11 @@ function CleanupPage() {
   const [busyAction, setBusyAction] = useState<BusyAction>(null)
   const [refreshingCategories, setRefreshingCategories] = useState<Set<CleanupCategoryId>>(() => new Set())
   const [accessDialogEntries, setAccessDialogEntries] = useState<CleanupEntry[]>([])
+  const busyActionRef = useRef<BusyAction>(null)
+
+  useEffect(() => {
+    busyActionRef.current = busyAction
+  }, [busyAction])
 
   function scanCategories(categoryIds: CleanupCategoryId[]) {
     setRefreshingCategories((current) => {
@@ -269,13 +274,21 @@ function CleanupPage() {
       return next
     })
 
-    return Promise.all(categoryIds.map(categoryId => scanCleanupCategory(categoryId)))
-      .then((categoryReports) => {
-        setReports(current => ({ ...current, ...reportMapFromReports(categoryReports) }))
-      })
-      .catch((error) => {
-        console.error(error)
-        toast.error(t('cleanup.errors.scan'))
+    return Promise.allSettled(categoryIds.map(categoryId => scanCleanupCategory(categoryId)))
+      .then((results) => {
+        const categoryReports = results
+          .filter((result): result is PromiseFulfilledResult<CleanupCategoryReport> => result.status === 'fulfilled')
+          .map(result => result.value)
+
+        if (categoryReports.length > 0) {
+          setReports(current => ({ ...current, ...reportMapFromReports(categoryReports) }))
+        }
+
+        const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+        if (failures.length > 0) {
+          failures.forEach(result => console.error(result.reason))
+          toast.error(t('cleanup.errors.scan'))
+        }
       })
       .finally(() => {
         setRefreshingCategories((current) => {
@@ -312,6 +325,9 @@ function CleanupPage() {
   }
 
   function cleanCategory(categoryId: CleanupCategoryId) {
+    if (busyActionRef.current !== null) return
+
+    busyActionRef.current = categoryId
     setBusyAction(categoryId)
     cleanCleanupCategory(categoryId)
       .then((report) => {
@@ -327,31 +343,49 @@ function CleanupPage() {
         toast.error(t('cleanup.errors.clean'))
       })
       .finally(() => {
+        busyActionRef.current = null
         setBusyAction(null)
       })
   }
 
   function cleanAllCategories() {
+    if (busyActionRef.current !== null) return
+
+    busyActionRef.current = 'all'
     setBusyAction('all')
-    Promise.all(CLEANUP_CATEGORIES.map(category => cleanCleanupCategory(category.id)))
-      .then((categoryReports) => {
-        setReports(reportMapFromReports(categoryReports))
-        toast.success(t('cleanup.cleanedAll'))
-        const busyEntries = busyEntriesFromReports(categoryReports)
-        if (busyEntries.length > 0) {
-          setAccessDialogEntries(busyEntries)
+    Promise.allSettled(CLEANUP_CATEGORIES.map(category => cleanCleanupCategory(category.id)))
+      .then((results) => {
+        const categoryReports = results
+          .filter((result): result is PromiseFulfilledResult<CleanupCategoryReport> => result.status === 'fulfilled')
+          .map(result => result.value)
+
+        if (categoryReports.length > 0) {
+          setReports(current => ({ ...current, ...reportMapFromReports(categoryReports) }))
+          const busyEntries = busyEntriesFromReports(categoryReports)
+          if (busyEntries.length > 0) {
+            setAccessDialogEntries(busyEntries)
+          }
         }
-      })
-      .catch((error) => {
-        console.error(error)
-        toast.error(t('cleanup.errors.clean'))
+
+        const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+        if (failures.length > 0) {
+          failures.forEach(result => console.error(result.reason))
+          toast.error(t('cleanup.errors.clean'))
+          return
+        }
+
+        toast.success(t('cleanup.cleanedAll'))
       })
       .finally(() => {
+        busyActionRef.current = null
         setBusyAction(null)
       })
   }
 
   function grantOneTimeAccess() {
+    if (busyActionRef.current !== null) return
+
+    busyActionRef.current = 'access'
     setBusyAction('access')
     prepareCleanupAccess()
       .then((report) => {
@@ -362,10 +396,9 @@ function CleanupPage() {
         else {
           toast.success(t('cleanup.accessPrepared'))
         }
-        return Promise.all(CLEANUP_CATEGORIES.map(category => scanCleanupCategory(category.id)))
+        return scanCategories(CLEANUP_CATEGORIES.map(category => category.id))
       })
-      .then((categoryReports) => {
-        setReports(reportMapFromReports(categoryReports))
+      .then(() => {
         setAccessDialogEntries([])
       })
       .catch((error) => {
@@ -373,6 +406,7 @@ function CleanupPage() {
         toast.error(t('cleanup.errors.access'))
       })
       .finally(() => {
+        busyActionRef.current = null
         setBusyAction(null)
       })
   }

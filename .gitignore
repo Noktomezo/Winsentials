@@ -16,6 +16,8 @@ coverage
 *.local
 .symdex/
 docs/
+package-lock.json
+pnpm-lock.yaml
 
 # Editor directories and files
 .vscode/*

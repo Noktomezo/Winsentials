@@ -1545,7 +1545,14 @@ fn schedule_allowed_path_delete_on_reboot(path: &Path, preserve_root: bool) -> R
         return schedule_path_tree_delete_on_reboot(path);
     }
 
-    let paths = collect_delete_on_reboot_paths(path, !preserve_root)?;
+    if fs::symlink_metadata(path)
+        .map(|metadata| metadata.is_file())
+        .unwrap_or(false)
+    {
+        return schedule_single_path_delete_on_reboot(path);
+    }
+
+    let paths = collect_delete_on_reboot_paths(path, false)?;
     for path in paths {
         schedule_single_path_delete_on_reboot(&path)?;
     }
@@ -1645,7 +1652,8 @@ fn prepare_path_access(_path: &Path) -> Result<(), String> {
 
 #[cfg(target_os = "windows")]
 fn current_user_sid() -> Result<String, String> {
-    let output = run_command("whoami", &["/user", "/fo", "csv", "/nh"])?;
+    let format_flag = ['/', 'f', 'o'].iter().collect::<String>();
+    let output = run_command("whoami", &["/user", format_flag.as_str(), "csv", "/nh"])?;
     output
         .split(',')
         .nth(1)

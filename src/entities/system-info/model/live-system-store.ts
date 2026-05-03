@@ -173,12 +173,12 @@ export const useLiveSystemStore = create<LiveSystemStoreState>()(set => ({
 
       if (slice === 'disks') {
         const disks = data as DiskLiveInfo[]
-        const nextActive: Record<string, number[]> = { ...state.diskActiveHistory }
-        const nextThroughput: Record<string, number[]> = { ...state.diskThroughputHistory }
+        const nextActive: Record<string, number[]> = {}
+        const nextThroughput: Record<string, number[]> = {}
         for (const disk of disks) {
-          nextActive[disk.mountPoint] = [...(nextActive[disk.mountPoint] ?? []), disk.activeTimePercent].slice(-MAX_HISTORY)
+          nextActive[disk.mountPoint] = [...(state.diskActiveHistory[disk.mountPoint] ?? []), disk.activeTimePercent].slice(-MAX_HISTORY)
           const throughput = disk.readBytesPerSec + disk.writeBytesPerSec
-          nextThroughput[disk.mountPoint] = [...(nextThroughput[disk.mountPoint] ?? []), throughput].slice(-MAX_HISTORY)
+          nextThroughput[disk.mountPoint] = [...(state.diskThroughputHistory[disk.mountPoint] ?? []), throughput].slice(-MAX_HISTORY)
         }
         next.diskActiveHistory = nextActive
         next.diskThroughputHistory = nextThroughput
