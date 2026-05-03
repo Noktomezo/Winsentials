@@ -212,7 +212,19 @@
 }
 
 *[data-tauri-drag-region] {
-  app-region: drag;
+  cursor: grab;
+}
+
+*[data-tauri-drag-region]:active {
+  cursor: grabbing;
+}
+
+*[data-titlebar-no-drag],
+*[data-titlebar-no-drag] *,
+.titlebar-control,
+.titlebar-control * {
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
 }
 
 html,
@@ -602,6 +614,32 @@ body {
   background: var(--secondary);
   color: var(--accent-foreground);
   box-shadow: var(--shadow-xs);
+}
+
+[data-slot='app-titlebar'],
+[data-slot='app-titlebar'] * {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+[data-slot='app-titlebar']:active,
+[data-slot='app-titlebar']:active * {
+  cursor: grabbing;
+}
+
+[data-slot='app-titlebar'] [data-slot='breadcrumb'],
+[data-slot='app-titlebar'] [data-slot='breadcrumb'] *,
+[data-slot='app-titlebar'] [data-titlebar-no-drag],
+[data-slot='app-titlebar'] [data-titlebar-no-drag] *,
+[data-slot='app-titlebar'] .titlebar-control,
+[data-slot='app-titlebar'] .titlebar-control * {
+  cursor: auto;
+}
+
+[data-slot='app-titlebar'] a,
+[data-slot='app-titlebar'] button {
+  cursor: pointer;
 }
 
 .titlebar-control {

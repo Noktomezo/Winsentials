@@ -646,12 +646,19 @@ function HomePage() {
   useMountEffect(() => {
     let cancelled = false
     let inflight: Promise<void> | null = null
+    let lastRefreshStartedAt = 0
 
-    const refreshDeviceInventory = () => {
+    const refreshDeviceInventory = (force = false) => {
       if (inflight) {
         return inflight
       }
 
+      const now = Date.now()
+      if (!force && now - lastRefreshStartedAt < HOME_DEVICE_INVENTORY_POLL_INTERVAL_MS) {
+        return null
+      }
+
+      lastRefreshStartedAt = now
       inflight = getDeviceInventoryInfo()
         .then((inventory) => {
           if (!cancelled) {
@@ -674,18 +681,16 @@ function HomePage() {
       }
     }
 
-    void refreshDeviceInventory()
+    void refreshDeviceInventory(true)
     const intervalId = window.setInterval(() => {
       void refreshDeviceInventory()
     }, HOME_DEVICE_INVENTORY_POLL_INTERVAL_MS)
 
-    window.addEventListener('focus', handleVisibilityRefresh)
     document.addEventListener('visibilitychange', handleVisibilityRefresh)
 
     return () => {
       cancelled = true
       window.clearInterval(intervalId)
-      window.removeEventListener('focus', handleVisibilityRefresh)
       document.removeEventListener('visibilitychange', handleVisibilityRefresh)
     }
   })

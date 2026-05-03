@@ -37,7 +37,7 @@ function AppShellLayout({
   return (
     <SidebarProvider
       className="app-shell h-svh min-h-svh flex-col overflow-hidden"
-      defaultOpen={true}
+      defaultOpen={false}
     >
       <AppTitlebar />
       <div className="flex min-h-0 flex-1 overflow-hidden bg-transparent">
