@@ -946,7 +946,13 @@ fn icon_to_png_data_url(icon: windows::Win32::UI::WindowsAndMessaging::HICON) ->
 
     let mut bits = null_mut();
     let bitmap =
-        unsafe { CreateDIBSection(None, &bitmap_info, DIB_RGB_COLORS, &mut bits, None, 0).ok()? };
+        match unsafe { CreateDIBSection(None, &bitmap_info, DIB_RGB_COLORS, &mut bits, None, 0) } {
+            Ok(bitmap) => bitmap,
+            Err(_) => {
+                let _ = unsafe { DeleteDC(device_context) };
+                return None;
+            }
+        };
 
     let previous = unsafe { SelectObject(device_context, HGDIOBJ(bitmap.0)) };
     if previous.0.is_null() {
@@ -1247,9 +1253,8 @@ fn scan_or_clean_target(target: &ResolvedTarget, clean: bool) -> CleanupEntry {
         let mut entry = scan_target(target);
 
         if matches!(delete_result, Ok(DeleteOutcome::ScheduledOnReboot)) {
-            entry.status = CleanupEntryStatus::Clean;
-            entry.size_bytes = 0;
-            entry.error = None;
+            entry.status = CleanupEntryStatus::Busy;
+            entry.error = Some("Scheduled for deletion on reboot".to_string());
         }
 
         if let Err(error) = delete_result {
