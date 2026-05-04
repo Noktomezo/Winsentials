@@ -12,8 +12,7 @@ pub mod tweaks;
 use crate::backup::{backup_create, backup_delete, backup_list, backup_rename, backup_restore};
 use crate::commands::app::greet;
 use crate::commands::cleanup::{
-    cleanup_clean_category, cleanup_prepare_access, cleanup_scan_category,
-    cleanup_schedule_delete_on_reboot,
+    cleanup_clean_category, cleanup_scan_category, cleanup_schedule_delete_on_reboot,
 };
 use crate::commands::startup::{
     startup_delete, startup_details, startup_disable, startup_enable, startup_hydrate_entries,
@@ -160,7 +159,6 @@ pub fn run() {
             backup_delete,
             cleanup_scan_category,
             cleanup_clean_category,
-            cleanup_prepare_access,
             cleanup_schedule_delete_on_reboot,
             greet,
             set_webview_material,

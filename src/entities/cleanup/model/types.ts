@@ -25,15 +25,3 @@ export interface CleanupCategoryReport {
   entries: CleanupEntry[]
   id: CleanupCategoryId
 }
-
-export interface CleanupAccessEntry {
-  error: string | null
-  id: string
-  name: string
-  path: string
-  success: boolean
-}
-
-export interface CleanupAccessReport {
-  entries: CleanupAccessEntry[]
-}

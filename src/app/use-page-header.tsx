@@ -1,12 +1,14 @@
 import type { ReactNode } from 'react'
 import { RefreshCw, Trash2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatCpuModel } from '@/entities/system-info/lib/format-hardware-name'
 import { useStaticInfo } from '@/entities/system-info/model/static-system-info'
 import { formatBytesLocalized } from '@/shared/lib/format-size'
+import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { mountLabel, mountToParam } from '@/shared/lib/mount-utils'
 import { safeDecodeSegment } from '@/shared/lib/safe-decode-segment'
+import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
 
@@ -22,13 +24,17 @@ interface CleanupSummary {
 }
 
 const CLEANUP_SUMMARY_EVENT = 'winsentials:cleanup-summary'
+const CLEANUP_BUSY_EVENT = 'winsentials:cleanup-busy'
+const CLEANUP_REFRESHING_EVENT = 'winsentials:cleanup-refreshing'
 
 export function usePageHeader(pathname: string): PageHeader {
   const { i18n, t } = useTranslation()
   const staticInfo = useStaticInfo()
   const [cleanupSummary, setCleanupSummary] = useState<CleanupSummary>({ sizeBytes: 0, targetCount: 0 })
+  const [cleanupBusy, setCleanupBusy] = useState(false)
+  const [cleanupRefreshing, setCleanupRefreshing] = useState(false)
 
-  useEffect(() => {
+  useMountEffect(() => {
     const handleCleanupSummary = (event: Event) => {
       const detail = (event as CustomEvent<CleanupSummary>).detail
       if (!detail) return
@@ -41,7 +47,27 @@ export function usePageHeader(pathname: string): PageHeader {
 
     window.addEventListener(CLEANUP_SUMMARY_EVENT, handleCleanupSummary)
     return () => window.removeEventListener(CLEANUP_SUMMARY_EVENT, handleCleanupSummary)
-  }, [])
+  })
+
+  useMountEffect(() => {
+    const handleCleanupBusy = (event: Event) => {
+      const detail = (event as CustomEvent<{ busy: boolean }>).detail
+      setCleanupBusy(!!detail?.busy)
+    }
+
+    window.addEventListener(CLEANUP_BUSY_EVENT, handleCleanupBusy)
+    return () => window.removeEventListener(CLEANUP_BUSY_EVENT, handleCleanupBusy)
+  })
+
+  useMountEffect(() => {
+    const handleCleanupRefreshing = (event: Event) => {
+      const detail = (event as CustomEvent<{ refreshing: boolean }>).detail
+      setCleanupRefreshing(!!detail?.refreshing)
+    }
+
+    window.addEventListener(CLEANUP_REFRESHING_EVENT, handleCleanupRefreshing)
+    return () => window.removeEventListener(CLEANUP_REFRESHING_EVENT, handleCleanupRefreshing)
+  })
 
   // ── Static pages ────────────────────────────────────────────────────────────
   const staticMap: Record<string, PageHeader> = useMemo(
@@ -109,6 +135,7 @@ export function usePageHeader(pathname: string): PageHeader {
         actions: (
           <div className="flex items-center gap-2">
             <Button
+              disabled={cleanupBusy}
               onClick={() => window.dispatchEvent(new Event('winsentials:cleanup-clean-all'))}
               size="sm"
               type="button"
@@ -120,12 +147,13 @@ export function usePageHeader(pathname: string): PageHeader {
               <TooltipTrigger asChild>
                 <Button
                   aria-label={t('cleanup.refreshAll')}
+                  disabled={cleanupBusy || cleanupRefreshing}
                   onClick={() => window.dispatchEvent(new Event('winsentials:cleanup-refresh-all'))}
                   size="icon-sm"
                   type="button"
                   variant="outline"
                 >
-                  <RefreshCw className="size-4" />
+                  <RefreshCw className={cn('size-4', cleanupRefreshing && 'animate-spin')} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent sideOffset={8}>{t('cleanup.refreshAll')}</TooltipContent>
@@ -142,7 +170,7 @@ export function usePageHeader(pathname: string): PageHeader {
         description: t('backup.description'),
       },
     }),
-    [cleanupSummary.sizeBytes, cleanupSummary.targetCount, i18n.language, t],
+    [cleanupBusy, cleanupRefreshing, cleanupSummary.sizeBytes, cleanupSummary.targetCount, i18n.language, t],
   )
   if (staticMap[pathname]) return staticMap[pathname]
 

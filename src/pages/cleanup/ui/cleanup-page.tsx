@@ -1,24 +1,15 @@
 import type { LucideIcon } from 'lucide-react'
 import type { CleanupCategoryId, CleanupCategoryReport, CleanupEntry, CleanupEntryStatus } from '@/entities/cleanup/model/types'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Bug, Check, ChevronDown, Cpu, FileText, Gamepad2, Globe, Image, KeyRound, Loader2, PackageOpen, RefreshCw, Sparkles, Trash2, Unplug, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Bug, Check, ChevronDown, Cpu, FileText, Gamepad2, Globe, Image, Loader2, PackageOpen, RefreshCw, Sparkles, Trash2, Unplug, X } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cleanCleanupCategory, prepareCleanupAccess, scanCleanupCategory } from '@/entities/cleanup/api'
+import { cleanCleanupCategory, scanCleanupCategory } from '@/entities/cleanup/api'
 import { formatBytesLocalized } from '@/shared/lib/format-size'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { toast } from '@/shared/lib/toast'
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
 
@@ -54,10 +45,12 @@ const STATUS_CLASS: Record<CleanupEntryStatus, string> = {
 }
 
 type ReportMap = Partial<Record<CleanupCategoryId, CleanupCategoryReport>>
-type BusyAction = 'access' | 'all' | CleanupCategoryId | null
+type BusyAction = 'all' | CleanupCategoryId | null
 const CLEAN_ALL_EVENT = 'winsentials:cleanup-clean-all'
 const REFRESH_ALL_EVENT = 'winsentials:cleanup-refresh-all'
 const CLEANUP_SUMMARY_EVENT = 'winsentials:cleanup-summary'
+const CLEANUP_BUSY_EVENT = 'winsentials:cleanup-busy'
+const CLEANUP_REFRESHING_EVENT = 'winsentials:cleanup-refreshing'
 
 function formatBytes(bytes: number, t: ReturnType<typeof useTranslation>['t'], locale: string): string {
   return formatBytesLocalized(bytes, { decimals: 1, locale, t })
@@ -85,6 +78,27 @@ function errorMessageFromReason(reason: unknown): string {
   return 'Failed to scan cleanup category.'
 }
 
+function cleanupEntryMessage(error: string, t: ReturnType<typeof useTranslation>['t']): string {
+  const skippedBusyPrefix = 'Some files are in use and were skipped.'
+  if (error.startsWith(`${skippedBusyPrefix} (`)) {
+    return `${t('cleanup.messages.skippedBusyFiles')} ${error.slice(skippedBusyPrefix.length).trim()}`
+  }
+
+  const scheduledRebootPrefix = 'Scheduled for deletion on reboot.'
+  if (error.startsWith(`${scheduledRebootPrefix} (`)) {
+    return `${t('cleanup.messages.scheduledOnReboot')} ${error.slice(scheduledRebootPrefix.length).trim()}`
+  }
+
+  const knownMessages: Record<string, string> = {
+    'Failed to scan cleanup category.': 'cleanup.messages.scanCategoryFailed',
+    'Scheduled for deletion on reboot': 'cleanup.messages.scheduledOnReboot',
+    'Some files are in use and were skipped.': 'cleanup.messages.skippedBusyFiles',
+  }
+
+  const key = knownMessages[error]
+  return key ? t(key) : error
+}
+
 function failedScanReport(categoryId: CleanupCategoryId, reason: unknown, t: ReturnType<typeof useTranslation>['t']): CleanupCategoryReport {
   return {
     id: categoryId,
@@ -100,10 +114,6 @@ function failedScanReport(categoryId: CleanupCategoryId, reason: unknown, t: Ret
       },
     ],
   }
-}
-
-function busyEntriesFromReports(reports: CleanupCategoryReport[]): CleanupEntry[] {
-  return reports.flatMap(report => report.entries.filter(entry => entry.status === 'busy'))
 }
 
 function cleanupSummaryFromReports(reports: ReportMap) {
@@ -139,7 +149,15 @@ function CleanupEntryRow({ entry, showSize = true }: { entry: CleanupEntry, show
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="truncate text-xs font-medium text-foreground">{entry.name}</span>
         <p className="truncate text-[11px] text-muted-foreground">{entry.path}</p>
-        {entry.error && <p className="text-[11px] text-[var(--badge-red)]">{entry.error}</p>}
+        {entry.error && (
+          <p className={cn(
+            'text-[11px]',
+            entry.status === 'clean' ? 'text-[var(--warning)]' : 'text-[var(--badge-red)]',
+          )}
+          >
+            {cleanupEntryMessage(entry.error, t)}
+          </p>
+        )}
       </div>
       {showSize && (
         <span className="shrink-0 self-center text-xs tabular-nums text-muted-foreground">
@@ -283,14 +301,37 @@ function CleanupPage() {
   const [openCards, setOpenCards] = useState<Set<CleanupCategoryId>>(() => new Set())
   const [busyAction, setBusyAction] = useState<BusyAction>(null)
   const [refreshingCategories, setRefreshingCategories] = useState<Set<CleanupCategoryId>>(() => new Set())
-  const [accessDialogEntries, setAccessDialogEntries] = useState<CleanupEntry[]>([])
   const busyActionRef = useRef<BusyAction>(null)
+  const refreshBatchCountRef = useRef(0)
 
-  useEffect(() => {
-    busyActionRef.current = busyAction
-  }, [busyAction])
+  function setBusyActionState(action: BusyAction) {
+    busyActionRef.current = action
+    setBusyAction(action)
+    window.dispatchEvent(new CustomEvent(CLEANUP_BUSY_EVENT, {
+      detail: { busy: action !== null },
+    }))
+  }
+
+  function updateReports(updater: (current: ReportMap) => ReportMap) {
+    setReports((current) => {
+      const next = updater(current)
+      window.dispatchEvent(new CustomEvent(CLEANUP_SUMMARY_EVENT, {
+        detail: cleanupSummaryFromReports(next),
+      }))
+      return next
+    })
+  }
+
+  function setRefreshingHeaderState(refreshing: boolean) {
+    window.dispatchEvent(new CustomEvent(CLEANUP_REFRESHING_EVENT, {
+      detail: { refreshing },
+    }))
+  }
 
   function scanCategories(categoryIds: CleanupCategoryId[]) {
+    refreshBatchCountRef.current += 1
+    if (refreshBatchCountRef.current === 1) setRefreshingHeaderState(true)
+
     setRefreshingCategories((current) => {
       const next = new Set(current)
       categoryIds.forEach(categoryId => next.add(categoryId))
@@ -305,7 +346,7 @@ function CleanupPage() {
             : failedScanReport(categoryIds[index], result.reason, t)
         ))
 
-        setReports(current => ({ ...current, ...reportMapFromReports(categoryReports) }))
+        updateReports(current => ({ ...current, ...reportMapFromReports(categoryReports) }))
 
         const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
         if (failures.length > 0) {
@@ -319,6 +360,9 @@ function CleanupPage() {
           categoryIds.forEach(categoryId => next.delete(categoryId))
           return next
         })
+
+        refreshBatchCountRef.current = Math.max(0, refreshBatchCountRef.current - 1)
+        if (refreshBatchCountRef.current === 0) setRefreshingHeaderState(false)
       })
   }
 
@@ -331,6 +375,8 @@ function CleanupPage() {
   }
 
   function refreshAllCategories() {
+    if (busyActionRef.current !== null) return
+
     void scanCategories(CLEANUP_CATEGORIES.map(category => category.id))
   }
 
@@ -350,32 +396,25 @@ function CleanupPage() {
   function cleanCategory(categoryId: CleanupCategoryId) {
     if (busyActionRef.current !== null) return
 
-    busyActionRef.current = categoryId
-    setBusyAction(categoryId)
+    setBusyActionState(categoryId)
     cleanCleanupCategory(categoryId)
       .then((report) => {
-        setReports(current => ({ ...current, [report.id]: report }))
+        updateReports(current => ({ ...current, [report.id]: report }))
         toast.success(t('cleanup.cleaned'))
-        const busyEntries = busyEntriesFromReports([report])
-        if (busyEntries.length > 0) {
-          setAccessDialogEntries(busyEntries)
-        }
       })
       .catch((error) => {
         console.error(error)
         toast.error(t('cleanup.errors.clean'))
       })
       .finally(() => {
-        busyActionRef.current = null
-        setBusyAction(null)
+        setBusyActionState(null)
       })
   }
 
   function cleanAllCategories() {
     if (busyActionRef.current !== null) return
 
-    busyActionRef.current = 'all'
-    setBusyAction('all')
+    setBusyActionState('all')
     Promise.allSettled(CLEANUP_CATEGORIES.map(category => cleanCleanupCategory(category.id)))
       .then((results) => {
         const categoryReports = results
@@ -383,11 +422,7 @@ function CleanupPage() {
           .map(result => result.value)
 
         if (categoryReports.length > 0) {
-          setReports(current => ({ ...current, ...reportMapFromReports(categoryReports) }))
-          const busyEntries = busyEntriesFromReports(categoryReports)
-          if (busyEntries.length > 0) {
-            setAccessDialogEntries(busyEntries)
-          }
+          updateReports(current => ({ ...current, ...reportMapFromReports(categoryReports) }))
         }
 
         const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
@@ -400,48 +435,11 @@ function CleanupPage() {
         toast.success(t('cleanup.cleanedAll'))
       })
       .finally(() => {
-        busyActionRef.current = null
-        setBusyAction(null)
-      })
-  }
-
-  function grantOneTimeAccess() {
-    if (busyActionRef.current !== null) return
-
-    busyActionRef.current = 'access'
-    setBusyAction('access')
-    prepareCleanupAccess()
-      .then((report) => {
-        const failedCount = report.entries.filter(entry => !entry.success).length
-        if (failedCount > 0) {
-          toast.error(t('cleanup.accessPreparedWithErrors', { count: failedCount }))
-        }
-        else {
-          toast.success(t('cleanup.accessPrepared'))
-        }
-        return scanCategories(CLEANUP_CATEGORIES.map(category => category.id))
-      })
-      .then(() => {
-        setAccessDialogEntries([])
-      })
-      .catch((error) => {
-        console.error(error)
-        toast.error(t('cleanup.errors.access'))
-      })
-      .finally(() => {
-        busyActionRef.current = null
-        setBusyAction(null)
+        setBusyActionState(null)
       })
   }
 
   const cards = useMemo(() => CLEANUP_CATEGORIES, [])
-  const isBusy = busyAction !== null
-
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent(CLEANUP_SUMMARY_EVENT, {
-      detail: cleanupSummaryFromReports(reports),
-    }))
-  }, [reports])
 
   useMountEffect(() => {
     window.addEventListener(CLEAN_ALL_EVENT, cleanAllCategories)
@@ -469,33 +467,6 @@ function CleanupPage() {
           />
         ))}
       </div>
-      <Dialog open={accessDialogEntries.length > 0} onOpenChange={open => !open && setAccessDialogEntries([])}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t('cleanup.accessDialog.title')}</DialogTitle>
-            <DialogDescription>
-              {t('cleanup.accessDialog.description', { count: accessDialogEntries.length })}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex max-h-56 flex-col gap-2 overflow-y-auto px-5 py-1" data-lenis-prevent>
-            {accessDialogEntries.map(entry => (
-              <div className="rounded-md border border-border/60 bg-background/50 p-2" key={entry.id}>
-                <p className="truncate text-xs font-medium text-foreground">{entry.name}</p>
-                <p className="truncate text-[11px] text-muted-foreground">{entry.path}</p>
-              </div>
-            ))}
-          </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">{t('common.cancel')}</Button>
-            </DialogClose>
-            <Button disabled={isBusy} onClick={grantOneTimeAccess} type="button">
-              {busyAction === 'access' ? <Loader2 className="size-4 animate-spin" /> : <KeyRound className="size-4" />}
-              {t('cleanup.prepareAccess')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </section>
   )
 }

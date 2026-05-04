@@ -1,5 +1,5 @@
 use crate::cleanup;
-use crate::cleanup::types::{CleanupAccessReport, CleanupCategoryReport, CleanupScheduleReport};
+use crate::cleanup::types::{CleanupCategoryReport, CleanupScheduleReport};
 use crate::error::AppError;
 
 #[tauri::command]
@@ -16,13 +16,6 @@ pub async fn cleanup_clean_category(
     tauri::async_runtime::spawn_blocking(move || cleanup::cleanup_clean_category(&category_id))
         .await
         .map_err(|error| AppError::message(format!("cleanup_clean_category join error: {error}")))?
-}
-
-#[tauri::command]
-pub async fn cleanup_prepare_access() -> Result<CleanupAccessReport, AppError> {
-    tauri::async_runtime::spawn_blocking(cleanup::cleanup_prepare_access)
-        .await
-        .map_err(|error| AppError::message(format!("cleanup_prepare_access join error: {error}")))?
 }
 
 #[tauri::command]

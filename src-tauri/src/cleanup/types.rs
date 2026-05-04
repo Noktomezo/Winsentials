@@ -27,20 +27,6 @@ pub struct CleanupCategoryReport {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CleanupAccessEntry {
-    pub id: String,
-    pub name: String,
-    pub path: String,
-    pub success: bool,
-    pub error: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CleanupAccessReport {
-    pub entries: Vec<CleanupAccessEntry>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CleanupScheduleEntry {
     pub path: String,
     pub success: bool,

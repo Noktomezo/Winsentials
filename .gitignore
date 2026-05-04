@@ -31,3 +31,5 @@ pnpm-lock.yaml
 *.njsproj
 *.sln
 *.sw?
+.symdex
+.fallow

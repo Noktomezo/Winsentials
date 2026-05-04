@@ -176,9 +176,6 @@
     "refreshAll": "Refresh all",
     "cleaned": "Cleanup completed.",
     "cleanedAll": "All categories cleaned.",
-    "prepareAccess": "One-time access",
-    "accessPrepared": "Access permissions prepared.",
-    "accessPreparedWithErrors": "Access prepared partially. Errors: {{count}}.",
     "scheduleReboot": "Delete after reboot",
     "rebootScheduled": "Delete after reboot scheduled.",
     "rebootScheduledWithErrors": "Delete after reboot scheduled partially. Errors: {{count}}.",
@@ -186,6 +183,11 @@
     "itemsCount_other": "{{count}} targets",
     "noTargets": "No cleanup targets found.",
     "scanning": "Scanning...",
+    "messages": {
+      "scanCategoryFailed": "Failed to scan this cleanup category.",
+      "scheduledOnReboot": "Scheduled for deletion on reboot.",
+      "skippedBusyFiles": "Some files are in use and were skipped."
+    },
     "categories": {
       "windows_temp": {
         "name": "Clean Windows temporary files"
@@ -215,14 +217,9 @@
         "name": "Remove unused devices"
       }
     },
-    "accessDialog": {
-      "title": "Some folders still need access",
-      "description": "Cleanup left {{count}} targets with access denied or busy files. You can prepare one-time permissions and retry cleanup."
-    },
     "errors": {
       "scan": "Failed to scan cleanup targets.",
       "clean": "Failed to run cleanup.",
-      "access": "Failed to prepare access permissions.",
       "reboot": "Failed to schedule delete after reboot."
     }
   },

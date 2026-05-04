@@ -1,18 +1,23 @@
 pub mod types;
 
+mod targets;
+#[cfg(target_os = "windows")]
+mod trustedinstaller;
+
 use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::io;
 use std::path::{Component, Path, PathBuf};
-use std::process::Command;
 
+use rayon::prelude::*;
 use types::{
-    CleanupAccessEntry, CleanupAccessReport, CleanupCategoryReport, CleanupEntry,
-    CleanupEntryStatus, CleanupScheduleEntry, CleanupScheduleReport,
+    CleanupCategoryReport, CleanupEntry, CleanupEntryStatus, CleanupScheduleEntry,
+    CleanupScheduleReport,
 };
 
 use crate::error::AppError;
+use targets::*;
 
 const WINDOWS_TEMP_CATEGORY: &str = "windows_temp";
 const THUMBNAIL_CACHE_CATEGORY: &str = "thumbnail_cache";
@@ -36,423 +41,12 @@ struct ResolvedTarget {
     path: PathBuf,
 }
 
-const WINDOWS_TEMP_TARGETS: &[CleanupTarget] = &[
-    CleanupTarget {
-        id: "user_temp",
-        name: "User Temp",
-        path: "{TEMP}",
-    },
-    CleanupTarget {
-        id: "local_temp",
-        name: "Local AppData Temp",
-        path: "{LOCALAPPDATA}\\Temp",
-    },
-    CleanupTarget {
-        id: "windows_temp",
-        name: "Windows Temp",
-        path: "{WINDIR}\\Temp",
-    },
-    CleanupTarget {
-        id: "root_temp",
-        name: "Root Temp",
-        path: "C:\\Temp",
-    },
-    CleanupTarget {
-        id: "prefetch",
-        name: "Windows Prefetch",
-        path: "{WINDIR}\\Prefetch",
-    },
-    CleanupTarget {
-        id: "recent_items",
-        name: "Recent Items",
-        path: "{APPDATA}\\Microsoft\\Windows\\Recent",
-    },
-    CleanupTarget {
-        id: "inet_cache",
-        name: "Windows INetCache",
-        path: "{LOCALAPPDATA}\\Microsoft\\Windows\\INetCache",
-    },
-    CleanupTarget {
-        id: "delivery_optimization_cache",
-        name: "Delivery Optimization Cache",
-        path: "{WINDIR}\\SoftwareDistribution\\Download",
-    },
-];
-
-const THUMBNAIL_CACHE_TARGETS: &[CleanupTarget] = &[
-    CleanupTarget {
-        id: "explorer_thumbcache",
-        name: "Explorer Thumbnail Cache",
-        path: "{LOCALAPPDATA}\\Microsoft\\Windows\\Explorer\\thumbcache_*.db",
-    },
-    CleanupTarget {
-        id: "explorer_iconcache",
-        name: "Explorer Icon Cache",
-        path: "{LOCALAPPDATA}\\Microsoft\\Windows\\Explorer\\iconcache_*.db",
-    },
-    CleanupTarget {
-        id: "iconcache_db",
-        name: "Icon Cache Database",
-        path: "{LOCALAPPDATA}\\IconCache.db",
-    },
-];
-
-const BROWSER_CACHE_TARGETS: &[CleanupTarget] = &[
-    CleanupTarget {
-        id: "chrome_cache",
-        name: "Google Chrome Cache",
-        path: "{LOCALAPPDATA}\\Google\\Chrome\\User Data\\*\\Cache",
-    },
-    CleanupTarget {
-        id: "chrome_code_cache",
-        name: "Google Chrome Code Cache",
-        path: "{LOCALAPPDATA}\\Google\\Chrome\\User Data\\*\\Code Cache",
-    },
-    CleanupTarget {
-        id: "chrome_gpu_cache",
-        name: "Google Chrome GPUCache",
-        path: "{LOCALAPPDATA}\\Google\\Chrome\\User Data\\*\\GPUCache",
-    },
-    CleanupTarget {
-        id: "edge_cache",
-        name: "Microsoft Edge Cache",
-        path: "{LOCALAPPDATA}\\Microsoft\\Edge\\User Data\\*\\Cache",
-    },
-    CleanupTarget {
-        id: "edge_code_cache",
-        name: "Microsoft Edge Code Cache",
-        path: "{LOCALAPPDATA}\\Microsoft\\Edge\\User Data\\*\\Code Cache",
-    },
-    CleanupTarget {
-        id: "edge_gpu_cache",
-        name: "Microsoft Edge GPUCache",
-        path: "{LOCALAPPDATA}\\Microsoft\\Edge\\User Data\\*\\GPUCache",
-    },
-    CleanupTarget {
-        id: "brave_cache",
-        name: "Brave Cache",
-        path: "{LOCALAPPDATA}\\BraveSoftware\\Brave-Browser\\User Data\\*\\Cache",
-    },
-    CleanupTarget {
-        id: "vivaldi_cache",
-        name: "Vivaldi Cache",
-        path: "{LOCALAPPDATA}\\Vivaldi\\User Data\\*\\Cache",
-    },
-    CleanupTarget {
-        id: "opera_cache",
-        name: "Opera Cache",
-        path: "{APPDATA}\\Opera Software\\Opera Stable\\Cache",
-    },
-    CleanupTarget {
-        id: "opera_gx_cache",
-        name: "Opera GX Cache",
-        path: "{APPDATA}\\Opera Software\\Opera GX Stable\\Cache",
-    },
-    CleanupTarget {
-        id: "firefox_cache",
-        name: "Mozilla Firefox Cache",
-        path: "{LOCALAPPDATA}\\Mozilla\\Firefox\\Profiles\\*\\cache2",
-    },
-    CleanupTarget {
-        id: "yandex_cache",
-        name: "Yandex Browser Cache",
-        path: "{LOCALAPPDATA}\\Yandex\\YandexBrowser\\User Data\\*\\Cache",
-    },
-];
-
-const DRIVER_CACHE_TARGETS: &[CleanupTarget] = &[
-    CleanupTarget {
-        id: "direct3d_shader_cache",
-        name: "Direct3D Shader Cache",
-        path: "{LOCALAPPDATA}\\D3DSCache",
-    },
-    CleanupTarget {
-        id: "amd_dx_cache",
-        name: "AMD DirectX Shader Cache",
-        path: "{LOCALAPPDATA}\\AMD\\DxCache",
-    },
-    CleanupTarget {
-        id: "amd_dxc_cache",
-        name: "AMD DXC Shader Cache",
-        path: "{LOCALAPPDATA}\\AMD\\DxcCache",
-    },
-    CleanupTarget {
-        id: "amd_vk_cache",
-        name: "AMD Vulkan Shader Cache",
-        path: "{LOCALAPPDATA}\\AMD\\VkCache",
-    },
-    CleanupTarget {
-        id: "amd_legacy_dx_cache",
-        name: "AMD Legacy Shader Cache",
-        path: "{USERPROFILE}\\AppData\\LocalLow\\AMD\\DxCache",
-    },
-    CleanupTarget {
-        id: "nvidia_dx_cache",
-        name: "NVIDIA DirectX Shader Cache",
-        path: "{LOCALAPPDATA}\\NVIDIA\\DXCache",
-    },
-    CleanupTarget {
-        id: "nvidia_gl_cache",
-        name: "NVIDIA OpenGL Shader Cache",
-        path: "{LOCALAPPDATA}\\NVIDIA\\GLCache",
-    },
-    CleanupTarget {
-        id: "nvidia_per_driver_dx_cache",
-        name: "NVIDIA Per-Driver DirectX Shader Cache",
-        path: "{USERPROFILE}\\AppData\\LocalLow\\NVIDIA\\PerDriverVersion\\DXCache",
-    },
-    CleanupTarget {
-        id: "nvidia_per_driver_gl_cache",
-        name: "NVIDIA Per-Driver OpenGL Shader Cache",
-        path: "{USERPROFILE}\\AppData\\LocalLow\\NVIDIA\\PerDriverVersion\\GLCache",
-    },
-    CleanupTarget {
-        id: "nvidia_compute_cache",
-        name: "NVIDIA Compute Cache",
-        path: "{APPDATA}\\NVIDIA\\ComputeCache",
-    },
-    CleanupTarget {
-        id: "nvidia_downloader_cache",
-        name: "NVIDIA Driver Download Cache",
-        path: "{PROGRAMDATA}\\NVIDIA Corporation\\Downloader",
-    },
-    CleanupTarget {
-        id: "nvidia_nv_cache",
-        name: "NVIDIA NV Cache",
-        path: "{LOCALAPPDATA}\\NVIDIA\\NvBackend\\Cache",
-    },
-    CleanupTarget {
-        id: "nvidia_physx_cache",
-        name: "NVIDIA PhysX Cache",
-        path: "{LOCALAPPDATA}\\NVIDIA Corporation\\PhysX\\Cache",
-    },
-    CleanupTarget {
-        id: "intel_shader_cache",
-        name: "Intel Shader Cache",
-        path: "{USERPROFILE}\\AppData\\LocalLow\\Intel\\ShaderCache",
-    },
-    CleanupTarget {
-        id: "intel_local_shader_cache",
-        name: "Intel Local Shader Cache",
-        path: "{LOCALAPPDATA}\\Intel\\ShaderCache",
-    },
-    CleanupTarget {
-        id: "amd_installer_leftovers",
-        name: "AMD Driver Installer Leftovers",
-        path: "C:\\AMD",
-    },
-    CleanupTarget {
-        id: "amd_temp_leftovers",
-        name: "AMD Driver Temp Leftovers",
-        path: "{TEMP}\\AMD",
-    },
-    CleanupTarget {
-        id: "amd_tmp_leftovers",
-        name: "AMD Driver TMP Leftovers",
-        path: "{TMP}\\AMD",
-    },
-    CleanupTarget {
-        id: "amd_local_temp_leftovers",
-        name: "AMD Local Temp Leftovers",
-        path: "{LOCALAPPDATA}\\Temp\\AMD",
-    },
-    CleanupTarget {
-        id: "nvidia_temp_leftovers",
-        name: "NVIDIA Driver Temp Leftovers",
-        path: "{TEMP}\\NVIDIA",
-    },
-    CleanupTarget {
-        id: "nvidia_tmp_leftovers",
-        name: "NVIDIA Driver TMP Leftovers",
-        path: "{TMP}\\NVIDIA",
-    },
-    CleanupTarget {
-        id: "nvidia_local_temp_leftovers",
-        name: "NVIDIA Local Temp Leftovers",
-        path: "{LOCALAPPDATA}\\Temp\\NVIDIA",
-    },
-    CleanupTarget {
-        id: "intel_temp_leftovers",
-        name: "Intel Driver Temp Leftovers",
-        path: "{TEMP}\\Intel",
-    },
-    CleanupTarget {
-        id: "intel_tmp_leftovers",
-        name: "Intel Driver TMP Leftovers",
-        path: "{TMP}\\Intel",
-    },
-    CleanupTarget {
-        id: "intel_local_temp_leftovers",
-        name: "Intel Local Temp Leftovers",
-        path: "{LOCALAPPDATA}\\Temp\\Intel",
-    },
-];
-
-const GAME_CACHE_TARGETS: &[CleanupTarget] = &[
-    CleanupTarget {
-        id: "steam_htmlcache",
-        name: "Steam HTML Cache",
-        path: "{LOCALAPPDATA}\\Steam\\htmlcache",
-    },
-    CleanupTarget {
-        id: "steam_shader_cache",
-        name: "Steam Shader Cache",
-        path: "{PROGRAMFILES_X86}\\Steam\\steamapps\\shadercache",
-    },
-    CleanupTarget {
-        id: "steam_downloading_cache",
-        name: "Steam Download Cache",
-        path: "{PROGRAMFILES_X86}\\Steam\\steamapps\\downloading",
-    },
-    CleanupTarget {
-        id: "epic_webcache",
-        name: "Epic Games Launcher Web Cache",
-        path: "{LOCALAPPDATA}\\EpicGamesLauncher\\Saved\\webcache*",
-    },
-    CleanupTarget {
-        id: "ea_desktop_cache",
-        name: "EA Desktop Cache",
-        path: "{LOCALAPPDATA}\\Electronic Arts\\EA Desktop\\cache",
-    },
-    CleanupTarget {
-        id: "origin_cache",
-        name: "Origin Cache",
-        path: "{PROGRAMDATA}\\Origin\\DownloadCache",
-    },
-];
-
-const WINDOWS_LOGS_TARGETS: &[CleanupTarget] = &[
-    CleanupTarget {
-        id: "windows_cbs_logs",
-        name: "Windows CBS Logs",
-        path: "{WINDIR}\\Logs\\CBS",
-    },
-    CleanupTarget {
-        id: "windows_dism_logs",
-        name: "Windows DISM Logs",
-        path: "{WINDIR}\\Logs\\DISM",
-    },
-    CleanupTarget {
-        id: "windows_setup_logs",
-        name: "Windows Setup Logs",
-        path: "{WINDIR}\\Panther",
-    },
-    CleanupTarget {
-        id: "windows_logfiles",
-        name: "Windows LogFiles",
-        path: "{WINDIR}\\System32\\LogFiles",
-    },
-    CleanupTarget {
-        id: "setupapi_logs",
-        name: "SetupAPI Logs",
-        path: "{WINDIR}\\INF\\setupapi*.log",
-    },
-];
-
-const SYSTEM_ERROR_REPORTS_TARGETS: &[CleanupTarget] = &[
-    CleanupTarget {
-        id: "windows_error_reports_archive",
-        name: "Windows Error Reports Archive",
-        path: "{PROGRAMDATA}\\Microsoft\\Windows\\WER\\ReportArchive",
-    },
-    CleanupTarget {
-        id: "windows_error_reports_queue",
-        name: "Windows Error Reports Queue",
-        path: "{PROGRAMDATA}\\Microsoft\\Windows\\WER\\ReportQueue",
-    },
-    CleanupTarget {
-        id: "user_error_reports_archive",
-        name: "User Error Reports Archive",
-        path: "{LOCALAPPDATA}\\Microsoft\\Windows\\WER\\ReportArchive",
-    },
-    CleanupTarget {
-        id: "user_error_reports_queue",
-        name: "User Error Reports Queue",
-        path: "{LOCALAPPDATA}\\Microsoft\\Windows\\WER\\ReportQueue",
-    },
-    CleanupTarget {
-        id: "minidumps",
-        name: "Windows Minidumps",
-        path: "{WINDIR}\\Minidump",
-    },
-    CleanupTarget {
-        id: "memory_dump",
-        name: "Windows Memory Dump",
-        path: "{WINDIR}\\MEMORY.DMP",
-    },
-];
-
-const APP_CACHE_TARGETS: &[CleanupTarget] = &[
-    CleanupTarget {
-        id: "microsoft_store_cache",
-        name: "Microsoft Store Cache",
-        path: "{LOCALAPPDATA}\\Packages\\Microsoft.WindowsStore_*\\LocalCache",
-    },
-    CleanupTarget {
-        id: "windows_live_tiles_cache",
-        name: "Windows Live Tiles Cache",
-        path: "{LOCALAPPDATA}\\Packages\\Microsoft.Windows.StartMenuExperienceHost_*\\LocalState\\Cache",
-    },
-    CleanupTarget {
-        id: "windows_notifications_cache",
-        name: "Windows Notifications Cache",
-        path: "{LOCALAPPDATA}\\Microsoft\\Windows\\Notifications",
-    },
-    CleanupTarget {
-        id: "onedrive_logs",
-        name: "OneDrive Logs",
-        path: "{LOCALAPPDATA}\\Microsoft\\OneDrive\\logs",
-    },
-    CleanupTarget {
-        id: "office_file_cache",
-        name: "Microsoft Office File Cache",
-        path: "{LOCALAPPDATA}\\Microsoft\\Office\\16.0\\OfficeFileCache",
-    },
-    CleanupTarget {
-        id: "teams_cache",
-        name: "Microsoft Teams Cache",
-        path: "{APPDATA}\\Microsoft\\Teams\\Cache",
-    },
-    CleanupTarget {
-        id: "discord_cache",
-        name: "Discord Cache",
-        path: "{APPDATA}\\discord\\Cache",
-    },
-];
-
 pub fn cleanup_scan_category(category_id: &str) -> Result<CleanupCategoryReport, AppError> {
     build_report(category_id, false)
 }
 
 pub fn cleanup_clean_category(category_id: &str) -> Result<CleanupCategoryReport, AppError> {
-    build_report(category_id, true)
-}
-
-pub fn cleanup_prepare_access() -> Result<CleanupAccessReport, AppError> {
-    let targets = dedupe_resolved_targets(
-        [
-            WINDOWS_TEMP_TARGETS,
-            THUMBNAIL_CACHE_TARGETS,
-            BROWSER_CACHE_TARGETS,
-            DRIVER_CACHE_TARGETS,
-            GAME_CACHE_TARGETS,
-            WINDOWS_LOGS_TARGETS,
-            SYSTEM_ERROR_REPORTS_TARGETS,
-            APP_CACHE_TARGETS,
-        ]
-        .into_iter()
-        .flatten()
-        .flat_map(resolve_target)
-        .collect(),
-    );
-
-    let entries = targets
-        .into_iter()
-        .filter(|target| target.path.exists())
-        .map(|target| prepare_target_access(&target))
-        .collect();
-
-    Ok(CleanupAccessReport { entries })
+    build_report_with_privileged_delete(category_id, true)
 }
 
 pub fn cleanup_schedule_delete_on_reboot(
@@ -468,38 +62,40 @@ pub fn cleanup_schedule_delete_on_reboot(
 }
 
 fn all_resolved_cleanup_targets() -> Vec<ResolvedTarget> {
-    dedupe_resolved_targets(
-        [
-            WINDOWS_TEMP_TARGETS,
-            THUMBNAIL_CACHE_TARGETS,
-            BROWSER_CACHE_TARGETS,
-            DRIVER_CACHE_TARGETS,
-            GAME_CACHE_TARGETS,
-            WINDOWS_LOGS_TARGETS,
-            SYSTEM_ERROR_REPORTS_TARGETS,
-            APP_CACHE_TARGETS,
-        ]
-        .into_iter()
-        .flatten()
-        .flat_map(resolve_target)
-        .collect(),
-    )
+    let mut targets: Vec<ResolvedTarget> = [
+        WINDOWS_TEMP_TARGETS,
+        THUMBNAIL_CACHE_TARGETS,
+        BROWSER_CACHE_TARGETS,
+        DRIVER_CACHE_TARGETS,
+        GAME_CACHE_TARGETS,
+        WINDOWS_LOGS_TARGETS,
+        SYSTEM_ERROR_REPORTS_TARGETS,
+        APP_CACHE_TARGETS,
+    ]
+    .into_iter()
+    .flatten()
+    .flat_map(resolve_target)
+    .collect();
+    targets.extend(resolve_steam_library_targets());
+    dedupe_resolved_targets(targets)
 }
 
 fn build_report(category_id: &str, clean: bool) -> Result<CleanupCategoryReport, AppError> {
+    build_report_with_privileged_delete(category_id, clean)
+}
+
+fn build_report_with_privileged_delete(
+    category_id: &str,
+    clean: bool,
+) -> Result<CleanupCategoryReport, AppError> {
     if category_id == UNUSED_DEVICES_CATEGORY {
         return build_unused_devices_report(clean);
     }
 
-    let targets = dedupe_resolved_targets(
-        targets_for_category(category_id)?
-            .iter()
-            .flat_map(resolve_target)
-            .collect(),
-    );
+    let targets = dedupe_resolved_targets(resolved_targets_for_category(category_id)?);
 
     let entries = targets
-        .iter()
+        .par_iter()
         .map(|target| scan_or_clean_target(target, clean))
         .collect();
 
@@ -507,6 +103,19 @@ fn build_report(category_id: &str, clean: bool) -> Result<CleanupCategoryReport,
         id: category_id.to_string(),
         entries,
     })
+}
+
+fn resolved_targets_for_category(category_id: &str) -> Result<Vec<ResolvedTarget>, AppError> {
+    let mut targets: Vec<ResolvedTarget> = targets_for_category(category_id)?
+        .iter()
+        .flat_map(resolve_target)
+        .collect();
+
+    if category_id == GAME_CACHE_CATEGORY {
+        targets.extend(resolve_steam_library_targets());
+    }
+
+    Ok(targets)
 }
 
 fn targets_for_category(category_id: &str) -> Result<&'static [CleanupTarget], AppError> {
@@ -541,6 +150,29 @@ fn resolve_target(target: &CleanupTarget) -> Vec<ResolvedTarget> {
             },
             name: resolved_target_name(target.name, &path, index),
             path,
+        })
+        .collect()
+}
+
+fn resolve_steam_library_targets() -> Vec<ResolvedTarget> {
+    ('A'..='Z')
+        .filter_map(|drive| {
+            let library_root = PathBuf::from(format!(r"{drive}:\SteamLibrary"));
+            library_root.is_dir().then_some((drive, library_root))
+        })
+        .flat_map(|(drive, library_root)| {
+            [
+                ResolvedTarget {
+                    id: format!("steam_library_shader_cache_{drive}"),
+                    name: format!("Steam Library Shader Cache ({drive}:)"),
+                    path: library_root.join("steamapps").join("shadercache"),
+                },
+                ResolvedTarget {
+                    id: format!("steam_library_downloading_cache_{drive}"),
+                    name: format!("Steam Library Download Cache ({drive}:)"),
+                    path: library_root.join("steamapps").join("downloading"),
+                },
+            ]
         })
         .collect()
 }
@@ -808,6 +440,7 @@ fn enumerate_devices(present_only: bool) -> Result<Vec<GhostDevice>, String> {
         SPDRP_DRIVER, SPDRP_FRIENDLYNAME, SetupDiDestroyDeviceInfoList, SetupDiEnumDeviceInfo,
         SetupDiGetClassDevsW,
     };
+    use windows::Win32::Foundation::{ERROR_NO_MORE_ITEMS, GetLastError};
     use windows::core::PCWSTR;
 
     let flags = if present_only {
@@ -829,7 +462,13 @@ fn enumerate_devices(present_only: bool) -> Result<Vec<GhostDevice>, String> {
         };
 
         if unsafe { SetupDiEnumDeviceInfo(device_info_set, index, &mut device_info) }.is_err() {
-            break;
+            let error = unsafe { GetLastError() };
+            if error == ERROR_NO_MORE_ITEMS {
+                break;
+            }
+
+            let _ = unsafe { SetupDiDestroyDeviceInfoList(device_info_set) };
+            return Err(format!("failed to enumerate device info: {error:?}"));
         }
         index += 1;
 
@@ -1165,6 +804,7 @@ fn remove_ghost_device(instance_id: &str) -> Result<(), String> {
         SetupDiDestroyDeviceInfoList, SetupDiEnumDeviceInfo, SetupDiGetClassDevsW,
         SetupDiSetClassInstallParamsW,
     };
+    use windows::Win32::Foundation::{ERROR_NO_MORE_ITEMS, GetLastError};
     use windows::core::PCWSTR;
 
     let device_info_set =
@@ -1181,6 +821,12 @@ fn remove_ghost_device(instance_id: &str) -> Result<(), String> {
         };
 
         if unsafe { SetupDiEnumDeviceInfo(device_info_set, index, &mut device_info) }.is_err() {
+            let error = unsafe { GetLastError() };
+            if error == ERROR_NO_MORE_ITEMS {
+                break;
+            }
+
+            result = Err(format!("failed to enumerate device info: {error:?}"));
             break;
         }
         index += 1;
@@ -1252,14 +898,21 @@ fn scan_or_clean_target(target: &ResolvedTarget, clean: bool) -> CleanupEntry {
         let delete_result = delete_target_contents(&target.path);
         let mut entry = scan_target(target);
 
-        if matches!(delete_result, Ok(DeleteOutcome::ScheduledOnReboot)) {
-            entry.status = CleanupEntryStatus::Busy;
-            entry.error = Some("Scheduled for deletion on reboot".to_string());
-        }
-
-        if let Err(error) = delete_result {
-            entry.status = cleanup_status_from_error(&error);
-            entry.error = Some(error.to_string());
+        match delete_result {
+            Ok(DeleteOutcome::Deleted) => {}
+            Ok(DeleteOutcome::SkippedBusy(error)) => {
+                entry.status = CleanupEntryStatus::Clean;
+                entry.size_bytes = 0;
+                entry.error = Some(format!("Some files are in use and were skipped. ({error})"));
+            }
+            Ok(DeleteOutcome::ScheduledOnReboot(error)) => {
+                entry.status = CleanupEntryStatus::Busy;
+                entry.error = Some(format!("Scheduled for deletion on reboot. ({error})"));
+            }
+            Err(error) => {
+                entry.status = cleanup_status_from_error(&error);
+                entry.error = Some(error.to_string());
+            }
         }
 
         return entry;
@@ -1327,10 +980,11 @@ fn target_size_bytes(path: &Path) -> io::Result<u64> {
     Ok(total)
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 enum DeleteOutcome {
     Deleted,
-    ScheduledOnReboot,
+    SkippedBusy(String),
+    ScheduledOnReboot(String),
 }
 
 fn delete_target_contents(path: &Path) -> io::Result<DeleteOutcome> {
@@ -1348,7 +1002,8 @@ fn delete_target_contents(path: &Path) -> io::Result<DeleteOutcome> {
     }
 
     let mut first_error = None;
-    let mut scheduled_on_reboot = false;
+    let mut skipped_busy_error = None;
+    let mut scheduled_on_reboot_error = None;
     for entry in fs::read_dir(path)? {
         let entry = match entry {
             Ok(entry) => entry,
@@ -1366,7 +1021,12 @@ fn delete_target_contents(path: &Path) -> io::Result<DeleteOutcome> {
 
         match result {
             Ok(DeleteOutcome::Deleted) => {}
-            Ok(DeleteOutcome::ScheduledOnReboot) => scheduled_on_reboot = true,
+            Ok(DeleteOutcome::SkippedBusy(error)) => {
+                skipped_busy_error.get_or_insert(error);
+            }
+            Ok(DeleteOutcome::ScheduledOnReboot(error)) => {
+                scheduled_on_reboot_error.get_or_insert(error);
+            }
             Err(error) => {
                 first_error.get_or_insert(error);
             }
@@ -1375,7 +1035,10 @@ fn delete_target_contents(path: &Path) -> io::Result<DeleteOutcome> {
 
     match first_error {
         Some(error) => Err(error),
-        None if scheduled_on_reboot => Ok(DeleteOutcome::ScheduledOnReboot),
+        None if let Some(error) = skipped_busy_error => Ok(DeleteOutcome::SkippedBusy(error)),
+        None if let Some(error) = scheduled_on_reboot_error => {
+            Ok(DeleteOutcome::ScheduledOnReboot(error))
+        }
         None => Ok(DeleteOutcome::Deleted),
     }
 }
@@ -1383,17 +1046,109 @@ fn delete_target_contents(path: &Path) -> io::Result<DeleteOutcome> {
 fn force_remove_path(path: &Path, recursive: bool) -> io::Result<DeleteOutcome> {
     clear_readonly(path);
 
-    let result = if recursive {
-        fs::remove_dir_all(path)
-    } else {
-        fs::remove_file(path)
-    };
+    if recursive {
+        return force_remove_dir_tree(path);
+    }
+
+    let result = fs::remove_file(path);
 
     match result {
         Ok(()) => Ok(DeleteOutcome::Deleted),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(DeleteOutcome::Deleted),
         Err(first_error) => force_remove_path_fallback(path, recursive, first_error),
     }
+}
+
+fn force_remove_dir_tree(path: &Path) -> io::Result<DeleteOutcome> {
+    match fs::remove_dir_all(path) {
+        Ok(()) => return Ok(DeleteOutcome::Deleted),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(DeleteOutcome::Deleted),
+        Err(error) if !is_busy_delete_error(&error) => {
+            force_remove_path_fallback(path, true, error)?;
+            return Ok(DeleteOutcome::Deleted);
+        }
+        Err(_) => {}
+    }
+
+    let entries = match fs::read_dir(path) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(DeleteOutcome::Deleted),
+        Err(error) if is_busy_delete_error(&error) => {
+            return Ok(DeleteOutcome::SkippedBusy(error.to_string()));
+        }
+        Err(error) => return Err(error),
+    };
+    let mut first_error = None;
+    let mut skipped_busy_error = None;
+
+    for entry in entries {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(error) if is_busy_delete_error(&error) => {
+                skipped_busy_error.get_or_insert(error.to_string());
+                continue;
+            }
+            Err(error) => {
+                first_error.get_or_insert(error);
+                continue;
+            }
+        };
+
+        let entry_path = entry.path();
+        let result = match fs::symlink_metadata(&entry_path) {
+            Ok(metadata) if metadata.is_dir() => force_remove_dir_tree(&entry_path),
+            Ok(_) => force_remove_path(&entry_path, false),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(DeleteOutcome::Deleted),
+            Err(error) if is_busy_delete_error(&error) => {
+                Ok(DeleteOutcome::SkippedBusy(error.to_string()))
+            }
+            Err(error) => Err(error),
+        };
+
+        match result {
+            Ok(DeleteOutcome::Deleted) => {}
+            Ok(DeleteOutcome::SkippedBusy(error)) => {
+                skipped_busy_error.get_or_insert(error);
+            }
+            Ok(DeleteOutcome::ScheduledOnReboot(error)) => {
+                skipped_busy_error.get_or_insert(error);
+            }
+            Err(error) => {
+                first_error.get_or_insert(error);
+            }
+        }
+    }
+
+    match fs::remove_dir(path) {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) if is_busy_delete_error(&error) || skipped_busy_error.is_some() => {
+            skipped_busy_error.get_or_insert(error.to_string());
+        }
+        Err(error) => {
+            first_error.get_or_insert(error);
+        }
+    }
+
+    match first_error {
+        Some(error) => Err(error),
+        None if let Some(error) = skipped_busy_error => Ok(DeleteOutcome::SkippedBusy(error)),
+        None => Ok(DeleteOutcome::Deleted),
+    }
+}
+
+fn is_busy_delete_error(error: &io::Error) -> bool {
+    const ERROR_ACCESS_DENIED: i32 = 5;
+    const ERROR_SHARING_VIOLATION: i32 = 32;
+    const ERROR_LOCK_VIOLATION: i32 = 33;
+
+    matches!(
+        error.kind(),
+        io::ErrorKind::PermissionDenied | io::ErrorKind::WouldBlock
+    ) || matches!(
+        error.raw_os_error(),
+        Some(ERROR_ACCESS_DENIED | ERROR_SHARING_VIOLATION | ERROR_LOCK_VIOLATION)
+    )
 }
 
 #[allow(
@@ -1417,17 +1172,6 @@ fn force_remove_path_fallback(
     recursive: bool,
     first_error: io::Error,
 ) -> io::Result<DeleteOutcome> {
-    let path_text = path.to_string_lossy().to_string();
-    let _ = run_command("attrib", &["-R", path_text.as_str(), "/S", "/D"]);
-    let _ = run_command(
-        "takeown",
-        &["/F", path_text.as_str(), "/A", "/R", "/D", "Y"],
-    );
-    let _ = run_command(
-        "icacls",
-        &[path_text.as_str(), "/grant", "*S-1-5-32-544:F", "/T", "/C"],
-    );
-
     clear_readonly(path);
     let retry_result = if recursive {
         fs::remove_dir_all(path)
@@ -1438,16 +1182,26 @@ fn force_remove_path_fallback(
     match retry_result {
         Ok(()) => Ok(DeleteOutcome::Deleted),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(DeleteOutcome::Deleted),
-        Err(retry_error) => schedule_force_remove_path_on_reboot(path, recursive)
-            .map(|()| DeleteOutcome::ScheduledOnReboot)
-            .map_err(|schedule_error| {
-                io::Error::new(
-                    retry_error.kind(),
-                    format!(
-                        "delete failed: {first_error}; retry failed: {retry_error}; reboot delete failed: {schedule_error}"
-                    ),
-                )
-            }),
+        Err(retry_error) => {
+            if trustedinstaller_remove_path(path, recursive).is_ok() {
+                return Ok(DeleteOutcome::Deleted);
+            }
+
+            if is_busy_delete_error(&retry_error) {
+                return Ok(DeleteOutcome::SkippedBusy(retry_error.to_string()));
+            }
+
+            schedule_force_remove_path_on_reboot(path, recursive)
+                .map(|()| DeleteOutcome::ScheduledOnReboot(retry_error.to_string()))
+                .map_err(|schedule_error| {
+                    io::Error::new(
+                        retry_error.kind(),
+                        format!(
+                            "delete failed: {first_error}; retry failed: {retry_error}; reboot delete failed: {schedule_error}"
+                        ),
+                    )
+                })
+        }
     }
 }
 
@@ -1458,6 +1212,25 @@ fn force_remove_path_fallback(
     first_error: io::Error,
 ) -> io::Result<DeleteOutcome> {
     Err(first_error)
+}
+
+#[cfg(target_os = "windows")]
+fn trustedinstaller_remove_path(path: &Path, recursive: bool) -> Result<(), String> {
+    let path = path.to_string_lossy().to_string();
+    let mut args = vec!["/c"];
+    if recursive {
+        args.extend(["rmdir", "/s", "/q", path.as_str()]);
+    } else {
+        args.extend(["del", "/f", "/q", path.as_str()]);
+    }
+
+    trustedinstaller::run_as_trustedinstaller("C:\\Windows\\System32\\cmd.exe", &args)
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn trustedinstaller_remove_path(_path: &Path, _recursive: bool) -> Result<(), String> {
+    Err("TrustedInstaller cleanup is supported only on Windows".to_string())
 }
 
 #[cfg(target_os = "windows")]
@@ -1596,107 +1369,6 @@ fn schedule_path_tree_delete_on_reboot(path: &Path) -> Result<(), String> {
         schedule_single_path_delete_on_reboot(&path)?;
     }
     Ok(())
-}
-
-fn prepare_target_access(target: &ResolvedTarget) -> CleanupAccessEntry {
-    let path = target.path.to_string_lossy().to_string();
-
-    match prepare_path_access(&target.path) {
-        Ok(()) => CleanupAccessEntry {
-            id: target.id.clone(),
-            name: target.name.clone(),
-            path,
-            success: true,
-            error: None,
-        },
-        Err(error) => CleanupAccessEntry {
-            id: target.id.clone(),
-            name: target.name.clone(),
-            path,
-            success: false,
-            error: Some(error),
-        },
-    }
-}
-
-#[cfg(target_os = "windows")]
-fn prepare_path_access(path: &Path) -> Result<(), String> {
-    let path = path.to_string_lossy().to_string();
-
-    let _ = run_command("attrib", &["-R", path.as_str(), "/S", "/D"]);
-    let takeown = run_command("takeown", &["/F", path.as_str(), "/A", "/R", "/D", "Y"]);
-    let inheritance = run_command("icacls", &[path.as_str(), "/inheritance:e", "/T", "/C"]);
-    let admins_grant = run_command(
-        "icacls",
-        &[path.as_str(), "/grant", "*S-1-5-32-544:F", "/T", "/C"],
-    );
-    let user_grant = current_user_sid().and_then(|sid| {
-        run_command(
-            "icacls",
-            &[path.as_str(), "/grant", &format!("*{sid}:F"), "/T", "/C"],
-        )
-    });
-
-    if admins_grant.is_ok() || user_grant.is_ok() {
-        return Ok(());
-    }
-
-    Err(format!(
-        "takeown: {}; inheritance: {}; administrators grant: {}; user grant: {}",
-        result_error_text(takeown),
-        result_error_text(inheritance),
-        result_error_text(admins_grant),
-        result_error_text(user_grant)
-    ))
-}
-
-#[cfg(not(target_os = "windows"))]
-fn prepare_path_access(_path: &Path) -> Result<(), String> {
-    Err("access preparation is supported only on Windows".to_string())
-}
-
-#[cfg(target_os = "windows")]
-fn current_user_sid() -> Result<String, String> {
-    let format_flag = ['/', 'f', 'o'].iter().collect::<String>();
-    let output = run_command("whoami", &["/user", format_flag.as_str(), "csv", "/nh"])?;
-    output
-        .split(',')
-        .nth(1)
-        .map(|value| value.trim().trim_matches('"').to_string())
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| "failed to parse current user SID".to_string())
-}
-
-#[cfg(target_os = "windows")]
-fn run_command(program: &str, args: &[&str]) -> Result<String, String> {
-    let output = Command::new(program)
-        .args(args)
-        .output()
-        .map_err(|error| format!("failed to start {program}: {error}"))?;
-
-    if output.status.success() {
-        return Ok(String::from_utf8_lossy(&output.stdout).trim().to_string());
-    }
-
-    Err(command_output_text(&output.stdout, &output.stderr))
-}
-
-#[cfg(target_os = "windows")]
-fn result_error_text(result: Result<String, String>) -> String {
-    match result {
-        Ok(_) => "ok".to_string(),
-        Err(error) => error,
-    }
-}
-
-#[cfg(target_os = "windows")]
-fn command_output_text(stdout: &[u8], stderr: &[u8]) -> String {
-    let stderr = String::from_utf8_lossy(stderr).trim().to_string();
-    if !stderr.is_empty() {
-        return stderr;
-    }
-
-    String::from_utf8_lossy(stdout).trim().to_string()
 }
 
 #[cfg(target_os = "windows")]
