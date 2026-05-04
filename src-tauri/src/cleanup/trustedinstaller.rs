@@ -5,7 +5,9 @@ use std::ptr::null_mut;
 use std::thread;
 use std::time::Duration;
 
-use windows::Win32::Foundation::{CloseHandle, ERROR_NOT_ALL_ASSIGNED, GetLastError, HANDLE};
+use windows::Win32::Foundation::{
+    CloseHandle, ERROR_NOT_ALL_ASSIGNED, GetLastError, HANDLE, WAIT_OBJECT_0, WAIT_TIMEOUT,
+};
 use windows::Win32::Security::{
     AdjustTokenPrivileges, DuplicateTokenEx, LUID_AND_ATTRIBUTES, LookupPrivilegeValueW,
     SE_PRIVILEGE_ENABLED, SecurityImpersonation, TOKEN_ADJUST_DEFAULT, TOKEN_ADJUST_PRIVILEGES,
@@ -20,7 +22,7 @@ use windows::Win32::System::Services::{
 };
 use windows::Win32::System::Threading::{
     CREATE_NO_WINDOW, CREATE_UNICODE_ENVIRONMENT, CreateProcessAsUserW, GetCurrentProcess,
-    GetExitCodeProcess, INFINITE, OpenProcess, OpenProcessToken, PROCESS_INFORMATION,
+    GetExitCodeProcess, OpenProcess, OpenProcessToken, PROCESS_INFORMATION,
     PROCESS_QUERY_LIMITED_INFORMATION, STARTF_USESHOWWINDOW, STARTUPINFOW, WaitForSingleObject,
 };
 use windows::Win32::UI::WindowsAndMessaging::SW_HIDE;
@@ -145,7 +147,11 @@ pub fn run_as_trustedinstaller(exe: &str, args: &[&str]) -> Result<(), Box<dyn E
 
         // Cleanup callers need deterministic results, so wait for the hidden
         // TrustedInstaller child to finish and surface a non-zero exit code.
-        WaitForSingleObject(process.0, INFINITE);
+        match WaitForSingleObject(process.0, 5 * 60 * 1000) {
+            WAIT_OBJECT_0 => {}
+            WAIT_TIMEOUT => return Err("TrustedInstaller process timed out".into()),
+            _ => return Err(windows::core::Error::from_thread().into()),
+        }
         let mut exit_code = 0u32;
         GetExitCodeProcess(process.0, &mut exit_code)?;
         if exit_code != 0 {

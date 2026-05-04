@@ -375,7 +375,7 @@ function CleanupPage() {
   }
 
   function refreshAllCategories() {
-    if (busyActionRef.current !== null) return
+    if (busyActionRef.current !== null || refreshBatchCountRef.current > 0) return
 
     void scanCategories(CLEANUP_CATEGORIES.map(category => category.id))
   }
@@ -394,7 +394,7 @@ function CleanupPage() {
   }
 
   function cleanCategory(categoryId: CleanupCategoryId) {
-    if (busyActionRef.current !== null) return
+    if (busyActionRef.current !== null || refreshingCategories.has(categoryId)) return
 
     setBusyActionState(categoryId)
     cleanCleanupCategory(categoryId)
@@ -412,7 +412,7 @@ function CleanupPage() {
   }
 
   function cleanAllCategories() {
-    if (busyActionRef.current !== null) return
+    if (busyActionRef.current !== null || refreshBatchCountRef.current > 0) return
 
     setBusyActionState('all')
     Promise.allSettled(CLEANUP_CATEGORIES.map(category => cleanCleanupCategory(category.id)))

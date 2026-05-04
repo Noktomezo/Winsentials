@@ -901,8 +901,7 @@ fn scan_or_clean_target(target: &ResolvedTarget, clean: bool) -> CleanupEntry {
         match delete_result {
             Ok(DeleteOutcome::Deleted) => {}
             Ok(DeleteOutcome::SkippedBusy(error)) => {
-                entry.status = CleanupEntryStatus::Clean;
-                entry.size_bytes = 0;
+                entry.status = CleanupEntryStatus::Busy;
                 entry.error = Some(format!("Some files are in use and were skipped. ({error})"));
             }
             Ok(DeleteOutcome::ScheduledOnReboot(error)) => {
@@ -1035,10 +1034,10 @@ fn delete_target_contents(path: &Path) -> io::Result<DeleteOutcome> {
 
     match first_error {
         Some(error) => Err(error),
-        None if let Some(error) = skipped_busy_error => Ok(DeleteOutcome::SkippedBusy(error)),
         None if let Some(error) = scheduled_on_reboot_error => {
             Ok(DeleteOutcome::ScheduledOnReboot(error))
         }
+        None if let Some(error) = skipped_busy_error => Ok(DeleteOutcome::SkippedBusy(error)),
         None => Ok(DeleteOutcome::Deleted),
     }
 }
@@ -1064,8 +1063,7 @@ fn force_remove_dir_tree(path: &Path) -> io::Result<DeleteOutcome> {
         Ok(()) => return Ok(DeleteOutcome::Deleted),
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(DeleteOutcome::Deleted),
         Err(error) if !is_busy_delete_error(&error) => {
-            force_remove_path_fallback(path, true, error)?;
-            return Ok(DeleteOutcome::Deleted);
+            return force_remove_path_fallback(path, true, error);
         }
         Err(_) => {}
     }
@@ -1080,6 +1078,7 @@ fn force_remove_dir_tree(path: &Path) -> io::Result<DeleteOutcome> {
     };
     let mut first_error = None;
     let mut skipped_busy_error = None;
+    let mut scheduled_on_reboot_error = None;
 
     for entry in entries {
         let entry = match entry {
@@ -1111,7 +1110,7 @@ fn force_remove_dir_tree(path: &Path) -> io::Result<DeleteOutcome> {
                 skipped_busy_error.get_or_insert(error);
             }
             Ok(DeleteOutcome::ScheduledOnReboot(error)) => {
-                skipped_busy_error.get_or_insert(error);
+                scheduled_on_reboot_error.get_or_insert(error);
             }
             Err(error) => {
                 first_error.get_or_insert(error);
@@ -1131,6 +1130,9 @@ fn force_remove_dir_tree(path: &Path) -> io::Result<DeleteOutcome> {
     }
 
     match first_error {
+        None if let Some(error) = scheduled_on_reboot_error => {
+            Ok(DeleteOutcome::ScheduledOnReboot(error))
+        }
         Some(error) => Err(error),
         None if let Some(error) = skipped_busy_error => Ok(DeleteOutcome::SkippedBusy(error)),
         None => Ok(DeleteOutcome::Deleted),
