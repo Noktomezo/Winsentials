@@ -2,9 +2,10 @@ import type { LucideIcon } from 'lucide-react'
 import type { CleanupCategoryId, CleanupCategoryReport, CleanupEntry, CleanupEntryStatus } from '@/entities/cleanup/model/types'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Bug, Check, ChevronDown, Cpu, FileText, Gamepad2, Globe, Image, Loader2, PackageOpen, RefreshCw, Sparkles, Trash2, Unplug, X } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cleanCleanupCategory, scanCleanupCategory } from '@/entities/cleanup/api'
+import { addRefreshingCategories, hasRefreshingCategories, removeRefreshingCategories, setCleanupBusy, useCleanupUiState } from '@/entities/cleanup/model/ui-state'
 import { formatBytesLocalized } from '@/shared/lib/format-size'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { toast } from '@/shared/lib/toast'
@@ -31,14 +32,14 @@ const CLEANUP_CATEGORIES: CleanupCategoryDefinition[] = [
 ]
 
 const STATUS_ICON: Record<CleanupEntryStatus, LucideIcon> = {
-  busy: X,
+  busy: Check,
   clean: Check,
   failed: X,
   pending: X,
 }
 
 const STATUS_CLASS: Record<CleanupEntryStatus, string> = {
-  busy: 'border-[color:color-mix(in_oklch,var(--badge-red)_30%,transparent)] bg-[color:color-mix(in_oklch,var(--badge-red)_12%,transparent)] text-[var(--badge-red)]',
+  busy: 'border-[color:color-mix(in_oklch,var(--warning)_30%,transparent)] bg-[color:color-mix(in_oklch,var(--warning)_12%,transparent)] text-[var(--warning)]',
   clean: 'border-[color:color-mix(in_oklch,var(--success)_30%,transparent)] bg-[color:color-mix(in_oklch,var(--success)_12%,transparent)] text-[var(--success)]',
   failed: 'border-[color:color-mix(in_oklch,var(--badge-red)_30%,transparent)] bg-[color:color-mix(in_oklch,var(--badge-red)_12%,transparent)] text-[var(--badge-red)]',
   pending: 'border-[color:color-mix(in_oklch,var(--badge-red)_30%,transparent)] bg-[color:color-mix(in_oklch,var(--badge-red)_12%,transparent)] text-[var(--badge-red)]',
@@ -49,8 +50,7 @@ type BusyAction = 'all' | CleanupCategoryId | null
 const CLEAN_ALL_EVENT = 'winsentials:cleanup-clean-all'
 const REFRESH_ALL_EVENT = 'winsentials:cleanup-refresh-all'
 const CLEANUP_SUMMARY_EVENT = 'winsentials:cleanup-summary'
-const CLEANUP_BUSY_EVENT = 'winsentials:cleanup-busy'
-const CLEANUP_REFRESHING_EVENT = 'winsentials:cleanup-refreshing'
+const EMPTY_CLEANUP_SUMMARY = { cleanableCount: 0, sizeBytes: 0, targetCount: 0 }
 
 function formatBytes(bytes: number, t: ReturnType<typeof useTranslation>['t'], locale: string): string {
   return formatBytesLocalized(bytes, { decimals: 1, locale, t })
@@ -81,7 +81,7 @@ function errorMessageFromReason(reason: unknown): string {
 function cleanupEntryMessage(error: string, t: ReturnType<typeof useTranslation>['t']): string {
   const skippedBusyPrefix = 'Some files are in use and were skipped.'
   if (error.startsWith(`${skippedBusyPrefix} (`)) {
-    return `${t('cleanup.messages.skippedBusyFiles')} ${error.slice(skippedBusyPrefix.length).trim()}`
+    return t('cleanup.messages.skippedBusyFiles')
   }
 
   const scheduledRebootPrefix = 'Scheduled for deletion on reboot.'
@@ -122,12 +122,19 @@ function cleanupSummaryFromReports(reports: ReportMap) {
       if (!report) return summary
 
       return {
+        cleanableCount: summary.cleanableCount + (hasCleanableEntries(report) && !isCategoryClean(report) ? 1 : 0),
         sizeBytes: summary.sizeBytes + categoryTotalSize(report),
         targetCount: summary.targetCount + report.entries.length,
       }
     },
-    { sizeBytes: 0, targetCount: 0 },
+    EMPTY_CLEANUP_SUMMARY,
   )
+}
+
+function dispatchCleanupSummary(summary = EMPTY_CLEANUP_SUMMARY) {
+  window.dispatchEvent(new CustomEvent(CLEANUP_SUMMARY_EVENT, {
+    detail: summary,
+  }))
 }
 
 function CleanupEntryRow({ entry, showSize = true }: { entry: CleanupEntry, showSize?: boolean }) {
@@ -152,7 +159,7 @@ function CleanupEntryRow({ entry, showSize = true }: { entry: CleanupEntry, show
         {entry.error && (
           <p className={cn(
             'text-[11px]',
-            entry.status === 'clean' ? 'text-[var(--warning)]' : 'text-[var(--badge-red)]',
+            entry.status === 'busy' || entry.status === 'clean' ? 'text-[var(--warning)]' : 'text-[var(--badge-red)]',
           )}
           >
             {cleanupEntryMessage(entry.error, t)}
@@ -297,46 +304,34 @@ function CleanupCard({
 
 function CleanupPage() {
   const { t } = useTranslation()
+  const cleanupUiState = useCleanupUiState()
   const [reports, setReports] = useState<ReportMap>({})
+  const [refreshingCategoriesToRelease, setRefreshingCategoriesToRelease] = useState<Set<CleanupCategoryId>>(() => new Set())
   const [openCards, setOpenCards] = useState<Set<CleanupCategoryId>>(() => new Set())
   const [busyAction, setBusyAction] = useState<BusyAction>(null)
-  const [refreshingCategories, setRefreshingCategories] = useState<Set<CleanupCategoryId>>(() => new Set())
   const busyActionRef = useRef<BusyAction>(null)
-  const refreshBatchCountRef = useRef(0)
 
   function setBusyActionState(action: BusyAction) {
     busyActionRef.current = action
     setBusyAction(action)
-    window.dispatchEvent(new CustomEvent(CLEANUP_BUSY_EVENT, {
-      detail: { busy: action !== null },
-    }))
+    setCleanupBusy(action !== null)
   }
 
   function updateReports(updater: (current: ReportMap) => ReportMap) {
-    setReports((current) => {
-      const next = updater(current)
-      window.dispatchEvent(new CustomEvent(CLEANUP_SUMMARY_EVENT, {
-        detail: cleanupSummaryFromReports(next),
-      }))
-      return next
-    })
+    setReports(updater)
   }
 
-  function setRefreshingHeaderState(refreshing: boolean) {
-    window.dispatchEvent(new CustomEvent(CLEANUP_REFRESHING_EVENT, {
-      detail: { refreshing },
-    }))
-  }
+  useEffect(() => {
+    dispatchCleanupSummary(cleanupSummaryFromReports(reports))
+
+    if (refreshingCategoriesToRelease.size === 0) return
+
+    removeRefreshingCategories([...refreshingCategoriesToRelease])
+    setRefreshingCategoriesToRelease(new Set())
+  }, [refreshingCategoriesToRelease, reports])
 
   function scanCategories(categoryIds: CleanupCategoryId[]) {
-    refreshBatchCountRef.current += 1
-    if (refreshBatchCountRef.current === 1) setRefreshingHeaderState(true)
-
-    setRefreshingCategories((current) => {
-      const next = new Set(current)
-      categoryIds.forEach(categoryId => next.add(categoryId))
-      return next
-    })
+    addRefreshingCategories(categoryIds)
 
     return Promise.allSettled(categoryIds.map(categoryId => scanCleanupCategory(categoryId)))
       .then((results) => {
@@ -355,19 +350,17 @@ function CleanupPage() {
         }
       })
       .finally(() => {
-        setRefreshingCategories((current) => {
+        setRefreshingCategoriesToRelease((current) => {
           const next = new Set(current)
-          categoryIds.forEach(categoryId => next.delete(categoryId))
+          categoryIds.forEach(categoryId => next.add(categoryId))
           return next
         })
-
-        refreshBatchCountRef.current = Math.max(0, refreshBatchCountRef.current - 1)
-        if (refreshBatchCountRef.current === 0) setRefreshingHeaderState(false)
       })
   }
 
   useMountEffect(() => {
     void scanCategories(CLEANUP_CATEGORIES.map(category => category.id))
+    return () => dispatchCleanupSummary()
   })
 
   function refreshCategory(categoryId: CleanupCategoryId) {
@@ -375,7 +368,7 @@ function CleanupPage() {
   }
 
   function refreshAllCategories() {
-    if (busyActionRef.current !== null || refreshBatchCountRef.current > 0) return
+    if (busyActionRef.current !== null || hasRefreshingCategories()) return
 
     void scanCategories(CLEANUP_CATEGORIES.map(category => category.id))
   }
@@ -394,7 +387,7 @@ function CleanupPage() {
   }
 
   function cleanCategory(categoryId: CleanupCategoryId) {
-    if (busyActionRef.current !== null || refreshingCategories.has(categoryId)) return
+    if (busyActionRef.current !== null || cleanupUiState.refreshingCategories.has(categoryId)) return
 
     setBusyActionState(categoryId)
     cleanCleanupCategory(categoryId)
@@ -412,7 +405,7 @@ function CleanupPage() {
   }
 
   function cleanAllCategories() {
-    if (busyActionRef.current !== null || refreshBatchCountRef.current > 0) return
+    if (busyActionRef.current !== null || hasRefreshingCategories()) return
 
     setBusyActionState('all')
     Promise.allSettled(CLEANUP_CATEGORIES.map(category => cleanCleanupCategory(category.id)))
@@ -457,7 +450,7 @@ function CleanupPage() {
           <CleanupCard
             category={category}
             isBusy={busyAction === category.id || busyAction === 'all'}
-            isRefreshing={refreshingCategories.has(category.id)}
+            isRefreshing={cleanupUiState.refreshingCategories.has(category.id)}
             key={category.id}
             onClean={cleanCategory}
             onRefresh={refreshCategory}

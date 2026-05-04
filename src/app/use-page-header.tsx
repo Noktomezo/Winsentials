@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { RefreshCw, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useCleanupUiState } from '@/entities/cleanup/model/ui-state'
 import { formatCpuModel } from '@/entities/system-info/lib/format-hardware-name'
 import { useStaticInfo } from '@/entities/system-info/model/static-system-info'
 import { formatBytesLocalized } from '@/shared/lib/format-size'
@@ -19,20 +20,21 @@ export interface PageHeader {
 }
 
 interface CleanupSummary {
+  cleanableCount: number
   sizeBytes: number
   targetCount: number
 }
 
 const CLEANUP_SUMMARY_EVENT = 'winsentials:cleanup-summary'
-const CLEANUP_BUSY_EVENT = 'winsentials:cleanup-busy'
-const CLEANUP_REFRESHING_EVENT = 'winsentials:cleanup-refreshing'
 
 export function usePageHeader(pathname: string): PageHeader {
   const { i18n, t } = useTranslation()
   const staticInfo = useStaticInfo()
-  const [cleanupSummary, setCleanupSummary] = useState<CleanupSummary>({ sizeBytes: 0, targetCount: 0 })
-  const [cleanupBusy, setCleanupBusy] = useState(false)
-  const [cleanupRefreshing, setCleanupRefreshing] = useState(false)
+  const cleanupUiState = useCleanupUiState()
+  const [cleanupSummary, setCleanupSummary] = useState<CleanupSummary>({ cleanableCount: 0, sizeBytes: 0, targetCount: 0 })
+  const cleanupBusy = cleanupUiState.busy
+  const cleanupRefreshing = cleanupUiState.refreshingCategories.size > 0
+  const cleanupCleanDisabled = cleanupBusy || cleanupRefreshing || cleanupSummary.cleanableCount === 0
 
   useMountEffect(() => {
     const handleCleanupSummary = (event: Event) => {
@@ -40,6 +42,7 @@ export function usePageHeader(pathname: string): PageHeader {
       if (!detail) return
 
       setCleanupSummary({
+        cleanableCount: detail.cleanableCount,
         sizeBytes: detail.sizeBytes,
         targetCount: detail.targetCount,
       })
@@ -47,26 +50,6 @@ export function usePageHeader(pathname: string): PageHeader {
 
     window.addEventListener(CLEANUP_SUMMARY_EVENT, handleCleanupSummary)
     return () => window.removeEventListener(CLEANUP_SUMMARY_EVENT, handleCleanupSummary)
-  })
-
-  useMountEffect(() => {
-    const handleCleanupBusy = (event: Event) => {
-      const detail = (event as CustomEvent<{ busy: boolean }>).detail
-      setCleanupBusy(!!detail?.busy)
-    }
-
-    window.addEventListener(CLEANUP_BUSY_EVENT, handleCleanupBusy)
-    return () => window.removeEventListener(CLEANUP_BUSY_EVENT, handleCleanupBusy)
-  })
-
-  useMountEffect(() => {
-    const handleCleanupRefreshing = (event: Event) => {
-      const detail = (event as CustomEvent<{ refreshing: boolean }>).detail
-      setCleanupRefreshing(!!detail?.refreshing)
-    }
-
-    window.addEventListener(CLEANUP_REFRESHING_EVENT, handleCleanupRefreshing)
-    return () => window.removeEventListener(CLEANUP_REFRESHING_EVENT, handleCleanupRefreshing)
   })
 
   // ── Static pages ────────────────────────────────────────────────────────────
@@ -135,7 +118,7 @@ export function usePageHeader(pathname: string): PageHeader {
         actions: (
           <div className="flex items-center gap-2">
             <Button
-              disabled={cleanupBusy}
+              disabled={cleanupCleanDisabled}
               onClick={() => window.dispatchEvent(new Event('winsentials:cleanup-clean-all'))}
               size="sm"
               type="button"
@@ -170,7 +153,7 @@ export function usePageHeader(pathname: string): PageHeader {
         description: t('backup.description'),
       },
     }),
-    [cleanupBusy, cleanupRefreshing, cleanupSummary.sizeBytes, cleanupSummary.targetCount, i18n.language, t],
+    [cleanupBusy, cleanupCleanDisabled, cleanupRefreshing, cleanupSummary.sizeBytes, cleanupSummary.targetCount, i18n.language, t],
   )
   if (staticMap[pathname]) return staticMap[pathname]
 
