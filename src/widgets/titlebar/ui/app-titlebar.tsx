@@ -160,29 +160,27 @@ export function AppTitlebar() {
     await syncMaximizedState()
   }
 
-  const handleTitlebarDoubleClick = (event: MouseEvent<HTMLElement>) => {
-    if (isTitlebarControlTarget(event.target)) {
-      return
-    }
-
-    void handleToggleMaximize()
-  }
-
   const handleTitlebarMouseDown = (event: MouseEvent<HTMLElement>) => {
-    if (event.button !== 0 || event.detail > 1 || isTitlebarControlTarget(event.target)) {
+    if (event.button !== 0 || isTitlebarControlTarget(event.target)) {
       return
     }
 
-    void appWindow.startDragging().catch((error) => {
-      console.error('Failed to start window drag', error)
-    })
+    if (event.detail === 2) {
+      void handleToggleMaximize()
+      return
+    }
+
+    if (event.detail === 1) {
+      void appWindow.startDragging().catch((error) => {
+        console.error('Failed to start window drag', error)
+      })
+    }
   }
 
   return (
     <header
       className="relative flex h-10 shrink-0 items-center bg-transparent px-2 text-sidebar-foreground"
       data-slot="app-titlebar"
-      onDoubleClick={handleTitlebarDoubleClick}
       onDragStart={event => event.preventDefault()}
       onMouseDown={handleTitlebarMouseDown}
     >

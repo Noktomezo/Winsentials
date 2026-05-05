@@ -95,21 +95,18 @@ function SidebarProvider({
   const toggleSidebar = React.useCallback(() => {
     return isMobile ? setOpenMobile(open => !open) : setOpen(open => !open)
   }, [isMobile, setOpen, setOpenMobile])
-  const toggleSidebarRef = React.useRef(toggleSidebar)
-  toggleSidebarRef.current = toggleSidebar
+  const handleKeyDown = React.useEffectEvent((event: KeyboardEvent) => {
+    if (
+      event.key === SIDEBAR_KEYBOARD_SHORTCUT
+      && (event.metaKey || event.ctrlKey)
+    ) {
+      event.preventDefault()
+      toggleSidebar()
+    }
+  })
 
   // Adds a keyboard shortcut to toggle the sidebar.
   useMountEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.key === SIDEBAR_KEYBOARD_SHORTCUT
-        && (event.metaKey || event.ctrlKey)
-      ) {
-        event.preventDefault()
-        toggleSidebarRef.current()
-      }
-    }
-
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   })

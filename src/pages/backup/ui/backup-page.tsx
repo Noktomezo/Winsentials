@@ -250,10 +250,13 @@ function BackupPage() {
                       <section key={backup.filename} className="flex h-fit flex-col overflow-hidden rounded-lg border border-border/70 bg-card">
                         <div className="flex items-center gap-3 p-4">
                           <button
+                            aria-controls={panelId}
+                            aria-expanded={expanded}
                             className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
                             onClick={() => toggleExpand(backup.filename)}
                             type="button"
                           >
+                            {' '}
                             <span className="ui-soft-surface flex size-9 shrink-0 items-center justify-center rounded-md">
                               <ArchiveRestore className="size-4" />
                             </span>

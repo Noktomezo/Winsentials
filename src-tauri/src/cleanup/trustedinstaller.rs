@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::ffi::c_void;
 use std::mem::size_of;
+use std::path::Path;
 use std::ptr::null_mut;
 use std::thread;
 use std::time::Duration;
@@ -23,7 +24,8 @@ use windows::Win32::System::Services::{
 use windows::Win32::System::Threading::{
     CREATE_NO_WINDOW, CREATE_UNICODE_ENVIRONMENT, CreateProcessAsUserW, GetCurrentProcess,
     GetExitCodeProcess, OpenProcess, OpenProcessToken, PROCESS_INFORMATION,
-    PROCESS_QUERY_LIMITED_INFORMATION, STARTF_USESHOWWINDOW, STARTUPINFOW, WaitForSingleObject,
+    PROCESS_QUERY_LIMITED_INFORMATION, STARTF_USESHOWWINDOW, STARTUPINFOW, TerminateProcess,
+    WaitForSingleObject,
 };
 use windows::Win32::UI::WindowsAndMessaging::SW_HIDE;
 use windows::core::{PCWSTR, PWSTR, w};
@@ -59,6 +61,10 @@ impl Drop for OwnedService {
 /// run elevated and hold the Windows privileges required by
 /// `CreateProcessAsUserW`.
 pub fn run_as_trustedinstaller(exe: &str, args: &[&str]) -> Result<(), Box<dyn Error>> {
+    if !Path::new(exe).is_absolute() {
+        return Err("TrustedInstaller launches must use an absolute executable path".into());
+    }
+
     unsafe {
         // Needed to open the TrustedInstaller process/token from an admin app.
         enable_privilege(w!("SeDebugPrivilege"))?;
@@ -149,7 +155,11 @@ pub fn run_as_trustedinstaller(exe: &str, args: &[&str]) -> Result<(), Box<dyn E
         // TrustedInstaller child to finish and surface a non-zero exit code.
         match WaitForSingleObject(process.0, 5 * 60 * 1000) {
             WAIT_OBJECT_0 => {}
-            WAIT_TIMEOUT => return Err("TrustedInstaller process timed out".into()),
+            WAIT_TIMEOUT => {
+                let _ = TerminateProcess(process.0, 1);
+                let _ = WaitForSingleObject(process.0, 5000);
+                return Err("TrustedInstaller process timed out".into());
+            }
             _ => return Err(windows::core::Error::from_thread().into()),
         }
         let mut exit_code = 0u32;

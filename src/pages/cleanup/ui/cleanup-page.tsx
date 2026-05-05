@@ -65,7 +65,7 @@ function isCategoryClean(report: CleanupCategoryReport | null): boolean {
 }
 
 function hasCleanableEntries(report: CleanupCategoryReport | null): boolean {
-  return !!report && report.entries.some(entry => entry.status === 'pending' || entry.status === 'failed' || entry.status === 'busy')
+  return !!report && report.entries.some(entry => entry.status === 'pending' || entry.status === 'busy' || (entry.status === 'failed' && !entry.id.endsWith('-scan-error')))
 }
 
 function reportMapFromReports(reports: CleanupCategoryReport[]): ReportMap {
@@ -75,7 +75,7 @@ function reportMapFromReports(reports: CleanupCategoryReport[]): ReportMap {
 function errorMessageFromReason(reason: unknown): string {
   if (reason instanceof Error && reason.message) return reason.message
   if (typeof reason === 'string' && reason) return reason
-  return 'Failed to scan cleanup category.'
+  return 'Failed to scan cleanup category'
 }
 
 function cleanupEntryMessage(error: string, t: ReturnType<typeof useTranslation>['t']): string {
@@ -90,12 +90,13 @@ function cleanupEntryMessage(error: string, t: ReturnType<typeof useTranslation>
   }
 
   const knownMessages: Record<string, string> = {
-    'Failed to scan cleanup category.': 'cleanup.messages.scanCategoryFailed',
+    'Failed to scan cleanup category': 'cleanup.messages.scanCategoryFailed',
     'Scheduled for deletion on reboot': 'cleanup.messages.scheduledOnReboot',
-    'Some files are in use and were skipped.': 'cleanup.messages.skippedBusyFiles',
+    'Some files are in use and were skipped': 'cleanup.messages.skippedBusyFiles',
   }
 
-  const key = knownMessages[error]
+  const normalizedError = error.replace(/\.\s*$/, '').trim()
+  const key = knownMessages[normalizedError]
   return key ? t(key) : error
 }
 

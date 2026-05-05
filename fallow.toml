@@ -24,6 +24,7 @@ ignoreDependencies = [
 ignoreExportsUsedInFile = true
 production = false
 ignoreExports = [
+  # Planned usage for upcoming UI features (Shadcn UI standard exports)
   { file = "src/shared/ui/breadcrumb.tsx", exports = [ "BreadcrumbEllipsis" ] },
   { file = "src/shared/ui/card.tsx", exports = [ "CardFooter" ] },
   { file = "src/shared/ui/dialog.tsx", exports = [ "DialogTrigger" ] },
@@ -51,21 +52,18 @@ unused-dev-dependencies = "warn"
 unresolved-imports = "warn"
 
 [duplicates]
-enabled = false
+enabled = true
 mode = "mild"
-minTokens = 50
-minLines = 5
-threshold = 100
-ignore = [ "src/**" ]
+minTokens = 60
+minLines = 8
+threshold = 150
+ignore = []
 
 [health]
-maxCyclomatic = 999
-maxCognitive = 999
-maxCrap = 999
-ignore = [
-  "**/*.generated.*",
-  "src/**"
-]
+maxCyclomatic = 15
+maxCognitive = 20
+maxCrap = 30
+ignore = [ "**/*.generated.*" ]
 
 [audit]
 gate = "new-only"

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase")]
 pub enum CleanupEntryStatus {
     Clean,
     Pending,
@@ -10,6 +10,7 @@ pub enum CleanupEntryStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CleanupEntry {
     pub id: String,
     pub name: String,
@@ -21,12 +22,14 @@ pub struct CleanupEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CleanupCategoryReport {
     pub id: String,
     pub entries: Vec<CleanupEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CleanupScheduleEntry {
     pub path: String,
     pub success: bool,
@@ -34,6 +37,7 @@ pub struct CleanupScheduleEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CleanupScheduleReport {
     pub entries: Vec<CleanupScheduleEntry>,
 }
