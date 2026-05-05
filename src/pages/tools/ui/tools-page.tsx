@@ -68,7 +68,7 @@ function ToolsPage() {
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-[repeat(auto-fit,minmax(20rem,1fr))]">
         <ToolCard
           description={t('startup.description')}
           icon={Rocket}
