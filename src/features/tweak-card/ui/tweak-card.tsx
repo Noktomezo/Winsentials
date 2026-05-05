@@ -6,6 +6,8 @@ import {
   AlertTriangle,
   ArrowLeftRight,
   BellOff,
+  BotOff,
+  Check,
   CircleAlert,
   Clock3,
   CloudOff,
@@ -17,12 +19,14 @@ import {
   FileType,
   Gamepad2,
   Gauge,
+  Globe,
   HardDrive,
   History,
   House,
   Images,
   Info,
   Keyboard,
+  KeyboardOff,
   ListX,
   LogOut,
   MapPinned,
@@ -31,7 +35,9 @@ import {
   Mouse,
   MousePointer2,
   Network,
+  PackageX,
   PanelsTopLeft,
+  PlugZap,
   Power,
   RotateCcw,
   Settings,
@@ -76,6 +82,7 @@ const CARD_HORIZONTAL_PADDING = 32
 const RESET_BUTTON_WIDTH = 36
 const CONTROL_GAP = 8
 const TOGGLE_CONTROL_WIDTH = 94
+const ACTION_CONTROL_WIDTH = 104
 const DROPDOWN_CONTROL_WIDTH = 168
 const TOGGLE_CUSTOM_CONTROL_WIDTH = 112
 const MIN_CARD_WIDTH = 360
@@ -118,6 +125,7 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   disable_windows_telemetry: EyeOff,
   svchost_split_threshold: MemoryStick,
   csrss_high_priority: Zap,
+  disable_ctf_ctfmon: KeyboardOff,
   disable_mouse_acceleration: Mouse,
   raw_mouse_throttle: MousePointer2,
   optimize_mmcss: Zap,
@@ -125,7 +133,19 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   enable_bbr2_congestion_control: Zap,
   disable_qos_bandwidth_limit: Gauge,
   enable_network_offloading_rss: Cpu,
+  microsoft_edge_debloat: Globe,
+  brave_browser_debloat: PackageX,
+  disable_microsoft_copilot: BotOff,
+  remove_microsoft_edge: Globe,
+  remove_microsoft_onedrive: CloudOff,
+  block_razer_auto_install: PlugZap,
 }
+
+const ACTION_ONLY_TWEAK_IDS = new Set([
+  'disable_microsoft_copilot',
+  'remove_microsoft_edge',
+  'remove_microsoft_onedrive',
+])
 
 const COPYABLE_RISK_COMMANDS: Record<string, string> = {
   disable_user_account_control: 'runas /trustlevel:0x20000 "program.exe"',
@@ -150,6 +170,10 @@ function measureTweakTitleWidth(title: string) {
 }
 
 function tweakControlWidth(tweak: TweakMeta) {
+  if (ACTION_ONLY_TWEAK_IDS.has(tweak.id)) {
+    return ACTION_CONTROL_WIDTH
+  }
+
   if (tweak.control.kind === 'dropdown') {
     return DROPDOWN_CONTROL_WIDTH
   }
@@ -228,6 +252,19 @@ function dropdownOptionIcon(
         return BellOff
       case 'full':
         return CloudOff
+      default:
+        return null
+    }
+  }
+
+  if (tweakId === 'disable_ctf_ctfmon') {
+    switch (optionValue) {
+      case 'default':
+        return Settings
+      case 'soft':
+        return Keyboard
+      case 'aggressive':
+        return KeyboardOff
       default:
         return null
     }
@@ -489,7 +526,17 @@ export function TweakCard({
               <RotateCcw className="size-4" />
             </Button>
 
-            {tweak.control.kind === 'toggle' && (
+            {ACTION_ONLY_TWEAK_IDS.has(tweak.id) && (
+              <Button
+                disabled={isPending || isApplyBlocked || isEnabled}
+                onClick={() => onApplyValue(tweak.recommendedValue)}
+                type="button"
+              >
+                <Check className="size-4" />
+                {t('backup.apply')}
+              </Button>
+            )}
+            {!ACTION_ONLY_TWEAK_IDS.has(tweak.id) && tweak.control.kind === 'toggle' && (
               <LabeledSwitch
                 aria-label={t(tweak.name)}
                 checked={isEnabled}

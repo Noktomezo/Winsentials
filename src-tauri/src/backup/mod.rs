@@ -117,6 +117,45 @@ fn write_backup_snapshot(
     })
 }
 
+fn enrich_backup_snapshots_with_missing_tweaks() -> Result<(), AppError> {
+    let dir = backups_dir()?;
+
+    if !dir.exists() {
+        return Ok(());
+    }
+
+    let current_tweaks = collect_tweak_snapshot();
+
+    for entry in fs::read_dir(&dir)?.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let Ok(mut snapshot) = serde_json::from_str::<BackupSnapshot>(&content) else {
+            continue;
+        };
+
+        let mut changed = false;
+        for (id, value) in &current_tweaks {
+            if !snapshot.tweaks.contains_key(id) {
+                snapshot.tweaks.insert(id.clone(), value.clone());
+                changed = true;
+            }
+        }
+
+        if changed {
+            let json = serde_json::to_string_pretty(&snapshot)?;
+            fs::write(&path, json)?;
+        }
+    }
+
+    Ok(())
+}
+
 /// Howard Hinnant's civil_from_days algorithm.
 fn days_to_date(days: u64) -> (u64, u64, u64) {
     let z = days as i64 + 719_468_i64;
@@ -221,4 +260,6 @@ pub fn ensure_initial_backup() {
     if !dir.join("initial.json").exists() {
         let _ = write_backup_snapshot("initial.json", "Initial".to_string(), None);
     }
+
+    let _ = enrich_backup_snapshots_with_missing_tweaks();
 }

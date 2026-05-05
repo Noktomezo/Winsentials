@@ -74,6 +74,10 @@ export function usePageHeader(pathname: string): PageHeader {
         title: t('appearance.title'),
         description: t('appearance.description'),
       },
+      '/debloat': {
+        title: t('debloat.title'),
+        description: t('debloat.description'),
+      },
       '/security': {
         title: t('security.title'),
         description: t('security.description'),

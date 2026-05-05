@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
-import { BrushCleaning, DatabaseBackup, EyeOff, FolderCog, Gauge, House, Keyboard, MemoryStick, Network, Palette, Settings2, Shield, Wrench } from 'lucide-react'
+import { BrushCleaning, Bubbles, DatabaseBackup, EyeOff, FolderCog, Gauge, House, Keyboard, MemoryStick, Network, Palette, Settings2, Shield, Wrench } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 import {
@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
 } from '@/shared/ui'
 
-type SidebarRoute = '/home' | '/appearance' | '/backup' | '/behaviour' | '/cleanup' | '/security' | '/privacy' | '/network' | '/performance' | '/memory' | '/input' | '/startup' | '/tools' | '/settings'
+type SidebarRoute = '/home' | '/appearance' | '/backup' | '/behaviour' | '/cleanup' | '/debloat' | '/security' | '/privacy' | '/network' | '/performance' | '/memory' | '/input' | '/startup' | '/tools' | '/settings'
 
 export function AppSidebar() {
   const { t } = useTranslation()
@@ -188,6 +188,20 @@ export function AppSidebar() {
             >
               <BrushCleaning />
               <span data-sidebar-label>{t('navigation.cleanup')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="cursor-pointer"
+              isActive={pathname === '/debloat'}
+              onClick={event => handleMenuClick(event, '/debloat')}
+              onFocus={() => handlePointerIntent('/debloat')}
+              onMouseEnter={() => handlePointerIntent('/debloat')}
+              tooltip={t('navigation.debloat')}
+              type="button"
+            >
+              <Bubbles />
+              <span data-sidebar-label>{t('navigation.debloat')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

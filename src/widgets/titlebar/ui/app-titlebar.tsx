@@ -67,6 +67,7 @@ function useBreadcrumbs(): Crumb[] {
     '/appearance': t('appearance.title'),
     '/behaviour': t('behaviour.title'),
     '/cleanup': t('cleanup.title'),
+    '/debloat': t('debloat.title'),
     '/security': t('security.title'),
     '/privacy': t('privacy.title'),
     '/network': t('network.title'),
@@ -86,10 +87,7 @@ function useBreadcrumbs(): Crumb[] {
   }
 
   if (pathname === '/backup') {
-    return [
-      { label: t('tools.title'), href: '/tools' },
-      { label: t('backup.title') },
-    ]
+    return [{ label: t('backup.title') }]
   }
 
   return [{ label: t('app.title') }]

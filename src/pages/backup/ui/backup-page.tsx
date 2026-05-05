@@ -1,7 +1,9 @@
 import type { BackupEntry } from '@/entities/backup/model/types'
 import {
   ArchiveRestore,
+  Check,
   ChevronDown,
+  DatabaseBackup,
   Loader2,
   Pencil,
   Trash2,
@@ -258,7 +260,7 @@ function BackupPage() {
                           >
                             {' '}
                             <span className="ui-soft-surface flex size-9 shrink-0 items-center justify-center rounded-md">
-                              <ArchiveRestore className="size-4" />
+                              <DatabaseBackup className="size-4" />
                             </span>
                             <div className="min-w-0 flex-1">
                               <h2 className="truncate text-sm font-medium text-foreground">
@@ -287,7 +289,7 @@ function BackupPage() {
                             >
                               {applyTarget?.filename === backup.filename && isApplying
                                 ? <Loader2 className="size-4 animate-spin" />
-                                : <ArchiveRestore className="size-4" />}
+                                : <Check className="size-4" />}
                               {t('backup.apply')}
                             </Button>
                             <Tooltip>
@@ -497,6 +499,9 @@ function BackupPage() {
               {t('dialog.close')}
             </Button>
             <Button onClick={() => void handleApply()} disabled={isApplying}>
+              {isApplying
+                ? <Loader2 className="size-4 animate-spin" />
+                : <Check className="size-4" />}
               {t('backup.apply')}
             </Button>
           </DialogFooter>

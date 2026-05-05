@@ -125,6 +125,14 @@ const behaviourRoute = createRoute({
   ),
 })
 
+const debloatRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'debloat',
+  component: lazyRouteComponent(
+    () => import('@/pages/debloat/ui/debloat-page'),
+  ),
+})
+
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'settings',
@@ -273,6 +281,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   homeRoute,
   behaviourRoute,
+  debloatRoute,
   appearanceRoute,
   securityRoute,
   privacyRoute,
