@@ -279,7 +279,11 @@ fn make_command_line(exe: &str, args: &[&str]) -> String {
 }
 
 fn quote_windows_arg(arg: &str) -> String {
-    if !arg.is_empty() && !arg.chars().any(|ch| ch.is_whitespace() || ch == '"') {
+    if !arg.is_empty()
+        && !arg
+            .chars()
+            .any(|ch| ch.is_whitespace() || ch == '"' || "&|()<>^%!".contains(ch))
+    {
         return arg.to_string();
     }
 

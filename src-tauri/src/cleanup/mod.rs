@@ -1072,10 +1072,7 @@ fn force_remove_dir_tree(path: &Path) -> io::Result<DeleteOutcome> {
     let entries = match fs::read_dir(path) {
         Ok(entries) => entries,
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(DeleteOutcome::Deleted),
-        Err(error) if is_busy_delete_error(&error) => {
-            return Ok(DeleteOutcome::SkippedBusy(error.to_string()));
-        }
-        Err(error) => return Err(error),
+        Err(error) => return force_remove_path_fallback(path, true, error),
     };
     let mut first_error = None;
     let mut skipped_busy_error = None;
