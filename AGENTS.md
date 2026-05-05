@@ -8,21 +8,21 @@ App exposes clean UI over low-level OS ops (registry edits, COM commands, servic
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Desktop shell | Tauri v2 |
-| Frontend runtime | Bun |
-| Build tool | Vite |
-| UI framework | React 19 |
-| Language | TypeScript (strict) |
-| Styling | TailwindCSS v4 |
-| Component library | shadcn/ui |
-| Routing | TanStack Router |
-| State management | Zustand |
-| i18n | i18next + react-i18next |
-| Backend language | Rust (Tauri commands) |
-| Window effects | `window-vibrancy` crate |
-| Notifications | Sonner (toast) |
+| Layer             | Technology              |
+| ----------------- | ----------------------- |
+| Desktop shell     | Tauri v2                |
+| Frontend runtime  | Bun                     |
+| Build tool        | Vite                    |
+| UI framework      | React 19                |
+| Language          | TypeScript (strict)     |
+| Styling           | TailwindCSS v4          |
+| Component library | shadcn/ui               |
+| Routing           | TanStack Router         |
+| State management  | Zustand                 |
+| i18n              | i18next + react-i18next |
+| Backend language  | Rust (Tauri commands)   |
+| Window effects    | `window-vibrancy` crate |
+| Notifications     | Sonner (toast)          |
 
 ## Folder Structure
 

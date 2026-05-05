@@ -4,7 +4,7 @@ import * as React from 'react'
 
 import { cn } from '@/shared/lib/utils'
 
-const filledSelectTriggerClassName = 'w-full justify-between !border-border/60 !bg-accent/55 !text-accent-foreground shadow-xs [&_svg:not([class*=\'text-\'])]:!text-accent-foreground/70'
+const filledSelectTriggerClassName = 'w-full justify-between border-border/60! bg-accent/55! text-accent-foreground! shadow-xs [&_svg:not([class*=\'text-\'])]:text-accent-foreground/70!'
 
 function Select({
   ...props

@@ -1,10 +1,10 @@
 import type { LucideIcon } from 'lucide-react'
 import { useNavigate, useRouter } from '@tanstack/react-router'
-import { ArchiveRestore, ChevronRight, Rocket } from 'lucide-react'
+import { ChevronRight, Rocket } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 
-type ToolRoute = '/backup' | '/startup'
+type ToolRoute = '/startup'
 
 interface ToolCardProps {
   description: string
@@ -74,12 +74,6 @@ function ToolsPage() {
           icon={Rocket}
           title={t('startup.title')}
           to="/startup"
-        />
-        <ToolCard
-          description={t('backup.description')}
-          icon={ArchiveRestore}
-          title={t('backup.title')}
-          to="/backup"
         />
       </div>
     </section>

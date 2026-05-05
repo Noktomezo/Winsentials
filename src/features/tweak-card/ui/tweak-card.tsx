@@ -240,52 +240,26 @@ function metadataChipClassName(
   tone: 'default' | 'details' | 'action' | 'warning' | 'danger' | 'system' = 'default',
 ) {
   if (tone === 'details') {
-    return 'border-border/60 bg-accent/55 text-muted-foreground'
+    return '!border-border/60 !bg-accent/55 text-muted-foreground'
   }
 
   if (tone === 'action') {
-    return 'border-[color:color-mix(in_oklch,var(--badge-blue)_28%,transparent)] bg-[color:color-mix(in_oklch,var(--badge-blue)_12%,transparent)] text-[var(--badge-blue)]'
+    return '!border-[color:color-mix(in_oklch,var(--badge-blue)_28%,transparent)] !bg-[color:color-mix(in_oklch,var(--badge-blue)_12%,transparent)] text-[var(--badge-blue)]'
   }
 
   if (tone === 'warning') {
-    return 'border-[color:color-mix(in_oklch,var(--badge-yellow)_28%,transparent)] bg-[color:color-mix(in_oklch,var(--badge-yellow)_12%,transparent)] text-[var(--badge-yellow)]'
+    return '!border-[color:color-mix(in_oklch,var(--badge-yellow)_28%,transparent)] !bg-[color:color-mix(in_oklch,var(--badge-yellow)_12%,transparent)] text-[var(--badge-yellow)]'
   }
 
   if (tone === 'danger') {
-    return 'border-[color:color-mix(in_oklch,var(--badge-red)_28%,transparent)] bg-[color:color-mix(in_oklch,var(--badge-red)_12%,transparent)] text-[var(--badge-red)]'
+    return '!border-[color:color-mix(in_oklch,var(--badge-red)_28%,transparent)] !bg-[color:color-mix(in_oklch,var(--badge-red)_12%,transparent)] text-[var(--badge-red)]'
   }
 
   if (tone === 'system') {
-    return 'border-[color:color-mix(in_oklch,var(--badge-purple)_28%,transparent)] bg-[color:color-mix(in_oklch,var(--badge-purple)_12%,transparent)] text-[var(--badge-purple)]'
+    return '!border-[color:color-mix(in_oklch,var(--badge-purple)_28%,transparent)] !bg-[color:color-mix(in_oklch,var(--badge-purple)_12%,transparent)] text-[var(--badge-purple)]'
   }
 
-  return 'border-border/70 bg-secondary text-muted-foreground'
-}
-
-function metadataTooltipBorderStyle(
-  tone: 'default' | 'details' | 'action' | 'warning' | 'danger' | 'system' = 'default',
-): CSSProperties {
-  if (tone === 'details') {
-    return { '--tooltip-border-color': 'color-mix(in oklch, var(--border) 60%, transparent)' } as CSSProperties
-  }
-
-  if (tone === 'action') {
-    return { '--tooltip-border-color': 'color-mix(in oklch, var(--badge-blue) 28%, transparent)' } as CSSProperties
-  }
-
-  if (tone === 'warning') {
-    return { '--tooltip-border-color': 'color-mix(in oklch, var(--badge-yellow) 28%, transparent)' } as CSSProperties
-  }
-
-  if (tone === 'danger') {
-    return { '--tooltip-border-color': 'color-mix(in oklch, var(--badge-red) 28%, transparent)' } as CSSProperties
-  }
-
-  if (tone === 'system') {
-    return { '--tooltip-border-color': 'color-mix(in oklch, var(--badge-purple) 28%, transparent)' } as CSSProperties
-  }
-
-  return { '--tooltip-border-color': 'color-mix(in oklch, var(--border) 70%, transparent)' } as CSSProperties
+  return '!border-border/70 !bg-secondary text-muted-foreground'
 }
 
 function requiresActionBadge(
@@ -505,23 +479,23 @@ export function TweakCard({
           <aside className="ml-auto flex shrink-0 items-center gap-2">
             <Button
               aria-label={t('tweaks.actions.resetToDefault')}
-              className="size-9 rounded-md !border-border/60 !bg-accent/55 !text-accent-foreground shadow-xs transition-colors hover:!bg-destructive/10 hover:!text-destructive"
+              className="ui-soft-surface transition-colors hover:border-destructive/30! hover:bg-destructive/10! hover:text-destructive!"
               disabled={isPending || isAtDefault}
               onClick={() => onApplyValue(tweak.defaultValue)}
               size="icon"
               type="button"
-              variant="outline"
+              variant="ghost"
             >
-              <RotateCcw className="size-3.5" />
+              <RotateCcw className="size-4" />
             </Button>
 
             {tweak.control.kind === 'toggle' && (
               <LabeledSwitch
                 aria-label={t(tweak.name)}
                 checked={isEnabled}
-                containerClassName="!border-border/60 !bg-accent/55 !text-accent-foreground shadow-xs"
+                containerClassName="ui-soft-surface transition-colors hover:bg-accent/50!"
                 disabled={isPending || isApplyBlocked}
-                labelClassName="!text-accent-foreground"
+                labelClassName="text-accent-foreground!"
                 onCheckedChange={checked =>
                   onApplyValue(checked ? 'enabled' : 'disabled')}
               />
@@ -538,7 +512,7 @@ export function TweakCard({
                 }}
                 value={tweak.currentValue}
               >
-                <SelectTrigger className="h-9 min-w-[10.5rem] justify-between rounded-md !border-border/60 !bg-accent/55 px-3 text-xs font-medium !text-accent-foreground shadow-xs [&_svg]:size-3.5 [&_svg:not([class*='text-'])]:!text-accent-foreground/70">
+                <SelectTrigger className="ui-soft-surface bg-secondary! h-9 min-w-[10.5rem] justify-between rounded-md px-3 text-xs font-medium transition-colors hover:bg-accent/50! [&_svg]:size-3.5 [&_svg:not([class*='text-'])]:text-accent-foreground/70!">
                   {selectedDropdownOption
                     ? (
                         <span className="flex min-w-0 items-center gap-2">
@@ -556,7 +530,7 @@ export function TweakCard({
                 </SelectTrigger>
                 <SelectContent
                   align="end"
-                  className="min-w-[var(--radix-select-trigger-width)] rounded-[10px] border text-xs font-medium"
+                  className="ui-soft-surface min-w-[var(--radix-select-trigger-width)] rounded-[10px] text-xs font-medium"
                 >
                   {dropdownOptions.map((option) => {
                     const OptionIcon = dropdownOptionIcon(tweak.id, option.value)
@@ -601,9 +575,8 @@ export function TweakCard({
                   </MetadataChipButton>
                 </TooltipTrigger>
                 <TooltipContent
-                  className="max-w-80 text-pretty"
+                  className={cn('max-w-80 text-pretty', metadataChipClassName('details'))}
                   sideOffset={8}
-                  style={metadataTooltipBorderStyle('details')}
                 >
                   {t(tweak.detailDescription)}
                 </TooltipContent>
@@ -621,9 +594,8 @@ export function TweakCard({
                     </MetadataChipButton>
                   </TooltipTrigger>
                   <TooltipContent
-                    className="max-w-80 text-pretty whitespace-pre-line"
+                    className={cn('max-w-80 text-pretty whitespace-pre-line', metadataChipClassName('action'))}
                     sideOffset={8}
-                    style={metadataTooltipBorderStyle('action')}
                   >
                     {requiresBadge.tooltip}
                   </TooltipContent>
@@ -643,9 +615,8 @@ export function TweakCard({
                       </MetadataChipButton>
                     </TooltipTrigger>
                     <TooltipContent
-                      className="max-w-80 text-pretty whitespace-pre-line"
+                      className={cn('max-w-80 text-pretty whitespace-pre-line', metadataChipClassName('warning'))}
                       sideOffset={8}
-                      style={metadataTooltipBorderStyle('warning')}
                     >
                       <Trans
                         components={{
@@ -678,9 +649,8 @@ export function TweakCard({
                     </MetadataChipButton>
                   </TooltipTrigger>
                   <TooltipContent
-                    className="max-w-80 text-pretty whitespace-pre-line"
+                    className={cn('max-w-80 text-pretty whitespace-pre-line', metadataChipClassName('danger'))}
                     sideOffset={8}
-                    style={metadataTooltipBorderStyle('danger')}
                   >
                     {conflicts.length === 1
                       ? (
@@ -713,8 +683,8 @@ export function TweakCard({
                     </MetadataChipButton>
                   </TooltipTrigger>
                   <TooltipContent
+                    className={cn(metadataChipClassName('system'))}
                     sideOffset={8}
-                    style={metadataTooltipBorderStyle('system')}
                   >
                     {t('tweaks.requires.windowsBuild', { build: minBuild })}
                   </TooltipContent>
@@ -735,8 +705,8 @@ export function TweakCard({
                     </MetadataChipButton>
                   </TooltipTrigger>
                   <TooltipContent
+                    className={cn(metadataChipClassName('system'))}
                     sideOffset={8}
-                    style={metadataTooltipBorderStyle('system')}
                   >
                     {t('tweaks.requires.memoryGb', { gb: minInstalledMemoryGb })}
                   </TooltipContent>

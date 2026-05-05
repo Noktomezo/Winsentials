@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
-import { BrushCleaning, EyeOff, FolderCog, Gauge, House, Keyboard, MemoryStick, Network, Palette, Settings2, Shield, Wrench } from 'lucide-react'
+import { BrushCleaning, DatabaseBackup, EyeOff, FolderCog, Gauge, House, Keyboard, MemoryStick, Network, Palette, Settings2, Shield, Wrench } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 import {
@@ -49,7 +49,7 @@ export function AppSidebar() {
     || pathname.startsWith('/gpu')
     || pathname.startsWith('/storage')
     || pathname.startsWith('/network-stats')
-  const isToolsRoute = pathname === '/tools' || pathname === '/startup' || pathname === '/backup'
+  const isToolsRoute = pathname === '/tools' || pathname === '/startup'
 
   return (
     <Sidebar
@@ -220,6 +220,20 @@ export function AppSidebar() {
             >
               <Wrench />
               <span data-sidebar-label>{t('navigation.tools')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="cursor-pointer"
+              isActive={pathname === '/backup'}
+              onClick={event => handleMenuClick(event, '/backup')}
+              onFocus={() => handlePointerIntent('/backup')}
+              onMouseEnter={() => handlePointerIntent('/backup')}
+              tooltip={t('navigation.backup')}
+              type="button"
+            >
+              <DatabaseBackup />
+              <span data-sidebar-label>{t('navigation.backup')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

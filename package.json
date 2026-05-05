@@ -33,7 +33,7 @@
     "country-flag-icons": "^1.6.15",
     "i18next": "^26.0.4",
     "lenis": "^1.3.21",
-    "lucide-react": "^1.8.0",
+    "lucide-react": "^1.14.0",
     "radix-ui": "^1.4.3",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
@@ -41,6 +41,7 @@
     "recharts": "^3.8.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
+    "tailwindcss-animate": "^1.0.7",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

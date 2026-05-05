@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { RefreshCw, Trash2 } from 'lucide-react'
+import { Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCleanupUiState } from '@/entities/cleanup/model/ui-state'
@@ -120,7 +120,6 @@ export function usePageHeader(pathname: string): PageHeader {
             <Button
               disabled={cleanupCleanDisabled}
               onClick={() => window.dispatchEvent(new Event('winsentials:cleanup-clean-all'))}
-              size="sm"
               type="button"
             >
               <Trash2 className="size-4" />
@@ -132,9 +131,10 @@ export function usePageHeader(pathname: string): PageHeader {
                   aria-label={t('cleanup.refreshAll')}
                   disabled={cleanupBusy || cleanupRefreshing}
                   onClick={() => window.dispatchEvent(new Event('winsentials:cleanup-refresh-all'))}
-                  size="icon-sm"
+                  size="icon"
                   type="button"
-                  variant="outline"
+                  variant="ghost"
+                  className="ui-soft-surface transition-colors hover:bg-accent/50!"
                 >
                   <RefreshCw className={cn('size-4', cleanupRefreshing && 'animate-spin')} />
                 </Button>
@@ -151,6 +151,15 @@ export function usePageHeader(pathname: string): PageHeader {
       '/backup': {
         title: t('backup.title'),
         description: t('backup.description'),
+        actions: (
+          <Button
+            onClick={() => window.dispatchEvent(new Event('winsentials:backup-create'))}
+            type="button"
+          >
+            <Plus className="size-4" />
+            {t('backup.createSnapshot')}
+          </Button>
+        ),
       },
     }),
     [cleanupBusy, cleanupCleanDisabled, cleanupRefreshing, cleanupSummary.sizeBytes, cleanupSummary.targetCount, i18n.language, t],

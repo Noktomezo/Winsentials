@@ -3,16 +3,19 @@ import { useSyncExternalStore } from 'react'
 
 interface CleanupUiSnapshot {
   busy: boolean
-  refreshingCategories: Set<CleanupCategoryId>
+  refreshingCategories: ReadonlySet<CleanupCategoryId>
 }
 
 const listeners = new Set<() => void>()
 let busy = false
 let refreshingCategories = new Set<CleanupCategoryId>()
-let snapshot: CleanupUiSnapshot = { busy, refreshingCategories }
+let snapshot: CleanupUiSnapshot = {
+  busy,
+  refreshingCategories: new Set(refreshingCategories),
+}
 
 function emit() {
-  snapshot = { busy, refreshingCategories }
+  snapshot = { busy, refreshingCategories: new Set(refreshingCategories) }
   listeners.forEach(listener => listener())
 }
 

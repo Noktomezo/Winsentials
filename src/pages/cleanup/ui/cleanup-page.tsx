@@ -263,7 +263,7 @@ function CleanupCard({
           </div>
           <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
         </button>
-        <Button disabled={!canClean} onClick={() => onClean(category.id)} size="sm" type="button">
+        <Button disabled={!canClean} onClick={() => onClean(category.id)} type="button">
           {isBusy ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
           {t('cleanup.clean')}
         </Button>
@@ -273,9 +273,10 @@ function CleanupCard({
               aria-label={t('cleanup.refresh')}
               disabled={isBusy || isRefreshing}
               onClick={() => onRefresh(category.id)}
-              size="icon-sm"
+              size="icon"
               type="button"
-              variant="outline"
+              variant="ghost"
+              className="ui-soft-surface transition-colors hover:bg-accent/50!"
             >
               <RefreshCw className={cn('size-4', isRefreshing && 'animate-spin')} />
             </Button>

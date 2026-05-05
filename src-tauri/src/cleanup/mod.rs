@@ -1015,6 +1015,7 @@ fn delete_target_contents(path: &Path) -> io::Result<DeleteOutcome> {
         let result = match fs::symlink_metadata(&entry_path) {
             Ok(metadata) if metadata.is_dir() => force_remove_path(&entry_path, true),
             Ok(_) => force_remove_path(&entry_path, false),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(DeleteOutcome::Deleted),
             Err(error) => Err(error),
         };
 
