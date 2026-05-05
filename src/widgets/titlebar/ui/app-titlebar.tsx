@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react'
+import type { ComponentProps, MouseEvent } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Copy as CopyIcon, Minus, Square, X } from 'lucide-react'
@@ -18,6 +18,14 @@ import {
   SidebarTrigger,
 } from '@/shared/ui'
 
+const appWindow = getCurrentWindow()
+
+function isTitlebarControlTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && !!target.closest(
+    '[data-titlebar-no-drag], button, a, input, select, textarea, [role="button"]',
+  )
+}
+
 interface Crumb { label: string, href?: string }
 
 function useBreadcrumbs(): Crumb[] {
@@ -25,9 +33,9 @@ function useBreadcrumbs(): Crumb[] {
   const { t } = useTranslation()
   const staticInfo = useStaticInfo()
 
-  const home: Crumb = { label: t('home.title'), href: '/home' }
+  const home: Crumb = { label: t('navigation.home'), href: '/home' }
 
-  if (pathname === '/home') return [{ label: t('home.title') }]
+  if (pathname === '/home') return [{ label: t('navigation.home') }]
 
   const hardwareMap: Record<string, string> = {
     '/cpu': t('home.cpu'),
@@ -58,6 +66,7 @@ function useBreadcrumbs(): Crumb[] {
   const topLevel: Record<string, string> = {
     '/appearance': t('appearance.title'),
     '/behaviour': t('behaviour.title'),
+    '/cleanup': t('cleanup.title'),
     '/security': t('security.title'),
     '/privacy': t('privacy.title'),
     '/network': t('network.title'),
@@ -102,54 +111,78 @@ function TitlebarButton({
 }
 
 export function AppTitlebar() {
-  const win = getCurrentWindow()
   const crumbs = useBreadcrumbs()
   const { t } = useTranslation()
   const [isMaximized, setIsMaximized] = useState(false)
 
   const syncMaximizedState = async () => {
-    setIsMaximized(await win.isMaximized())
+    setIsMaximized(await appWindow.isMaximized())
   }
 
   useMountEffect(() => {
     let disposed = false
+    let syncTimeout = 0
 
     const syncIfMounted = async () => {
-      const maximized = await win.isMaximized()
+      const maximized = await appWindow.isMaximized()
       if (!disposed) {
         setIsMaximized(maximized)
       }
     }
 
-    void syncIfMounted()
+    const scheduleSync = () => {
+      window.clearTimeout(syncTimeout)
+      syncTimeout = window.setTimeout(() => {
+        void syncIfMounted()
+      }, 100)
+    }
 
-    const unlistenPromise = win.listen('tauri://resize', () => {
-      void syncIfMounted()
-    })
+    void syncIfMounted()
+    const unlistenPromise = appWindow.listen('tauri://resize', scheduleSync)
 
     return () => {
       disposed = true
+      window.clearTimeout(syncTimeout)
       void unlistenPromise.then(unlisten => unlisten())
     }
   })
 
   const handleMinimize = async () => {
-    await win.minimize()
+    await appWindow.minimize()
   }
 
   const handleClose = async () => {
-    await win.close()
+    await appWindow.close()
   }
 
   const handleToggleMaximize = async () => {
-    await win.toggleMaximize()
+    await appWindow.toggleMaximize()
     await syncMaximizedState()
+  }
+
+  const handleTitlebarMouseDown = (event: MouseEvent<HTMLElement>) => {
+    if (event.button !== 0 || isTitlebarControlTarget(event.target)) {
+      return
+    }
+
+    if (event.detail === 2) {
+      void handleToggleMaximize()
+      return
+    }
+
+    if (event.detail === 1) {
+      void appWindow.startDragging().catch((error) => {
+        console.error('Failed to start window drag', error)
+      })
+    }
   }
 
   return (
     <header
       className="relative flex h-10 shrink-0 items-center bg-transparent px-2 text-sidebar-foreground"
       data-slot="app-titlebar"
+      onDragStart={event => event.preventDefault()}
+      onMouseDown={handleTitlebarMouseDown}
     >
       <SidebarTrigger
         className="titlebar-control"
@@ -158,7 +191,10 @@ export function AppTitlebar() {
 
       {/* Absolutely centred breadcrumb — independent of left/right button widths */}
       <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-        <div className="pointer-events-auto max-w-[min(40rem,calc(100%-9rem))] overflow-hidden">
+        <div
+          className="pointer-events-auto max-w-[min(40rem,calc(100%-9rem))] overflow-hidden"
+          data-titlebar-no-drag
+        >
           <Breadcrumb>
             <BreadcrumbList className="max-w-full flex-nowrap gap-1 overflow-hidden text-xs sm:gap-1.5">
               {crumbs.map((crumb, i) => {
@@ -197,8 +233,8 @@ export function AppTitlebar() {
         </div>
       </div>
 
-      {/* Drag region fills remaining space */}
-      <div className="min-w-0 flex-1 self-stretch" data-tauri-drag-region />
+      {/* Spacer; the full header is the drag region. */}
+      <div className="min-w-0 flex-1 self-stretch" />
 
       <div className="flex items-center gap-1">
         <TitlebarButton

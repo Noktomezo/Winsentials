@@ -9,12 +9,6 @@ export interface RestoreReport {
   failed: string[]
 }
 
-export interface BackupSnapshot {
-  createdAt: string
-  label: string
-  tweaks: Record<string, string>
-}
-
 export interface BackupEntry extends BackupMeta {
   tweaks: Record<string, string>
 }

@@ -125,7 +125,7 @@ function StripBar({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export function RamPage() {
+function RamPage() {
   const { t, i18n } = useTranslation()
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const { data: liveInfo, history: rawHistory } = useLiveRam()
@@ -279,3 +279,5 @@ export function RamPage() {
     </section>
   )
 }
+
+export default RamPage

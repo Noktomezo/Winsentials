@@ -827,7 +827,9 @@ fn pdh_collect_gpu_memory(counter_raw: isize) -> Result<GpuMemoryByLuid, PdhGpuU
             let Some(luid_prefix) = pdh_luid_prefix_from_name(&name) else {
                 continue;
             };
-            let value = item.FmtValue.Anonymous.largeValue.max(0) as u64;
+            let Ok(value) = u64::try_from(item.FmtValue.Anonymous.largeValue) else {
+                continue;
+            };
             *result.entry(luid_prefix).or_insert(0) += value;
         }
 

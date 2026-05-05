@@ -1,4 +1,4 @@
-const HIDDEN_VIRTUAL_ADAPTER_TOKENS: [&str; 3] = ["wsl", "hyper-v", "vethernet"];
+const HIDDEN_VIRTUAL_ADAPTER_TOKENS: [&str; 4] = ["wsl", "hyper-v", "vethernet", "host-only"];
 
 fn contains_hidden_virtual_adapter_token(value: &str) -> bool {
     let lowered = value.to_ascii_lowercase();

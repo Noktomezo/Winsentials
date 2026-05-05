@@ -1,9 +1,6 @@
-export const APP_NAME = 'Winsentials'
-
 export const APP_THEMES = ['system', 'light', 'dark'] as const
 export type AppTheme = (typeof APP_THEMES)[number]
-export const RESOLVED_THEMES = ['light', 'dark'] as const
-export type ResolvedTheme = (typeof RESOLVED_THEMES)[number]
+export type ResolvedTheme = 'light' | 'dark'
 
 export const APP_WEBVIEW_MATERIALS = ['none', 'acrylic', 'mica', 'tabbed'] as const
 export type AppWebviewMaterial = (typeof APP_WEBVIEW_MATERIALS)[number]

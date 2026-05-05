@@ -46,11 +46,6 @@ export interface TweakResult {
   currentValue: string
 }
 
-export interface TweakStatus {
-  currentValue: string
-  isDefault: boolean
-}
-
 export interface WindowsVersion {
   build: number
   ubr: number

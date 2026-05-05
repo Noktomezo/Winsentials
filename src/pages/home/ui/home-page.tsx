@@ -21,6 +21,7 @@ import {
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getDeviceInventoryInfo } from '@/entities/system-info/api'
+import { formatCpuModel, formatMotherboardName } from '@/entities/system-info/lib/format-hardware-name'
 import { useLiveHome } from '@/entities/system-info/model/live-system-store'
 import { useStaticSystemInfo } from '@/entities/system-info/model/static-system-info'
 import { useTweakCacheStore } from '@/entities/tweak/model/tweak-cache-store'
@@ -196,6 +197,8 @@ function SystemOverviewCard({
 }) {
   const { t } = useTranslation()
   const w = s.windows
+  const motherboardName = formatMotherboardName(s.motherboard)
+
   return (
     <section className="rounded-lg border border-border/70 bg-card p-4">
       <div className="mb-3 border-b border-border/70 pb-3">
@@ -215,6 +218,9 @@ function SystemOverviewCard({
           value={`${w.productName} ${w.displayVersion}`}
         />
         <Row label={t('home.build')} value={`${w.build}.${w.ubr}`} />
+        {motherboardName && (
+          <Row label={t('home.motherboard')} value={motherboardName} />
+        )}
         <Row label={t('home.hostname')} value={w.hostname} />
         <Row label={t('home.username')} value={w.username} />
         <Row
@@ -307,6 +313,7 @@ function CpuSummary({
   const router = useRouter()
   const preloadRouteIntent = useRouteIntentPreload()
   const pct = live ? Math.round(live.cpuUsagePercent) : null
+  const cpuModel = formatCpuModel(s.cpu.model)
   const navHandlers = createSummaryNavHandlers(
     navigate,
     router,
@@ -333,12 +340,12 @@ function CpuSummary({
               </span>
             )
       }
-      secondaryText={s.cpu.model}
+      secondaryText={cpuModel}
       title={(
         <span className="flex min-w-0 items-baseline gap-1">
           <span className="shrink-0">{t('home.cpu')}</span>
           <span className="truncate font-normal text-muted-foreground">
-            {`(${s.cpu.model})`}
+            {`(${cpuModel})`}
           </span>
         </span>
       )}
@@ -583,7 +590,7 @@ function HomeSkeleton() {
           <Skeleton className="h-4 w-24" />
         </div>
         <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton className="h-3 w-full" key={i} />
           ))}
         </div>
@@ -617,7 +624,7 @@ function HomeSkeleton() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export function HomePage() {
+function HomePage() {
   const { t } = useTranslation()
   const {
     info: staticInfo,
@@ -639,12 +646,19 @@ export function HomePage() {
   useMountEffect(() => {
     let cancelled = false
     let inflight: Promise<void> | null = null
+    let lastRefreshStartedAt = 0
 
-    const refreshDeviceInventory = () => {
+    const refreshDeviceInventory = (force = false) => {
       if (inflight) {
         return inflight
       }
 
+      const now = Date.now()
+      if (!force && now - lastRefreshStartedAt < HOME_DEVICE_INVENTORY_POLL_INTERVAL_MS) {
+        return null
+      }
+
+      lastRefreshStartedAt = now
       inflight = getDeviceInventoryInfo()
         .then((inventory) => {
           if (!cancelled) {
@@ -667,18 +681,16 @@ export function HomePage() {
       }
     }
 
-    void refreshDeviceInventory()
+    void refreshDeviceInventory(true)
     const intervalId = window.setInterval(() => {
       void refreshDeviceInventory()
     }, HOME_DEVICE_INVENTORY_POLL_INTERVAL_MS)
 
-    window.addEventListener('focus', handleVisibilityRefresh)
     document.addEventListener('visibilitychange', handleVisibilityRefresh)
 
     return () => {
       cancelled = true
       window.clearInterval(intervalId)
-      window.removeEventListener('focus', handleVisibilityRefresh)
       document.removeEventListener('visibilitychange', handleVisibilityRefresh)
     }
   })
@@ -758,3 +770,5 @@ export function HomePage() {
     </section>
   )
 }
+
+export default HomePage

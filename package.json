@@ -20,8 +20,8 @@
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",
     "@fontsource/ibm-plex-sans": "^5.2.8",
-    "@radix-ui/react-scroll-area": "^1.2.10",
     "@tanstack/react-router": "^1.168.10",
+    "@tanstack/react-virtual": "^3.13.24",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-clipboard-manager": "^2.3.2",
     "@tauri-apps/plugin-opener": "^2.5.3",
@@ -33,8 +33,7 @@
     "country-flag-icons": "^1.6.15",
     "i18next": "^26.0.4",
     "lenis": "^1.3.21",
-    "lucide-react": "^1.8.0",
-    "motion": "^12.38.0",
+    "lucide-react": "^1.14.0",
     "radix-ui": "^1.4.3",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
@@ -42,6 +41,7 @@
     "recharts": "^3.8.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
+    "tailwindcss-animate": "^1.0.7",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

@@ -1,5 +1,7 @@
 import { TweakCategoryPage } from '@/widgets/tweak-list/ui/tweak-category-page'
 
-export function PrivacyPage() {
+function PrivacyPage() {
   return <TweakCategoryPage key="privacy" category="privacy" />
 }
+
+export default PrivacyPage

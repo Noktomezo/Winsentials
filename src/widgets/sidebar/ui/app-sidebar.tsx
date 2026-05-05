@@ -1,19 +1,18 @@
 import type { MouseEvent } from 'react'
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
-import { EyeOff, FolderCog, Gauge, House, Keyboard, MemoryStick, Network, Palette, Settings2, Shield, Wrench } from 'lucide-react'
+import { BrushCleaning, DatabaseBackup, EyeOff, FolderCog, Gauge, House, Keyboard, MemoryStick, Network, Palette, Settings2, Shield, Wrench } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/shared/ui'
 
-type SidebarRoute = '/home' | '/appearance' | '/backup' | '/behaviour' | '/security' | '/privacy' | '/network' | '/performance' | '/memory' | '/input' | '/startup' | '/tools' | '/settings'
+type SidebarRoute = '/home' | '/appearance' | '/backup' | '/behaviour' | '/cleanup' | '/security' | '/privacy' | '/network' | '/performance' | '/memory' | '/input' | '/startup' | '/tools' | '/settings'
 
 export function AppSidebar() {
   const { t } = useTranslation()
@@ -50,7 +49,7 @@ export function AppSidebar() {
     || pathname.startsWith('/gpu')
     || pathname.startsWith('/storage')
     || pathname.startsWith('/network-stats')
-  const isToolsRoute = pathname === '/tools' || pathname === '/startup' || pathname === '/backup'
+  const isToolsRoute = pathname === '/tools' || pathname === '/startup'
 
   return (
     <Sidebar
@@ -63,7 +62,7 @@ export function AppSidebar() {
         } as React.CSSProperties
       }
     >
-      <SidebarHeader className="border-b border-sidebar-border/70 p-2">
+      <SidebarContent className="p-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -79,10 +78,6 @@ export function AppSidebar() {
               <span data-sidebar-label>{t('navigation.home')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-      <SidebarContent className="p-2">
-        <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               className="cursor-pointer"
@@ -184,6 +179,20 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               className="cursor-pointer"
+              isActive={pathname === '/cleanup'}
+              onClick={event => handleMenuClick(event, '/cleanup')}
+              onFocus={() => handlePointerIntent('/cleanup')}
+              onMouseEnter={() => handlePointerIntent('/cleanup')}
+              tooltip={t('navigation.cleanup')}
+              type="button"
+            >
+              <BrushCleaning />
+              <span data-sidebar-label>{t('navigation.cleanup')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="cursor-pointer"
               isActive={pathname === '/network'}
               onClick={event => handleMenuClick(event, '/network')}
               onFocus={() => handlePointerIntent('/network')}
@@ -211,6 +220,20 @@ export function AppSidebar() {
             >
               <Wrench />
               <span data-sidebar-label>{t('navigation.tools')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="cursor-pointer"
+              isActive={pathname === '/backup'}
+              onClick={event => handleMenuClick(event, '/backup')}
+              onFocus={() => handlePointerIntent('/backup')}
+              onMouseEnter={() => handlePointerIntent('/backup')}
+              tooltip={t('navigation.backup')}
+              type="button"
+            >
+              <DatabaseBackup />
+              <span data-sidebar-label>{t('navigation.backup')}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>

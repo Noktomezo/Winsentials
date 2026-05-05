@@ -4,6 +4,7 @@ import type { ChartPoint } from '@/shared/ui/live-chart'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getStaticSystemInfo } from '@/entities/system-info/api'
+import { formatCpuModel } from '@/entities/system-info/lib/format-hardware-name'
 import { useLiveCpu } from '@/entities/system-info/model/live-system-store'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { Button } from '@/shared/ui/button'
@@ -51,7 +52,7 @@ function Row({ label, value }: RowProps) {
   )
 }
 
-export function CpuPage() {
+function CpuPage() {
   const { t } = useTranslation()
   const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
   const [staticInfoError, setStaticInfoError] = useState(false)
@@ -107,6 +108,7 @@ export function CpuPage() {
   }
 
   const cpu = staticInfo.cpu
+  const cpuModel = formatCpuModel(cpu.model)
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
@@ -129,7 +131,7 @@ export function CpuPage() {
         <div className="system-info-grid grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Row
             label={t('home.model')}
-            value={<span className="text-foreground">{cpu.model}</span>}
+            value={<span className="text-foreground">{cpuModel}</span>}
           />
           <Row
             label={t('cpu.currentFreq')}
@@ -223,3 +225,5 @@ export function CpuPage() {
     </section>
   )
 }
+
+export default CpuPage

@@ -14,6 +14,10 @@ dist-ssr
 .vite
 coverage
 *.local
+.symdex/
+docs/
+package-lock.json
+pnpm-lock.yaml
 
 # Editor directories and files
 .vscode/*
@@ -27,3 +31,5 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+.symdex
+.fallow

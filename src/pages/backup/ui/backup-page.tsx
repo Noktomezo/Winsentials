@@ -2,9 +2,8 @@ import type { BackupEntry } from '@/entities/backup/model/types'
 import {
   ArchiveRestore,
   ChevronDown,
-  ChevronUp,
+  Loader2,
   Pencil,
-  Plus,
   Trash2,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -18,14 +17,9 @@ import {
   restoreBackup,
 } from '@/entities/backup/api'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
+import { cn } from '@/shared/lib/utils'
 import {
   Button,
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -34,14 +28,13 @@ import {
   DialogTitle,
   Input,
   ScrollArea,
-  Separator,
   Skeleton,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/shared/ui'
 
-export function BackupPage() {
+function BackupPage() {
   const { t, i18n } = useTranslation()
 
   const [backups, setBackups] = useState<BackupEntry[]>([])
@@ -71,6 +64,11 @@ export function BackupPage() {
 
   useMountEffect(() => {
     void loadBackups()
+
+    const handleCreateRequest = () => setShowCreate(true)
+    window.addEventListener('winsentials:backup-create', handleCreateRequest)
+    return () =>
+      window.removeEventListener('winsentials:backup-create', handleCreateRequest)
   })
 
   async function loadBackups() {
@@ -207,14 +205,6 @@ export function BackupPage() {
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-      {/* Action bar */}
-      <div className="flex items-center">
-        <Button onClick={() => setShowCreate(true)} size="sm">
-          <Plus className="size-4" />
-          {t('backup.createSnapshot')}
-        </Button>
-      </div>
-
       {/* Backup list */}
       {isLoading
         ? (
@@ -247,27 +237,57 @@ export function BackupPage() {
                 </div>
               )
             : (
-                <div className="grid gap-3">
+                <div className="tweak-card-grid">
                   {backups.map((backup) => {
                     const expanded = expandedCards.has(backup.filename)
                     const tweakEntries = Object.entries(backup.tweaks)
                     const panelId = `backup-panel-${backup.filename.replace(/[^\w-]/g, '-')}`
+                    const isCardBusy = (applyTarget?.filename === backup.filename && isApplying)
+                      || (deleteTarget?.filename === backup.filename && isDeleting)
+                      || (renameTarget?.filename === backup.filename && isRenaming)
+
                     return (
-                      <Card key={backup.filename} className="gap-0 p-4">
-                        <CardHeader className="p-0">
-                          <CardTitle className="truncate text-sm">
-                            {backup.label}
-                          </CardTitle>
-                          <CardDescription className="text-xs">
-                            {formatDate(backup.createdAt)}
-                          </CardDescription>
-                          <CardAction className="flex items-center gap-1.5">
+                      <section key={backup.filename} className="flex h-fit flex-col overflow-hidden rounded-lg border border-border/70 bg-card">
+                        <div className="flex items-center gap-3 p-4">
+                          <button
+                            aria-controls={panelId}
+                            aria-expanded={expanded}
+                            className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+                            onClick={() => toggleExpand(backup.filename)}
+                            type="button"
+                          >
+                            {' '}
+                            <span className="ui-soft-surface flex size-9 shrink-0 items-center justify-center rounded-md">
+                              <ArchiveRestore className="size-4" />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <h2 className="truncate text-sm font-medium text-foreground">
+                                {backup.label}
+                              </h2>
+                              <div className="mt-1 flex flex-wrap items-center gap-2">
+                                <span className="rounded-md border border-border/60 bg-accent/45 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                                  {formatDate(backup.createdAt)}
+                                </span>
+                                <span className="rounded-md border border-border/60 bg-accent/45 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                                  {tweakEntries.length}
+                                  {' '}
+                                  {t('backup.tweakValues').toLowerCase()}
+                                </span>
+                              </div>
+                            </div>
+                            <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', expanded && 'rotate-180')} />
+                          </button>
+                          <div className="flex items-center gap-2">
                             <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setApplyTarget(backup)}
+                              disabled={isCardBusy}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setApplyTarget(backup)
+                              }}
                             >
-                              <ArchiveRestore className="size-3.5" />
+                              {applyTarget?.filename === backup.filename && isApplying
+                                ? <Loader2 className="size-4 animate-spin" />
+                                : <ArchiveRestore className="size-4" />}
                               {t('backup.apply')}
                             </Button>
                             <Tooltip>
@@ -276,16 +296,18 @@ export function BackupPage() {
                                   aria-label={t('backup.rename')}
                                   size="icon"
                                   variant="ghost"
-                                  className="size-8"
-                                  onClick={() => {
+                                  className="ui-soft-surface transition-colors hover:bg-accent/50!"
+                                  disabled={isCardBusy}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
                                     setRenameTarget(backup)
                                     setRenameLabel(backup.label)
                                   }}
                                 >
-                                  <Pencil className="size-3.5" />
+                                  <Pencil className="size-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>{t('backup.rename')}</TooltipContent>
+                              <TooltipContent sideOffset={8}>{t('backup.rename')}</TooltipContent>
                             </Tooltip>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -293,44 +315,25 @@ export function BackupPage() {
                                   aria-label={t('backup.delete')}
                                   size="icon"
                                   variant="ghost"
-                                  className="size-8 text-destructive hover:text-destructive"
-                                  onClick={() => setDeleteTarget(backup)}
+                                  className="ui-soft-surface transition-colors hover:border-destructive/30! hover:bg-destructive/10! hover:text-destructive!"
+                                  disabled={isCardBusy}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setDeleteTarget(backup)
+                                  }}
                                 >
-                                  <Trash2 className="size-3.5" />
+                                  <Trash2 className="size-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>{t('backup.delete')}</TooltipContent>
+                              <TooltipContent sideOffset={8}>{t('backup.delete')}</TooltipContent>
                             </Tooltip>
-                          </CardAction>
-                        </CardHeader>
+                          </div>
+                        </div>
 
-                        <CardContent className="p-0 pt-3">
-                          <Separator className="mb-3" />
-                          <Button
-                            aria-controls={panelId}
-                            aria-expanded={expanded}
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto gap-1 px-0 py-0 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground"
-                            onClick={() => toggleExpand(backup.filename)}
-                          >
-                            {expanded
-                              ? (
-                                  <ChevronUp className="size-3.5" />
-                                )
-                              : (
-                                  <ChevronDown className="size-3.5" />
-                                )}
-                            {t('backup.tweakValues')}
-                            {' '}
-                            (
-                            {tweakEntries.length}
-                            )
-                          </Button>
-
-                          {expanded && (
+                        {expanded && (
+                          <div className="border-t border-border/70 p-3">
                             <ScrollArea
-                              className="mt-2 h-48 rounded-lg border border-border/50 bg-muted/30"
+                              className="h-48 rounded-lg border border-border/50 bg-muted/30"
                               data-lenis-prevent
                               id={panelId}
                             >
@@ -358,9 +361,9 @@ export function BackupPage() {
                                 </tbody>
                               </table>
                             </ScrollArea>
-                          )}
-                        </CardContent>
-                      </Card>
+                          </div>
+                        )}
+                      </section>
                     )
                   })}
                 </div>
@@ -383,14 +386,16 @@ export function BackupPage() {
               {t('backup.labelPlaceholder')}
             </DialogDescription>
           </DialogHeader>
-          <Input
-            aria-label={t('backup.createSnapshot')}
-            value={createLabel}
-            onChange={e => setCreateLabel(e.target.value)}
-            placeholder={t('backup.labelPlaceholder')}
-            onKeyDown={e =>
-              e.key === 'Enter' && !isCreating && void handleCreate()}
-          />
+          <div className="px-5">
+            <Input
+              aria-label={t('backup.createSnapshot')}
+              value={createLabel}
+              onChange={e => setCreateLabel(e.target.value)}
+              placeholder={t('backup.labelPlaceholder')}
+              onKeyDown={e =>
+                e.key === 'Enter' && !isCreating && void handleCreate()}
+            />
+          </div>
           <DialogFooter>
             <Button
               variant="outline"
@@ -421,13 +426,15 @@ export function BackupPage() {
           <DialogHeader>
             <DialogTitle>{t('backup.rename')}</DialogTitle>
           </DialogHeader>
-          <Input
-            aria-label={t('backup.rename')}
-            value={renameLabel}
-            onChange={e => setRenameLabel(e.target.value)}
-            onKeyDown={e =>
-              e.key === 'Enter' && !isRenaming && void handleRename()}
-          />
+          <div className="px-5">
+            <Input
+              aria-label={t('backup.rename')}
+              value={renameLabel}
+              onChange={e => setRenameLabel(e.target.value)}
+              onKeyDown={e =>
+                e.key === 'Enter' && !isRenaming && void handleRename()}
+            />
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRenameTarget(null)}>
               {t('dialog.close')}
@@ -498,3 +505,5 @@ export function BackupPage() {
     </section>
   )
 }
+
+export default BackupPage

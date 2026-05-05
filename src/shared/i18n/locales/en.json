@@ -1,9 +1,10 @@
 {
   "app": {
-    "description": "Windows optimization toolbox",
+    "description": "Optimization, tweaks, and maintenance tools for Windows.",
     "title": "Winsentials"
   },
   "common": {
+    "cancel": "Cancel",
     "off": "Off",
     "on": "On",
     "seconds": "{{n}} sec"
@@ -148,6 +149,7 @@
     "appearance": "Appearance",
     "backup": "Backups",
     "behaviour": "Behaviour",
+    "cleanup": "Cleanup",
     "home": "Home",
     "input": "Input",
     "memory": "Memory",
@@ -164,6 +166,62 @@
     "description": "Additional sections and system utilities of the app.",
     "eyebrow": "Standalone utility",
     "open": "Open section"
+  },
+  "cleanup": {
+    "title": "Cleanup",
+    "description": "Remove Windows temporary files and application caches without touching personal data.",
+    "clean": "Clean",
+    "cleanAll": "Clean all",
+    "refresh": "Refresh",
+    "refreshAll": "Refresh all",
+    "cleaned": "Cleanup completed.",
+    "cleanedAll": "All categories cleaned.",
+    "scheduleReboot": "Delete after reboot",
+    "rebootScheduled": "Delete after reboot scheduled.",
+    "rebootScheduledWithErrors": "Delete after reboot scheduled partially. Errors: {{count}}.",
+    "itemsCount_one": "{{count}} target",
+    "itemsCount_other": "{{count}} targets",
+    "noTargets": "No cleanup targets found.",
+    "scanning": "Scanning...",
+    "messages": {
+      "scanCategoryFailed": "Failed to scan this cleanup category.",
+      "scheduledOnReboot": "Scheduled for deletion on reboot.",
+      "skippedBusyFiles": "Some files are in use and were skipped."
+    },
+    "categories": {
+      "windows_temp": {
+        "name": "Clean Windows temporary files"
+      },
+      "thumbnail_cache": {
+        "name": "Clean thumbnail and icon caches"
+      },
+      "browser_cache": {
+        "name": "Clean browser caches"
+      },
+      "driver_cache": {
+        "name": "Clean driver and shader caches"
+      },
+      "game_cache": {
+        "name": "Clean game launcher caches"
+      },
+      "windows_logs": {
+        "name": "Clean Windows logs"
+      },
+      "system_error_reports": {
+        "name": "Clean error reports and dumps"
+      },
+      "app_cache": {
+        "name": "Clean app component caches"
+      },
+      "unused_devices": {
+        "name": "Remove unused devices"
+      }
+    },
+    "errors": {
+      "scan": "Failed to scan cleanup targets.",
+      "clean": "Failed to run cleanup.",
+      "reboot": "Failed to schedule delete after reboot."
+    }
   },
   "backup": {
     "title": "Backups",

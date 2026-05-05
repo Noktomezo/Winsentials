@@ -65,7 +65,7 @@ function nextTransferChartMax(bytesPerSec: number): number {
   return target
 }
 
-export function DiskDetailPage() {
+function DiskDetailPage() {
   const { t, i18n } = useTranslation()
   const { disk: diskParam } = useParams({ from: '/storage/$disk' })
   const { data: liveInfo, activeHistory: storeActiveHistory, throughputHistory: storeThroughputHistory } = useLiveDisks()
@@ -183,3 +183,5 @@ export function DiskDetailPage() {
     </section>
   )
 }
+
+export default DiskDetailPage

@@ -1,0 +1,69 @@
+entry = [
+  "src/main.tsx",
+  "src-tauri/**/*.rs",
+  "vite.config.ts",
+  "eslint.config.js",
+  "commitlint.config.js",
+  "lint-staged.config.js",
+]
+ignorePatterns = [
+  "**/*.d.ts",
+  "**/*.generated.*",
+  "dist/**",
+  "src-tauri/target/**",
+]
+ignoreDependencies = [
+  "@eslint-react/eslint-plugin",
+  "@j178/prek",
+  "eslint-plugin-format",
+  "eslint-plugin-react-hooks",
+  "eslint-plugin-react-refresh",
+  "eslint-plugin-tailwindcss",
+  "shadcn",
+]
+ignoreExportsUsedInFile = true
+production = false
+ignoreExports = [
+  # Planned usage for upcoming UI features (Shadcn UI standard exports)
+  { file = "src/shared/ui/breadcrumb.tsx", exports = [ "BreadcrumbEllipsis" ] },
+  { file = "src/shared/ui/card.tsx", exports = [ "CardFooter" ] },
+  { file = "src/shared/ui/dialog.tsx", exports = [ "DialogTrigger" ] },
+  { file = "src/shared/ui/dropdown-menu.tsx", exports = [ "*" ] },
+  { file = "src/shared/ui/select.tsx", exports = [
+    "SelectGroup",
+    "SelectLabel",
+    "SelectSeparator"
+  ] },
+  { file = "src/shared/ui/sheet.tsx", exports = [
+    "SheetClose",
+    "SheetFooter",
+    "SheetTrigger"
+  ] },
+  { file = "src/shared/ui/sidebar.tsx", exports = [ "*" ] },
+]
+
+[rules]
+unused-files = "error"
+unused-exports = "warn"
+unused-types = "warn"
+private-type-leaks = "off"
+unused-dependencies = "warn"
+unused-dev-dependencies = "warn"
+unresolved-imports = "warn"
+
+[duplicates]
+enabled = true
+mode = "mild"
+minTokens = 60
+minLines = 8
+threshold = 150
+ignore = []
+
+[health]
+maxCyclomatic = 15
+maxCognitive = 20
+maxCrap = 30
+ignore = [ "**/*.generated.*" ]
+
+[audit]
+gate = "new-only"

@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@plugin 'tailwindcss-animate';
 
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
@@ -212,7 +213,19 @@
 }
 
 *[data-tauri-drag-region] {
-  app-region: drag;
+  cursor: grab;
+}
+
+*[data-tauri-drag-region]:active {
+  cursor: grabbing;
+}
+
+*[data-titlebar-no-drag],
+*[data-titlebar-no-drag] *,
+.titlebar-control,
+.titlebar-control * {
+  app-region: no-drag;
+  -webkit-app-region: no-drag;
 }
 
 html,
@@ -604,6 +617,36 @@ body {
   box-shadow: var(--shadow-xs);
 }
 
+[data-slot='app-titlebar'],
+[data-slot='app-titlebar'] * {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+[data-slot='app-titlebar']:active,
+[data-slot='app-titlebar']:active * {
+  cursor: grabbing;
+}
+
+[data-slot='app-titlebar'] [data-slot='breadcrumb'],
+[data-slot='app-titlebar'] [data-slot='breadcrumb'] *,
+[data-slot='app-titlebar'] [data-titlebar-no-drag],
+[data-slot='app-titlebar'] [data-titlebar-no-drag] *,
+[data-slot='app-titlebar'] .titlebar-control,
+[data-slot='app-titlebar'] .titlebar-control * {
+  cursor: auto;
+}
+
+[data-slot='app-titlebar'] a,
+[data-slot='app-titlebar'] button,
+[data-slot='app-titlebar'] [data-titlebar-no-drag] a,
+[data-slot='app-titlebar'] [data-titlebar-no-drag] a *,
+[data-slot='app-titlebar'] .titlebar-control,
+[data-slot='app-titlebar'] .titlebar-control * {
+  cursor: pointer;
+}
+
 .titlebar-control {
   --titlebar-control-border-hover: color-mix(in oklch, var(--state-info-strong) 26%, var(--border) 74%);
   --titlebar-control-bg-hover: color-mix(in oklch, var(--state-info-strong) 18%, transparent);
@@ -794,19 +837,19 @@ body {
 [data-sonner-toaster][data-sonner-theme='dark'] {
   --winsentials-sonner-bg: color-mix(in oklch, var(--accent) 55%, var(--card) 45%);
   --winsentials-sonner-text: var(--foreground);
-  --winsentials-sonner-border: color-mix(in oklch, var(--border) 76%, var(--primary) 24%);
+  --winsentials-sonner-border: var(--border);
   --winsentials-sonner-success-bg: color-mix(in oklch, var(--accent) 55%, var(--card) 45%);
   --winsentials-sonner-success-text: var(--success);
-  --winsentials-sonner-success-border: color-mix(in oklch, var(--border) 58%, var(--success) 42%);
+  --winsentials-sonner-success-border: var(--winsentials-sonner-border);
   --winsentials-sonner-error-bg: color-mix(in oklch, var(--accent) 55%, var(--card) 45%);
   --winsentials-sonner-error-text: var(--destructive);
-  --winsentials-sonner-error-border: color-mix(in oklch, var(--border) 58%, var(--destructive) 42%);
+  --winsentials-sonner-error-border: var(--winsentials-sonner-border);
   --winsentials-sonner-warning-bg: color-mix(in oklch, var(--accent) 55%, var(--card) 45%);
   --winsentials-sonner-warning-text: var(--warning);
-  --winsentials-sonner-warning-border: color-mix(in oklch, var(--border) 58%, var(--warning) 42%);
+  --winsentials-sonner-warning-border: var(--winsentials-sonner-border);
   --winsentials-sonner-info-bg: color-mix(in oklch, var(--accent) 55%, var(--card) 45%);
   --winsentials-sonner-info-text: var(--primary);
-  --winsentials-sonner-info-border: color-mix(in oklch, var(--border) 56%, var(--primary) 44%);
+  --winsentials-sonner-info-border: var(--winsentials-sonner-border);
 }
 
 /* Window materials — translucent toast surfaces */

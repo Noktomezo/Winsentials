@@ -50,7 +50,7 @@ function SettingsSection({
   )
 }
 
-export function SettingsPage() {
+function SettingsPage() {
   const { t } = useTranslation()
 
   return (
@@ -89,3 +89,5 @@ export function SettingsPage() {
     </section>
   )
 }
+
+export default SettingsPage
