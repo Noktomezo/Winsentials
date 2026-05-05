@@ -1216,16 +1216,25 @@ fn force_remove_path_fallback(
 
 #[cfg(target_os = "windows")]
 fn trustedinstaller_remove_path(path: &Path, recursive: bool) -> Result<(), String> {
-    let path = path.to_string_lossy().to_string();
-    let mut args = vec!["/c"];
-    if recursive {
-        args.extend(["rmdir", "/s", "/q", path.as_str()]);
-    } else {
-        args.extend(["del", "/f", "/q", path.as_str()]);
-    }
+    let path_str = path.to_string_lossy();
+    let escaped_path = path_str.replace('\'', "''");
 
-    trustedinstaller::run_as_trustedinstaller("C:\\Windows\\System32\\cmd.exe", &args)
-        .map_err(|error| error.to_string())
+    let ps_cmd = if recursive {
+        format!(
+            "Remove-Item -LiteralPath '{}' -Force -Recurse",
+            escaped_path
+        )
+    } else {
+        format!("Remove-Item -LiteralPath '{}' -Force", escaped_path)
+    };
+
+    let args = vec!["-NoProfile", "-Command", &ps_cmd];
+
+    trustedinstaller::run_as_trustedinstaller(
+        "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        &args,
+    )
+    .map_err(|error| error.to_string())
 }
 
 #[cfg(not(target_os = "windows"))]
