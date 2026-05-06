@@ -73,44 +73,66 @@ pub fn run_duct(program: &str, args: &[&str]) -> Result<(), AppError> {
         })
 }
 
-pub fn install_with_winget(package_id: &str, source: &str) -> Result<(), AppError> {
-    let enable_result = run_duct(
-        "winget",
-        &[
+fn run_winget(args: &[&str]) -> Result<(), AppError> {
+    let mut cmd = Command::new("winget");
+    cmd.args(args);
+
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+
+    let output = cmd.output()?;
+
+    if output.status.success() {
+        return Ok(());
+    }
+
+    Err(AppError::CommandFailed {
+        command: "winget".to_string(),
+        stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+    })
+}
+
+struct WingetBypassGuard;
+
+impl WingetBypassGuard {
+    fn enable() -> Result<Self, AppError> {
+        run_winget(&[
             "settings",
             "--enable",
             "BypassCertificatePinningForMicrosoftStore",
-        ],
-    );
-    let install_result = enable_result.and_then(|_| {
-        run_duct(
-            "winget",
-            &[
-                "install",
-                "--id",
-                package_id,
-                "--source",
-                source,
-                "--accept-package-agreements",
-                "--accept-source-agreements",
-                "--silent",
-            ],
-        )
-    });
-    let disable_result = run_duct(
-        "winget",
-        &[
+        ])?;
+
+        Ok(Self)
+    }
+}
+
+impl Drop for WingetBypassGuard {
+    fn drop(&mut self) {
+        if let Err(error) = run_winget(&[
             "settings",
             "--disable",
             "BypassCertificatePinningForMicrosoftStore",
-        ],
-    );
-
-    if let Err(error) = disable_result {
-        log::warn!("failed to disable winget Store certificate bypass: {error}");
+        ]) {
+            log::warn!("failed to disable winget Store certificate bypass: {error}");
+        }
     }
+}
 
-    install_result
+pub fn install_with_winget(package_id: &str, source: &str) -> Result<(), AppError> {
+    // Winget Store installs can fail on Microsoft Store certificate pinning bugs.
+    // This global bypass is security-sensitive, so the guard disables it in Drop.
+    let _bypass_guard = WingetBypassGuard::enable()?;
+
+    run_winget(&[
+        "install",
+        "--id",
+        package_id,
+        "--source",
+        source,
+        "--accept-package-agreements",
+        "--accept-source-agreements",
+        "--silent",
+    ])
 }
 
 pub fn restart_explorer() -> Result<(), AppError> {

@@ -96,8 +96,8 @@ impl RemoveOneDriveTweak {
                 "icacls",
                 &[
                     path.to_string_lossy().as_ref(),
-                    "/grant",
-                    "*S-1-5-32-544:(D,DC)",
+                    "/remove:d",
+                    "*S-1-5-32-544",
                 ],
             );
         }
@@ -107,7 +107,7 @@ impl RemoveOneDriveTweak {
     }
 
     fn install_onedrive() -> Result<(), AppError> {
-        let result = install_with_winget("Microsoft.Onedrive", "winget");
+        let result = install_with_winget("Microsoft.OneDrive", "winget");
 
         if result.is_ok() {
             ONEDRIVE_SERVICE_KEY.set_dword("Start", AUTOMATIC_SERVICE_START)?;

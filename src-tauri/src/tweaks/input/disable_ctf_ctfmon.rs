@@ -424,8 +424,8 @@ impl DisableCtfCtfmonTweak {
         match snapshot {
             DwordSnapshot::Missing => CTFMON_BACKUP_KEY.set_dword(&format!("{name}__Missing"), 1),
             DwordSnapshot::Present(value) => {
-                CTFMON_BACKUP_KEY.set_dword(&format!("{name}__Missing"), 0)?;
-                CTFMON_BACKUP_KEY.set_dword(name, *value)
+                CTFMON_BACKUP_KEY.set_dword(name, *value)?;
+                CTFMON_BACKUP_KEY.set_dword(&format!("{name}__Missing"), 0)
             }
         }
     }
@@ -435,9 +435,11 @@ impl DisableCtfCtfmonTweak {
 
         match CTFMON_BACKUP_KEY.get_dword(&missing_name) {
             Ok(1) => Ok(Some(DwordSnapshot::Missing)),
-            Ok(_) => Ok(Some(DwordSnapshot::Present(
-                CTFMON_BACKUP_KEY.get_dword(name)?,
-            ))),
+            Ok(_) => match CTFMON_BACKUP_KEY.get_dword(name) {
+                Ok(value) => Ok(Some(DwordSnapshot::Present(value))),
+                Err(AppError::Io(error)) if error.kind() == ErrorKind::NotFound => Ok(None),
+                Err(error) => Err(error),
+            },
             Err(AppError::Io(error)) if error.kind() == ErrorKind::NotFound => Ok(None),
             Err(error) => Err(error),
         }
@@ -449,8 +451,8 @@ impl DisableCtfCtfmonTweak {
                 CTFMON_BACKUP_KEY.set_dword(&format!("{name}__Missing"), 1)
             }
             RawValueSnapshot::Present(value) => {
-                CTFMON_BACKUP_KEY.set_dword(&format!("{name}__Missing"), 0)?;
-                CTFMON_BACKUP_KEY.set_raw_value(name, value)
+                CTFMON_BACKUP_KEY.set_raw_value(name, value)?;
+                CTFMON_BACKUP_KEY.set_dword(&format!("{name}__Missing"), 0)
             }
         }
     }
@@ -460,9 +462,11 @@ impl DisableCtfCtfmonTweak {
 
         match CTFMON_BACKUP_KEY.get_dword(&missing_name) {
             Ok(1) => Ok(Some(RawValueSnapshot::Missing)),
-            Ok(_) => Ok(Some(RawValueSnapshot::Present(
-                CTFMON_BACKUP_KEY.get_raw_value(name)?,
-            ))),
+            Ok(_) => match CTFMON_BACKUP_KEY.get_raw_value(name) {
+                Ok(value) => Ok(Some(RawValueSnapshot::Present(value))),
+                Err(AppError::Io(error)) if error.kind() == ErrorKind::NotFound => Ok(None),
+                Err(error) => Err(error),
+            },
             Err(AppError::Io(error)) if error.kind() == ErrorKind::NotFound => Ok(None),
             Err(error) => Err(error),
         }

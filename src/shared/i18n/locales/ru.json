@@ -235,7 +235,7 @@
     "tweaks": {
       "braveBrowserDebloat": {
         "detailDescription": "Применяет политики Brave, которые отключают Brave Rewards, Wallet, VPN, Leo AI Chat, News, Talk, окна Tor, P3A, отправку метрик, URL-keyed anonymized data collection, расширенные отчёты Safe Browsing и связанные фоновые пинги.",
-        "name": "Brave Browser Debloat",
+        "name": "Деблоат Brave Browser",
         "riskDescription": "Твик записывает машинные политики Brave. Часть настроек браузера может отображаться как управляемая организацией до сброса твика или перезапуска Brave.",
         "shortDescription": "Отключает Brave Rewards, Leo AI, Crypto Wallet, VPN, телеметрию и другие опциональные функции Brave."
       },
@@ -247,7 +247,7 @@
       },
       "microsoftEdgeDebloat": {
         "detailDescription": "Применяет политики Microsoft Edge, которые отключают телеметрию и персонализационные отчёты, рекомендации, первый запуск, feedback, альтернативные страницы ошибок, Collections, Shopping Assistant, Insider-промо, Rewards, Web Widget, asset delivery, donation wallet features, кампании браузера по умолчанию и стандартный ярлык на рабочем столе от Edge Update.",
-        "name": "Microsoft Edge Debloat",
+        "name": "Деблоат Microsoft Edge",
         "riskDescription": "Твик записывает машинные политики Edge. Часть настроек браузера может отображаться как управляемая организацией до сброса твика или перезапуска Edge.",
         "shortDescription": "Отключает телеметрию Edge, всплывающие окна, рекомендации, промо и другие раздражающие элементы браузера."
       },

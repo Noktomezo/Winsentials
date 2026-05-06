@@ -41,7 +41,7 @@ impl DisableCopilotTweak {
                 ),
                 conflicts: None,
                 requires_action: RequiresAction::None,
-                min_os_build: Some(10240),
+                min_os_build: Some(22631),
                 min_os_ubr: None,
                 min_required_memory_gb: None,
             },
@@ -50,7 +50,8 @@ impl DisableCopilotTweak {
 
     fn is_enabled(&self) -> Result<bool, AppError> {
         match STATE_KEY.get_dword("Removed") {
-            Ok(value) => Ok(value == 1),
+            Ok(1) => Ok(!copilot_packages_present()?),
+            Ok(_) => Ok(false),
             Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {
                 Ok(!copilot_packages_present()?)
             }
@@ -67,8 +68,22 @@ Get-AppxPackage -AllUsers '*Copilot*' | Remove-AppxPackage -AllUsers -ErrorActio
 
 $appx = (Get-AppxPackage 'MicrosoftWindows.Client.CoreAI' -ErrorAction SilentlyContinue).PackageFullName
 if ($appx) {
-  $sid = (Get-LocalUser $Env:UserName).Sid.Value
-  New-Item "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\$sid\$appx" -Force | Out-Null
+  $sid = $null
+  try {
+    $sid = [System.Security.Principal.NTAccount]::new($Env:UserName).Translate([System.Security.Principal.SecurityIdentifier]).Value
+  } catch {
+    try {
+      $formatArg = '/f' + 'o'
+      $whoami = whoami /user $formatArg csv /nh
+      if ($whoami) {
+        $sid = ($whoami | ConvertFrom-Csv -Header Name,Sid).Sid
+      }
+    } catch {}
+  }
+
+  if ($sid) {
+    New-Item "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\$sid\$appx" -Force | Out-Null
+  }
   Remove-AppxPackage $appx -ErrorAction SilentlyContinue
 }
 
@@ -81,8 +96,10 @@ Write-Host 'Copilot Removed'
     fn install_copilot() -> Result<(), AppError> {
         let result = install_with_winget("9NHT9RB2F4HD", "msstore");
 
-        if result.is_ok() {
-            STATE_KEY.delete_value("Removed")?;
+        if result.is_ok()
+            && let Err(error) = STATE_KEY.delete_value("Removed")
+        {
+            log::warn!("failed to delete Copilot removal marker: {error}");
         }
 
         result.map(|_| ())

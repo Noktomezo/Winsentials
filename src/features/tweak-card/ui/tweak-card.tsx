@@ -433,6 +433,7 @@ export function TweakCard({
   const tweakName = t(tweak.name)
   const Icon = TWEAK_ICONS[tweak.id] ?? Info
   const isEnabled = tweak.currentValue === 'enabled'
+  const isRecommended = tweak.currentValue === tweak.recommendedValue
   const isAtDefault = tweak.currentValue === tweak.defaultValue
   const isBelowBuildRequirement = isBelowMinBuild(currentBuild, tweak)
   const minInstalledMemoryGb = tweak.minRequiredMemoryGb ?? null
@@ -522,7 +523,7 @@ export function TweakCard({
 
             {tweak.control.kind === 'action' && (
               <Button
-                disabled={isPending || isApplyBlocked || isEnabled}
+                disabled={isPending || isApplyBlocked || isRecommended}
                 onClick={() => onApplyValue(tweak.recommendedValue)}
                 type="button"
               >

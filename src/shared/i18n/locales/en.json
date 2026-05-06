@@ -239,7 +239,7 @@
       },
       "disableMicrosoftCopilot": {
         "detailDescription": "Removes Copilot AppX packages for all users, marks the current user's MicrosoftWindows.Client.CoreAI package as end-of-life, and removes that CoreAI package when present. Reset reinstalls Copilot from Microsoft Store through winget.",
-        "name": "Microsoft Copilot Disable",
+        "name": "Disable Microsoft Copilot",
         "riskDescription": "This is a long-running AppX and Microsoft Store operation. Reset requires winget and Microsoft Store access, and may fail if Store sources are blocked or unavailable.",
         "shortDescription": "Removes Copilot and related AI AppX packages, with reset reinstalling Copilot through winget."
       },
