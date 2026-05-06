@@ -124,7 +124,10 @@ fn enrich_backup_snapshots_with_missing_tweaks() -> Result<(), AppError> {
         return Ok(());
     }
 
-    let current_tweaks = collect_tweak_snapshot();
+    let default_tweaks: HashMap<String, String> = all_tweaks()
+        .iter()
+        .map(|tweak| (tweak.id().to_string(), tweak.meta().default_value.clone()))
+        .collect();
 
     for entry in fs::read_dir(&dir)?.flatten() {
         let path = entry.path();
@@ -140,7 +143,7 @@ fn enrich_backup_snapshots_with_missing_tweaks() -> Result<(), AppError> {
         };
 
         let mut changed = false;
-        for (id, value) in &current_tweaks {
+        for (id, value) in &default_tweaks {
             if !snapshot.tweaks.contains_key(id) {
                 snapshot.tweaks.insert(id.clone(), value.clone());
                 changed = true;
@@ -148,8 +151,19 @@ fn enrich_backup_snapshots_with_missing_tweaks() -> Result<(), AppError> {
         }
 
         if changed {
-            let json = serde_json::to_string_pretty(&snapshot)?;
-            fs::write(&path, json)?;
+            match serde_json::to_string_pretty(&snapshot) {
+                Ok(json) => {
+                    if let Err(error) = fs::write(&path, json) {
+                        log::warn!("failed to enrich backup {}: {error}", path.display());
+                    }
+                }
+                Err(error) => {
+                    log::warn!(
+                        "failed to serialize enriched backup {}: {error}",
+                        path.display()
+                    );
+                }
+            }
         }
     }
 
@@ -261,5 +275,7 @@ pub fn ensure_initial_backup() {
         let _ = write_backup_snapshot("initial.json", "Initial".to_string(), None);
     }
 
-    let _ = enrich_backup_snapshots_with_missing_tweaks();
+    if let Err(error) = enrich_backup_snapshots_with_missing_tweaks() {
+        log::error!("enrich_backup_snapshots_with_missing_tweaks failed: {error:?}");
+    }
 }

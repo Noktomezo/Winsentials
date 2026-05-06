@@ -240,7 +240,7 @@
         "shortDescription": "Отключает Brave Rewards, Leo AI, Crypto Wallet, VPN, телеметрию и другие опциональные функции Brave."
       },
       "disableMicrosoftCopilot": {
-        "detailDescription": "Удаляет AppX-пакеты Copilot для всех пользователей, удаляет Microsoft Office Hub, помечает пакет MicrosoftWindows.Client.CoreAI текущего пользователя как EndOfLife и удаляет этот CoreAI-пакет, если он найден. Сброс заново устанавливает Copilot из Microsoft Store через winget.",
+        "detailDescription": "Удаляет AppX-пакеты Copilot для всех пользователей, помечает пакет MicrosoftWindows.Client.CoreAI текущего пользователя как EndOfLife и удаляет этот CoreAI-пакет, если он найден. Сброс заново устанавливает Copilot из Microsoft Store через winget.",
         "name": "Отключить Microsoft Copilot",
         "riskDescription": "Это длительная операция AppX и Microsoft Store. Для сброса нужен winget и доступ к Microsoft Store; установка может не пройти, если Store sources заблокированы или недоступны.",
         "shortDescription": "Удаляет Copilot и связанные AI AppX-пакеты, а сброс переустанавливает Copilot через winget."
@@ -252,7 +252,7 @@
         "shortDescription": "Отключает телеметрию Edge, всплывающие окна, рекомендации, промо и другие раздражающие элементы браузера."
       },
       "removeMicrosoftEdge": {
-        "detailDescription": "Создаёт placeholder MicrosoftEdge.exe в системном пути пакета Edge, затем запускает самый новый setup.exe установщика Edge через duct с системным принудительным удалением и удалением профиля. Сброс заново устанавливает Microsoft Edge через winget.",
+        "detailDescription": "Создаёт placeholder MicrosoftEdge.exe в системном пути пакета Edge, затем запускает самый новый setup.exe установщика Edge с принудительным удалением и удалением профиля. Сброс заново устанавливает Microsoft Edge через winget.",
         "name": "Удалить Microsoft Edge",
         "riskDescription": "Твик удаляет системную установку Edge и профиль Edge. Компоненты Windows, которым нужен Edge или браузерная интеграция WebView, могут работать иначе до повторной установки Edge.",
         "shortDescription": "Удаляет Microsoft Edge на системном уровне, а при сбросе восстанавливает его через winget."
@@ -264,7 +264,7 @@
         "shortDescription": "Удаляет OneDrive штатным деинсталлятором, чистит остатки и восстанавливает его через winget при сбросе."
       },
       "blockRazerAutoInstall": {
-        "detailDescription": "Отключает Windows driver search co-installers, очищает папку кэша установщика Razer, если она есть, создаёт её при отсутствии и запрещает запись, чтобы Razer Software не мог автоматически складывать туда установщики. Устройства Razer должны продолжить работать на обычных драйверах.",
+        "detailDescription": "Отключает Windows driver search co-installers, создаёт папку кэша установщика Razer при отсутствии и запрещает запись, чтобы Razer Software не мог автоматически складывать туда установщики. Устройства Razer должны продолжить работать на обычных драйверах.",
         "name": "Отключить автоустановку ПО Razer",
         "riskDescription": "Твик может заблокировать вспомогательное ПО производителя, которое Windows обычно устанавливает для устройств Razer. Если нужен Synapse или другое ПО Razer, сначала сбросьте твик.",
         "shortDescription": "Блокирует автоматическую установку ПО Razer, сохраняя работу устройств без vendor-софта."
@@ -821,6 +821,7 @@
     },
     "actions": {
       "copyCommand": "Скопировать команду",
+      "apply": "Применить",
       "resetToDefault": "Восстановить по умолчанию",
       "later": "Позже",
       "logoutNow": "Выйти сейчас",

@@ -5,6 +5,7 @@ use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMet
 const ENABLED_VALUE: &str = "enabled";
 const DISABLED_VALUE: &str = "disabled";
 const CUSTOM_VALUE: &str = "custom";
+const EDGE_EXTENSION_BLOCKLIST_ENTRY: &str = "1000";
 
 enum RegistryValue {
     Dword(u32),
@@ -233,7 +234,8 @@ const EDGE_POLICIES: &[PolicyValue] = &[
     },
     PolicyValue {
         key: EDGE_EXTENSION_BLOCKLIST_KEY,
-        name: "1",
+        // Use a high policy index to avoid clobbering user-owned low numeric entries.
+        name: EDGE_EXTENSION_BLOCKLIST_ENTRY,
         value: RegistryValue::String("ofefcgjbeghpigppfmkologfjadafddi"),
     },
     PolicyValue {

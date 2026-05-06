@@ -1,6 +1,6 @@
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
-use crate::shell::run_powershell;
+use crate::shell::{install_with_winget, run_powershell};
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
 
 const ENABLED_VALUE: &str = "enabled";
@@ -31,7 +31,7 @@ impl DisableCopilotTweak {
                 short_description: "debloat.tweaks.disableMicrosoftCopilot.shortDescription".into(),
                 detail_description: "debloat.tweaks.disableMicrosoftCopilot.detailDescription"
                     .into(),
-                control: TweakControlType::Toggle,
+                control: TweakControlType::Action,
                 current_value: DISABLED_VALUE.into(),
                 default_value: DISABLED_VALUE.into(),
                 recommended_value: ENABLED_VALUE.into(),
@@ -51,7 +51,9 @@ impl DisableCopilotTweak {
     fn is_enabled(&self) -> Result<bool, AppError> {
         match STATE_KEY.get_dword("Removed") {
             Ok(value) => Ok(value == 1),
-            Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
+            Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {
+                Ok(!copilot_packages_present()?)
+            }
             Err(error) => Err(error),
         }
     }
@@ -62,7 +64,6 @@ impl DisableCopilotTweak {
 $ErrorActionPreference = 'Stop'
 
 Get-AppxPackage -AllUsers '*Copilot*' | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
-Get-AppxPackage -AllUsers 'Microsoft.MicrosoftOfficeHub' | Remove-AppxPackage -AllUsers -ErrorAction SilentlyContinue
 
 $appx = (Get-AppxPackage 'MicrosoftWindows.Client.CoreAI' -ErrorAction SilentlyContinue).PackageFullName
 if ($appx) {
@@ -78,21 +79,7 @@ Write-Host 'Copilot Removed'
     }
 
     fn install_copilot() -> Result<(), AppError> {
-        let result = run_powershell(
-            r#"
-$ErrorActionPreference = 'Stop'
-
-try {
-  winget settings --enable BypassCertificatePinningForMicrosoftStore
-  winget install --name Copilot --source msstore --accept-package-agreements --accept-source-agreements --silent
-}
-finally {
-  winget settings --disable BypassCertificatePinningForMicrosoftStore
-}
-
-Write-Host 'Copilot Installed'
-"#,
-        );
+        let result = install_with_winget("9NHT9RB2F4HD", "msstore");
 
         if result.is_ok() {
             STATE_KEY.delete_value("Removed")?;
@@ -100,6 +87,17 @@ Write-Host 'Copilot Installed'
 
         result.map(|_| ())
     }
+}
+
+fn copilot_packages_present() -> Result<bool, AppError> {
+    let output = run_powershell(
+        r#"
+$packages = Get-AppxPackage -AllUsers '*Copilot*' -ErrorAction SilentlyContinue
+if ($packages) { 'present' }
+"#,
+    )?;
+
+    Ok(!output.trim().is_empty())
 }
 
 impl Tweak for DisableCopilotTweak {

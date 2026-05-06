@@ -1,8 +1,9 @@
 use std::fs;
-use std::path::Path;
+use std::path::PathBuf;
 
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
+use crate::shell::run_duct;
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
 
 const ENABLED_VALUE: &str = "enabled";
@@ -23,8 +24,6 @@ const DEVICE_INSTALLER_KEY: RegKey = RegKey {
     hive: Hive::LocalMachine,
     path: r"SOFTWARE\Microsoft\Windows\CurrentVersion\Device Installer",
 };
-
-const RAZER_INSTALLER_PATH: &str = r"C:\Windows\Installer\Razer";
 
 pub struct BlockRazerAutoInstallTweak {
     meta: TweakMeta,
@@ -100,27 +99,37 @@ impl BlockRazerAutoInstallTweak {
         DRIVER_SEARCHING_KEY.set_dword("SearchOrderConfig", BLOCKED_SEARCH_ORDER_CONFIG)?;
         DEVICE_INSTALLER_KEY.set_dword("DisableCoInstallers", BLOCKED_DISABLE_COINSTALLERS)?;
 
-        let razer_path = Path::new(RAZER_INSTALLER_PATH);
-        if razer_path.exists() {
-            for entry in fs::read_dir(razer_path)?.flatten() {
-                let path = entry.path();
-                if path.is_dir() {
-                    fs::remove_dir_all(path)?;
-                } else {
-                    fs::remove_file(path)?;
-                }
-            }
-        } else {
-            fs::create_dir_all(razer_path)?;
+        let razer_path = razer_installer_path()?;
+        if !razer_path.exists() {
+            fs::create_dir_all(&razer_path)?;
         }
 
-        run_duct("icacls", &[RAZER_INSTALLER_PATH, "/deny", "*S-1-1-0:(W)"])
+        run_duct(
+            "icacls",
+            &[
+                razer_path.to_string_lossy().as_ref(),
+                "/deny",
+                "*S-1-1-0:(W)",
+            ],
+        )
     }
 
     fn unblock_auto_install() -> Result<(), AppError> {
         DRIVER_SEARCHING_KEY.set_dword("SearchOrderConfig", DEFAULT_SEARCH_ORDER_CONFIG)?;
         DEVICE_INSTALLER_KEY.set_dword("DisableCoInstallers", DEFAULT_DISABLE_COINSTALLERS)?;
-        run_duct("icacls", &[RAZER_INSTALLER_PATH, "/remove:d", "*S-1-1-0"])
+        let razer_path = razer_installer_path()?;
+        if !razer_path.exists() {
+            return Ok(());
+        }
+
+        run_duct(
+            "icacls",
+            &[
+                razer_path.to_string_lossy().as_ref(),
+                "/remove:d",
+                "*S-1-1-0",
+            ],
+        )
     }
 }
 
@@ -165,12 +174,12 @@ impl Tweak for BlockRazerAutoInstallTweak {
     }
 }
 
-fn run_duct(program: &str, args: &[&str]) -> Result<(), AppError> {
-    duct::cmd(program, args)
-        .run()
-        .map(|_| ())
-        .map_err(|error| AppError::CommandFailed {
-            command: program.to_string(),
-            stderr: error.to_string(),
-        })
+fn razer_installer_path() -> Result<PathBuf, AppError> {
+    Ok(system_root()?.join("Installer").join("Razer"))
+}
+
+fn system_root() -> Result<PathBuf, AppError> {
+    std::env::var_os("SystemRoot")
+        .map(PathBuf::from)
+        .ok_or_else(|| AppError::message("SystemRoot is not set"))
 }

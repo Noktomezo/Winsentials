@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
+use crate::shell::{install_with_winget, run_duct};
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
 
 const ENABLED_VALUE: &str = "enabled";
@@ -41,7 +42,7 @@ impl RemoveOneDriveTweak {
                 short_description: "debloat.tweaks.removeMicrosoftOneDrive.shortDescription".into(),
                 detail_description: "debloat.tweaks.removeMicrosoftOneDrive.detailDescription"
                     .into(),
-                control: TweakControlType::Toggle,
+                control: TweakControlType::Action,
                 current_value: DISABLED_VALUE.into(),
                 default_value: DISABLED_VALUE.into(),
                 recommended_value: ENABLED_VALUE.into(),
@@ -86,10 +87,9 @@ impl RemoveOneDriveTweak {
         }
 
         let _ = run_duct("taskkill", &["/IM", "FileCoAuth.exe", "/F"]);
-        let _ = run_duct("taskkill", &["/IM", "explorer.exe", "/F"]);
 
         remove_dir_if_exists(local_app_data()?.join("Microsoft").join("OneDrive"))?;
-        remove_dir_if_exists(PathBuf::from(r"C:\ProgramData\Microsoft OneDrive"))?;
+        remove_dir_if_exists(program_data()?.join("Microsoft OneDrive"))?;
 
         if let Some(path) = std::env::var_os("OneDrive").map(PathBuf::from) {
             let _ = run_duct(
@@ -107,7 +107,7 @@ impl RemoveOneDriveTweak {
     }
 
     fn install_onedrive() -> Result<(), AppError> {
-        let result = install_with_winget("Microsoft.Onedrive");
+        let result = install_with_winget("Microsoft.Onedrive", "winget");
 
         if result.is_ok() {
             ONEDRIVE_SERVICE_KEY.set_dword("Start", AUTOMATIC_SERVICE_START)?;
@@ -156,51 +156,6 @@ impl Tweak for RemoveOneDriveTweak {
     }
 }
 
-fn run_duct(program: &str, args: &[&str]) -> Result<(), AppError> {
-    duct::cmd(program, args)
-        .run()
-        .map(|_| ())
-        .map_err(|error| AppError::CommandFailed {
-            command: program.to_string(),
-            stderr: error.to_string(),
-        })
-}
-
-fn install_with_winget(package_id: &str) -> Result<(), AppError> {
-    let enable_result = run_duct(
-        "winget",
-        &[
-            "settings",
-            "--enable",
-            "BypassCertificatePinningForMicrosoftStore",
-        ],
-    );
-    let install_result = enable_result.and_then(|_| {
-        run_duct(
-            "winget",
-            &[
-                "install",
-                package_id,
-                "--source",
-                "winget",
-                "--accept-package-agreements",
-                "--accept-source-agreements",
-                "--silent",
-            ],
-        )
-    });
-    let disable_result = run_duct(
-        "winget",
-        &[
-            "settings",
-            "--disable",
-            "BypassCertificatePinningForMicrosoftStore",
-        ],
-    );
-
-    install_result.and(disable_result)
-}
-
 fn system_root() -> Result<PathBuf, AppError> {
     std::env::var_os("SystemRoot")
         .map(PathBuf::from)
@@ -211,6 +166,12 @@ fn local_app_data() -> Result<PathBuf, AppError> {
     std::env::var_os("LocalAppData")
         .map(PathBuf::from)
         .ok_or_else(|| AppError::message("LocalAppData is not set"))
+}
+
+fn program_data() -> Result<PathBuf, AppError> {
+    std::env::var_os("ProgramData")
+        .map(PathBuf::from)
+        .ok_or_else(|| AppError::message("ProgramData is not set"))
 }
 
 fn remove_dir_if_exists(path: PathBuf) -> Result<(), AppError> {
@@ -224,7 +185,7 @@ fn remove_dir_if_exists(path: PathBuf) -> Result<(), AppError> {
 fn is_onedrive_absent() -> Result<bool, AppError> {
     let setup_path = system_root()?.join("System32").join("OneDriveSetup.exe");
     let local_leftovers = local_app_data()?.join("Microsoft").join("OneDrive");
-    let program_data_leftovers = PathBuf::from(r"C:\ProgramData\Microsoft OneDrive");
+    let program_data_leftovers = program_data()?.join("Microsoft OneDrive");
 
     Ok(!setup_path.exists() && !local_leftovers.exists() && !program_data_leftovers.exists())
 }

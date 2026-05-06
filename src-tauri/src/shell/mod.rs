@@ -63,6 +63,56 @@ $OutputEncoding = [Console]::OutputEncoding; \
     })
 }
 
+pub fn run_duct(program: &str, args: &[&str]) -> Result<(), AppError> {
+    duct::cmd(program, args)
+        .run()
+        .map(|_| ())
+        .map_err(|error| AppError::CommandFailed {
+            command: program.to_string(),
+            stderr: error.to_string(),
+        })
+}
+
+pub fn install_with_winget(package_id: &str, source: &str) -> Result<(), AppError> {
+    let enable_result = run_duct(
+        "winget",
+        &[
+            "settings",
+            "--enable",
+            "BypassCertificatePinningForMicrosoftStore",
+        ],
+    );
+    let install_result = enable_result.and_then(|_| {
+        run_duct(
+            "winget",
+            &[
+                "install",
+                "--id",
+                package_id,
+                "--source",
+                source,
+                "--accept-package-agreements",
+                "--accept-source-agreements",
+                "--silent",
+            ],
+        )
+    });
+    let disable_result = run_duct(
+        "winget",
+        &[
+            "settings",
+            "--disable",
+            "BypassCertificatePinningForMicrosoftStore",
+        ],
+    );
+
+    if let Err(error) = disable_result {
+        log::warn!("failed to disable winget Store certificate bypass: {error}");
+    }
+
+    install_result
+}
+
 pub fn restart_explorer() -> Result<(), AppError> {
     run_powershell(
         "Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue; Start-Process explorer.exe",

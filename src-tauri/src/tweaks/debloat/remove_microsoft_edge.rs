@@ -1,6 +1,6 @@
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
-use crate::shell::run_powershell;
+use crate::shell::{install_with_winget, run_duct, run_powershell};
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
 
 const ENABLED_VALUE: &str = "enabled";
@@ -30,7 +30,7 @@ impl RemoveMicrosoftEdgeTweak {
                 name: "debloat.tweaks.removeMicrosoftEdge.name".into(),
                 short_description: "debloat.tweaks.removeMicrosoftEdge.shortDescription".into(),
                 detail_description: "debloat.tweaks.removeMicrosoftEdge.detailDescription".into(),
-                control: TweakControlType::Toggle,
+                control: TweakControlType::Action,
                 current_value: DISABLED_VALUE.into(),
                 default_value: DISABLED_VALUE.into(),
                 recommended_value: ENABLED_VALUE.into(),
@@ -65,41 +65,40 @@ New-Item -Path "$Env:SystemRoot\SystemApps\Microsoft.MicrosoftEdge_8wekyb3d8bbwe
         )?;
 
         if let Some(setup_path) = edge_setup_path()? {
-            duct::cmd(
-                setup_path.as_os_str(),
-                [
+            let level_flag = edge_install_level_flag(&setup_path);
+            let setup = setup_path.to_string_lossy();
+            run_duct(
+                setup.as_ref(),
+                &[
                     "--uninstall",
-                    "--system-level",
+                    level_flag,
                     "--force-uninstall",
                     "--delete-profile",
                 ],
-            )
-            .run()
-            .map_err(|error| AppError::CommandFailed {
-                command: setup_path.display().to_string(),
-                stderr: error.to_string(),
-            })?;
+            )?;
         }
 
         STATE_KEY.set_dword("Removed", 1)
     }
 
     fn install_edge() -> Result<(), AppError> {
-        let result = run_powershell(
-            r#"
-$ErrorActionPreference = 'Stop'
+        let cached_result = match edge_setup_path()? {
+            Some(setup_path) => {
+                let setup = setup_path.to_string_lossy();
+                run_duct(
+                    setup.as_ref(),
+                    &["--install", edge_install_level_flag(&setup_path)],
+                )
+            }
+            None => Err(AppError::message(
+                "Microsoft Edge cached setup.exe not found",
+            )),
+        };
 
-try {
-  winget settings --enable BypassCertificatePinningForMicrosoftStore
-  winget install Microsoft.Edge --source winget --accept-package-agreements --accept-source-agreements --silent
-}
-finally {
-  winget settings --disable BypassCertificatePinningForMicrosoftStore
-}
-
-Write-Host 'Microsoft Edge Installed'
-"#,
-        );
+        let result = cached_result.or_else(|error| {
+            log::warn!("failed to install Edge from cached setup.exe: {error}");
+            install_with_winget("Microsoft.Edge", "winget")
+        });
 
         if result.is_ok() {
             STATE_KEY.delete_value("Removed")?;
@@ -120,6 +119,10 @@ fn edge_setup_path() -> Result<Option<std::path::PathBuf>, AppError> {
         candidates.push(std::path::PathBuf::from(program_files));
     }
 
+    if let Some(local_app_data) = std::env::var_os("LocalAppData") {
+        candidates.push(std::path::PathBuf::from(local_app_data));
+    }
+
     let mut installers = Vec::new();
     for base in candidates {
         let app_dir = base.join("Microsoft").join("Edge").join("Application");
@@ -135,8 +138,34 @@ fn edge_setup_path() -> Result<Option<std::path::PathBuf>, AppError> {
         }
     }
 
-    installers.sort();
+    installers.sort_by_key(|path| edge_setup_version(path));
     Ok(installers.pop())
+}
+
+fn edge_setup_version(path: &std::path::Path) -> Vec<u32> {
+    path.parent()
+        .and_then(|path| path.parent())
+        .and_then(|path| path.file_name())
+        .and_then(|name| name.to_str())
+        .map(|version| {
+            version
+                .split('.')
+                .map(|segment| segment.parse::<u32>().unwrap_or(0))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn edge_install_level_flag(path: &std::path::Path) -> &'static str {
+    let user_profile = std::env::var_os("USERPROFILE").map(std::path::PathBuf::from);
+    if user_profile
+        .as_ref()
+        .is_some_and(|profile| path.starts_with(profile))
+    {
+        "--user-level"
+    } else {
+        "--system-level"
+    }
 }
 
 impl Tweak for RemoveMicrosoftEdgeTweak {

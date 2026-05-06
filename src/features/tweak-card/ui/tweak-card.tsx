@@ -141,12 +141,6 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   block_razer_auto_install: PlugZap,
 }
 
-const ACTION_ONLY_TWEAK_IDS = new Set([
-  'disable_microsoft_copilot',
-  'remove_microsoft_edge',
-  'remove_microsoft_onedrive',
-])
-
 const COPYABLE_RISK_COMMANDS: Record<string, string> = {
   disable_user_account_control: 'runas /trustlevel:0x20000 "program.exe"',
 }
@@ -170,7 +164,7 @@ function measureTweakTitleWidth(title: string) {
 }
 
 function tweakControlWidth(tweak: TweakMeta) {
-  if (ACTION_ONLY_TWEAK_IDS.has(tweak.id)) {
+  if (tweak.control.kind === 'action') {
     return ACTION_CONTROL_WIDTH
   }
 
@@ -526,17 +520,17 @@ export function TweakCard({
               <RotateCcw className="size-4" />
             </Button>
 
-            {ACTION_ONLY_TWEAK_IDS.has(tweak.id) && (
+            {tweak.control.kind === 'action' && (
               <Button
                 disabled={isPending || isApplyBlocked || isEnabled}
                 onClick={() => onApplyValue(tweak.recommendedValue)}
                 type="button"
               >
                 <Check className="size-4" />
-                {t('backup.apply')}
+                {t('tweaks.actions.apply')}
               </Button>
             )}
-            {!ACTION_ONLY_TWEAK_IDS.has(tweak.id) && tweak.control.kind === 'toggle' && (
+            {tweak.control.kind === 'toggle' && (
               <LabeledSwitch
                 aria-label={t(tweak.name)}
                 checked={isEnabled}

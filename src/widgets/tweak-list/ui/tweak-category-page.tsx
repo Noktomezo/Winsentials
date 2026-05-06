@@ -152,11 +152,13 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
       {isApplyingTweak && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-sm">
-          <div className="flex items-center gap-3 rounded-lg border border-border bg-popover px-4 py-3 text-sm font-medium text-popover-foreground shadow-lg">
-            <Loader2 className="size-4 animate-spin" />
-            {t('tweaks.progress.applying')}
-          </div>
+        <div
+          aria-live="polite"
+          className="sticky top-2 z-20 flex w-fit items-center gap-2 rounded-md border border-border bg-popover px-3 py-2 text-xs font-medium text-popover-foreground shadow-sm"
+          role="status"
+        >
+          <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+          {t('tweaks.progress.applying')}
         </div>
       )}
 

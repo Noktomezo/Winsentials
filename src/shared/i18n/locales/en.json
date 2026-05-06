@@ -238,7 +238,7 @@
         "shortDescription": "Disables Brave Rewards, Leo AI, Crypto Wallet, VPN, telemetry, and other optional Brave features."
       },
       "disableMicrosoftCopilot": {
-        "detailDescription": "Removes Copilot AppX packages for all users, removes Microsoft Office Hub, marks the current user's MicrosoftWindows.Client.CoreAI package as end-of-life, and removes that CoreAI package when present. Reset reinstalls Copilot from Microsoft Store through winget.",
+        "detailDescription": "Removes Copilot AppX packages for all users, marks the current user's MicrosoftWindows.Client.CoreAI package as end-of-life, and removes that CoreAI package when present. Reset reinstalls Copilot from Microsoft Store through winget.",
         "name": "Microsoft Copilot Disable",
         "riskDescription": "This is a long-running AppX and Microsoft Store operation. Reset requires winget and Microsoft Store access, and may fail if Store sources are blocked or unavailable.",
         "shortDescription": "Removes Copilot and related AI AppX packages, with reset reinstalling Copilot through winget."
@@ -262,7 +262,7 @@
         "shortDescription": "Uninstalls OneDrive with its native uninstaller, removes leftovers, and restores it through winget on reset."
       },
       "blockRazerAutoInstall": {
-        "detailDescription": "Disables Windows driver search co-installers, clears the Razer installer cache folder when present, creates it if missing, and denies write access so Razer software cannot auto-drop installers there. Razer hardware should continue working through normal drivers.",
+        "detailDescription": "Disables Windows driver search co-installers, ensures the Razer installer cache folder exists, and denies write access so Razer software cannot auto-drop installers there. Razer hardware should continue working through normal drivers.",
         "name": "Disable Razer Software Auto-Install",
         "riskDescription": "This can block vendor helper software that Windows would otherwise install for Razer devices. If you want Synapse or other Razer software back, reset the tweak before installing it.",
         "shortDescription": "Blocks automatic Razer software installers while keeping the hardware usable without vendor software."
@@ -819,6 +819,7 @@
     },
     "actions": {
       "copyCommand": "Copy command",
+      "apply": "Apply",
       "resetToDefault": "Reset to default",
       "later": "Later",
       "logoutNow": "Sign out now",

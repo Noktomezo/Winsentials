@@ -41,6 +41,7 @@ pub struct TweakConflict {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TweakControlType {
     Toggle,
+    Action,
     Radio { options: Vec<TweakOption> },
     Dropdown { options: Vec<TweakOption> },
 }
