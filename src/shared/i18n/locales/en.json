@@ -532,6 +532,15 @@
     }
   },
   "settings": {
+    "discordPresence": "Discord Rich Presence",
+    "discordPresenceDescription": "Choose how Winsentials appears in your Discord activity.",
+    "discordPresenceModes": {
+      "competing": "Competing",
+      "listening": "Listening",
+      "none": "None",
+      "playing": "Playing",
+      "watching": "Watching"
+    },
     "disableUpdateChecks": "Disable update checks",
     "description": "Adjust application language, appearance mode, and window materials.",
     "installingUpdate": "Downloading and installing the latest update...",

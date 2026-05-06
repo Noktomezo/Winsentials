@@ -61,7 +61,8 @@ impl RemoveOneDriveTweak {
 
     fn is_enabled(&self) -> Result<bool, AppError> {
         match STATE_KEY.get_dword("Removed") {
-            Ok(value) => Ok(value == 1),
+            Ok(1) => Ok(is_onedrive_absent()?),
+            Ok(_) => Ok(false),
             Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {
                 Ok(is_onedrive_absent()?)
             }
@@ -70,7 +71,9 @@ impl RemoveOneDriveTweak {
     }
 
     fn remove_onedrive() -> Result<(), AppError> {
-        if let Some(path) = std::env::var_os("OneDrive").map(PathBuf::from) {
+        let onedrive_path = std::env::var_os("OneDrive").map(PathBuf::from);
+
+        if let Some(path) = &onedrive_path {
             let _ = run_duct(
                 "icacls",
                 &[
@@ -82,16 +85,13 @@ impl RemoveOneDriveTweak {
         }
 
         let setup_path = system_root()?.join("System32").join("OneDriveSetup.exe");
-        if setup_path.exists() {
-            run_duct(setup_path.to_string_lossy().as_ref(), &["/uninstall"])?;
-        }
+        let uninstall_result = if setup_path.exists() {
+            run_duct(setup_path.to_string_lossy().as_ref(), &["/uninstall"])
+        } else {
+            Ok(())
+        };
 
-        let _ = run_duct("taskkill", &["/IM", "FileCoAuth.exe", "/F"]);
-
-        remove_dir_if_exists(local_app_data()?.join("Microsoft").join("OneDrive"))?;
-        remove_dir_if_exists(program_data()?.join("Microsoft OneDrive"))?;
-
-        if let Some(path) = std::env::var_os("OneDrive").map(PathBuf::from) {
+        if let Some(path) = &onedrive_path {
             let _ = run_duct(
                 "icacls",
                 &[
@@ -102,6 +102,13 @@ impl RemoveOneDriveTweak {
             );
         }
 
+        uninstall_result?;
+
+        let _ = run_duct("taskkill", &["/IM", "FileCoAuth.exe", "/F"]);
+
+        remove_dir_if_exists(local_app_data()?.join("Microsoft").join("OneDrive"))?;
+        remove_dir_if_exists(program_data()?.join("Microsoft OneDrive"))?;
+
         ONEDRIVE_SERVICE_KEY.set_dword("Start", DISABLED_SERVICE_START)?;
         STATE_KEY.set_dword("Removed", 1)
     }
@@ -111,7 +118,13 @@ impl RemoveOneDriveTweak {
 
         if result.is_ok() {
             ONEDRIVE_SERVICE_KEY.set_dword("Start", AUTOMATIC_SERVICE_START)?;
-            STATE_KEY.delete_value("Removed")?;
+            match STATE_KEY.delete_value("Removed") {
+                Ok(()) => {}
+                Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {
+                    log::warn!("OneDrive removal marker was already absent: {error}");
+                }
+                Err(error) => return Err(error),
+            }
         }
 
         result
@@ -184,8 +197,11 @@ fn remove_dir_if_exists(path: PathBuf) -> Result<(), AppError> {
 
 fn is_onedrive_absent() -> Result<bool, AppError> {
     let setup_path = system_root()?.join("System32").join("OneDriveSetup.exe");
-    let local_leftovers = local_app_data()?.join("Microsoft").join("OneDrive");
+    let client_path = local_app_data()?
+        .join("Microsoft")
+        .join("OneDrive")
+        .join("OneDrive.exe");
     let program_data_leftovers = program_data()?.join("Microsoft OneDrive");
 
-    Ok(!setup_path.exists() && !local_leftovers.exists() && !program_data_leftovers.exists())
+    Ok(!setup_path.exists() && !client_path.exists() && !program_data_leftovers.exists())
 }

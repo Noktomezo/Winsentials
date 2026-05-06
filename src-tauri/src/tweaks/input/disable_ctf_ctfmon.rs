@@ -197,10 +197,25 @@ impl DisableCtfCtfmonTweak {
             && state
                 .service_dll
                 .as_ref()
-                .is_some_and(|value| value.vtype == REG_EXPAND_SZ)
+                .is_some_and(Self::is_ctfmon_service_dll)
             && state.service_dll_unload_on_stop == AGGRESSIVE_SERVICE_DLL_UNLOAD_ON_STOP
             && state.service_start == DISABLED_SERVICE_START
             && state.disable_thread_input_manager == Some(AGGRESSIVE_DISABLE_THREAD_INPUT_MANAGER)
+    }
+
+    fn is_ctfmon_service_dll(value: &RawRegValue) -> bool {
+        if value.vtype != REG_EXPAND_SZ {
+            return false;
+        }
+
+        let words: Vec<u16> = value
+            .bytes
+            .chunks_exact(2)
+            .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+            .take_while(|word| *word != 0)
+            .collect();
+        String::from_utf16(&words)
+            .is_ok_and(|value| value.eq_ignore_ascii_case(r"%SystemRoot%\system32\ctfmon.dll"))
     }
 
     fn is_default(state: &CtfState) -> bool {
@@ -417,7 +432,8 @@ impl DisableCtfCtfmonTweak {
             &INPUT_KEY,
             "Disable Thread Input Manager",
             &disable_thread_input_manager,
-        )
+        )?;
+        CTFMON_BACKUP_KEY.delete_subkey_tree()
     }
 
     fn write_backup_dword(name: &str, snapshot: &DwordSnapshot) -> Result<(), AppError> {

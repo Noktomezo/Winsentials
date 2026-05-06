@@ -96,9 +96,6 @@ impl BlockRazerAutoInstallTweak {
     }
 
     fn block_auto_install() -> Result<(), AppError> {
-        DRIVER_SEARCHING_KEY.set_dword("SearchOrderConfig", BLOCKED_SEARCH_ORDER_CONFIG)?;
-        DEVICE_INSTALLER_KEY.set_dword("DisableCoInstallers", BLOCKED_DISABLE_COINSTALLERS)?;
-
         let razer_path = razer_installer_path()?;
         if !razer_path.exists() {
             fs::create_dir_all(&razer_path)?;
@@ -111,25 +108,27 @@ impl BlockRazerAutoInstallTweak {
                 "/deny",
                 "*S-1-1-0:(W)",
             ],
-        )
+        )?;
+
+        DRIVER_SEARCHING_KEY.set_dword("SearchOrderConfig", BLOCKED_SEARCH_ORDER_CONFIG)?;
+        DEVICE_INSTALLER_KEY.set_dword("DisableCoInstallers", BLOCKED_DISABLE_COINSTALLERS)
     }
 
     fn unblock_auto_install() -> Result<(), AppError> {
-        DRIVER_SEARCHING_KEY.set_dword("SearchOrderConfig", DEFAULT_SEARCH_ORDER_CONFIG)?;
-        DEVICE_INSTALLER_KEY.set_dword("DisableCoInstallers", DEFAULT_DISABLE_COINSTALLERS)?;
         let razer_path = razer_installer_path()?;
-        if !razer_path.exists() {
-            return Ok(());
+        if razer_path.exists() {
+            run_duct(
+                "icacls",
+                &[
+                    razer_path.to_string_lossy().as_ref(),
+                    "/remove:d",
+                    "*S-1-1-0",
+                ],
+            )?;
         }
 
-        run_duct(
-            "icacls",
-            &[
-                razer_path.to_string_lossy().as_ref(),
-                "/remove:d",
-                "*S-1-1-0",
-            ],
-        )
+        DRIVER_SEARCHING_KEY.set_dword("SearchOrderConfig", DEFAULT_SEARCH_ORDER_CONFIG)?;
+        DEVICE_INSTALLER_KEY.set_dword("DisableCoInstallers", DEFAULT_DISABLE_COINSTALLERS)
     }
 }
 

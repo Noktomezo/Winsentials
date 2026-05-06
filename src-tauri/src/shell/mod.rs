@@ -64,13 +64,35 @@ $OutputEncoding = [Console]::OutputEncoding; \
 }
 
 pub fn run_duct(program: &str, args: &[&str]) -> Result<(), AppError> {
-    duct::cmd(program, args)
-        .run()
-        .map(|_| ())
-        .map_err(|error| AppError::CommandFailed {
+    let expression = duct::cmd(program, args)
+        .stdout_capture()
+        .stderr_capture()
+        .unchecked();
+
+    #[cfg(target_os = "windows")]
+    let expression = expression.before_spawn(|command| {
+        command.creation_flags(CREATE_NO_WINDOW);
+        Ok(())
+    });
+
+    let output = expression.run().map_err(|error| AppError::CommandFailed {
+        command: program.to_string(),
+        stderr: error.to_string(),
+    })?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        Err(AppError::CommandFailed {
             command: program.to_string(),
-            stderr: error.to_string(),
+            stderr: if stderr.is_empty() {
+                format!("exited with status {}", output.status)
+            } else {
+                stderr
+            },
         })
+    }
 }
 
 fn run_winget(args: &[&str]) -> Result<(), AppError> {

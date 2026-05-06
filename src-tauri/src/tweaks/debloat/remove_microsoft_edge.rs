@@ -101,7 +101,11 @@ New-Item -Path "$Env:SystemRoot\SystemApps\Microsoft.MicrosoftEdge_8wekyb3d8bbwe
         });
 
         if result.is_ok() {
-            STATE_KEY.delete_value("Removed")?;
+            match STATE_KEY.delete_value("Removed") {
+                Ok(()) => {}
+                Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(error),
+            }
         }
 
         result.map(|_| ())

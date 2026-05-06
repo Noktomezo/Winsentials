@@ -95,7 +95,11 @@ impl BrowserPolicyDebloatTweak {
 
     fn delete_policy_values(&self) -> Result<(), AppError> {
         for policy in self.policies {
-            policy.key.delete_value(policy.name)?;
+            match policy.key.delete_value(policy.name) {
+                Ok(()) => {}
+                Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(error),
+            }
         }
 
         Ok(())

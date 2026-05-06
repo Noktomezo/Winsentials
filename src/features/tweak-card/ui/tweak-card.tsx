@@ -145,6 +145,25 @@ const COPYABLE_RISK_COMMANDS: Record<string, string> = {
   disable_user_account_control: 'runas /trustlevel:0x20000 "program.exe"',
 }
 
+const DROPDOWN_OPTION_ICONS: Record<string, Record<string, LucideIcon>> = {
+  fast_keyboard_repeat: {
+    default: Settings,
+    balanced: Gauge,
+    fast: Keyboard,
+    ultra_fast: Zap,
+  },
+  disable_cloud_sync: {
+    default: Settings,
+    partial: BellOff,
+    full: CloudOff,
+  },
+  disable_ctf_ctfmon: {
+    default: Settings,
+    soft: Keyboard,
+    aggressive: KeyboardOff,
+  },
+}
+
 let tweakTitleMeasureCanvas: HTMLCanvasElement | null = null
 
 function measureTweakTitleWidth(title: string) {
@@ -223,48 +242,7 @@ function dropdownOptionIcon(
   tweakId: string,
   optionValue: string,
 ): LucideIcon | null {
-  if (tweakId === 'fast_keyboard_repeat') {
-    switch (optionValue) {
-      case 'default':
-        return Settings
-      case 'balanced':
-        return Gauge
-      case 'fast':
-        return Keyboard
-      case 'ultra_fast':
-        return Zap
-      default:
-        return null
-    }
-  }
-
-  if (tweakId === 'disable_cloud_sync') {
-    switch (optionValue) {
-      case 'default':
-        return Settings
-      case 'partial':
-        return BellOff
-      case 'full':
-        return CloudOff
-      default:
-        return null
-    }
-  }
-
-  if (tweakId === 'disable_ctf_ctfmon') {
-    switch (optionValue) {
-      case 'default':
-        return Settings
-      case 'soft':
-        return Keyboard
-      case 'aggressive':
-        return KeyboardOff
-      default:
-        return null
-    }
-  }
-
-  return null
+  return DROPDOWN_OPTION_ICONS[tweakId]?.[optionValue] ?? null
 }
 
 function metadataChipClassName(

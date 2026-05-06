@@ -1,7 +1,8 @@
 import type { LucideIcon } from 'lucide-react'
-import { Download, Languages, MoonStar, Palette } from 'lucide-react'
+import { Download, Languages, MoonStar, Palette, RadioTower } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { UpdateCheckSwitch } from '@/features/app-updater/ui/update-check-switch'
+import { DiscordPresenceSelect } from '@/features/discord-presence/ui/discord-presence-select'
 import { LanguageSelect } from '@/features/language-switcher/ui/language-select'
 import { ThemeSelect } from '@/features/theme-switcher/ui/theme-select'
 import { WebviewMaterialSelect } from '@/features/theme-switcher/ui/webview-material-select'
@@ -84,6 +85,12 @@ function SettingsPage() {
           description={t('settings.updatesDescription')}
           control={<div className="flex sm:justify-end"><UpdateCheckSwitch /></div>}
           icon={Download}
+        />
+        <SettingsSection
+          title={t('settings.discordPresence')}
+          description={t('settings.discordPresenceDescription')}
+          control={<DiscordPresenceSelect className="sm:ml-auto sm:w-[163px]" />}
+          icon={RadioTower}
         />
       </div>
     </section>

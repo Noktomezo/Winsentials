@@ -15,4 +15,8 @@ export type AppLanguagePreference = (typeof LANGUAGE_PREFERENCES)[number]
 export const DEFAULT_LANGUAGE: AppLanguage = 'en'
 export const DEFAULT_THEME: AppTheme = 'system'
 
+export const DISCORD_PRESENCE_MODES = ['none', 'playing', 'listening', 'watching', 'competing'] as const
+export type DiscordPresenceMode = (typeof DISCORD_PRESENCE_MODES)[number]
+export const DEFAULT_DISCORD_PRESENCE_MODE: DiscordPresenceMode = 'none'
+
 export const TWEAK_CATEGORIES = ['appearance', 'behaviour', 'security', 'privacy', 'network', 'performance', 'memory', 'input'] as const

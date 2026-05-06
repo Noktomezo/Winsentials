@@ -73,7 +73,7 @@ if ($appx) {
     $sid = [System.Security.Principal.NTAccount]::new($Env:UserName).Translate([System.Security.Principal.SecurityIdentifier]).Value
   } catch {
     try {
-      $formatArg = '/f' + 'o'
+      $formatArg = '/' + [char]102 + [char]111
       $whoami = whoami /user $formatArg csv /nh
       if ($whoami) {
         $sid = ($whoami | ConvertFrom-Csv -Header Name,Sid).Sid

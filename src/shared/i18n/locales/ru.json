@@ -534,6 +534,15 @@
     }
   },
   "settings": {
+    "discordPresence": "Discord Rich Presence",
+    "discordPresenceDescription": "Выберите, как Winsentials отображается в активности Discord.",
+    "discordPresenceModes": {
+      "competing": "Соревнуется",
+      "listening": "Слушает",
+      "none": "Нет",
+      "playing": "Играет",
+      "watching": "Смотрит"
+    },
     "disableUpdateChecks": "Отключить проверку обновлений",
     "description": "Настройка языка приложения, режима интерфейса и материалов окна.",
     "installingUpdate": "Скачивание и установка последнего обновления...",
