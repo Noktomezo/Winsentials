@@ -4,7 +4,7 @@ use std::path::{Component, Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::commands::tweaks::tweak_apply;
+use crate::commands::tweaks::tweak_apply_blocking;
 use crate::error::AppError;
 use crate::tweaks::all_tweaks;
 
@@ -239,7 +239,7 @@ pub fn backup_restore(filename: String) -> Result<RestoreReport, AppError> {
     let mut failed: Vec<String> = Vec::new();
 
     for (id, value) in &snapshot.tweaks {
-        match tweak_apply(id.clone(), value.clone()) {
+        match tweak_apply_blocking(id.clone(), value.clone()) {
             Ok(_) => applied += 1,
             Err(_) => failed.push(id.clone()),
         }
