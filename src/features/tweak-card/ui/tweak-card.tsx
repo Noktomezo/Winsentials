@@ -27,6 +27,7 @@ import {
   Info,
   Keyboard,
   KeyboardOff,
+  Link,
   ListX,
   LogOut,
   MapPinned,
@@ -50,7 +51,6 @@ import {
   Usb,
   Zap,
 } from 'lucide-react'
-import { forwardRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/shared/lib/toast'
 import { cn } from '@/shared/lib/utils'
@@ -139,6 +139,7 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   remove_microsoft_edge: Globe,
   remove_microsoft_onedrive: CloudOff,
   block_razer_auto_install: PlugZap,
+  create_symbolic_link_context_menu: Link,
 }
 
 const COPYABLE_RISK_COMMANDS: Record<string, string> = {
@@ -335,22 +336,21 @@ function MetadataChip({
   )
 }
 
-const MetadataChipButton = forwardRef<
-  HTMLButtonElement,
-  React.PropsWithChildren<React.ComponentProps<'button'> & {
-    ariaLabel: string
-    tone?: 'default' | 'details' | 'action' | 'warning' | 'danger' | 'system'
-    icon?: LucideIcon
-  }>
->(({
+function MetadataChipButton({
   ariaLabel,
   children,
   tone = 'default',
   icon,
   className,
   type,
+  ref,
   ...props
-}, ref) => {
+}: React.PropsWithChildren<React.ComponentProps<'button'> & {
+  ariaLabel: string
+  tone?: 'default' | 'details' | 'action' | 'warning' | 'danger' | 'system'
+  icon?: LucideIcon
+  ref?: React.Ref<HTMLButtonElement>
+}>) {
   return (
     <button
       aria-label={ariaLabel}
@@ -364,8 +364,7 @@ const MetadataChipButton = forwardRef<
       </MetadataChip>
     </button>
   )
-})
-MetadataChipButton.displayName = 'MetadataChipButton'
+}
 
 function RiskCodeBlock({
   children,

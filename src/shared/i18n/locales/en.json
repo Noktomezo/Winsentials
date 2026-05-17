@@ -150,6 +150,7 @@
     "backup": "Backups",
     "behaviour": "Behaviour",
     "cleanup": "Cleanup",
+    "contextMenu": "Context Menu",
     "debloat": "Debloat",
     "home": "Home",
     "input": "Input",
@@ -190,29 +191,26 @@
       "skippedBusyFiles": "Some files are in use and were skipped."
     },
     "categories": {
-      "windows_temp": {
-        "name": "Clean Windows temporary files"
+      "windows": {
+        "name": "Windows cleanup"
       },
-      "thumbnail_cache": {
-        "name": "Clean thumbnail and icon caches"
+      "browsers": {
+        "name": "Browser cleanup"
       },
-      "browser_cache": {
-        "name": "Clean browser caches"
+      "applications": {
+        "name": "Application cleanup"
       },
-      "driver_cache": {
-        "name": "Clean driver and shader caches"
+      "development": {
+        "name": "Developer tools cleanup"
       },
-      "game_cache": {
-        "name": "Clean game launcher caches"
+      "gaming": {
+        "name": "Gaming cleanup"
       },
-      "windows_logs": {
-        "name": "Clean Windows logs"
+      "media": {
+        "name": "Media and communication cleanup"
       },
-      "system_error_reports": {
-        "name": "Clean error reports and dumps"
-      },
-      "app_cache": {
-        "name": "Clean app component caches"
+      "appx": {
+        "name": "Store apps cleanup"
       },
       "unused_devices": {
         "name": "Remove unused devices"
@@ -222,6 +220,18 @@
       "scan": "Failed to scan cleanup targets.",
       "clean": "Failed to run cleanup.",
       "reboot": "Failed to schedule delete after reboot."
+    }
+  },
+  "contextMenu": {
+    "description": "Explorer context menu extensions for faster file and folder actions.",
+    "title": "Context Menu",
+    "tweaks": {
+      "createSymbolicLink": {
+        "detailDescription": "Adds a Windows Explorer context menu item for files and folders. When selected, it opens a native folder picker and creates a symbolic link to the selected item in the chosen destination folder.",
+        "name": "Add \"Create Symbolic Link\" Item",
+        "riskDescription": "Creating symbolic links may require Developer Mode or administrator privileges depending on Windows policy. Existing files are not overwritten; a suffix is added when a name is already taken.",
+        "shortDescription": "Adds a context menu action that creates a symbolic link to the selected file or folder."
+      }
     }
   },
   "debloat": {

@@ -4,6 +4,7 @@ version = "0.6.0"
 description = "A sleek Windows 10/11 tweaker"
 authors = [ "Noktomezo <noktomezo@duck.com>" ]
 edition = "2024"
+default-run = "winsentials"
 
 [lib]
 name = "winsentials_lib"

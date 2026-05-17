@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
-use crate::shell::run_duct;
+use crate::shell::{run_duct, run_powershell};
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
 
 const ENABLED_VALUE: &str = "enabled";
@@ -101,14 +101,30 @@ impl BlockRazerAutoInstallTweak {
             fs::create_dir_all(&razer_path)?;
         }
 
-        run_duct(
-            "icacls",
-            &[
-                razer_path.to_string_lossy().as_ref(),
-                "/deny",
-                "*S-1-1-0:(W)",
-            ],
-        )?;
+        let razer_path_string = razer_path.to_string_lossy();
+        let escaped_razer_path = razer_path_string.replace('\'', "''");
+        run_powershell(&format!(
+            r#"
+$ErrorActionPreference = 'Stop'
+$path = '{}'
+$sid = [System.Security.Principal.SecurityIdentifier]::new('S-1-1-0')
+$writeRight = [System.Security.AccessControl.FileSystemRights]::Write
+$hasDenyWrite = $false
+foreach ($rule in (Get-Acl -LiteralPath $path).Access) {{
+    if ($rule.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value -eq $sid.Value -and
+        $rule.AccessControlType -eq [System.Security.AccessControl.AccessControlType]::Deny -and
+        (($rule.FileSystemRights -band $writeRight) -ne 0)) {{
+        $hasDenyWrite = $true
+        break
+    }}
+}}
+if (-not $hasDenyWrite) {{
+    icacls $path /deny '*S-1-1-0:(W)'
+    if ($LASTEXITCODE -ne 0) {{ throw "icacls failed with exit code $LASTEXITCODE" }}
+}}
+"#,
+            escaped_razer_path
+        ))?;
 
         DRIVER_SEARCHING_KEY.set_dword("SearchOrderConfig", BLOCKED_SEARCH_ORDER_CONFIG)?;
         DEVICE_INSTALLER_KEY.set_dword("DisableCoInstallers", BLOCKED_DISABLE_COINSTALLERS)

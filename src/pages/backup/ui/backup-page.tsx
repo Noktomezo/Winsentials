@@ -211,8 +211,8 @@ function BackupPage() {
       {isLoading
         ? (
             <div className="grid gap-3">
-              {[0, 1, 2].map(i => (
-                <Skeleton key={i} className="h-24 w-full rounded-lg" />
+              {['backup-skeleton-primary', 'backup-skeleton-secondary', 'backup-skeleton-tertiary'].map(key => (
+                <Skeleton key={key} className="h-24 w-full rounded-lg" />
               ))}
             </div>
           )

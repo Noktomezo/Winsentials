@@ -15,7 +15,7 @@ import {
   UserRound,
   UsersRound,
 } from 'lucide-react'
-import { memo, useDeferredValue, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useDeferredValue, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStartupStore } from '@/entities/startup/model/startup-store'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
@@ -111,9 +111,9 @@ function publisherSummary(entry: StartupEntry, t: ReturnType<typeof useTranslati
 interface StartupCardProps {
   entry: StartupEntry
   isPending: boolean
-  onDelete: () => void
-  onDisable: () => void
-  onEnable: () => void
+  onDelete: (entry: StartupEntry) => void
+  onDisable: (entry: StartupEntry) => void
+  onEnable: (entry: StartupEntry) => void
   onCopy: (value: string | null | undefined, successKey: string) => void
   onOpenLocation: (path: string | null | undefined) => void
   onReveal: (path: string | null | undefined) => void
@@ -221,7 +221,7 @@ const StartupCard = memo(({
                 : t('startup.actions.enable')}
               checked={entry.status === 'enabled'}
               disabled={isPending}
-              onCheckedChange={checked => void (checked ? onEnable() : onDisable())}
+              onCheckedChange={checked => void (checked ? onEnable(entry) : onDisable(entry))}
             />
             <Tooltip>
               <DropdownMenu>
@@ -312,7 +312,7 @@ const StartupCard = memo(({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     disabled={isPending}
-                    onSelect={onDelete}
+                    onSelect={() => onDelete(entry)}
                     variant="destructive"
                   >
                     <Trash2 className="size-3.5" />
@@ -456,9 +456,9 @@ function StartupPage() {
       })
   }
 
-  function handleDelete(entry: StartupEntry) {
+  const handleDelete = useCallback((entry: StartupEntry) => {
     setEntryToDelete(entry)
-  }
+  }, [])
 
   async function confirmDelete() {
     if (!entryToDelete) {
@@ -475,7 +475,7 @@ function StartupPage() {
     }
   }
 
-  async function handleEnable(entry: StartupEntry) {
+  const handleEnable = useCallback(async (entry: StartupEntry) => {
     try {
       await enableEntry(entry.id)
       toast.success(t('startup.success.enabled'))
@@ -483,9 +483,9 @@ function StartupPage() {
     catch {
       toast.error(t('startup.errors.enable'))
     }
-  }
+  }, [enableEntry, t])
 
-  async function handleDisable(entry: StartupEntry) {
+  const handleDisable = useCallback(async (entry: StartupEntry) => {
     try {
       await disableEntry(entry.id)
       toast.success(t('startup.success.disabled'))
@@ -493,7 +493,7 @@ function StartupPage() {
     catch {
       toast.error(t('startup.errors.disable'))
     }
-  }
+  }, [disableEntry, t])
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
@@ -673,9 +673,9 @@ function StartupPage() {
                     isPending={pendingIds.includes(entry.id)}
                     key={entry.id}
                     onCopy={handleCopy}
-                    onDelete={() => { void handleDelete(entry) }}
-                    onDisable={() => { void handleDisable(entry) }}
-                    onEnable={() => { void handleEnable(entry) }}
+                    onDelete={handleDelete}
+                    onDisable={handleDisable}
+                    onEnable={handleEnable}
                     onOpenLocation={handleOpenLocation}
                     onReveal={handleReveal}
                   />

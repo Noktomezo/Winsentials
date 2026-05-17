@@ -3,6 +3,7 @@ pub mod types;
 mod targets;
 #[cfg(target_os = "windows")]
 mod trustedinstaller;
+mod winapp;
 
 use std::collections::HashSet;
 use std::env;
@@ -88,6 +89,14 @@ fn build_report_with_privileged_delete(
     category_id: &str,
     clean: bool,
 ) -> Result<CleanupCategoryReport, AppError> {
+    if winapp::is_winapp_category(category_id) {
+        return if clean {
+            winapp::clean_category(category_id)
+        } else {
+            winapp::scan_category(category_id)
+        };
+    }
+
     if category_id == UNUSED_DEVICES_CATEGORY {
         return build_unused_devices_report(clean);
     }
@@ -177,7 +186,7 @@ fn resolve_steam_library_targets() -> Vec<ResolvedTarget> {
         .collect()
 }
 
-fn expand_wildcard_path(path: PathBuf) -> Vec<PathBuf> {
+pub(super) fn expand_wildcard_path(path: PathBuf) -> Vec<PathBuf> {
     if !path.to_string_lossy().contains('*') {
         return vec![path];
     }
@@ -221,7 +230,7 @@ fn expand_wildcard_path(path: PathBuf) -> Vec<PathBuf> {
     paths
 }
 
-fn wildcard_match(pattern: &str, value: &str) -> bool {
+pub(super) fn wildcard_match(pattern: &str, value: &str) -> bool {
     let pattern = pattern.to_ascii_lowercase();
     let value = value.to_ascii_lowercase();
     let parts: Vec<&str> = pattern.split('*').collect();
@@ -867,7 +876,7 @@ fn remove_ghost_device(instance_id: &str) -> Result<(), String> {
     result
 }
 
-fn expand_env_path(path: &str) -> Option<String> {
+pub(super) fn expand_env_path(path: &str) -> Option<String> {
     expand_env_path_with(path, |key| env::var(key).ok())
 }
 
@@ -957,7 +966,7 @@ fn scan_target(target: &ResolvedTarget) -> CleanupEntry {
     }
 }
 
-fn target_size_bytes(path: &Path) -> io::Result<u64> {
+pub(super) fn target_size_bytes(path: &Path) -> io::Result<u64> {
     let metadata = fs::symlink_metadata(path)?;
     if metadata.is_file() {
         return Ok(metadata.len());
@@ -1251,7 +1260,7 @@ fn schedule_force_remove_path_on_reboot(path: &Path, recursive: bool) -> Result<
     schedule_single_path_delete_on_reboot(path)
 }
 
-fn cleanup_status_from_error(error: &io::Error) -> CleanupEntryStatus {
+pub(super) fn cleanup_status_from_error(error: &io::Error) -> CleanupEntryStatus {
     match error.kind() {
         io::ErrorKind::PermissionDenied | io::ErrorKind::WouldBlock => CleanupEntryStatus::Busy,
         _ => CleanupEntryStatus::Failed,

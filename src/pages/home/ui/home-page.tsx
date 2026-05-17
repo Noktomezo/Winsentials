@@ -761,7 +761,7 @@ function HomePage() {
                       gpu={gpu}
                       gpuLive={liveInfo?.gpus[i] ?? null}
                       index={i}
-                      key={`gpu-${i}`}
+                      key={gpu.index}
                     />
                   ))}
                 </div>

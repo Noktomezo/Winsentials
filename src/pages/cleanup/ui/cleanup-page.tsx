@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { CleanupCategoryId, CleanupCategoryReport, CleanupEntry, CleanupEntryStatus } from '@/entities/cleanup/model/types'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Bug, Check, ChevronDown, Cpu, FileText, Gamepad2, Globe, Image, Loader2, PackageOpen, RefreshCw, Sparkles, Trash2, Unplug, X } from 'lucide-react'
+import { AppWindow, Check, ChevronDown, Code2, Gamepad2, Globe, Loader2, MonitorCog, PackageOpen, RefreshCw, Trash2, Unplug, Video, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cleanCleanupCategory, scanCleanupCategory } from '@/entities/cleanup/api'
@@ -20,14 +20,13 @@ interface CleanupCategoryDefinition {
 }
 
 const CLEANUP_CATEGORIES: CleanupCategoryDefinition[] = [
-  { id: 'windows_temp', icon: Sparkles },
-  { id: 'thumbnail_cache', icon: Image },
-  { id: 'browser_cache', icon: Globe },
-  { id: 'driver_cache', icon: Cpu },
-  { id: 'game_cache', icon: Gamepad2 },
-  { id: 'windows_logs', icon: FileText },
-  { id: 'system_error_reports', icon: Bug },
-  { id: 'app_cache', icon: PackageOpen },
+  { id: 'windows', icon: MonitorCog },
+  { id: 'browsers', icon: Globe },
+  { id: 'applications', icon: AppWindow },
+  { id: 'development', icon: Code2 },
+  { id: 'gaming', icon: Gamepad2 },
+  { id: 'media', icon: Video },
+  { id: 'appx', icon: PackageOpen },
   { id: 'unused_devices', icon: Unplug },
 ]
 
@@ -167,11 +166,13 @@ function CleanupEntryRow({ entry, showSize = true }: { entry: CleanupEntry, show
           </p>
         )}
       </div>
-      {showSize && (
-        <span className="shrink-0 self-center text-xs tabular-nums text-muted-foreground">
-          {formatBytes(entry.sizeBytes, t, i18n.language)}
-        </span>
-      )}
+      {showSize
+        ? (
+            <span className="shrink-0 self-center text-xs tabular-nums text-muted-foreground">
+              {formatBytes(entry.sizeBytes, t, i18n.language)}
+            </span>
+          )
+        : null}
     </div>
   )
 }
@@ -234,7 +235,7 @@ function CleanupCard({
   const totalSize = categoryTotalSize(report)
   const clean = isCategoryClean(report)
   const canClean = hasCleanableEntries(report) && !clean && !isBusy && !isRefreshing
-  const showEntrySize = category.id !== 'unused_devices'
+  const showEntrySize = category.id !== 'unused_devices' && category.id !== 'appx'
 
   return (
     <section className="flex h-fit flex-col overflow-hidden rounded-lg border border-border/70 bg-card">
@@ -255,11 +256,13 @@ function CleanupCard({
               <span className="rounded-md border border-border/60 bg-accent/45 px-1.5 py-0.5 text-[11px] text-muted-foreground">
                 {report ? t('cleanup.itemsCount', { count: report.entries.length }) : t('cleanup.scanning')}
               </span>
-              {showEntrySize && (
-                <span className="rounded-md border border-border/60 bg-accent/45 px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                  {formatBytes(totalSize, t, i18n.language)}
-                </span>
-              )}
+              {showEntrySize
+                ? (
+                    <span className="rounded-md border border-border/60 bg-accent/45 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                      {formatBytes(totalSize, t, i18n.language)}
+                    </span>
+                  )
+                : null}
             </div>
           </div>
           <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')} />
@@ -308,7 +311,6 @@ function CleanupPage() {
   const { t } = useTranslation()
   const cleanupUiState = useCleanupUiState()
   const [reports, setReports] = useState<ReportMap>({})
-  const [refreshingCategoriesToRelease, setRefreshingCategoriesToRelease] = useState<Set<CleanupCategoryId>>(() => new Set())
   const [openCards, setOpenCards] = useState<Set<CleanupCategoryId>>(() => new Set())
   const [busyAction, setBusyAction] = useState<BusyAction>(null)
   const busyActionRef = useRef<BusyAction>(null)
@@ -325,12 +327,7 @@ function CleanupPage() {
 
   useEffect(() => {
     dispatchCleanupSummary(cleanupSummaryFromReports(reports))
-
-    if (refreshingCategoriesToRelease.size === 0) return
-
-    removeRefreshingCategories([...refreshingCategoriesToRelease])
-    setRefreshingCategoriesToRelease(new Set())
-  }, [refreshingCategoriesToRelease, reports])
+  }, [reports])
 
   function scanCategories(categoryIds: CleanupCategoryId[]) {
     addRefreshingCategories(categoryIds)
@@ -352,11 +349,7 @@ function CleanupPage() {
         }
       })
       .finally(() => {
-        setRefreshingCategoriesToRelease((current) => {
-          const next = new Set(current)
-          categoryIds.forEach(categoryId => next.add(categoryId))
-          return next
-        })
+        removeRefreshingCategories(categoryIds)
       })
   }
 
@@ -412,15 +405,22 @@ function CleanupPage() {
     setBusyActionState('all')
     Promise.allSettled(CLEANUP_CATEGORIES.map(category => cleanCleanupCategory(category.id)))
       .then((results) => {
-        const categoryReports = results
-          .filter((result): result is PromiseFulfilledResult<CleanupCategoryReport> => result.status === 'fulfilled')
-          .map(result => result.value)
+        const categoryReports: CleanupCategoryReport[] = []
+        const failures: PromiseRejectedResult[] = []
+
+        for (const result of results) {
+          if (result.status === 'fulfilled') {
+            categoryReports.push(result.value)
+          }
+          else {
+            failures.push(result)
+          }
+        }
 
         if (categoryReports.length > 0) {
           updateReports(current => ({ ...current, ...reportMapFromReports(categoryReports) }))
         }
 
-        const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
         if (failures.length > 0) {
           failures.forEach(result => console.error(result.reason))
           toast.error(t('cleanup.errors.clean'))

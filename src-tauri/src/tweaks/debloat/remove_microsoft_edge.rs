@@ -47,7 +47,8 @@ impl RemoveMicrosoftEdgeTweak {
 
     fn is_enabled(&self) -> Result<bool, AppError> {
         match STATE_KEY.get_dword("Removed") {
-            Ok(value) => Ok(value == 1),
+            Ok(1) => Ok(edge_setup_path()?.is_none()),
+            Ok(_) => Ok(false),
             Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {
                 Ok(edge_setup_path()?.is_none())
             }

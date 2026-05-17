@@ -1,0 +1,200 @@
+use std::path::{Path, PathBuf};
+
+use crate::error::AppError;
+use crate::registry::{Hive, RegKey};
+use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
+
+const ENABLED_VALUE: &str = "enabled";
+const DISABLED_VALUE: &str = "disabled";
+const CUSTOM_VALUE: &str = "custom";
+
+const MENU_LABEL: &str = "Создать символическую ссылку";
+const MENU_ICON: &str = "shell32.dll,147";
+const HELPER_EXE_CANDIDATES: &[&str] = &[
+    "winsentials_symlink_helper.exe",
+    "winsentials_symlink_helper-x86_64-pc-windows-msvc.exe",
+];
+const MIN_HELPER_EXE_SIZE: u64 = 4096;
+
+const FILE_MENU_KEY: RegKey = RegKey {
+    hive: Hive::CurrentUser,
+    path: r"Software\Classes\*\shell\Winsentials.CreateSymbolicLink",
+};
+
+const FILE_COMMAND_KEY: RegKey = RegKey {
+    hive: Hive::CurrentUser,
+    path: r"Software\Classes\*\shell\Winsentials.CreateSymbolicLink\command",
+};
+
+const DIRECTORY_MENU_KEY: RegKey = RegKey {
+    hive: Hive::CurrentUser,
+    path: r"Software\Classes\Directory\shell\Winsentials.CreateSymbolicLink",
+};
+
+const DIRECTORY_COMMAND_KEY: RegKey = RegKey {
+    hive: Hive::CurrentUser,
+    path: r"Software\Classes\Directory\shell\Winsentials.CreateSymbolicLink\command",
+};
+
+pub struct CreateSymbolicLinkContextMenuTweak {
+    meta: TweakMeta,
+}
+
+impl Default for CreateSymbolicLinkContextMenuTweak {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+impl CreateSymbolicLinkContextMenuTweak {
+    pub fn new() -> Self {
+        Self {
+            meta: TweakMeta {
+                id: "create_symbolic_link_context_menu".into(),
+                category: "context_menu".into(),
+                name: "contextMenu.tweaks.createSymbolicLink.name".into(),
+                short_description: "contextMenu.tweaks.createSymbolicLink.shortDescription".into(),
+                detail_description: "contextMenu.tweaks.createSymbolicLink.detailDescription"
+                    .into(),
+                control: TweakControlType::Toggle,
+                current_value: DISABLED_VALUE.into(),
+                default_value: DISABLED_VALUE.into(),
+                recommended_value: ENABLED_VALUE.into(),
+                risk: RiskLevel::Low,
+                risk_description: Some(
+                    "contextMenu.tweaks.createSymbolicLink.riskDescription".into(),
+                ),
+                conflicts: None,
+                requires_action: RequiresAction::None,
+                min_os_build: Some(10240),
+                min_os_ubr: None,
+                min_required_memory_gb: None,
+            },
+        }
+    }
+
+    fn bundled_helper_path() -> Result<PathBuf, AppError> {
+        let current_exe = std::env::current_exe()?;
+        let app_dir = current_exe
+            .parent()
+            .ok_or_else(|| AppError::message("failed to resolve Winsentials executable folder"))?;
+
+        for file_name in HELPER_EXE_CANDIDATES {
+            let candidate = app_dir.join(file_name);
+            if helper_file_is_usable(&candidate) {
+                return Ok(candidate);
+            }
+
+            let resources_candidate = app_dir.join("resources").join(file_name);
+            if helper_file_is_usable(&resources_candidate) {
+                return Ok(resources_candidate);
+            }
+        }
+
+        Err(AppError::message(format!(
+            "failed to find bundled symlink helper near {}",
+            app_dir.display()
+        )))
+    }
+
+    fn command_value(helper_path: &Path) -> String {
+        format!("\"{}\" \"%1\"", helper_path.to_string_lossy())
+    }
+
+    fn write_menu(menu_key: &RegKey, command_key: &RegKey, command: &str) -> Result<(), AppError> {
+        menu_key.set_string("", MENU_LABEL)?;
+        menu_key.set_string("Icon", MENU_ICON)?;
+        command_key.set_string("", command)
+    }
+
+    fn menu_matches(
+        menu_key: &RegKey,
+        command_key: &RegKey,
+        command: &str,
+    ) -> Result<bool, AppError> {
+        Ok(
+            read_string_or_missing(menu_key, "")?.as_deref() == Some(MENU_LABEL)
+                && read_string_or_missing(menu_key, "Icon")?.as_deref() == Some(MENU_ICON)
+                && read_string_or_missing(command_key, "")?.as_deref() == Some(command),
+        )
+    }
+
+    fn is_enabled(&self) -> Result<bool, AppError> {
+        let Ok(helper_path) = Self::bundled_helper_path() else {
+            return Ok(false);
+        };
+        let command = Self::command_value(&helper_path);
+
+        Ok(
+            Self::menu_matches(&FILE_MENU_KEY, &FILE_COMMAND_KEY, &command)?
+                && Self::menu_matches(&DIRECTORY_MENU_KEY, &DIRECTORY_COMMAND_KEY, &command)?,
+        )
+    }
+
+    fn is_default(&self) -> Result<bool, AppError> {
+        Ok(!FILE_MENU_KEY.key_exists()? && !DIRECTORY_MENU_KEY.key_exists()?)
+    }
+
+    fn enable() -> Result<(), AppError> {
+        let helper_path = Self::bundled_helper_path()?;
+        let command = Self::command_value(&helper_path);
+
+        Self::write_menu(&FILE_MENU_KEY, &FILE_COMMAND_KEY, &command)?;
+        Self::write_menu(&DIRECTORY_MENU_KEY, &DIRECTORY_COMMAND_KEY, &command)
+    }
+}
+
+impl Tweak for CreateSymbolicLinkContextMenuTweak {
+    fn id(&self) -> &str {
+        &self.meta.id
+    }
+
+    fn meta(&self) -> &TweakMeta {
+        &self.meta
+    }
+
+    fn apply(&self, value: &str) -> Result<(), AppError> {
+        match value {
+            ENABLED_VALUE => Self::enable(),
+            DISABLED_VALUE => self.reset(),
+            _ => Err(AppError::message(format!(
+                "unsupported value `{value}` for {}",
+                self.id()
+            ))),
+        }
+    }
+
+    fn reset(&self) -> Result<(), AppError> {
+        FILE_MENU_KEY.delete_subkey_tree()?;
+        DIRECTORY_MENU_KEY.delete_subkey_tree()
+    }
+
+    fn get_status(&self) -> Result<TweakStatus, AppError> {
+        let is_enabled = self.is_enabled()?;
+        let is_default = self.is_default()?;
+
+        Ok(TweakStatus {
+            current_value: if is_enabled {
+                ENABLED_VALUE.into()
+            } else if is_default {
+                DISABLED_VALUE.into()
+            } else {
+                CUSTOM_VALUE.into()
+            },
+            is_default,
+        })
+    }
+}
+
+fn helper_file_is_usable(path: &Path) -> bool {
+    path.metadata()
+        .map(|metadata| metadata.is_file() && metadata.len() >= MIN_HELPER_EXE_SIZE)
+        .unwrap_or(false)
+}
+
+fn read_string_or_missing(key: &RegKey, name: &str) -> Result<Option<String>, AppError> {
+    match key.get_string(name) {
+        Ok(value) => Ok(Some(value)),
+        Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error),
+    }
+}

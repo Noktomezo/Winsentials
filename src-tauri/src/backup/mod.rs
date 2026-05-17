@@ -230,22 +230,27 @@ pub fn backup_list() -> Result<Vec<BackupEntry>, AppError> {
 }
 
 #[tauri::command]
-pub fn backup_restore(filename: String) -> Result<RestoreReport, AppError> {
+pub async fn backup_restore(filename: String) -> Result<RestoreReport, AppError> {
     let path = backups_dir()?.join(validate_backup_filename(&filename)?);
     let content = fs::read_to_string(&path)?;
     let snapshot: BackupSnapshot = serde_json::from_str(&content)?;
+    let tweaks = snapshot.tweaks;
 
-    let mut applied: u32 = 0;
-    let mut failed: Vec<String> = Vec::new();
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut applied: u32 = 0;
+        let mut failed: Vec<String> = Vec::new();
 
-    for (id, value) in &snapshot.tweaks {
-        match tweak_apply_blocking(id.clone(), value.clone()) {
-            Ok(_) => applied += 1,
-            Err(_) => failed.push(id.clone()),
+        for (id, value) in tweaks {
+            match tweak_apply_blocking(id.clone(), value) {
+                Ok(_) => applied += 1,
+                Err(_) => failed.push(id),
+            }
         }
-    }
 
-    Ok(RestoreReport { applied, failed })
+        Ok(RestoreReport { applied, failed })
+    })
+    .await
+    .map_err(|error| AppError::message(format!("backup_restore join error: {error}")))?
 }
 
 #[tauri::command]

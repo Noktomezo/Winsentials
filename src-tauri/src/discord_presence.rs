@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
 
-const DISCORD_CLIENT_ID: &str = "1501589879614869625";
+const DISCORD_CLIENT_ID_ENV: &str = "WINSENTIALS_DISCORD_CLIENT_ID";
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -49,15 +49,17 @@ impl DiscordPresenceState {
             return Ok(());
         }
 
-        if DISCORD_CLIENT_ID.is_empty() {
-            log::warn!(
-                "Discord Rich Presence requested but WINSENTIALS_DISCORD_CLIENT_ID is not set"
-            );
+        let Some(client_id) = std::env::var(DISCORD_CLIENT_ID_ENV)
+            .ok()
+            .map(|value| value.trim().to_owned())
+            .filter(|value| !value.is_empty())
+        else {
+            log::warn!("Discord Rich Presence requested but {DISCORD_CLIENT_ID_ENV} is not set");
             return Ok(());
-        }
+        };
 
         if client.is_none() {
-            let mut next_client = DiscordIpcClient::new(DISCORD_CLIENT_ID);
+            let mut next_client = DiscordIpcClient::new(client_id.as_str());
             next_client.connect().map_err(discord_error)?;
             *client = Some(next_client);
         }
@@ -80,7 +82,10 @@ impl DiscordPresenceState {
 
 fn activity_for_mode(mode: DiscordPresenceMode, page_label: Option<&str>) -> Activity<'static> {
     let activity_type = match mode {
-        DiscordPresenceMode::None | DiscordPresenceMode::Playing => activity::ActivityType::Playing,
+        DiscordPresenceMode::None => {
+            unreachable!("DiscordPresenceMode::None is handled before activity_for_mode")
+        }
+        DiscordPresenceMode::Playing => activity::ActivityType::Playing,
         DiscordPresenceMode::Listening => activity::ActivityType::Listening,
         DiscordPresenceMode::Watching => activity::ActivityType::Watching,
         DiscordPresenceMode::Competing => activity::ActivityType::Competing,

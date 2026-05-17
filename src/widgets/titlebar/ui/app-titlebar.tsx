@@ -178,6 +178,7 @@ export function AppTitlebar() {
       data-slot="app-titlebar"
       onDragStart={event => event.preventDefault()}
       onMouseDown={handleTitlebarMouseDown}
+      role="presentation"
     >
       <SidebarTrigger
         className="titlebar-control"

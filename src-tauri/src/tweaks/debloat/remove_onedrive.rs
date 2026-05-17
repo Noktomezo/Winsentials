@@ -196,12 +196,11 @@ fn remove_dir_if_exists(path: PathBuf) -> Result<(), AppError> {
 }
 
 fn is_onedrive_absent() -> Result<bool, AppError> {
-    let setup_path = system_root()?.join("System32").join("OneDriveSetup.exe");
     let client_path = local_app_data()?
         .join("Microsoft")
         .join("OneDrive")
         .join("OneDrive.exe");
     let program_data_leftovers = program_data()?.join("Microsoft OneDrive");
 
-    Ok(!setup_path.exists() && !client_path.exists() && !program_data_leftovers.exists())
+    Ok(!client_path.exists() && !program_data_leftovers.exists())
 }

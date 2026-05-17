@@ -153,6 +153,14 @@ const debloatRoute = createRoute({
   ),
 })
 
+const contextMenuRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'context-menu',
+  component: lazyRouteComponent(
+    () => import('@/pages/context-menu/ui/context-menu-page'),
+  ),
+})
+
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'settings',
@@ -301,6 +309,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   homeRoute,
   behaviourRoute,
+  contextMenuRoute,
   debloatRoute,
   appearanceRoute,
   securityRoute,
