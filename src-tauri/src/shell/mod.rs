@@ -1,4 +1,5 @@
 use std::process::Command;
+use std::sync::{Mutex, OnceLock};
 
 use crate::error::AppError;
 
@@ -61,6 +62,121 @@ $OutputEncoding = [Console]::OutputEncoding; \
         command: "powershell".to_string(),
         stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
     })
+}
+
+pub fn run_duct(program: &str, args: &[&str]) -> Result<(), AppError> {
+    let expression = duct::cmd(program, args)
+        .stdout_capture()
+        .stderr_capture()
+        .unchecked();
+
+    #[cfg(target_os = "windows")]
+    let expression = expression.before_spawn(|command| {
+        command.creation_flags(CREATE_NO_WINDOW);
+        Ok(())
+    });
+
+    let output = expression.run().map_err(|error| AppError::CommandFailed {
+        command: program.to_string(),
+        stderr: error.to_string(),
+    })?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        Err(AppError::CommandFailed {
+            command: program.to_string(),
+            stderr: if stderr.is_empty() {
+                format!("exited with status {}", output.status)
+            } else {
+                stderr
+            },
+        })
+    }
+}
+
+fn run_winget(args: &[&str]) -> Result<(), AppError> {
+    let mut cmd = Command::new("winget");
+    cmd.args(args);
+
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+
+    let output = cmd.output()?;
+
+    if output.status.success() {
+        return Ok(());
+    }
+
+    Err(AppError::CommandFailed {
+        command: "winget".to_string(),
+        stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+    })
+}
+
+struct WingetBypassGuard;
+
+impl WingetBypassGuard {
+    fn enable() -> Result<Self, AppError> {
+        run_winget(&[
+            "settings",
+            "--enable",
+            "BypassCertificatePinningForMicrosoftStore",
+        ])?;
+
+        Ok(Self)
+    }
+}
+
+impl Drop for WingetBypassGuard {
+    fn drop(&mut self) {
+        if let Err(error) = run_winget(&[
+            "settings",
+            "--disable",
+            "BypassCertificatePinningForMicrosoftStore",
+        ]) {
+            log::warn!("failed to disable winget Store certificate bypass: {error}");
+        }
+    }
+}
+
+fn winget_bypass_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
+
+pub fn install_with_winget(package_id: &str, source: &str) -> Result<(), AppError> {
+    if source == "msstore" {
+        let _lock = winget_bypass_lock()
+            .lock()
+            .map_err(|error| AppError::message(format!("winget bypass lock poisoned: {error}")))?;
+        // Winget Store installs can fail on Microsoft Store certificate pinning bugs.
+        // This global bypass is security-sensitive, so the guard disables it in Drop.
+        let _bypass_guard = WingetBypassGuard::enable()?;
+
+        return run_winget(&[
+            "install",
+            "--id",
+            package_id,
+            "--source",
+            source,
+            "--accept-package-agreements",
+            "--accept-source-agreements",
+            "--silent",
+        ]);
+    }
+
+    run_winget(&[
+        "install",
+        "--id",
+        package_id,
+        "--source",
+        source,
+        "--accept-package-agreements",
+        "--accept-source-agreements",
+        "--silent",
+    ])
 }
 
 pub fn restart_explorer() -> Result<(), AppError> {

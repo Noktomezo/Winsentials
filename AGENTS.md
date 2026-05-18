@@ -45,6 +45,13 @@ App exposes clean UI over low-level OS ops (registry edits, COM commands, servic
 - When adding a crate with features: `cargo add <crate> --features <feat1>,<feat2>`
 - After adding deps, run `cargo check`
 
+### Backend Performance
+
+- When adding or changing Rust code that collects independent data from many items, consider `rayon` mandatory-by-default. Use `rayon` when the work is CPU-heavy or bounded independent IO/status work, such as reading many tweak statuses, scanning many registry values, parsing many files, or building many independent metadata objects.
+- Keep `rayon` out of code that depends on strict order, shared mutable state, UI-thread affinity, non-thread-safe COM/Win32 objects, global process settings, service-control sequences, or operations where parallelism can amplify system load or side effects.
+- For Tauri commands, do not rely on `rayon` alone for responsiveness. Wrap blocking backend work in `tauri::async_runtime::spawn_blocking`, then use `rayon` inside that blocking task only when the per-item work is independent.
+- Prefer a small, direct sequential implementation when the collection is tiny, the operation is already asynchronous, or the added parallelism would make error handling or rollback behavior less predictable.
+
 ### Tauri
 
 - Use Tauri v2 APIs. Do not use v1 patterns (plugin system, command registration, etc.)

@@ -31,6 +31,7 @@ export const EMPTY_CATEGORY: CachedTweakCategory = {
 
 const categoryRequests = new Map<string, Promise<void>>()
 let windowsBuildRequest: Promise<WindowsVersion> | null = null
+const CATEGORY_REVALIDATE_TTL_MS = 30_000
 
 export const useTweakCacheStore = create<TweakCacheState>()((set, get) => ({
   categories: {},
@@ -85,6 +86,13 @@ export const useTweakCacheStore = create<TweakCacheState>()((set, get) => ({
 
     if (!cached.hasLoaded) {
       return get().ensureCategory(category)
+    }
+
+    if (
+      cached.fetchedAt !== null
+      && Date.now() - cached.fetchedAt < CATEGORY_REVALIDATE_TTL_MS
+    ) {
+      return
     }
 
     const inflight = categoryRequests.get(category)

@@ -4,7 +4,7 @@ use std::path::{Component, Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::commands::tweaks::tweak_apply;
+use crate::commands::tweaks::tweak_apply_blocking;
 use crate::error::AppError;
 use crate::tweaks::all_tweaks;
 
@@ -117,6 +117,65 @@ fn write_backup_snapshot(
     })
 }
 
+fn enrich_backup_snapshots_with_missing_tweaks() -> Result<(), AppError> {
+    let dir = backups_dir()?;
+
+    if !dir.exists() {
+        return Ok(());
+    }
+
+    let default_tweaks: HashMap<String, String> = all_tweaks()
+        .iter()
+        .map(|tweak| (tweak.id().to_string(), tweak.meta().default_value.clone()))
+        .collect();
+
+    for entry in fs::read_dir(&dir)?.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if !file_type.is_file() {
+            continue;
+        }
+
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let Ok(mut snapshot) = serde_json::from_str::<BackupSnapshot>(&content) else {
+            continue;
+        };
+
+        let mut changed = false;
+        for (id, value) in &default_tweaks {
+            if !snapshot.tweaks.contains_key(id) {
+                snapshot.tweaks.insert(id.clone(), value.clone());
+                changed = true;
+            }
+        }
+
+        if changed {
+            match serde_json::to_string_pretty(&snapshot) {
+                Ok(json) => {
+                    if let Err(error) = fs::write(&path, json) {
+                        log::warn!("failed to enrich backup {}: {error}", path.display());
+                    }
+                }
+                Err(error) => {
+                    log::warn!(
+                        "failed to serialize enriched backup {}: {error}",
+                        path.display()
+                    );
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 /// Howard Hinnant's civil_from_days algorithm.
 fn days_to_date(days: u64) -> (u64, u64, u64) {
     let z = days as i64 + 719_468_i64;
@@ -177,22 +236,25 @@ pub fn backup_list() -> Result<Vec<BackupEntry>, AppError> {
 }
 
 #[tauri::command]
-pub fn backup_restore(filename: String) -> Result<RestoreReport, AppError> {
-    let path = backups_dir()?.join(validate_backup_filename(&filename)?);
-    let content = fs::read_to_string(&path)?;
-    let snapshot: BackupSnapshot = serde_json::from_str(&content)?;
+pub async fn backup_restore(filename: String) -> Result<RestoreReport, AppError> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = backups_dir()?.join(validate_backup_filename(&filename)?);
+        let content = fs::read_to_string(&path)?;
+        let snapshot: BackupSnapshot = serde_json::from_str(&content)?;
+        let mut applied: u32 = 0;
+        let mut failed: Vec<String> = Vec::new();
 
-    let mut applied: u32 = 0;
-    let mut failed: Vec<String> = Vec::new();
-
-    for (id, value) in &snapshot.tweaks {
-        match tweak_apply(id.clone(), value.clone()) {
-            Ok(_) => applied += 1,
-            Err(_) => failed.push(id.clone()),
+        for (id, value) in snapshot.tweaks {
+            match tweak_apply_blocking(id.clone(), value) {
+                Ok(_) => applied += 1,
+                Err(_) => failed.push(id),
+            }
         }
-    }
 
-    Ok(RestoreReport { applied, failed })
+        Ok(RestoreReport { applied, failed })
+    })
+    .await
+    .map_err(|error| AppError::message(format!("backup_restore join error: {error}")))?
 }
 
 #[tauri::command]
@@ -220,5 +282,9 @@ pub fn ensure_initial_backup() {
 
     if !dir.join("initial.json").exists() {
         let _ = write_backup_snapshot("initial.json", "Initial".to_string(), None);
+    }
+
+    if let Err(error) = enrich_backup_snapshots_with_missing_tweaks() {
+        log::error!("enrich_backup_snapshots_with_missing_tweaks failed: {error:?}");
     }
 }

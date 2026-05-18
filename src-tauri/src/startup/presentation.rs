@@ -237,6 +237,7 @@ fn scheduled_task_target_path(
     let executable = command
         .map(str::trim)
         .filter(|value| !value.is_empty())
+        .map(trim_wrapping_quotes)
         .map(PathBuf::from)?;
 
     shell_host_payload_path(&executable, arguments, working_directory)
@@ -262,7 +263,10 @@ fn shell_host_payload_path(
                         .iter()
                         .skip_while(|token| token.starts_with('-') || token.starts_with('/')),
                 )
-            })?;
+            });
+        let candidate = candidate
+            .map(str::to_string)
+            .or_else(|| first_path_like_in_text(arguments?))?;
         return Some(resolve_relative_task_path(
             PathBuf::from(candidate),
             working_directory,
@@ -327,6 +331,26 @@ fn first_path_like_token<'a>(tokens: impl IntoIterator<Item = &'a String>) -> Op
         .into_iter()
         .map(String::as_str)
         .find(|token| looks_like_task_target(token))
+}
+
+fn trim_wrapping_quotes(value: &str) -> &str {
+    value
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+        .or_else(|| {
+            value
+                .strip_prefix('\'')
+                .and_then(|value| value.strip_suffix('\''))
+        })
+        .unwrap_or(value)
+}
+
+fn first_path_like_in_text(input: &str) -> Option<String> {
+    path_like_regex()
+        .find_iter(input)
+        .map(|matched| matched.as_str().trim_matches(['"', '\'']))
+        .find(|candidate| looks_like_task_target(candidate))
+        .map(str::to_string)
 }
 
 fn tokenize_windows_arguments(input: &str, shell_is_powershell: bool) -> Vec<String> {
@@ -512,6 +536,14 @@ fn trailing_hex_regex() -> &'static Regex {
 fn whitespace_regex() -> &'static Regex {
     static REGEX: OnceLock<Regex> = OnceLock::new();
     REGEX.get_or_init(|| Regex::new(r"\s+").expect("valid whitespace regex"))
+}
+
+fn path_like_regex() -> &'static Regex {
+    static REGEX: OnceLock<Regex> = OnceLock::new();
+    REGEX.get_or_init(|| {
+        Regex::new(r#"(?i)["']?((?:[a-z]:\\|\.{1,2}\\|[^"'\s]+\\)?[^"']*?\.(?:exe|com|bat|cmd|ps1|vbs|js|msc|scr))["']?"#)
+            .expect("valid path-like target regex")
+    })
 }
 
 fn fallback_path_name(path: &Path) -> String {
@@ -1004,6 +1036,40 @@ mod tests {
             Some("powershell.exe"),
             Some(
                 r#"-ExecutionPolicy Bypass -File "C:\ProgramData\Winhance\Scripts\BloatRemoval.ps1""#,
+            ),
+            None,
+        );
+
+        assert_eq!(presentation.display_name, "BloatRemoval");
+        assert_eq!(
+            presentation.target_path.as_deref(),
+            Some(r#"C:\ProgramData\Winhance\Scripts\BloatRemoval.ps1"#),
+        );
+    }
+
+    #[test]
+    fn scheduled_task_light_trims_quotes_around_exec_action_path() {
+        let presentation = scheduled_task_presentation_light(
+            "Driver Booster Scheduler",
+            Some(r#""D:\ThirdParty\Driver Booster\13.4.0\Scheduler.exe""#),
+            Some("/scheduler"),
+            None,
+        );
+
+        assert_eq!(presentation.display_name, "Scheduler");
+        assert_eq!(
+            presentation.target_path.as_deref(),
+            Some(r#"D:\ThirdParty\Driver Booster\13.4.0\Scheduler.exe"#),
+        );
+    }
+
+    #[test]
+    fn scheduled_task_light_uses_powershell_command_readalltext_payload() {
+        let presentation = scheduled_task_presentation_light(
+            "BloatRemoval",
+            Some("powershell.exe"),
+            Some(
+                r#"-ExecutionPolicy Bypass -NoProfile -Command "iex([IO.File]::ReadAllText('C:\ProgramData\Winhance\Scripts\BloatRemoval.ps1'))""#,
             ),
             None,
         );

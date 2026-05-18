@@ -1,10 +1,11 @@
 import type {
+  KeyboardEvent,
   MouseEvent,
   PropsWithChildren,
   PointerEvent as ReactPointerEvent,
 } from 'react'
 import Lenis from 'lenis'
-import { useImperativeHandle, useRef, useState } from 'react'
+import { useId, useImperativeHandle, useRef, useState } from 'react'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { cn } from '@/shared/lib/utils'
 
@@ -18,6 +19,7 @@ export interface SmoothScrollAreaHandle {
 }
 
 const MIN_THUMB_HEIGHT = 32
+const THUMB_RESET_STYLE = 'height: 0px; transform: translate3d(0, 0, 0);'
 
 export const SmoothScrollArea = function SmoothScrollArea({ ref, children, className }: SmoothScrollAreaProps & { ref?: React.RefObject<SmoothScrollAreaHandle | null> }) {
   const lenisRef = useRef<Lenis | null>(null)
@@ -25,11 +27,13 @@ export const SmoothScrollArea = function SmoothScrollArea({ ref, children, class
   const trackRef = useRef<HTMLDivElement | null>(null)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
+  const wrapperId = useId()
   const dragStateRef = useRef<{
     startPointerY: number
     startScrollTop: number
   } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const [scrollPercent, setScrollPercent] = useState(0)
 
   useMountEffect(() => {
     const wrapper = wrapperRef.current
@@ -62,12 +66,13 @@ export const SmoothScrollArea = function SmoothScrollArea({ ref, children, class
       const maxScroll = scrollHeight - clientHeight
       const nextScrollable = maxScroll > 0
 
-      track.style.display = nextScrollable ? 'block' : 'none'
-      track.style.pointerEvents = nextScrollable ? 'auto' : 'none'
+      track.style.cssText = nextScrollable
+        ? 'display: block; pointer-events: auto;'
+        : 'display: none; pointer-events: none;'
 
       if (!nextScrollable) {
-        thumb.style.height = '0px'
-        thumb.style.transform = 'translate3d(0, 0, 0)'
+        setScrollPercent(0)
+        thumb.style.cssText = THUMB_RESET_STYLE
         return
       }
 
@@ -77,8 +82,8 @@ export const SmoothScrollArea = function SmoothScrollArea({ ref, children, class
       const scrollProgress = maxScroll > 0 ? wrapper.scrollTop / maxScroll : 0
       const thumbOffset = scrollProgress * maxThumbOffset
 
-      thumb.style.height = `${thumbHeight}px`
-      thumb.style.transform = `translate3d(0, ${thumbOffset}px, 0)`
+      setScrollPercent(Math.round(scrollProgress * 100))
+      thumb.style.cssText = `height: ${thumbHeight}px; transform: translate3d(0, ${thumbOffset}px, 0);`
     }
 
     let frameId = 0
@@ -217,12 +222,56 @@ export const SmoothScrollArea = function SmoothScrollArea({ ref, children, class
     scrollTo(progress * maxScroll)
   }
 
+  const handleTrackKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const wrapper = wrapperRef.current
+    const content = contentRef.current
+
+    if (!wrapper || !content) {
+      return
+    }
+
+    const maxScroll = content.scrollHeight - wrapper.clientHeight
+
+    if (maxScroll <= 0) {
+      return
+    }
+
+    const pageStep = wrapper.clientHeight * 0.85
+
+    switch (event.key) {
+      case 'ArrowUp':
+        event.preventDefault()
+        scrollTo(wrapper.scrollTop - 40)
+        break
+      case 'ArrowDown':
+        event.preventDefault()
+        scrollTo(wrapper.scrollTop + 40)
+        break
+      case 'PageUp':
+        event.preventDefault()
+        scrollTo(wrapper.scrollTop - pageStep)
+        break
+      case 'PageDown':
+        event.preventDefault()
+        scrollTo(wrapper.scrollTop + pageStep)
+        break
+      case 'Home':
+        event.preventDefault()
+        scrollTo(0)
+        break
+      case 'End':
+        event.preventDefault()
+        scrollTo(maxScroll)
+        break
+    }
+  }
+
   return (
     <div
       className={cn('group/scroll relative h-full overflow-hidden', className)}
       data-dragging={isDragging ? 'true' : 'false'}
     >
-      <div ref={wrapperRef} className="scrollbar-hidden h-full overflow-auto">
+      <div ref={wrapperRef} className="scrollbar-hidden h-full overflow-auto" id={wrapperId}>
         <div ref={contentRef} className="min-h-full">
           {children}
         </div>
@@ -232,9 +281,19 @@ export const SmoothScrollArea = function SmoothScrollArea({ ref, children, class
         className={cn(
           'absolute inset-y-0 right-0 z-10 w-2.5 p-px transition-opacity duration-200',
           'opacity-0 group-hover/scroll:opacity-100',
+          'focus-visible:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary/60',
           isDragging && 'opacity-100',
         )}
+        aria-controls={wrapperId}
+        aria-label="Scroll content"
+        aria-orientation="vertical"
+        aria-valuemax={100}
+        aria-valuemin={0}
+        aria-valuenow={scrollPercent}
+        onKeyDown={handleTrackKeyDown}
         onClick={handleTrackClick}
+        role="scrollbar"
+        tabIndex={0}
       >
         <div
           ref={thumbRef}

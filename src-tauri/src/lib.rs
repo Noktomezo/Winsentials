@@ -2,6 +2,7 @@ pub mod backup;
 pub mod cleanup;
 pub mod com;
 pub mod commands;
+pub mod discord_presence;
 pub mod error;
 pub mod registry;
 pub mod shell;
@@ -14,6 +15,7 @@ use crate::commands::app::greet;
 use crate::commands::cleanup::{
     cleanup_clean_category, cleanup_scan_category, cleanup_schedule_delete_on_reboot,
 };
+use crate::commands::discord_presence::set_discord_presence_mode;
 use crate::commands::startup::{
     startup_delete, startup_details, startup_disable, startup_enable, startup_hydrate_entries,
     startup_list_registry, startup_list_scheduled_tasks, startup_list_startup_folder,
@@ -59,6 +61,7 @@ pub fn run() {
 
     builder
         .manage(system_info::SystemInfoState::new())
+        .manage(discord_presence::DiscordPresenceState::new())
         .setup(|app| {
             crate::backup::ensure_initial_backup();
             use std::time::{Duration, Instant};
@@ -160,6 +163,7 @@ pub fn run() {
             cleanup_scan_category,
             cleanup_clean_category,
             cleanup_schedule_delete_on_reboot,
+            set_discord_presence_mode,
             greet,
             set_webview_material,
             tweaks_by_category,

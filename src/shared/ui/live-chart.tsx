@@ -1,5 +1,4 @@
-import { useId } from 'react'
-import { Area, AreaChart, ResponsiveContainer, Tooltip, YAxis } from 'recharts'
+import { lazy, Suspense, useId } from 'react'
 
 export interface ChartPoint {
   value: number
@@ -13,43 +12,64 @@ interface LiveChartProps {
   formatValue?: (value: number) => string
 }
 
+const RechartsLiveChart = lazy(async () => {
+  const { Area, AreaChart, ResponsiveContainer, Tooltip, YAxis } = await import('recharts')
+
+  return {
+    default: function RechartsLiveChartContent({ data, yDomain, unit = '', height = 80, formatValue, gradientId }: LiveChartProps & { gradientId: string }) {
+      return (
+        <ResponsiveContainer height={height} width="100%">
+          <AreaChart data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
+            <defs>
+              <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+                <stop offset="5%" stopColor="var(--metric-accent)" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="var(--metric-accent)" stopOpacity={0.03} />
+              </linearGradient>
+            </defs>
+            <YAxis domain={yDomain ?? ['auto', 'auto']} hide />
+            <Tooltip
+              contentStyle={{
+                background: 'var(--card)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                color: 'var(--muted-foreground)',
+                fontSize: '11px',
+                padding: '4px 8px',
+              }}
+              formatter={value => [typeof value === 'number' ? formatValue?.(value) ?? `${value.toFixed(1)}${unit}` : '', '']}
+              itemStyle={{ color: 'var(--muted-foreground)' }}
+              labelFormatter={() => ''}
+              separator=""
+            />
+            <Area
+              dataKey="value"
+              dot={false}
+              fill={`url(#${gradientId})`}
+              isAnimationActive={false}
+              stroke="var(--metric-accent)"
+              strokeWidth={1.5}
+              type="monotone"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      )
+    },
+  }
+})
+
 export function LiveChart({ data, yDomain, unit = '', height = 80, formatValue }: LiveChartProps) {
   const gradientId = useId().replace(/:/g, '-')
 
   return (
-    <ResponsiveContainer height={height} width="100%">
-      <AreaChart data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
-        <defs>
-          <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="5%" stopColor="var(--metric-accent)" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="var(--metric-accent)" stopOpacity={0.03} />
-          </linearGradient>
-        </defs>
-        <YAxis domain={yDomain ?? ['auto', 'auto']} hide />
-        <Tooltip
-          contentStyle={{
-            background: 'var(--card)',
-            border: '1px solid var(--border)',
-            borderRadius: '6px',
-            color: 'var(--muted-foreground)',
-            fontSize: '11px',
-            padding: '4px 8px',
-          }}
-          formatter={value => [typeof value === 'number' ? formatValue?.(value) ?? `${value.toFixed(1)}${unit}` : '', '']}
-          itemStyle={{ color: 'var(--muted-foreground)' }}
-          labelFormatter={() => ''}
-          separator=""
-        />
-        <Area
-          dataKey="value"
-          dot={false}
-          fill={`url(#${gradientId})`}
-          isAnimationActive={false}
-          stroke="var(--metric-accent)"
-          strokeWidth={1.5}
-          type="monotone"
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+    <Suspense fallback={<div style={{ height }} />}>
+      <RechartsLiveChart
+        data={data}
+        formatValue={formatValue}
+        gradientId={gradientId}
+        height={height}
+        unit={unit}
+        yDomain={yDomain}
+      />
+    </Suspense>
   )
 }

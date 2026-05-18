@@ -4,6 +4,7 @@ version = "0.6.0"
 description = "A sleek Windows 10/11 tweaker"
 authors = [ "Noktomezo <noktomezo@duck.com>" ]
 edition = "2024"
+default-run = "winsentials"
 
 [lib]
 name = "winsentials_lib"
@@ -43,6 +44,8 @@ png = "0.18.1"
 regex = "1.12.3"
 log = "0.4.29"
 windows = { version = "0.62", features = ["Win32_Devices_DeviceAndDriverInstallation", "Win32_Devices_Properties"] }
+duct = "1.1.1"
+discord-rich-presence = "1.1.0"
 
 [target."cfg(windows)".dependencies]
 system_shutdown = "4"

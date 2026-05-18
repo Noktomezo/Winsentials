@@ -139,8 +139,8 @@ function RamPage() {
   if (!staticInfo) {
     return (
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-        {[1, 2, 3].map(i => (
-          <section className="rounded-lg border border-border/70 bg-card p-4" key={i}>
+        {['ram-static-skeleton-primary', 'ram-static-skeleton-secondary', 'ram-static-skeleton-tertiary'].map(key => (
+          <section className="rounded-lg border border-border/70 bg-card p-4" key={key}>
             <Skeleton className="mb-3 h-4 w-32" />
             <div className="space-y-2.5">
               <Skeleton className="h-3 w-full" />
@@ -156,8 +156,8 @@ function RamPage() {
   if (!liveInfo) {
     return (
       <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-        {[1, 2, 3].map(i => (
-          <section className="rounded-lg border border-border/70 bg-card p-4" key={i}>
+        {['ram-live-skeleton-primary', 'ram-live-skeleton-secondary', 'ram-live-skeleton-tertiary'].map(key => (
+          <section className="rounded-lg border border-border/70 bg-card p-4" key={key}>
             <Skeleton className="mb-3 h-4 w-32" />
             <div className="space-y-2.5">
               <Skeleton className="h-3 w-full" />

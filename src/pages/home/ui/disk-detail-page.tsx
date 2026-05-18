@@ -18,6 +18,24 @@ function formatRate(bytesPerSec: number, locale: string, t: ReturnType<typeof us
   return formatRateLocalized(bytesPerSec, { locale, t })
 }
 
+const responseTimeFormatters = new Map<string, Intl.NumberFormat>()
+
+function getResponseTimeFormatter(locale: string) {
+  const cached = responseTimeFormatters.get(locale)
+
+  if (cached) {
+    return cached
+  }
+
+  const formatter = Intl.NumberFormat(locale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })
+  responseTimeFormatters.set(locale, formatter)
+
+  return formatter
+}
+
 function activityColorClass(percent: number): string {
   if (percent >= 85) return 'metric-text-danger'
   if (percent >= 60) return 'metric-text-warning'
@@ -128,10 +146,7 @@ function DiskDetailPage() {
   const throughputHistory: ChartPoint[] = throughputHistoryValues.map(value => ({ value }))
   const currentThroughput = (diskLive?.readBytesPerSec ?? 0) + (diskLive?.writeBytesPerSec ?? 0)
   const throughputChartMax = nextTransferChartMax(Math.max(currentThroughput, ...throughputHistoryValues, 0))
-  const avgResponseTime = new Intl.NumberFormat(i18n.language, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(diskLive?.avgResponseMs ?? 0)
+  const avgResponseTime = getResponseTimeFormatter(i18n.language).format(diskLive?.avgResponseMs ?? 0)
   const diskType = t(`storage.types.${disk.kind.toLowerCase()}`, { defaultValue: disk.typeLabel })
 
   return (

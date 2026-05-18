@@ -52,22 +52,26 @@ function Row({ label, value }: RowProps) {
   )
 }
 
+type CpuStaticInfoState
+  = | { status: 'error' }
+    | { status: 'loading' }
+    | { info: StaticSystemInfo, status: 'ready' }
+
 function CpuPage() {
   const { t } = useTranslation()
-  const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
-  const [staticInfoError, setStaticInfoError] = useState(false)
+  const [staticInfoState, setStaticInfoState] = useState<CpuStaticInfoState>({ status: 'loading' })
   const { data: liveInfo, history: rawHistory } = useLiveCpu()
   const history: ChartPoint[] = rawHistory.map(v => ({ value: v }))
 
   const loadStaticInfo = () => {
-    setStaticInfoError(false)
+    setStaticInfoState({ status: 'loading' })
     getStaticSystemInfo()
       .then((info) => {
-        setStaticInfo(info)
+        setStaticInfoState({ info, status: 'ready' })
       })
       .catch((error) => {
         console.error(error)
-        setStaticInfoError(true)
+        setStaticInfoState({ status: 'error' })
       })
   }
 
@@ -75,8 +79,8 @@ function CpuPage() {
     loadStaticInfo()
   })
 
-  if (!staticInfo) {
-    if (staticInfoError) {
+  if (staticInfoState.status !== 'ready') {
+    if (staticInfoState.status === 'error') {
       return (
         <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
           <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
@@ -107,7 +111,7 @@ function CpuPage() {
     )
   }
 
-  const cpu = staticInfo.cpu
+  const cpu = staticInfoState.info.cpu
   const cpuModel = formatCpuModel(cpu.model)
 
   return (
@@ -204,7 +208,7 @@ function CpuPage() {
           <h3 className="text-sm font-medium text-foreground">{t('cpu.perCore')}</h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
             {liveInfo.cpuPerCore.map((usage, i) => (
-              <div className="space-y-0.5" key={i}>
+              <div className="space-y-0.5" key={`cpu-core-${i + 1}`}>
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">
                     {t('cpu.core')}

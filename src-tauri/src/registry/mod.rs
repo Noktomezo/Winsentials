@@ -2,11 +2,19 @@ use crate::error::AppError;
 use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_READ, RegType::REG_BINARY};
 use winreg::{RegKey as WinRegKey, RegValue};
 
+#[derive(Clone, Copy)]
 pub enum Hive {
     CurrentUser,
     LocalMachine,
 }
 
+#[derive(Clone)]
+pub struct RawRegValue {
+    pub bytes: Vec<u8>,
+    pub vtype: winreg::enums::RegType,
+}
+
+#[derive(Clone, Copy)]
 pub struct RegKey {
     pub hive: Hive,
     pub path: &'static str,
@@ -48,6 +56,16 @@ impl RegKey {
             .map_err(AppError::from)
     }
 
+    pub fn get_raw_value(&self, name: &str) -> Result<RawRegValue, AppError> {
+        let key = self.open_read()?;
+        key.get_raw_value(name)
+            .map(|value| RawRegValue {
+                bytes: value.bytes.into_owned(),
+                vtype: value.vtype,
+            })
+            .map_err(AppError::from)
+    }
+
     pub fn set_string(&self, name: &str, value: &str) -> Result<(), AppError> {
         let key = self.open_write()?;
         key.set_value(name, &value).map_err(AppError::from)
@@ -60,6 +78,18 @@ impl RegKey {
             &RegValue {
                 bytes: value.to_vec().into(),
                 vtype: REG_BINARY,
+            },
+        )
+        .map_err(AppError::from)
+    }
+
+    pub fn set_raw_value(&self, name: &str, value: &RawRegValue) -> Result<(), AppError> {
+        let key = self.open_write()?;
+        key.set_raw_value(
+            name,
+            &RegValue {
+                bytes: value.bytes.clone().into(),
+                vtype: value.vtype.clone(),
             },
         )
         .map_err(AppError::from)

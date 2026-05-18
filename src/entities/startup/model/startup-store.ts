@@ -377,14 +377,25 @@ async function hydrateLoadedEntries(
   set: StartupStoreSetter,
   get: () => StartupStoreState,
 ) {
-  const ids = get().entries.filter(entry => entry.iconDataUrl === null || entry.publisher === null).map(entry => entry.id)
+  const ids: string[] = []
 
-  for (let index = 0; index < ids.length; index += hydrationChunkSize) {
+  for (const entry of get().entries) {
+    if (entry.iconDataUrl === null || entry.publisher === null) {
+      ids.push(entry.id)
+    }
+  }
+
+  const hydrateChunk = async (index: number): Promise<void> => {
     if (get().hydrationRequestId !== requestId) {
       return
     }
 
     const chunk = ids.slice(index, index + hydrationChunkSize)
+
+    if (chunk.length === 0) {
+      return
+    }
+
     const hydrated: StartupEntry[] = []
 
     try {
@@ -395,13 +406,10 @@ async function hydrateLoadedEntries(
 
       for (const id of chunk) {
         try {
-          const [entry] = await hydrateStartupEntries([id])
-          if (entry) {
-            hydrated.push(entry)
-          }
+          hydrated.push(...await hydrateStartupEntries([id]))
         }
-        catch (entryError) {
-          console.error(`Failed to hydrate startup entry ${id}`, entryError)
+        catch (retryError) {
+          console.error(`Failed to hydrate startup entry ${id}`, retryError)
         }
 
         if (get().hydrationRequestId !== requestId) {
@@ -411,7 +419,7 @@ async function hydrateLoadedEntries(
     }
 
     if (get().hydrationRequestId !== requestId || hydrated.length === 0) {
-      continue
+      return hydrateChunk(index + hydrationChunkSize)
     }
 
     set((current) => {
@@ -424,7 +432,11 @@ async function hydrateLoadedEntries(
         ...applyEntryUpdates(current.entriesBySource, hydrated),
       }
     })
+
+    return hydrateChunk(index + hydrationChunkSize)
   }
+
+  await hydrateChunk(0)
 }
 
 export const useStartupStore = create<StartupStoreState>()((set, get) => ({

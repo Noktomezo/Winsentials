@@ -6,6 +6,8 @@ import {
   AlertTriangle,
   ArrowLeftRight,
   BellOff,
+  BotOff,
+  Check,
   CircleAlert,
   Clock3,
   CloudOff,
@@ -17,12 +19,15 @@ import {
   FileType,
   Gamepad2,
   Gauge,
+  Globe,
   HardDrive,
   History,
   House,
   Images,
   Info,
   Keyboard,
+  KeyboardOff,
+  Link,
   ListX,
   LogOut,
   MapPinned,
@@ -31,7 +36,9 @@ import {
   Mouse,
   MousePointer2,
   Network,
+  PackageX,
   PanelsTopLeft,
+  PlugZap,
   Power,
   RotateCcw,
   Settings,
@@ -44,7 +51,6 @@ import {
   Usb,
   Zap,
 } from 'lucide-react'
-import { forwardRef } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/shared/lib/toast'
 import { cn } from '@/shared/lib/utils'
@@ -76,6 +82,7 @@ const CARD_HORIZONTAL_PADDING = 32
 const RESET_BUTTON_WIDTH = 36
 const CONTROL_GAP = 8
 const TOGGLE_CONTROL_WIDTH = 94
+const ACTION_CONTROL_WIDTH = 104
 const DROPDOWN_CONTROL_WIDTH = 168
 const TOGGLE_CUSTOM_CONTROL_WIDTH = 112
 const MIN_CARD_WIDTH = 360
@@ -118,6 +125,7 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   disable_windows_telemetry: EyeOff,
   svchost_split_threshold: MemoryStick,
   csrss_high_priority: Zap,
+  disable_ctf_ctfmon: KeyboardOff,
   disable_mouse_acceleration: Mouse,
   raw_mouse_throttle: MousePointer2,
   optimize_mmcss: Zap,
@@ -125,10 +133,36 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   enable_bbr2_congestion_control: Zap,
   disable_qos_bandwidth_limit: Gauge,
   enable_network_offloading_rss: Cpu,
+  microsoft_edge_debloat: Globe,
+  brave_browser_debloat: PackageX,
+  disable_microsoft_copilot: BotOff,
+  remove_microsoft_edge: Globe,
+  remove_microsoft_onedrive: CloudOff,
+  block_razer_auto_install: PlugZap,
+  create_symbolic_link_context_menu: Link,
 }
 
 const COPYABLE_RISK_COMMANDS: Record<string, string> = {
   disable_user_account_control: 'runas /trustlevel:0x20000 "program.exe"',
+}
+
+const DROPDOWN_OPTION_ICONS: Record<string, Record<string, LucideIcon>> = {
+  fast_keyboard_repeat: {
+    default: Settings,
+    balanced: Gauge,
+    fast: Keyboard,
+    ultra_fast: Zap,
+  },
+  disable_cloud_sync: {
+    default: Settings,
+    partial: BellOff,
+    full: CloudOff,
+  },
+  disable_ctf_ctfmon: {
+    default: Settings,
+    soft: Keyboard,
+    aggressive: KeyboardOff,
+  },
 }
 
 let tweakTitleMeasureCanvas: HTMLCanvasElement | null = null
@@ -150,6 +184,10 @@ function measureTweakTitleWidth(title: string) {
 }
 
 function tweakControlWidth(tweak: TweakMeta) {
+  if (tweak.control.kind === 'action') {
+    return ACTION_CONTROL_WIDTH
+  }
+
   if (tweak.control.kind === 'dropdown') {
     return DROPDOWN_CONTROL_WIDTH
   }
@@ -205,35 +243,7 @@ function dropdownOptionIcon(
   tweakId: string,
   optionValue: string,
 ): LucideIcon | null {
-  if (tweakId === 'fast_keyboard_repeat') {
-    switch (optionValue) {
-      case 'default':
-        return Settings
-      case 'balanced':
-        return Gauge
-      case 'fast':
-        return Keyboard
-      case 'ultra_fast':
-        return Zap
-      default:
-        return null
-    }
-  }
-
-  if (tweakId === 'disable_cloud_sync') {
-    switch (optionValue) {
-      case 'default':
-        return Settings
-      case 'partial':
-        return BellOff
-      case 'full':
-        return CloudOff
-      default:
-        return null
-    }
-  }
-
-  return null
+  return DROPDOWN_OPTION_ICONS[tweakId]?.[optionValue] ?? null
 }
 
 function metadataChipClassName(
@@ -326,22 +336,21 @@ function MetadataChip({
   )
 }
 
-const MetadataChipButton = forwardRef<
-  HTMLButtonElement,
-  React.PropsWithChildren<React.ComponentProps<'button'> & {
-    ariaLabel: string
-    tone?: 'default' | 'details' | 'action' | 'warning' | 'danger' | 'system'
-    icon?: LucideIcon
-  }>
->(({
+function MetadataChipButton({
   ariaLabel,
   children,
   tone = 'default',
   icon,
   className,
   type,
+  ref,
   ...props
-}, ref) => {
+}: React.PropsWithChildren<React.ComponentProps<'button'> & {
+  ariaLabel: string
+  tone?: 'default' | 'details' | 'action' | 'warning' | 'danger' | 'system'
+  icon?: LucideIcon
+  ref?: React.Ref<HTMLButtonElement>
+}>) {
   return (
     <button
       aria-label={ariaLabel}
@@ -355,8 +364,7 @@ const MetadataChipButton = forwardRef<
       </MetadataChip>
     </button>
   )
-})
-MetadataChipButton.displayName = 'MetadataChipButton'
+}
 
 function RiskCodeBlock({
   children,
@@ -402,6 +410,7 @@ export function TweakCard({
   const tweakName = t(tweak.name)
   const Icon = TWEAK_ICONS[tweak.id] ?? Info
   const isEnabled = tweak.currentValue === 'enabled'
+  const isRecommended = tweak.currentValue === tweak.recommendedValue
   const isAtDefault = tweak.currentValue === tweak.defaultValue
   const isBelowBuildRequirement = isBelowMinBuild(currentBuild, tweak)
   const minInstalledMemoryGb = tweak.minRequiredMemoryGb ?? null
@@ -489,6 +498,16 @@ export function TweakCard({
               <RotateCcw className="size-4" />
             </Button>
 
+            {tweak.control.kind === 'action' && (
+              <Button
+                disabled={isPending || isApplyBlocked || isRecommended}
+                onClick={() => onApplyValue(tweak.recommendedValue)}
+                type="button"
+              >
+                <Check className="size-4" />
+                {t('tweaks.actions.apply')}
+              </Button>
+            )}
             {tweak.control.kind === 'toggle' && (
               <LabeledSwitch
                 aria-label={t(tweak.name)}

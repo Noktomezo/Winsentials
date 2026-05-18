@@ -150,6 +150,8 @@
     "backup": "Backups",
     "behaviour": "Behaviour",
     "cleanup": "Cleanup",
+    "contextMenu": "Context Menu",
+    "debloat": "Debloat",
     "home": "Home",
     "input": "Input",
     "memory": "Memory",
@@ -189,29 +191,26 @@
       "skippedBusyFiles": "Some files are in use and were skipped."
     },
     "categories": {
-      "windows_temp": {
-        "name": "Clean Windows temporary files"
+      "windows": {
+        "name": "Windows cleanup"
       },
-      "thumbnail_cache": {
-        "name": "Clean thumbnail and icon caches"
+      "browsers": {
+        "name": "Browser cleanup"
       },
-      "browser_cache": {
-        "name": "Clean browser caches"
+      "applications": {
+        "name": "Application cleanup"
       },
-      "driver_cache": {
-        "name": "Clean driver and shader caches"
+      "development": {
+        "name": "Developer tools cleanup"
       },
-      "game_cache": {
-        "name": "Clean game launcher caches"
+      "gaming": {
+        "name": "Gaming cleanup"
       },
-      "windows_logs": {
-        "name": "Clean Windows logs"
+      "media": {
+        "name": "Media and communication cleanup"
       },
-      "system_error_reports": {
-        "name": "Clean error reports and dumps"
-      },
-      "app_cache": {
-        "name": "Clean app component caches"
+      "appx": {
+        "name": "Store apps cleanup"
       },
       "unused_devices": {
         "name": "Remove unused devices"
@@ -221,6 +220,63 @@
       "scan": "Failed to scan cleanup targets.",
       "clean": "Failed to run cleanup.",
       "reboot": "Failed to schedule delete after reboot."
+    }
+  },
+  "contextMenu": {
+    "description": "Explorer context menu extensions for faster file and folder actions.",
+    "title": "Context Menu",
+    "tweaks": {
+      "createSymbolicLink": {
+        "detailDescription": "Adds a Windows Explorer context menu item for files and folders. When selected, it opens a native folder picker and creates a symbolic link to the selected item in the chosen destination folder.",
+        "name": "Add \"Create Symbolic Link\" Item",
+        "riskDescription": "Creating symbolic links may require Developer Mode or administrator privileges depending on Windows policy. Existing files are not overwritten; a suffix is added when a name is already taken.",
+        "shortDescription": "Adds a context menu action that creates a symbolic link to the selected file or folder."
+      }
+    }
+  },
+  "debloat": {
+    "description": "Remove bundled apps, promos, optional services, and other unwanted Windows components.",
+    "title": "Debloat",
+    "apps": {
+      "browser": "browser"
+    },
+    "tweaks": {
+      "braveBrowserDebloat": {
+        "detailDescription": "Applies Brave policies that disable Brave Rewards, Wallet, VPN, Leo AI Chat, News, Talk, Tor windows, P3A, metrics reporting, URL-keyed anonymized data collection, extended Safe Browsing reporting, and related background pings.",
+        "name": "Brave Browser Debloat",
+        "riskDescription": "This writes machine-wide Brave policies. Some browser settings may become managed by your organization until you reset the tweak or restart Brave.",
+        "shortDescription": "Disables Brave Rewards, Leo AI, Crypto Wallet, VPN, telemetry, and other optional Brave features."
+      },
+      "disableMicrosoftCopilot": {
+        "detailDescription": "Removes Copilot AppX packages for all users, marks the current user's MicrosoftWindows.Client.CoreAI package as end-of-life, and removes that CoreAI package when present. Reset reinstalls Copilot from Microsoft Store through winget.",
+        "name": "Disable Microsoft Copilot",
+        "riskDescription": "This is a long-running AppX and Microsoft Store operation. Reset requires winget and Microsoft Store access, and may fail if Store sources are blocked or unavailable.",
+        "shortDescription": "Removes Copilot and related AI AppX packages, with reset reinstalling Copilot through winget."
+      },
+      "microsoftEdgeDebloat": {
+        "detailDescription": "Applies Microsoft Edge policies that disable telemetry and personalization reporting, recommendations, first-run prompts, feedback, alternate error pages, Collections, Shopping Assistant, Insider promotions, Rewards, Web Widget, asset delivery, donation wallet features, default browser campaigns, and the default desktop shortcut created by Edge Update.",
+        "name": "Microsoft Edge Debloat",
+        "riskDescription": "This writes machine-wide Edge policies. Some browser settings may appear as managed by your organization until you reset the tweak or restart Edge.",
+        "shortDescription": "Disables Edge telemetry, popups, recommendations, promos, and other browser annoyances."
+      },
+      "removeMicrosoftEdge": {
+        "detailDescription": "Creates the MicrosoftEdge.exe placeholder in the Windows SystemApps Edge package path, then runs the newest Edge installer setup.exe with system-level force uninstall and profile deletion. Reset reinstalls Microsoft Edge through winget.",
+        "name": "Remove Microsoft Edge",
+        "riskDescription": "This removes the system-level Edge installation and deletes the Edge profile. Windows components that expect Edge or WebView-related browser integration may behave differently until you reinstall Edge.",
+        "shortDescription": "Uninstalls Microsoft Edge at system level and restores it through winget on reset."
+      },
+      "removeMicrosoftOneDrive": {
+        "detailDescription": "Temporarily denies delete permissions on the user's OneDrive folder, runs the native OneDriveSetup.exe uninstaller, stops OneDrive-related processes that can hold files open, removes leftover OneDrive folders from LocalAppData and ProgramData, restores access to the user folder, and disables OneSyncSvc. Reset reinstalls OneDrive through winget and returns OneSyncSvc to automatic startup.",
+        "name": "Remove Microsoft OneDrive",
+        "riskDescription": "This removes the OneDrive client and leftover local application data, but intentionally protects the user's OneDrive folder from deletion during uninstall. Reset requires winget and network access.",
+        "shortDescription": "Uninstalls OneDrive with its native uninstaller, removes leftovers, and restores it through winget on reset."
+      },
+      "blockRazerAutoInstall": {
+        "detailDescription": "Disables Windows driver search co-installers, ensures the Razer installer cache folder exists, and denies write access so Razer software cannot auto-drop installers there. Razer hardware should continue working through normal drivers.",
+        "name": "Disable Razer Software Auto-Install",
+        "riskDescription": "This can block vendor helper software that Windows would otherwise install for Razer devices. If you want Synapse or other Razer software back, reset the tweak before installing it.",
+        "shortDescription": "Blocks automatic Razer software installers while keeping the hardware usable without vendor software."
+      }
     }
   },
   "backup": {
@@ -301,6 +357,17 @@
         "name": "CSRSS High Priority",
         "riskDescription": "This is an aggressive system tweak. On some PCs it may provide little benefit or slightly increase overall CPU usage. If the system feels worse after rebooting, reset the tweak and return to the default values.",
         "shortDescription": "Raises CSRSS priority and related input settings to reduce mouse and keyboard latency."
+      },
+      "disableCtfCtfmon": {
+        "detailDescription": "ctfmon.exe is an old Windows component responsible for language bars, handwriting input, and IME. It can keep running even if you do not use East Asian languages and adds extra CPU work to the input path. Disabling it can noticeably improve input responsiveness.",
+        "name": "Disable CTF",
+        "options": {
+          "aggressive": "Aggressive",
+          "default": "Default",
+          "soft": "Soft (recommended)"
+        },
+        "riskDescription": "Aggressive mode may break language bars, handwriting input, and IME for Chinese, Japanese, and similar input methods. Use Soft mode unless you intentionally want the deeper service-level disable.",
+        "shortDescription": "Disables the legacy Complex Text Framework input system that can add overhead to every keypress."
       },
       "disableMouseAcceleration": {
         "detailDescription": "Disables Windows mouse acceleration so cursor movement stays 1:1 with the physical movement of your mouse. This is especially useful for FPS games, aiming, and precise desktop work where you want consistent muscle memory instead of the pointer speeding up during faster swipes.",
@@ -475,6 +542,15 @@
     }
   },
   "settings": {
+    "discordPresence": "Discord Rich Presence",
+    "discordPresenceDescription": "Choose how Winsentials appears in your Discord activity.",
+    "discordPresenceModes": {
+      "competing": "Competing",
+      "listening": "Listening",
+      "none": "None",
+      "playing": "Playing",
+      "watching": "Watching"
+    },
     "disableUpdateChecks": "Disable update checks",
     "description": "Adjust application language, appearance mode, and window materials.",
     "installingUpdate": "Downloading and installing the latest update...",
@@ -762,6 +838,7 @@
     },
     "actions": {
       "copyCommand": "Copy command",
+      "apply": "Apply",
       "resetToDefault": "Reset to default",
       "later": "Later",
       "logoutNow": "Sign out now",
@@ -804,7 +881,9 @@
       "restartPc": "Requires PC restart",
       "windowsBuild": "Requires Windows build {{build}} or newer"
     },
-    "progress": {},
+    "progress": {
+      "applying": "Applying tweak..."
+    },
     "states": {
       "disabled": "Disabled",
       "enabled": "Enabled",

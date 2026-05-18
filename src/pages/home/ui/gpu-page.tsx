@@ -282,14 +282,18 @@ function LiveGpuErrorState({ message, onRetry }: LiveGpuErrorStateProps) {
   )
 }
 
+type GpuStaticInfoState
+  = | { status: 'error' }
+    | { status: 'loading' }
+    | { info: StaticSystemInfo, status: 'ready' }
+
 function GpuPage() {
   const { t } = useTranslation()
   const params = useParams({ strict: false })
   const parsedGpuIndex
     = params.gpuIndex !== undefined ? Number(params.gpuIndex) : null
 
-  const [staticInfo, setStaticInfo] = useState<StaticSystemInfo | null>(null)
-  const [staticError, setStaticError] = useState(false)
+  const [staticInfoState, setStaticInfoState] = useState<GpuStaticInfoState>({ status: 'loading' })
   const {
     data: liveInfo,
     error: liveError,
@@ -299,12 +303,12 @@ function GpuPage() {
   } = useLiveGpu()
 
   const loadStaticInfo = () => {
-    setStaticError(false)
+    setStaticInfoState({ status: 'loading' })
     getStaticSystemInfo()
-      .then(setStaticInfo)
+      .then(info => setStaticInfoState({ info, status: 'ready' }))
       .catch((error) => {
         console.error(error)
-        setStaticError(true)
+        setStaticInfoState({ status: 'error' })
       })
   }
 
@@ -312,6 +316,7 @@ function GpuPage() {
     loadStaticInfo()
   })
 
+  const staticInfo = staticInfoState.status === 'ready' ? staticInfoState.info : null
   const gpuIndex
     = staticInfo
       && parsedGpuIndex !== null
@@ -333,7 +338,7 @@ function GpuPage() {
   }
 
   if (!staticInfo) {
-    if (staticError) {
+    if (staticInfoState.status === 'error') {
       return (
         <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
           <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
@@ -594,7 +599,7 @@ function GpuPage() {
           return (
             <section
               className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4"
-              key={idx}
+              key={g.index}
             >
               {gpuIndex === null && (
                 <h3 className="text-sm font-medium text-foreground">

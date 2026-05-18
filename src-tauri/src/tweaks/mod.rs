@@ -1,5 +1,7 @@
 pub mod appearance;
 pub mod behaviour;
+pub mod context_menu;
+pub mod debloat;
 pub mod input;
 pub mod memory;
 pub mod network;
@@ -40,6 +42,7 @@ pub struct TweakConflict {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum TweakControlType {
     Toggle,
+    Action,
     Radio { options: Vec<TweakOption> },
     Dropdown { options: Vec<TweakOption> },
 }
@@ -113,6 +116,8 @@ fn build_tweak_registry() -> Vec<Arc<dyn Tweak>> {
     let mut tweaks: Vec<Arc<dyn Tweak>> = Vec::new();
     tweaks.extend(appearance::tweaks().into_iter().map(Arc::from));
     tweaks.extend(behaviour::tweaks().into_iter().map(Arc::from));
+    tweaks.extend(context_menu::tweaks().into_iter().map(Arc::from));
+    tweaks.extend(debloat::tweaks().into_iter().map(Arc::from));
     tweaks.extend(input::tweaks().into_iter().map(Arc::from));
     tweaks.extend(memory::tweaks().into_iter().map(Arc::from));
     tweaks.extend(network::tweaks().into_iter().map(Arc::from));

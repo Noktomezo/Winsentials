@@ -9,7 +9,9 @@ import {
   Outlet,
   useRouterState,
 } from '@tanstack/react-router'
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
+import { usePreferencesStore } from '@/entities/settings/model/preferences-store'
+import { setDiscordPresenceActivity } from '@/features/discord-presence/api'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
 import { SmoothScrollArea } from '@/shared/ui/smooth-scroll-area'
@@ -33,6 +35,37 @@ function AppShellLayout({
   scrollAreaRef: RefObject<SmoothScrollAreaHandle | null>
 }) {
   const pageHeader = usePageHeader(pathname)
+  const hasHydrated = usePreferencesStore(state => state.hasHydrated)
+  const discordPresenceMode = usePreferencesStore(state => state.discordPresenceMode)
+  const latestPresenceRequestId = useRef(0)
+  const discordPresencePageLabel = typeof pageHeader.title === 'string'
+    ? pageHeader.title
+    : undefined
+
+  useEffect(() => {
+    if (!hasHydrated) {
+      return
+    }
+
+    const requestId = latestPresenceRequestId.current + 1
+    latestPresenceRequestId.current = requestId
+
+    void setDiscordPresenceActivity({
+      mode: discordPresenceMode,
+      pageLabel: discordPresencePageLabel,
+    }).catch((error) => {
+      if (latestPresenceRequestId.current !== requestId) {
+        return
+      }
+      console.warn('Failed to sync Discord Rich Presence', error)
+    })
+
+    return () => {
+      if (latestPresenceRequestId.current === requestId) {
+        latestPresenceRequestId.current += 1
+      }
+    }
+  }, [discordPresenceMode, discordPresencePageLabel, hasHydrated])
 
   return (
     <SidebarProvider
@@ -122,6 +155,22 @@ const behaviourRoute = createRoute({
   path: 'behaviour',
   component: lazyRouteComponent(
     () => import('@/pages/behaviour/ui/behaviour-page'),
+  ),
+})
+
+const debloatRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'debloat',
+  component: lazyRouteComponent(
+    () => import('@/pages/debloat/ui/debloat-page'),
+  ),
+})
+
+const contextMenuRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'context-menu',
+  component: lazyRouteComponent(
+    () => import('@/pages/context-menu/ui/context-menu-page'),
   ),
 })
 
@@ -273,6 +322,8 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   homeRoute,
   behaviourRoute,
+  contextMenuRoute,
+  debloatRoute,
   appearanceRoute,
   securityRoute,
   privacyRoute,

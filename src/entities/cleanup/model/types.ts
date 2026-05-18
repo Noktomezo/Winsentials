@@ -1,15 +1,14 @@
 export type CleanupCategoryId
-  = | 'app_cache'
-    | 'browser_cache'
-    | 'driver_cache'
-    | 'game_cache'
-    | 'system_error_reports'
-    | 'thumbnail_cache'
+  = | 'applications'
+    | 'appx'
+    | 'browsers'
+    | 'development'
+    | 'gaming'
+    | 'media'
     | 'unused_devices'
-    | 'windows_logs'
-    | 'windows_temp'
+    | 'windows'
 
-export type CleanupEntryStatus = 'busy' | 'clean' | 'failed' | 'pending'
+export type CleanupEntryStatus = 'busy' | 'clean' | 'failed' | 'pending' | 'removed'
 
 export interface CleanupEntry {
   error: string | null

@@ -19,6 +19,7 @@ export interface TweakConflict {
 
 export type TweakControlType
   = | { kind: 'toggle' }
+    | { kind: 'action' }
     | { kind: 'radio', options: TweakOption[] }
     | { kind: 'dropdown', options: TweakOption[] }
 
