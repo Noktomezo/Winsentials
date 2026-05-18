@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::{env, fs, path::PathBuf};
 
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
@@ -8,10 +8,10 @@ const ENABLED_VALUE: &str = "enabled";
 const DISABLED_VALUE: &str = "disabled";
 const CUSTOM_VALUE: &str = "custom";
 
+const SYMLINKER_BYTES: &[u8] = include_bytes!("../../../assets/Symlinker.cmd");
+const SYMLINKER_FILE_NAME: &str = "Symlinker.cmd";
 const MENU_LABEL: &str = "Create symbolic link";
 const MENU_ICON: &str = "shell32.dll,147";
-const MIN_HELPER_EXE_SIZE: u64 = 4096;
-const HELPER_EXE_PREFIX: &str = "winsentials_symlink_helper";
 
 const FILE_MENU_KEY: RegKey = RegKey {
     hive: Hive::CurrentUser,
@@ -69,26 +69,23 @@ impl CreateSymbolicLinkContextMenuTweak {
         }
     }
 
-    fn bundled_helper_path() -> Result<PathBuf, AppError> {
-        let current_exe = std::env::current_exe()?;
-        let app_dir = current_exe
-            .parent()
-            .ok_or_else(|| AppError::message("failed to resolve Winsentials executable folder"))?;
-
-        for directory in [app_dir.to_path_buf(), app_dir.join("resources")] {
-            if let Some(candidate) = find_helper_in_directory(&directory) {
-                return Ok(candidate);
-            }
-        }
-
-        Err(AppError::message(format!(
-            "failed to find bundled symlink helper near {}",
-            app_dir.display()
-        )))
+    fn symlinker_path() -> PathBuf {
+        env::var_os("SystemRoot")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from(r"C:\Windows"))
+            .join(SYMLINKER_FILE_NAME)
     }
 
-    fn command_value(helper_path: &Path) -> String {
-        format!("\"{}\" \"%1\"", helper_path.to_string_lossy())
+    fn command_value() -> String {
+        format!(
+            "cmd /c start \"\" /min \"{}\" \"%1\" & exit",
+            Self::symlinker_path().to_string_lossy()
+        )
+    }
+
+    fn ensure_symlinker() -> Result<(), AppError> {
+        fs::write(Self::symlinker_path(), SYMLINKER_BYTES)?;
+        Ok(())
     }
 
     fn write_menu(menu_key: &RegKey, command_key: &RegKey, command: &str) -> Result<(), AppError> {
@@ -135,10 +132,10 @@ impl CreateSymbolicLinkContextMenuTweak {
     }
 
     fn is_enabled(&self) -> Result<bool, AppError> {
-        let Ok(helper_path) = Self::bundled_helper_path() else {
+        if !Self::symlinker_path().is_file() {
             return Ok(false);
-        };
-        let command = Self::command_value(&helper_path);
+        }
+        let command = Self::command_value();
 
         Ok(
             Self::menu_matches(&FILE_MENU_KEY, &FILE_COMMAND_KEY, &command)?
@@ -151,8 +148,8 @@ impl CreateSymbolicLinkContextMenuTweak {
     }
 
     fn enable() -> Result<(), AppError> {
-        let helper_path = Self::bundled_helper_path()?;
-        let command = Self::command_value(&helper_path);
+        Self::ensure_symlinker()?;
+        let command = Self::command_value();
         let file_snapshot = Self::snapshot_menu(&FILE_MENU_KEY, &FILE_COMMAND_KEY)?;
         let directory_snapshot = Self::snapshot_menu(&DIRECTORY_MENU_KEY, &DIRECTORY_COMMAND_KEY)?;
 
@@ -232,29 +229,6 @@ fn restore_string_value(key: &RegKey, name: &str, value: Option<&str>) {
     } else {
         let _ = key.delete_value(name);
     }
-}
-
-fn helper_file_is_usable(path: &Path) -> bool {
-    path.metadata()
-        .map(|metadata| metadata.is_file() && metadata.len() >= MIN_HELPER_EXE_SIZE)
-        .unwrap_or(false)
-}
-
-fn find_helper_in_directory(directory: &Path) -> Option<PathBuf> {
-    let entries = std::fs::read_dir(directory).ok()?;
-
-    entries
-        .flatten()
-        .map(|entry| entry.path())
-        .find(|path| helper_name_matches(path) && helper_file_is_usable(path))
-}
-
-fn helper_name_matches(path: &Path) -> bool {
-    path.extension()
-        .is_some_and(|extension| extension.to_string_lossy().eq_ignore_ascii_case("exe"))
-        && path
-            .file_stem()
-            .is_some_and(|stem| stem.to_string_lossy().starts_with(HELPER_EXE_PREFIX))
 }
 
 fn read_string_or_missing(key: &RegKey, name: &str) -> Result<Option<String>, AppError> {

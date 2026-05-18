@@ -5,9 +5,9 @@
   "identifier": "com.noktomezo.winsentials",
   "mainBinaryName": "Winsentials",
   "build": {
-    "beforeDevCommand": "bun run build:symlink-helper:debug && bun run dev",
+    "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "bun run build && bun run build:symlink-helper:release",
+    "beforeBuildCommand": "bun run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -46,9 +46,6 @@
     "active": true,
     "targets": "nsis",
     "createUpdaterArtifacts": true,
-    "externalBin": [
-      "binaries/winsentials_symlink_helper"
-    ],
     "windows": {
       "nsis": {
         "installerIcon": "../assets/app-installer-logo.ico",
