@@ -5,6 +5,7 @@ export default antfu({
   ignores: [
     'AGENTS.md',
     'CLAUDE.md',
+    'GEMINI.md',
     'coverage',
     'dist',
     'node_modules',
