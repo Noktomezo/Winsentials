@@ -1,4 +1,5 @@
 use std::process::Command;
+use std::sync::{Mutex, OnceLock};
 
 use crate::error::AppError;
 
@@ -140,10 +141,31 @@ impl Drop for WingetBypassGuard {
     }
 }
 
+fn winget_bypass_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
+
 pub fn install_with_winget(package_id: &str, source: &str) -> Result<(), AppError> {
-    // Winget Store installs can fail on Microsoft Store certificate pinning bugs.
-    // This global bypass is security-sensitive, so the guard disables it in Drop.
-    let _bypass_guard = WingetBypassGuard::enable()?;
+    if source == "msstore" {
+        let _lock = winget_bypass_lock()
+            .lock()
+            .map_err(|error| AppError::message(format!("winget bypass lock poisoned: {error}")))?;
+        // Winget Store installs can fail on Microsoft Store certificate pinning bugs.
+        // This global bypass is security-sensitive, so the guard disables it in Drop.
+        let _bypass_guard = WingetBypassGuard::enable()?;
+
+        return run_winget(&[
+            "install",
+            "--id",
+            package_id,
+            "--source",
+            source,
+            "--accept-package-agreements",
+            "--accept-source-agreements",
+            "--silent",
+        ]);
+    }
 
     run_winget(&[
         "install",

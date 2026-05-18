@@ -5,7 +5,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from 'react'
 import Lenis from 'lenis'
-import { useImperativeHandle, useRef, useState } from 'react'
+import { useId, useImperativeHandle, useRef, useState } from 'react'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { cn } from '@/shared/lib/utils'
 
@@ -27,6 +27,7 @@ export const SmoothScrollArea = function SmoothScrollArea({ ref, children, class
   const trackRef = useRef<HTMLDivElement | null>(null)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
+  const wrapperId = useId()
   const dragStateRef = useRef<{
     startPointerY: number
     startScrollTop: number
@@ -270,8 +271,8 @@ export const SmoothScrollArea = function SmoothScrollArea({ ref, children, class
       className={cn('group/scroll relative h-full overflow-hidden', className)}
       data-dragging={isDragging ? 'true' : 'false'}
     >
-      <div ref={wrapperRef} className="scrollbar-hidden h-full overflow-auto">
-        <div ref={contentRef} className="min-h-full" id="smooth-scroll-content">
+      <div ref={wrapperRef} className="scrollbar-hidden h-full overflow-auto" id={wrapperId}>
+        <div ref={contentRef} className="min-h-full">
           {children}
         </div>
       </div>
@@ -283,7 +284,7 @@ export const SmoothScrollArea = function SmoothScrollArea({ ref, children, class
           'focus-visible:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary/60',
           isDragging && 'opacity-100',
         )}
-        aria-controls="smooth-scroll-content"
+        aria-controls={wrapperId}
         aria-label="Scroll content"
         aria-orientation="vertical"
         aria-valuemax={100}

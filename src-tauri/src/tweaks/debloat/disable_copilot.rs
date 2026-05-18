@@ -90,7 +90,11 @@ if ($appx) {
 Write-Host 'Copilot Removed'
 "#,
         )?;
-        STATE_KEY.set_dword("Removed", 1)
+        if !copilot_packages_present()? {
+            STATE_KEY.set_dword("Removed", 1)?;
+        }
+
+        Ok(())
     }
 
     fn install_copilot() -> Result<(), AppError> {
@@ -109,7 +113,10 @@ Write-Host 'Copilot Removed'
 fn copilot_packages_present() -> Result<bool, AppError> {
     let output = run_powershell(
         r#"
-$packages = Get-AppxPackage -AllUsers '*Copilot*' -ErrorAction SilentlyContinue
+$packages = @(
+  Get-AppxPackage -AllUsers '*Copilot*' -ErrorAction SilentlyContinue
+  Get-AppxPackage -AllUsers 'MicrosoftWindows.Client.CoreAI' -ErrorAction SilentlyContinue
+)
 if ($packages) { 'present' }
 "#,
     )?;

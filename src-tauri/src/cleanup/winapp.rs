@@ -155,10 +155,10 @@ fn scan_or_clean_winapp_target(target: &WinappTarget, clean: bool) -> CleanupEnt
         }
     }
 
-    let matches = matched_paths(&target.rules);
+    let remaining_matches = matched_paths(&target.rules);
     let mut size_bytes = 0;
 
-    for matched in &matches {
+    for matched in &remaining_matches {
         match target_size_bytes(&matched.path) {
             Ok(size) => size_bytes += size,
             Err(error) if error.kind() == io::ErrorKind::NotFound => {}
@@ -172,7 +172,7 @@ fn scan_or_clean_winapp_target(target: &WinappTarget, clean: bool) -> CleanupEnt
 
     let status = if let Some(error) = &first_error {
         cleanup_status_from_error(error)
-    } else if size_bytes == 0 {
+    } else if remaining_matches.is_empty() {
         CleanupEntryStatus::Clean
     } else {
         CleanupEntryStatus::Pending
@@ -181,7 +181,7 @@ fn scan_or_clean_winapp_target(target: &WinappTarget, clean: bool) -> CleanupEnt
     CleanupEntry {
         id: target.id.clone(),
         name: target.name.clone(),
-        path: format_match_summary(matches.len()),
+        path: format_match_summary(remaining_matches.len()),
         status,
         size_bytes,
         error: first_error.map(|error| error.to_string()),

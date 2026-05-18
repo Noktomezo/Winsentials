@@ -1,6 +1,7 @@
 use crate::error::AppError;
 use crate::registry::{Hive, RegKey};
 use crate::tweaks::{RequiresAction, RiskLevel, Tweak, TweakControlType, TweakMeta, TweakStatus};
+use serde::{Deserialize, Serialize};
 
 const ENABLED_VALUE: &str = "enabled";
 const DISABLED_VALUE: &str = "disabled";
@@ -18,62 +19,84 @@ struct PolicyValue {
     value: RegistryValue,
 }
 
+struct BrowserPolicyConfig {
+    id: &'static str,
+    name: &'static str,
+    short_description: &'static str,
+    detail_description: &'static str,
+    risk_description: &'static str,
+    app_name: &'static str,
+    policies: &'static [PolicyValue],
+    state_key: RegKey,
+}
+
 pub struct BrowserPolicyDebloatTweak {
     policies: &'static [PolicyValue],
+    state_key: RegKey,
     meta: TweakMeta,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(tag = "type", content = "value")]
+enum OriginalPolicyValue {
+    Missing,
+    Dword(u32),
+    String(String),
+}
+
+#[derive(Deserialize, Serialize)]
+struct SavedPolicyValue {
+    key_path: String,
+    name: String,
+    value: OriginalPolicyValue,
 }
 
 impl BrowserPolicyDebloatTweak {
     pub fn new_edge() -> Self {
-        Self::new(
-            "microsoft_edge_debloat",
-            "debloat.tweaks.microsoftEdgeDebloat.name",
-            "debloat.tweaks.microsoftEdgeDebloat.shortDescription",
-            "debloat.tweaks.microsoftEdgeDebloat.detailDescription",
-            "debloat.tweaks.microsoftEdgeDebloat.riskDescription",
-            "Microsoft Edge",
-            EDGE_POLICIES,
-        )
+        Self::new(BrowserPolicyConfig {
+            id: "microsoft_edge_debloat",
+            name: "debloat.tweaks.microsoftEdgeDebloat.name",
+            short_description: "debloat.tweaks.microsoftEdgeDebloat.shortDescription",
+            detail_description: "debloat.tweaks.microsoftEdgeDebloat.detailDescription",
+            risk_description: "debloat.tweaks.microsoftEdgeDebloat.riskDescription",
+            app_name: "Microsoft Edge",
+            policies: EDGE_POLICIES,
+            state_key: EDGE_STATE_KEY,
+        })
     }
 
     pub fn new_brave() -> Self {
-        Self::new(
-            "brave_browser_debloat",
-            "debloat.tweaks.braveBrowserDebloat.name",
-            "debloat.tweaks.braveBrowserDebloat.shortDescription",
-            "debloat.tweaks.braveBrowserDebloat.detailDescription",
-            "debloat.tweaks.braveBrowserDebloat.riskDescription",
-            "Brave",
-            BRAVE_POLICIES,
-        )
+        Self::new(BrowserPolicyConfig {
+            id: "brave_browser_debloat",
+            name: "debloat.tweaks.braveBrowserDebloat.name",
+            short_description: "debloat.tweaks.braveBrowserDebloat.shortDescription",
+            detail_description: "debloat.tweaks.braveBrowserDebloat.detailDescription",
+            risk_description: "debloat.tweaks.braveBrowserDebloat.riskDescription",
+            app_name: "Brave",
+            policies: BRAVE_POLICIES,
+            state_key: BRAVE_STATE_KEY,
+        })
     }
 
-    fn new(
-        id: &'static str,
-        name: &'static str,
-        short_description: &'static str,
-        detail_description: &'static str,
-        risk_description: &'static str,
-        app_name: &'static str,
-        policies: &'static [PolicyValue],
-    ) -> Self {
+    fn new(config: BrowserPolicyConfig) -> Self {
         Self {
-            policies,
+            policies: config.policies,
+            state_key: config.state_key,
             meta: TweakMeta {
-                id: id.into(),
+                id: config.id.into(),
                 category: "debloat".into(),
-                name: name.into(),
-                short_description: short_description.into(),
-                detail_description: detail_description.into(),
+                name: config.name.into(),
+                short_description: config.short_description.into(),
+                detail_description: config.detail_description.into(),
                 control: TweakControlType::Toggle,
                 current_value: DISABLED_VALUE.into(),
                 default_value: DISABLED_VALUE.into(),
                 recommended_value: ENABLED_VALUE.into(),
                 risk: RiskLevel::Low,
-                risk_description: Some(risk_description.into()),
+                risk_description: Some(config.risk_description.into()),
                 conflicts: None,
                 requires_action: RequiresAction::RestartApp {
-                    app_name: app_name.into(),
+                    app_name: config.app_name.into(),
                 },
                 min_os_build: Some(10240),
                 min_os_ubr: None,
@@ -83,6 +106,7 @@ impl BrowserPolicyDebloatTweak {
     }
 
     fn write_enabled_values(&self) -> Result<(), AppError> {
+        self.save_original_values()?;
         for policy in self.policies {
             match policy.value {
                 RegistryValue::Dword(value) => policy.key.set_dword(policy.name, value)?,
@@ -94,15 +118,73 @@ impl BrowserPolicyDebloatTweak {
     }
 
     fn delete_policy_values(&self) -> Result<(), AppError> {
-        for policy in self.policies {
-            match policy.key.delete_value(policy.name) {
-                Ok(()) => {}
-                Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {}
-                Err(error) => return Err(error),
+        let saved_values = self.saved_original_values()?;
+
+        for (policy, saved) in self.policies.iter().zip(saved_values.iter()) {
+            match &saved.value {
+                OriginalPolicyValue::Missing => {
+                    if Self::policy_matches(policy)? {
+                        policy.key.delete_value(policy.name)?;
+                    }
+                }
+                OriginalPolicyValue::Dword(value) => policy.key.set_dword(policy.name, *value)?,
+                OriginalPolicyValue::String(value) => policy.key.set_string(policy.name, value)?,
             }
         }
 
+        self.state_key.delete_value("OriginalValues")?;
         Ok(())
+    }
+
+    fn save_original_values(&self) -> Result<(), AppError> {
+        let values = self
+            .policies
+            .iter()
+            .map(|policy| {
+                Ok(SavedPolicyValue {
+                    key_path: policy.key.path.to_string(),
+                    name: policy.name.to_string(),
+                    value: Self::read_original_value(policy)?,
+                })
+            })
+            .collect::<Result<Vec<_>, AppError>>()?;
+        let json = serde_json::to_string(&values)?;
+        self.state_key.set_string("OriginalValues", &json)
+    }
+
+    fn saved_original_values(&self) -> Result<Vec<SavedPolicyValue>, AppError> {
+        match self.state_key.get_string("OriginalValues") {
+            Ok(value) => serde_json::from_str(&value).map_err(AppError::from),
+            Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => Ok(self
+                .policies
+                .iter()
+                .map(|policy| SavedPolicyValue {
+                    key_path: policy.key.path.to_string(),
+                    name: policy.name.to_string(),
+                    value: OriginalPolicyValue::Missing,
+                })
+                .collect()),
+            Err(error) => Err(error),
+        }
+    }
+
+    fn read_original_value(policy: &PolicyValue) -> Result<OriginalPolicyValue, AppError> {
+        match policy.value {
+            RegistryValue::Dword(_) => match policy.key.get_dword(policy.name) {
+                Ok(value) => Ok(OriginalPolicyValue::Dword(value)),
+                Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {
+                    Ok(OriginalPolicyValue::Missing)
+                }
+                Err(error) => Err(error),
+            },
+            RegistryValue::String(_) => match policy.key.get_string(policy.name) {
+                Ok(value) => Ok(OriginalPolicyValue::String(value)),
+                Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {
+                    Ok(OriginalPolicyValue::Missing)
+                }
+                Err(error) => Err(error),
+            },
+        }
     }
 
     fn policy_matches(policy: &PolicyValue) -> Result<bool, AppError> {
@@ -223,6 +305,16 @@ const EDGE_EXTENSION_BLOCKLIST_KEY: RegKey = RegKey {
 const BRAVE_KEY: RegKey = RegKey {
     hive: Hive::LocalMachine,
     path: r"SOFTWARE\Policies\BraveSoftware\Brave",
+};
+
+const EDGE_STATE_KEY: RegKey = RegKey {
+    hive: Hive::LocalMachine,
+    path: r"SOFTWARE\Winsentials\TweakState\microsoft_edge_debloat",
+};
+
+const BRAVE_STATE_KEY: RegKey = RegKey {
+    hive: Hive::LocalMachine,
+    path: r"SOFTWARE\Winsentials\TweakState\brave_browser_debloat",
 };
 
 const EDGE_POLICIES: &[PolicyValue] = &[

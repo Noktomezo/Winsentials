@@ -37,6 +37,7 @@ function AppShellLayout({
   const pageHeader = usePageHeader(pathname)
   const hasHydrated = usePreferencesStore(state => state.hasHydrated)
   const discordPresenceMode = usePreferencesStore(state => state.discordPresenceMode)
+  const latestPresenceRequestId = useRef(0)
   const discordPresencePageLabel = typeof pageHeader.title === 'string'
     ? pageHeader.title
     : undefined
@@ -46,12 +47,24 @@ function AppShellLayout({
       return
     }
 
+    const requestId = latestPresenceRequestId.current + 1
+    latestPresenceRequestId.current = requestId
+
     void setDiscordPresenceActivity({
       mode: discordPresenceMode,
       pageLabel: discordPresencePageLabel,
     }).catch((error) => {
+      if (latestPresenceRequestId.current !== requestId) {
+        return
+      }
       console.warn('Failed to sync Discord Rich Presence', error)
     })
+
+    return () => {
+      if (latestPresenceRequestId.current === requestId) {
+        latestPresenceRequestId.current += 1
+      }
+    }
   }, [discordPresenceMode, discordPresencePageLabel, hasHydrated])
 
   return (

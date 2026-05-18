@@ -134,6 +134,12 @@ fn enrich_backup_snapshots_with_missing_tweaks() -> Result<(), AppError> {
         if path.extension().and_then(|e| e.to_str()) != Some("json") {
             continue;
         }
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if !file_type.is_file() {
+            continue;
+        }
 
         let Ok(content) = fs::read_to_string(&path) else {
             continue;
@@ -231,16 +237,14 @@ pub fn backup_list() -> Result<Vec<BackupEntry>, AppError> {
 
 #[tauri::command]
 pub async fn backup_restore(filename: String) -> Result<RestoreReport, AppError> {
-    let path = backups_dir()?.join(validate_backup_filename(&filename)?);
-    let content = fs::read_to_string(&path)?;
-    let snapshot: BackupSnapshot = serde_json::from_str(&content)?;
-    let tweaks = snapshot.tweaks;
-
     tauri::async_runtime::spawn_blocking(move || {
+        let path = backups_dir()?.join(validate_backup_filename(&filename)?);
+        let content = fs::read_to_string(&path)?;
+        let snapshot: BackupSnapshot = serde_json::from_str(&content)?;
         let mut applied: u32 = 0;
         let mut failed: Vec<String> = Vec::new();
 
-        for (id, value) in tweaks {
+        for (id, value) in snapshot.tweaks {
             match tweak_apply_blocking(id.clone(), value) {
                 Ok(_) => applied += 1,
                 Err(_) => failed.push(id),

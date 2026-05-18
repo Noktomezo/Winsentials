@@ -2,7 +2,20 @@ import { copyFileSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import process from 'node:process'
 
-const targetTriple = process.env.TAURI_ENV_TARGET_TRIPLE
+function sanitizeTargetTriple(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined
+  }
+
+  if (/^[\w.-]+$/.test(value) && !value.includes('..')) {
+    return value
+  }
+
+  console.error(`Ignoring invalid TAURI_ENV_TARGET_TRIPLE: ${value}`)
+  return undefined
+}
+
+const targetTriple = sanitizeTargetTriple(process.env.TAURI_ENV_TARGET_TRIPLE)
 const targetDir = targetTriple
   ? join('src-tauri', 'target', targetTriple, 'release')
   : join('src-tauri', 'target', 'release')

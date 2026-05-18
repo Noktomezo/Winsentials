@@ -404,17 +404,12 @@ async function hydrateLoadedEntries(
     catch (error) {
       console.error('Failed to hydrate startup entries chunk, retrying per entry', error)
 
-      const results = await Promise.allSettled(chunk.map(id => hydrateStartupEntries([id])))
-
-      for (let resultIndex = 0; resultIndex < results.length; resultIndex += 1) {
-        const result = results[resultIndex]
-        const id = chunk[resultIndex]
-
-        if (result.status === 'fulfilled') {
-          hydrated.push(...result.value)
+      for (const id of chunk) {
+        try {
+          hydrated.push(...await hydrateStartupEntries([id]))
         }
-        else {
-          console.error(`Failed to hydrate startup entry ${id}`, result.reason)
+        catch (retryError) {
+          console.error(`Failed to hydrate startup entry ${id}`, retryError)
         }
 
         if (get().hydrationRequestId !== requestId) {

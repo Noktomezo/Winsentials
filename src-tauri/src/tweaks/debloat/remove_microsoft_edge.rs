@@ -47,10 +47,10 @@ impl RemoveMicrosoftEdgeTweak {
 
     fn is_enabled(&self) -> Result<bool, AppError> {
         match STATE_KEY.get_dword("Removed") {
-            Ok(1) => Ok(edge_setup_path()?.is_none()),
+            Ok(1) => Ok(!edge_is_installed()),
             Ok(_) => Ok(false),
             Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {
-                Ok(edge_setup_path()?.is_none())
+                Ok(!edge_is_installed())
             }
             Err(error) => Err(error),
         }
@@ -79,7 +79,11 @@ New-Item -Path "$Env:SystemRoot\SystemApps\Microsoft.MicrosoftEdge_8wekyb3d8bbwe
             )?;
         }
 
-        STATE_KEY.set_dword("Removed", 1)
+        if !edge_is_installed() {
+            STATE_KEY.set_dword("Removed", 1)?;
+        }
+
+        Ok(())
     }
 
     fn install_edge() -> Result<(), AppError> {
@@ -145,6 +149,48 @@ fn edge_setup_path() -> Result<Option<std::path::PathBuf>, AppError> {
 
     installers.sort_by_key(|path| edge_setup_version(path));
     Ok(installers.pop())
+}
+
+fn edge_is_installed() -> bool {
+    edge_binary_candidates()
+        .into_iter()
+        .any(|path| path.is_file())
+}
+
+fn edge_binary_candidates() -> Vec<std::path::PathBuf> {
+    let mut candidates = Vec::new();
+
+    if let Some(program_files_x86) = std::env::var_os("ProgramFiles(x86)") {
+        candidates.push(
+            std::path::PathBuf::from(program_files_x86)
+                .join("Microsoft")
+                .join("Edge")
+                .join("Application")
+                .join("msedge.exe"),
+        );
+    }
+
+    if let Some(program_files) = std::env::var_os("ProgramFiles") {
+        candidates.push(
+            std::path::PathBuf::from(program_files)
+                .join("Microsoft")
+                .join("Edge")
+                .join("Application")
+                .join("msedge.exe"),
+        );
+    }
+
+    if let Some(local_app_data) = std::env::var_os("LocalAppData") {
+        candidates.push(
+            std::path::PathBuf::from(local_app_data)
+                .join("Microsoft")
+                .join("Edge")
+                .join("Application")
+                .join("msedge.exe"),
+        );
+    }
+
+    candidates
 }
 
 fn edge_setup_version(path: &std::path::Path) -> Vec<u32> {

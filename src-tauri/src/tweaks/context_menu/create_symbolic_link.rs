@@ -97,6 +97,31 @@ impl CreateSymbolicLinkContextMenuTweak {
         command_key.set_string("", command)
     }
 
+    fn snapshot_menu(menu_key: &RegKey, command_key: &RegKey) -> Result<MenuSnapshot, AppError> {
+        Ok(MenuSnapshot {
+            menu_existed: menu_key.key_exists()?,
+            command_existed: command_key.key_exists()?,
+            label: read_string_or_missing(menu_key, "")?,
+            icon: read_string_or_missing(menu_key, "Icon")?,
+            command: read_string_or_missing(command_key, "")?,
+        })
+    }
+
+    fn rollback_menu(menu_key: &RegKey, command_key: &RegKey, snapshot: &MenuSnapshot) {
+        if snapshot.command_existed {
+            restore_string_value(command_key, "", snapshot.command.as_deref());
+        } else {
+            let _ = command_key.delete_subkey_tree();
+        }
+
+        if snapshot.menu_existed {
+            restore_string_value(menu_key, "", snapshot.label.as_deref());
+            restore_string_value(menu_key, "Icon", snapshot.icon.as_deref());
+        } else {
+            let _ = menu_key.delete_subkey_tree();
+        }
+    }
+
     fn menu_matches(
         menu_key: &RegKey,
         command_key: &RegKey,
@@ -128,9 +153,26 @@ impl CreateSymbolicLinkContextMenuTweak {
     fn enable() -> Result<(), AppError> {
         let helper_path = Self::bundled_helper_path()?;
         let command = Self::command_value(&helper_path);
+        let file_snapshot = Self::snapshot_menu(&FILE_MENU_KEY, &FILE_COMMAND_KEY)?;
+        let directory_snapshot = Self::snapshot_menu(&DIRECTORY_MENU_KEY, &DIRECTORY_COMMAND_KEY)?;
 
-        Self::write_menu(&FILE_MENU_KEY, &FILE_COMMAND_KEY, &command)?;
-        Self::write_menu(&DIRECTORY_MENU_KEY, &DIRECTORY_COMMAND_KEY, &command)
+        if let Err(error) = Self::write_menu(&FILE_MENU_KEY, &FILE_COMMAND_KEY, &command) {
+            Self::rollback_menu(&FILE_MENU_KEY, &FILE_COMMAND_KEY, &file_snapshot);
+            return Err(error);
+        }
+
+        if let Err(error) = Self::write_menu(&DIRECTORY_MENU_KEY, &DIRECTORY_COMMAND_KEY, &command)
+        {
+            Self::rollback_menu(
+                &DIRECTORY_MENU_KEY,
+                &DIRECTORY_COMMAND_KEY,
+                &directory_snapshot,
+            );
+            Self::rollback_menu(&FILE_MENU_KEY, &FILE_COMMAND_KEY, &file_snapshot);
+            return Err(error);
+        }
+
+        Ok(())
     }
 }
 
@@ -173,6 +215,22 @@ impl Tweak for CreateSymbolicLinkContextMenuTweak {
             },
             is_default,
         })
+    }
+}
+
+struct MenuSnapshot {
+    menu_existed: bool,
+    command_existed: bool,
+    label: Option<String>,
+    icon: Option<String>,
+    command: Option<String>,
+}
+
+fn restore_string_value(key: &RegKey, name: &str, value: Option<&str>) {
+    if let Some(value) = value {
+        let _ = key.set_string(name, value);
+    } else {
+        let _ = key.delete_value(name);
     }
 }
 

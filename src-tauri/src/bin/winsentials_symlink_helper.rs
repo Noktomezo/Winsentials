@@ -12,7 +12,9 @@ use windows::Win32::System::Com::{
     CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, CoCreateInstance, CoInitializeEx,
     CoTaskMemFree, CoUninitialize,
 };
-use windows::Win32::UI::Shell::{FOS_PICKFOLDERS, FileOpenDialog, IFileDialog, SIGDN_FILESYSPATH};
+use windows::Win32::UI::Shell::{
+    FOS_FORCEFILESYSTEM, FOS_PICKFOLDERS, FileOpenDialog, IFileDialog, SIGDN_FILESYSPATH,
+};
 use windows::Win32::UI::WindowsAndMessaging::{MB_ICONERROR, MB_OK, MessageBoxW};
 use windows::core::PCWSTR;
 
@@ -51,8 +53,11 @@ fn pick_target_directory() -> Result<Option<PathBuf>, String> {
     };
 
     unsafe {
+        let options = dialog
+            .GetOptions()
+            .map_err(|error| format!("Не удалось прочитать настройки выбора папки: {error}"))?;
         dialog
-            .SetOptions(FOS_PICKFOLDERS)
+            .SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM)
             .map_err(|error| format!("Не удалось настроить выбор папки: {error}"))?;
         let title = wide("Выберите папку для символической ссылки");
         dialog

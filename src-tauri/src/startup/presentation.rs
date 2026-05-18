@@ -541,7 +541,7 @@ fn whitespace_regex() -> &'static Regex {
 fn path_like_regex() -> &'static Regex {
     static REGEX: OnceLock<Regex> = OnceLock::new();
     REGEX.get_or_init(|| {
-        Regex::new(r#"(?i)["']?([a-z]:\\[^"'()]+?\.(?:exe|com|bat|cmd|ps1|vbs|js|msc|scr))["']?"#)
+        Regex::new(r#"(?i)["']?((?:[a-z]:\\|\.{1,2}\\|[^"'\s]+\\)?[^"']*?\.(?:exe|com|bat|cmd|ps1|vbs|js|msc|scr))["']?"#)
             .expect("valid path-like target regex")
     })
 }
