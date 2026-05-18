@@ -280,6 +280,7 @@ export const SmoothScrollArea = function SmoothScrollArea({ ref, children, class
         className={cn(
           'absolute inset-y-0 right-0 z-10 w-2.5 p-px transition-opacity duration-200',
           'opacity-0 group-hover/scroll:opacity-100',
+          'focus-visible:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-primary/60',
           isDragging && 'opacity-100',
         )}
         aria-controls="smooth-scroll-content"

@@ -8,13 +8,10 @@ const ENABLED_VALUE: &str = "enabled";
 const DISABLED_VALUE: &str = "disabled";
 const CUSTOM_VALUE: &str = "custom";
 
-const MENU_LABEL: &str = "Создать символическую ссылку";
+const MENU_LABEL: &str = "Create symbolic link";
 const MENU_ICON: &str = "shell32.dll,147";
-const HELPER_EXE_CANDIDATES: &[&str] = &[
-    "winsentials_symlink_helper.exe",
-    "winsentials_symlink_helper-x86_64-pc-windows-msvc.exe",
-];
 const MIN_HELPER_EXE_SIZE: u64 = 4096;
+const HELPER_EXE_PREFIX: &str = "winsentials_symlink_helper";
 
 const FILE_MENU_KEY: RegKey = RegKey {
     hive: Hive::CurrentUser,
@@ -78,15 +75,9 @@ impl CreateSymbolicLinkContextMenuTweak {
             .parent()
             .ok_or_else(|| AppError::message("failed to resolve Winsentials executable folder"))?;
 
-        for file_name in HELPER_EXE_CANDIDATES {
-            let candidate = app_dir.join(file_name);
-            if helper_file_is_usable(&candidate) {
+        for directory in [app_dir.to_path_buf(), app_dir.join("resources")] {
+            if let Some(candidate) = find_helper_in_directory(&directory) {
                 return Ok(candidate);
-            }
-
-            let resources_candidate = app_dir.join("resources").join(file_name);
-            if helper_file_is_usable(&resources_candidate) {
-                return Ok(resources_candidate);
             }
         }
 
@@ -189,6 +180,23 @@ fn helper_file_is_usable(path: &Path) -> bool {
     path.metadata()
         .map(|metadata| metadata.is_file() && metadata.len() >= MIN_HELPER_EXE_SIZE)
         .unwrap_or(false)
+}
+
+fn find_helper_in_directory(directory: &Path) -> Option<PathBuf> {
+    let entries = std::fs::read_dir(directory).ok()?;
+
+    entries
+        .flatten()
+        .map(|entry| entry.path())
+        .find(|path| helper_name_matches(path) && helper_file_is_usable(path))
+}
+
+fn helper_name_matches(path: &Path) -> bool {
+    path.extension()
+        .is_some_and(|extension| extension.to_string_lossy().eq_ignore_ascii_case("exe"))
+        && path
+            .file_stem()
+            .is_some_and(|stem| stem.to_string_lossy().starts_with(HELPER_EXE_PREFIX))
 }
 
 fn read_string_or_missing(key: &RegKey, name: &str) -> Result<Option<String>, AppError> {

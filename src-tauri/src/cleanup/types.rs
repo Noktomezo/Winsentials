@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub enum CleanupEntryStatus {
     Clean,
+    Removed,
     Pending,
     Busy,
     Failed,

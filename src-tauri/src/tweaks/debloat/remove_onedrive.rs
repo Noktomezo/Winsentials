@@ -117,7 +117,14 @@ impl RemoveOneDriveTweak {
         let result = install_with_winget("Microsoft.OneDrive", "winget");
 
         if result.is_ok() {
-            ONEDRIVE_SERVICE_KEY.set_dword("Start", AUTOMATIC_SERVICE_START)?;
+            match ONEDRIVE_SERVICE_KEY.set_dword("Start", AUTOMATIC_SERVICE_START) {
+                Ok(()) => {}
+                Err(error) => {
+                    log::warn!(
+                        "Failed to restore OneDrive service start type after install: {error}"
+                    );
+                }
+            }
             match STATE_KEY.delete_value("Removed") {
                 Ok(()) => {}
                 Err(AppError::Io(error)) if error.kind() == std::io::ErrorKind::NotFound => {

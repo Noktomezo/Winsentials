@@ -420,7 +420,7 @@ function StartupPage() {
   const hasActiveFilters = sourceFilter !== 'all' || statusFilter !== 'all'
   const localizedError = localizeStartupError(error, t)
 
-  function handleCopy(value: string | null | undefined, successKey: string) {
+  const handleCopy = useCallback((value: string | null | undefined, successKey: string) => {
     if (!value) {
       return
     }
@@ -432,9 +432,9 @@ function StartupPage() {
       .catch(() => {
         toast.error(t('startup.errors.copy'))
       })
-  }
+  }, [t])
 
-  function handleReveal(path: string | null | undefined) {
+  const handleReveal = useCallback((path: string | null | undefined) => {
     if (!path) {
       return
     }
@@ -443,9 +443,9 @@ function StartupPage() {
       .catch(() => {
         toast.error(t('startup.errors.openFolder'))
       })
-  }
+  }, [t])
 
-  function handleOpenLocation(path: string | null | undefined) {
+  const handleOpenLocation = useCallback((path: string | null | undefined) => {
     if (!path) {
       return
     }
@@ -454,7 +454,7 @@ function StartupPage() {
       .catch(() => {
         toast.error(t('startup.errors.openFolder'))
       })
-  }
+  }, [t])
 
   const handleDelete = useCallback((entry: StartupEntry) => {
     setEntryToDelete(entry)

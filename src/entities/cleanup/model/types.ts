@@ -8,7 +8,7 @@ export type CleanupCategoryId
     | 'unused_devices'
     | 'windows'
 
-export type CleanupEntryStatus = 'busy' | 'clean' | 'failed' | 'pending'
+export type CleanupEntryStatus = 'busy' | 'clean' | 'failed' | 'pending' | 'removed'
 
 export interface CleanupEntry {
   error: string | null

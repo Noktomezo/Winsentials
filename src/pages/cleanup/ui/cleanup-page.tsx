@@ -35,6 +35,7 @@ const STATUS_ICON: Record<CleanupEntryStatus, LucideIcon> = {
   clean: Check,
   failed: X,
   pending: X,
+  removed: Check,
 }
 
 const STATUS_CLASS: Record<CleanupEntryStatus, string> = {
@@ -42,6 +43,7 @@ const STATUS_CLASS: Record<CleanupEntryStatus, string> = {
   clean: 'border-[color:color-mix(in_oklch,var(--success)_30%,transparent)] bg-[color:color-mix(in_oklch,var(--success)_12%,transparent)] text-[var(--success)]',
   failed: 'border-[color:color-mix(in_oklch,var(--badge-red)_30%,transparent)] bg-[color:color-mix(in_oklch,var(--badge-red)_12%,transparent)] text-[var(--badge-red)]',
   pending: 'border-[color:color-mix(in_oklch,var(--badge-red)_30%,transparent)] bg-[color:color-mix(in_oklch,var(--badge-red)_12%,transparent)] text-[var(--badge-red)]',
+  removed: 'border-[color:color-mix(in_oklch,var(--success)_30%,transparent)] bg-[color:color-mix(in_oklch,var(--success)_12%,transparent)] text-[var(--success)]',
 }
 
 type ReportMap = Partial<Record<CleanupCategoryId, CleanupCategoryReport>>
@@ -60,7 +62,7 @@ function categoryTotalSize(report: CleanupCategoryReport | null): number {
 }
 
 function isCategoryClean(report: CleanupCategoryReport | null): boolean {
-  return !!report && report.entries.length > 0 && report.entries.every(entry => entry.status === 'clean')
+  return !!report && report.entries.length > 0 && report.entries.every(entry => entry.status === 'clean' || entry.status === 'removed')
 }
 
 function hasCleanableEntries(report: CleanupCategoryReport | null): boolean {

@@ -114,7 +114,7 @@ pub fn clean_category(category_id: &str) -> Result<CleanupCategoryReport, AppErr
 
 fn winapp_targets_for_category(category_id: &str) -> Vec<WinappTarget> {
     parse_ini(WINAPP2)
-        .into_iter()
+        .into_par_iter()
         .filter(|entry| {
             let broad_category = broad_category(entry);
             broad_category == category_id && !is_excluded_winapp_entry(entry, broad_category)
@@ -143,15 +143,20 @@ fn is_excluded_winapp_entry(entry: &IniEntry, broad_category: &str) -> bool {
 
 fn scan_or_clean_winapp_target(target: &WinappTarget, clean: bool) -> CleanupEntry {
     let matches = matched_paths(&target.rules);
+    let mut first_error = None;
+
     if clean {
         for matched in &matches {
-            let _ = remove_match(matched);
+            if let Err(error) = remove_match(matched)
+                && first_error.is_none()
+            {
+                first_error = Some(error);
+            }
         }
     }
 
     let matches = matched_paths(&target.rules);
     let mut size_bytes = 0;
-    let mut first_error = None;
 
     for matched in &matches {
         match target_size_bytes(&matched.path) {
@@ -246,7 +251,10 @@ fn walk_rule_dir(
             push_match(&path, false, seen, matches);
         }
 
-        if recurse && path.is_dir() {
+        let Ok(metadata) = fs::symlink_metadata(&path) else {
+            continue;
+        };
+        if recurse && metadata.is_dir() && !metadata.file_type().is_symlink() {
             walk_rule_dir(&path, true, patterns, seen, matches);
         }
     }
@@ -274,7 +282,10 @@ fn pattern_list_matches(patterns: &[String], value: &str) -> bool {
 }
 
 fn remove_match(matched: &FileRuleMatch) -> io::Result<()> {
-    if matched.path.is_dir() {
+    let metadata = fs::symlink_metadata(&matched.path)?;
+    if metadata.file_type().is_symlink() {
+        Ok(())
+    } else if metadata.is_dir() {
         if matched.remove_self {
             fs::remove_dir_all(&matched.path)
         } else {
@@ -289,7 +300,10 @@ fn remove_dir_contents(path: &Path) -> io::Result<()> {
     for entry in fs::read_dir(path)? {
         let entry = entry?;
         let path = entry.path();
-        if path.is_dir() {
+        let metadata = fs::symlink_metadata(&path)?;
+        if metadata.file_type().is_symlink() {
+            continue;
+        } else if metadata.is_dir() {
             fs::remove_dir_all(path)?;
         } else {
             fs::remove_file(path)?;
@@ -572,22 +586,27 @@ fn parse_ini(content: &str) -> Vec<IniEntry> {
 }
 
 fn scan_appx_entries(clean: bool) -> Result<Vec<CleanupEntry>, AppError> {
-    let packages = installed_appx_packages();
+    let packages = installed_appx_packages()?;
     let entries = parse_ini(WINAPPX)
         .into_iter()
         .filter_map(|entry| {
             let package_name = entry.first("PackageName")?;
             let full_name = packages.get(&package_name.to_ascii_lowercase())?.clone();
-            if clean {
-                let _ = remove_appx_package(&full_name);
-            }
+            let (status, error) = if clean {
+                match remove_appx_package(&full_name) {
+                    Ok(()) => (CleanupEntryStatus::Removed, None),
+                    Err(error) => (CleanupEntryStatus::Failed, Some(error.to_string())),
+                }
+            } else {
+                (CleanupEntryStatus::Pending, None)
+            };
             Some(CleanupEntry {
                 id: format!("appx_{}", slug(&package_name)),
                 name: entry.name,
                 path: package_name,
-                status: CleanupEntryStatus::Pending,
+                status,
                 size_bytes: 0,
-                error: None,
+                error,
                 icon_data_url: None,
             })
         })
@@ -596,7 +615,7 @@ fn scan_appx_entries(clean: bool) -> Result<Vec<CleanupEntry>, AppError> {
     Ok(entries)
 }
 
-fn installed_appx_packages() -> HashMap<String, String> {
+fn installed_appx_packages() -> Result<HashMap<String, String>, AppError> {
     #[cfg(target_os = "windows")]
     {
         let output = Command::new("powershell")
@@ -606,22 +625,28 @@ fn installed_appx_packages() -> HashMap<String, String> {
                 "-Command",
                 "Get-AppxPackage | ForEach-Object { $_.Name + '|' + $_.PackageFullName }",
             ])
-            .output();
+            .output()
+            .map_err(|error| {
+                AppError::message(format!("failed to discover AppX packages: {error}"))
+            })?;
 
-        let Ok(output) = output else {
-            return HashMap::new();
-        };
+        if !output.status.success() {
+            return Err(AppError::CommandFailed {
+                command: "Get-AppxPackage".to_string(),
+                stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+            });
+        }
 
-        String::from_utf8_lossy(&output.stdout)
+        Ok(String::from_utf8_lossy(&output.stdout)
             .lines()
             .filter_map(|line| line.split_once('|'))
             .map(|(name, full_name)| (name.to_ascii_lowercase(), full_name.to_string()))
-            .collect()
+            .collect())
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        HashMap::new()
+        Ok(HashMap::new())
     }
 }
 
