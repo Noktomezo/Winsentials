@@ -25,12 +25,73 @@ ignoreExportsUsedInFile = true
 production = false
 ignoreExports = [
   # Planned usage for upcoming UI features (Shadcn UI standard exports)
-  { file = "src/shared/ui/breadcrumb.tsx", exports = [ "Breadcrumb", "BreadcrumbEllipsis", "BreadcrumbItem", "BreadcrumbLink", "BreadcrumbList", "BreadcrumbPage", "BreadcrumbSeparator" ] },
-  { file = "src/shared/ui/card.tsx", exports = [ "Card", "CardAction", "CardContent", "CardDescription", "CardFooter", "CardHeader", "CardTitle" ] },
-  { file = "src/shared/ui/dialog.tsx", exports = [ "Dialog", "DialogClose", "DialogContent", "DialogDescription", "DialogFooter", "DialogHeader", "DialogPortal", "DialogTitle", "DialogTrigger" ] },
-  { file = "src/shared/ui/dropdown-menu.tsx", exports = [ "DropdownMenu", "DropdownMenuCheckboxItem", "DropdownMenuContent", "DropdownMenuItem", "DropdownMenuLabel", "DropdownMenuRadioGroup", "DropdownMenuRadioItem", "DropdownMenuSeparator", "DropdownMenuShortcut", "DropdownMenuSub", "DropdownMenuSubContent", "DropdownMenuSubTrigger", "DropdownMenuTrigger" ] },
-  { file = "src/shared/ui/select.tsx", exports = [ "filledSelectTriggerClassName", "Select", "SelectContent", "SelectGroup", "SelectItem", "SelectLabel", "SelectScrollDownButton", "SelectScrollUpButton", "SelectSeparator", "SelectTrigger", "SelectValue" ] },
-  { file = "src/shared/ui/sheet.tsx", exports = [ "Sheet", "SheetClose", "SheetContent", "SheetDescription", "SheetFooter", "SheetHeader", "SheetTitle", "SheetTrigger" ] },
+  { file = "src/shared/ui/breadcrumb.tsx", exports = [
+    "Breadcrumb",
+    "BreadcrumbEllipsis",
+    "BreadcrumbItem",
+    "BreadcrumbLink",
+    "BreadcrumbList",
+    "BreadcrumbPage",
+    "BreadcrumbSeparator"
+  ] },
+  { file = "src/shared/ui/card.tsx", exports = [
+    "Card",
+    "CardAction",
+    "CardContent",
+    "CardDescription",
+    "CardFooter",
+    "CardHeader",
+    "CardTitle"
+  ] },
+  { file = "src/shared/ui/dialog.tsx", exports = [
+    "Dialog",
+    "DialogClose",
+    "DialogContent",
+    "DialogDescription",
+    "DialogFooter",
+    "DialogHeader",
+    "DialogPortal",
+    "DialogTitle",
+    "DialogTrigger"
+  ] },
+  { file = "src/shared/ui/dropdown-menu.tsx", exports = [
+    "DropdownMenu",
+    "DropdownMenuCheckboxItem",
+    "DropdownMenuContent",
+    "DropdownMenuItem",
+    "DropdownMenuLabel",
+    "DropdownMenuRadioGroup",
+    "DropdownMenuRadioItem",
+    "DropdownMenuSeparator",
+    "DropdownMenuShortcut",
+    "DropdownMenuSub",
+    "DropdownMenuSubContent",
+    "DropdownMenuSubTrigger",
+    "DropdownMenuTrigger"
+  ] },
+  { file = "src/shared/ui/select.tsx", exports = [
+    "filledSelectTriggerClassName",
+    "Select",
+    "SelectContent",
+    "SelectGroup",
+    "SelectItem",
+    "SelectLabel",
+    "SelectScrollDownButton",
+    "SelectScrollUpButton",
+    "SelectSeparator",
+    "SelectTrigger",
+    "SelectValue"
+  ] },
+  { file = "src/shared/ui/sheet.tsx", exports = [
+    "Sheet",
+    "SheetClose",
+    "SheetContent",
+    "SheetDescription",
+    "SheetFooter",
+    "SheetHeader",
+    "SheetTitle",
+    "SheetTrigger"
+  ] },
   { file = "src/shared/ui/sidebar.tsx", exports = [ "*" ] },
 ]
 
