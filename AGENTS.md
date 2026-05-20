@@ -76,6 +76,14 @@ bunx eslint --fix .
 bun run typecheck
 # fallback:
 bunx tsc --noEmit
+
+# 3. Dead-code check (fallow) — must pass with zero issues
+bunx fallow --only dead-code
+
+# 4. React Doctor audit (ensure UI health)
+bunx react-doctor --full --json-compact
+# or:
+bunx react-doctor --full --compact-json
 ```
 
 > `eslint-stylistic` handles formatting. It replaces Prettier. `bun run format` runs `eslint --fix`, not separate formatter.
