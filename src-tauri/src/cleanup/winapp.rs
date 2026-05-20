@@ -12,7 +12,8 @@ use std::os::windows::process::CommandExt;
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 use super::{
-    cleanup_status_from_error, expand_env_path, expand_wildcard_path, target_size_bytes,
+    DeleteOutcome, cleanup_status_from_error, delete_target_contents, expand_env_path,
+    expand_wildcard_path, force_remove_path, is_busy_delete_error, target_size_bytes,
     wildcard_match,
 };
 use crate::cleanup::types::{CleanupCategoryReport, CleanupEntry, CleanupEntryStatus};
@@ -165,13 +166,26 @@ fn is_excluded_winapp_entry(entry: &IniEntry, broad_category: &str) -> bool {
 fn scan_or_clean_winapp_target(target: &WinappTarget, clean: bool) -> CleanupEntry {
     let matches = matched_paths(&target.rules);
     let mut first_error = None;
+    let mut skipped_busy_error = None;
+    let mut scheduled_on_reboot_error = None;
 
     if clean {
         for matched in &matches {
-            if let Err(error) = remove_match(matched)
-                && first_error.is_none()
-            {
-                first_error = Some(error);
+            match remove_match(matched) {
+                Ok(DeleteOutcome::Deleted) => {}
+                Ok(DeleteOutcome::SkippedBusy(error)) => {
+                    skipped_busy_error.get_or_insert(error);
+                }
+                Ok(DeleteOutcome::ScheduledOnReboot(error)) => {
+                    scheduled_on_reboot_error.get_or_insert(error);
+                }
+                Err(error) => {
+                    if is_busy_delete_error(&error) {
+                        skipped_busy_error.get_or_insert(error.to_string());
+                    } else if error.kind() != io::ErrorKind::NotFound {
+                        first_error.get_or_insert(error);
+                    }
+                }
             }
         }
     }
@@ -183,6 +197,9 @@ fn scan_or_clean_winapp_target(target: &WinappTarget, clean: bool) -> CleanupEnt
         match target_size_bytes(&matched.path) {
             Ok(size) => size_bytes += size,
             Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) if is_busy_delete_error(&error) => {
+                skipped_busy_error.get_or_insert(error.to_string());
+            }
             Err(error) => {
                 if first_error.is_none() {
                     first_error = Some(error);
@@ -191,12 +208,22 @@ fn scan_or_clean_winapp_target(target: &WinappTarget, clean: bool) -> CleanupEnt
         }
     }
 
-    let status = if let Some(error) = &first_error {
-        cleanup_status_from_error(error)
+    let (status, error_message) = if let Some(error) = &first_error {
+        (cleanup_status_from_error(error), Some(error.to_string()))
+    } else if let Some(error) = scheduled_on_reboot_error {
+        (
+            CleanupEntryStatus::Busy,
+            Some(format!("Scheduled for deletion on reboot. ({error})")),
+        )
+    } else if let Some(error) = skipped_busy_error {
+        (
+            CleanupEntryStatus::Busy,
+            Some(format!("Some files are in use and were skipped. ({error})")),
+        )
     } else if remaining_matches.is_empty() {
-        CleanupEntryStatus::Clean
+        (CleanupEntryStatus::Clean, None)
     } else {
-        CleanupEntryStatus::Pending
+        (CleanupEntryStatus::Pending, None)
     };
 
     CleanupEntry {
@@ -205,7 +232,7 @@ fn scan_or_clean_winapp_target(target: &WinappTarget, clean: bool) -> CleanupEnt
         path: format_match_summary(remaining_matches.len()),
         status,
         size_bytes,
-        error: first_error.map(|error| error.to_string()),
+        error: error_message,
         icon_data_url: None,
     }
 }
@@ -302,36 +329,12 @@ fn pattern_list_matches(patterns: &[String], value: &str) -> bool {
         .any(|pattern| wildcard_match(pattern, value))
 }
 
-fn remove_match(matched: &FileRuleMatch) -> io::Result<()> {
-    let metadata = fs::symlink_metadata(&matched.path)?;
-    if metadata.file_type().is_symlink() {
-        Ok(())
-    } else if metadata.is_dir() {
-        if matched.remove_self {
-            fs::remove_dir_all(&matched.path)
-        } else {
-            remove_dir_contents(&matched.path)
-        }
+fn remove_match(matched: &FileRuleMatch) -> io::Result<DeleteOutcome> {
+    if matched.remove_self {
+        force_remove_path(&matched.path, true)
     } else {
-        fs::remove_file(&matched.path)
+        delete_target_contents(&matched.path)
     }
-}
-
-fn remove_dir_contents(path: &Path) -> io::Result<()> {
-    for entry in fs::read_dir(path)? {
-        let entry = entry?;
-        let path = entry.path();
-        let metadata = fs::symlink_metadata(&path)?;
-        if metadata.file_type().is_symlink() {
-            continue;
-        } else if metadata.is_dir() {
-            fs::remove_dir_all(path)?;
-        } else {
-            fs::remove_file(path)?;
-        }
-    }
-
-    Ok(())
 }
 
 fn file_rules(entry: &IniEntry) -> Vec<FileRule> {

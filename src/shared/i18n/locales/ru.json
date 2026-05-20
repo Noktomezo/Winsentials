@@ -190,6 +190,11 @@
     "itemsCount_many": "{{count}} целей",
     "itemsCount_other": "{{count}} цели",
     "noTargets": "Цели очистки не найдены.",
+    "matchedTargetsCount_one": "Найдена {{count}} подходящая цель очистки",
+    "matchedTargetsCount_few": "Найдено {{count}} подходящие цели очистки",
+    "matchedTargetsCount_many": "Найдено {{count}} подходящих целей очистки",
+    "matchedTargetsCount_other": "Найдено {{count}} подходящих целей очистки",
+    "noMatchedTargets": "Не найдено подходящих целей очистки.",
     "scanning": "Сканирование...",
     "messages": {
       "scanCategoryFailed": "Не удалось просканировать эту категорию очистки.",

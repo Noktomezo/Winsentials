@@ -94,6 +94,18 @@ function cleanupEntryMessage(error: string, t: ReturnType<typeof useTranslation>
   return key ? t(key) : error
 }
 
+function formatEntryPath(path: string, t: ReturnType<typeof useTranslation>['t']): string {
+  if (path === 'No matching cleanup targets found') {
+    return t('cleanup.noMatchedTargets')
+  }
+  const match = path.match(/^(\d+) matched cleanup targets?$/)
+  if (match) {
+    const count = Number.parseInt(match[1], 10)
+    return t('cleanup.matchedTargetsCount', { count })
+  }
+  return path
+}
+
 function failedScanReport(categoryId: CleanupCategoryId, reason: unknown, t: ReturnType<typeof useTranslation>['t']): CleanupCategoryReport {
   return {
     id: categoryId,
@@ -227,7 +239,7 @@ function CleanupEntryRow({
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="truncate text-xs font-medium text-foreground">{entry.name}</span>
-        <p className="truncate text-[11px] text-muted-foreground">{entry.path}</p>
+        <p className="truncate text-[11px] text-muted-foreground">{formatEntryPath(entry.path, t)}</p>
         {entry.error && (
           <p className={cn(
             'text-[11px]',

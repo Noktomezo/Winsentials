@@ -991,6 +991,7 @@ pub(super) fn target_size_bytes(path: &Path) -> io::Result<u64> {
         Ok(m) => m,
         Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0),
         Err(e) if e.kind() == io::ErrorKind::PermissionDenied => return Ok(0),
+        Err(e) if is_busy_delete_error(&e) => return Ok(0),
         Err(e) => return Err(e),
     };
 
@@ -1006,6 +1007,7 @@ pub(super) fn target_size_bytes(path: &Path) -> io::Result<u64> {
         Ok(entries) => entries,
         Err(e) if e.kind() == io::ErrorKind::PermissionDenied => return Ok(0),
         Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0),
+        Err(e) if is_busy_delete_error(&e) => return Ok(0),
         Err(e) => return Err(e),
     };
 
@@ -1028,16 +1030,19 @@ pub(super) fn target_size_bytes(path: &Path) -> io::Result<u64> {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-enum DeleteOutcome {
+pub(super) enum DeleteOutcome {
     Deleted,
     SkippedBusy(String),
     ScheduledOnReboot(String),
 }
 
-fn delete_target_contents(path: &Path) -> io::Result<DeleteOutcome> {
+pub(super) fn delete_target_contents(path: &Path) -> io::Result<DeleteOutcome> {
     let metadata = match fs::symlink_metadata(path) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(DeleteOutcome::Deleted),
+        Err(error) if is_busy_delete_error(&error) => {
+            return Ok(DeleteOutcome::SkippedBusy(error.to_string()));
+        }
         Err(error) => return Err(error),
     };
 
@@ -1058,6 +1063,9 @@ fn delete_target_contents(path: &Path) -> io::Result<DeleteOutcome> {
             if trustedinstaller_remove_children(path).is_ok() {
                 return Ok(DeleteOutcome::Deleted);
             }
+            if error.kind() == io::ErrorKind::NotFound {
+                return Ok(DeleteOutcome::Deleted);
+            }
             if is_busy_delete_error(&error) {
                 return Ok(DeleteOutcome::SkippedBusy(error.to_string()));
             }
@@ -1069,6 +1077,13 @@ fn delete_target_contents(path: &Path) -> io::Result<DeleteOutcome> {
         let entry = match entry {
             Ok(entry) => entry,
             Err(error) => {
+                if error.kind() == io::ErrorKind::NotFound {
+                    continue;
+                }
+                if is_busy_delete_error(&error) {
+                    skipped_busy_error.get_or_insert(error.to_string());
+                    continue;
+                }
                 first_error.get_or_insert(error);
                 continue;
             }
@@ -1078,6 +1093,9 @@ fn delete_target_contents(path: &Path) -> io::Result<DeleteOutcome> {
             Ok(metadata) if metadata.is_dir() => force_remove_path(&entry_path, true),
             Ok(_) => force_remove_path(&entry_path, false),
             Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(DeleteOutcome::Deleted),
+            Err(error) if is_busy_delete_error(&error) => {
+                Ok(DeleteOutcome::SkippedBusy(error.to_string()))
+            }
             Err(error) => Err(error),
         };
 
@@ -1105,7 +1123,7 @@ fn delete_target_contents(path: &Path) -> io::Result<DeleteOutcome> {
     }
 }
 
-fn force_remove_path(path: &Path, recursive: bool) -> io::Result<DeleteOutcome> {
+pub(super) fn force_remove_path(path: &Path, recursive: bool) -> io::Result<DeleteOutcome> {
     clear_readonly(path);
 
     if recursive {
@@ -1199,7 +1217,7 @@ fn force_remove_dir_tree(path: &Path) -> io::Result<DeleteOutcome> {
     }
 }
 
-fn is_busy_delete_error(error: &io::Error) -> bool {
+pub(super) fn is_busy_delete_error(error: &io::Error) -> bool {
     const ERROR_ACCESS_DENIED: i32 = 5;
     const ERROR_SHARING_VIOLATION: i32 = 32;
     const ERROR_LOCK_VIOLATION: i32 = 33;
@@ -1338,9 +1356,13 @@ fn schedule_force_remove_path_on_reboot(path: &Path, recursive: bool) -> Result<
 }
 
 pub(super) fn cleanup_status_from_error(error: &io::Error) -> CleanupEntryStatus {
-    match error.kind() {
-        io::ErrorKind::PermissionDenied | io::ErrorKind::WouldBlock => CleanupEntryStatus::Busy,
-        _ => CleanupEntryStatus::Failed,
+    if is_busy_delete_error(error) {
+        CleanupEntryStatus::Busy
+    } else {
+        match error.kind() {
+            io::ErrorKind::PermissionDenied | io::ErrorKind::WouldBlock => CleanupEntryStatus::Busy,
+            _ => CleanupEntryStatus::Failed,
+        }
     }
 }
 

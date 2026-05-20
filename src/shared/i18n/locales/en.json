@@ -188,6 +188,9 @@
     "itemsCount_one": "{{count}} target",
     "itemsCount_other": "{{count}} targets",
     "noTargets": "No cleanup targets found.",
+    "matchedTargetsCount_one": "{{count}} matched cleanup target",
+    "matchedTargetsCount_other": "{{count}} matched cleanup targets",
+    "noMatchedTargets": "No matching cleanup targets found.",
     "scanning": "Scanning...",
     "messages": {
       "scanCategoryFailed": "Failed to scan this cleanup category.",
