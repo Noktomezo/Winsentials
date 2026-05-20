@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { CleanupCategoryId, CleanupCategoryReport, CleanupEntry, CleanupEntryStatus } from '@/entities/cleanup/model/types'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { AppWindow, Check, ChevronDown, Code2, Gamepad2, Globe, Loader2, MonitorCog, PackageOpen, RefreshCw, Trash2, Unplug, Video, X } from 'lucide-react'
+import { AppWindow, Check, CheckSquare, ChevronDown, Code2, Gamepad2, Globe, Loader2, MonitorCog, PackageOpen, RefreshCw, Square, Trash2, Unplug, Video, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cleanCleanupCategory, scanCleanupCategory } from '@/entities/cleanup/api'
@@ -50,6 +50,7 @@ type ReportMap = Partial<Record<CleanupCategoryId, CleanupCategoryReport>>
 type BusyAction = 'all' | CleanupCategoryId | null
 const CLEAN_ALL_EVENT = 'winsentials:cleanup-clean-all'
 const REFRESH_ALL_EVENT = 'winsentials:cleanup-refresh-all'
+const TOGGLE_ALL_CATEGORIES_EVENT = 'winsentials:cleanup-toggle-all-categories'
 const CLEANUP_SUMMARY_EVENT = 'winsentials:cleanup-summary'
 const EMPTY_CLEANUP_SUMMARY = { cleanableCount: 0, sizeBytes: 0, targetCount: 0 }
 
@@ -115,9 +116,9 @@ function cleanupSummaryFromReports(
   checkedCategories: Set<CleanupCategoryId>,
   uncheckedEntries: Record<CleanupCategoryId, Set<string>>,
 ) {
-  return Object.values(reports).reduce(
-    (summary, report) => {
-      if (!report || !checkedCategories.has(report.id)) return summary
+  const summary = Object.values(reports).reduce(
+    (acc, report) => {
+      if (!report || !checkedCategories.has(report.id)) return acc
 
       const uncheckedSet = uncheckedEntries[report.id] || new Set<string>()
       const activeEntries = report.entries.filter(entry => !uncheckedSet.has(entry.id))
@@ -128,16 +129,18 @@ function cleanupSummaryFromReports(
       const activeSize = activeEntries.reduce((sum, entry) => sum + entry.sizeBytes, 0)
 
       return {
-        cleanableCount: summary.cleanableCount + (hasCleanableActive && !clean ? 1 : 0),
-        sizeBytes: summary.sizeBytes + activeSize,
-        targetCount: summary.targetCount + activeEntries.length,
+        ...acc,
+        cleanableCount: acc.cleanableCount + (hasCleanableActive && !clean ? 1 : 0),
+        sizeBytes: acc.sizeBytes + activeSize,
+        targetCount: acc.targetCount + activeEntries.length,
       }
     },
-    EMPTY_CLEANUP_SUMMARY,
+    { ...EMPTY_CLEANUP_SUMMARY, hasAnyChecked: checkedCategories.size > 0 } as any,
   )
+  return summary
 }
 
-function dispatchCleanupSummary(summary = EMPTY_CLEANUP_SUMMARY) {
+function dispatchCleanupSummary(summary: any = { ...EMPTY_CLEANUP_SUMMARY, hasAnyChecked: true }) {
   window.dispatchEvent(new CustomEvent(CLEANUP_SUMMARY_EVENT, {
     detail: summary,
   }))
@@ -313,6 +316,7 @@ function CleanupCard({
   onCategoryToggle,
   uncheckedEntryIds,
   onToggleEntry,
+  onToggleAllEntries,
 }: {
   category: CleanupCategoryDefinition
   isBusy: boolean
@@ -326,6 +330,7 @@ function CleanupCard({
   onCategoryToggle: (id: CleanupCategoryId) => void
   uncheckedEntryIds: Set<string>
   onToggleEntry: (categoryId: CleanupCategoryId, entryId: string) => void
+  onToggleAllEntries: (id: CleanupCategoryId) => void
 }) {
   const { t, i18n } = useTranslation()
   const Icon = category.icon
@@ -334,6 +339,9 @@ function CleanupCard({
   const clean = report ? isCategoryClean(activeEntries) : false
   const canClean = activeEntries.length > 0 && !clean && !isBusy && !isRefreshing && isChecked
   const showEntrySize = category.id !== 'unused_devices' && category.id !== 'appx'
+  const validEntries = report?.entries.filter(entry => !entry.id.endsWith('-scan-error')) ?? []
+  const checkedEntriesCount = validEntries.filter(entry => !uncheckedEntryIds.has(entry.id)).length
+  const hasAnyCheckedEntries = checkedEntriesCount > 0
 
   return (
     <section
@@ -383,6 +391,24 @@ function CleanupCard({
           {isBusy ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
           {t('cleanup.clean')}
         </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              aria-label={hasAnyCheckedEntries ? t('cleanup.uncheckAll') : t('cleanup.checkAll')}
+              disabled={isBusy || isRefreshing || !report || report.entries.length === 0}
+              onClick={() => onToggleAllEntries(category.id)}
+              size="icon"
+              type="button"
+              variant="ghost"
+              className="ui-soft-surface transition-colors hover:bg-accent/50!"
+            >
+              {hasAnyCheckedEntries ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent sideOffset={8}>
+            {hasAnyCheckedEntries ? t('cleanup.uncheckAll') : t('cleanup.checkAll')}
+          </TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -612,14 +638,48 @@ function CleanupPage() {
       })
   }
 
+  function toggleAllCategories() {
+    setCheckedCategories((current) => {
+      if (current.size > 0) {
+        return new Set()
+      }
+      else {
+        return new Set(CLEANUP_CATEGORIES.map(category => category.id))
+      }
+    })
+  }
+
+  function toggleAllEntries(categoryId: CleanupCategoryId) {
+    setUncheckedEntries((current) => {
+      const next = { ...current }
+      const report = reports[categoryId]
+      if (report) {
+        const validEntries = report.entries.filter(entry => !entry.id.endsWith('-scan-error'))
+        const currentUnchecked = current[categoryId] || new Set<string>()
+        const checkedEntriesCount = validEntries.filter(entry => !currentUnchecked.has(entry.id)).length
+        const hasAnyChecked = checkedEntriesCount > 0
+
+        if (hasAnyChecked) {
+          next[categoryId] = new Set<string>(validEntries.map(entry => entry.id))
+        }
+        else {
+          next[categoryId] = new Set<string>()
+        }
+      }
+      return next
+    })
+  }
+
   const cards = useMemo(() => CLEANUP_CATEGORIES, [])
 
   useMountEffect(() => {
     window.addEventListener(CLEAN_ALL_EVENT, cleanAllCategories)
     window.addEventListener(REFRESH_ALL_EVENT, refreshAllCategories)
+    window.addEventListener(TOGGLE_ALL_CATEGORIES_EVENT, toggleAllCategories)
     return () => {
       window.removeEventListener(CLEAN_ALL_EVENT, cleanAllCategories)
       window.removeEventListener(REFRESH_ALL_EVENT, refreshAllCategories)
+      window.removeEventListener(TOGGLE_ALL_CATEGORIES_EVENT, toggleAllCategories)
     }
   })
 
@@ -641,6 +701,7 @@ function CleanupPage() {
             onCategoryToggle={toggleCategoryChecked}
             uncheckedEntryIds={uncheckedEntries[category.id] || new Set<string>()}
             onToggleEntry={toggleEntryChecked}
+            onToggleAllEntries={toggleAllEntries}
           />
         ))}
       </div>
