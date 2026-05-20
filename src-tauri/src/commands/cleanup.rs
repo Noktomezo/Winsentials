@@ -12,10 +12,13 @@ pub async fn cleanup_scan_category(category_id: String) -> Result<CleanupCategor
 #[tauri::command]
 pub async fn cleanup_clean_category(
     category_id: String,
+    exclude_entry_ids: Vec<String>,
 ) -> Result<CleanupCategoryReport, AppError> {
-    tauri::async_runtime::spawn_blocking(move || cleanup::cleanup_clean_category(&category_id))
-        .await
-        .map_err(|error| AppError::message(format!("cleanup_clean_category join error: {error}")))?
+    tauri::async_runtime::spawn_blocking(move || {
+        cleanup::cleanup_clean_category(&category_id, &exclude_entry_ids)
+    })
+    .await
+    .map_err(|error| AppError::message(format!("cleanup_clean_category join error: {error}")))?
 }
 
 #[tauri::command]

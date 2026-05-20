@@ -58,6 +58,36 @@ App exposes clean UI over low-level OS ops (registry edits, COM commands, servic
 - Register all commands in `lib.rs` via `tauri::Builder::default().invoke_handler(tauri::generate_handler![...])`
 - Use `tauri::command` macro on all public Rust handlers
 
+## Codebase Navigation & Intelligence
+
+**MANDATORY:** All codebase navigation, exploration, symbol discovery, and relationship analysis MUST be performed using `@colbymchenry/codegraph`. Generic file searches or regex greps are discouraged unless searching for raw literal strings not indexed as symbols.
+
+### Why codegraph?
+`codegraph` parses the entire codebase (both Rust & TypeScript) to build a semantic graph of functions, components, types, and files. This allows instantly finding usages, definitions, and dependencies across language boundaries without flooding the context window with raw text.
+
+### Usage & Commands
+Always bypass the unsafe Node version guard since the codebase uses modern runtimes:
+
+```bash
+# 1. Re-index codebase (run after modifying code/files)
+$env:CODEGRAPH_ALLOW_UNSAFE_NODE=1; bunx @colbymchenry/codegraph index
+
+# 2. Query specific symbol (find where functions, types, components are defined/used)
+$env:CODEGRAPH_ALLOW_UNSAFE_NODE=1; bunx @colbymchenry/codegraph query <symbol_name>
+
+# 3. Generate structured Markdown context for specific task or feature
+$env:CODEGRAPH_ALLOW_UNSAFE_NODE=1; bunx @colbymchenry/codegraph context "<feature or task description>"
+
+# 4. View indexing stats and verify graph health
+$env:CODEGRAPH_ALLOW_UNSAFE_NODE=1; bunx @colbymchenry/codegraph status
+```
+
+### Workflow Rules for AI Agents:
+1. **Explore First:** When starting new task, query relevant symbols or generate context markdown using `codegraph context` instead of manually reading multiple files.
+2. **Post-edit Re-indexing:** After creating or modifying files, re-index using the `index` command to keep semantic graph current.
+3. **Trace Dependencies:** Use `query` to understand which modules, components, or Tauri commands are impacted before making modifications.
+
+
 ## Post-Task Checks
 
 Run after every task. Do not skip, even for small changes.
@@ -76,6 +106,12 @@ bunx eslint --fix .
 bun run typecheck
 # fallback:
 bunx tsc --noEmit
+
+# 3. Dead-code check (fallow) — must pass with zero issues
+bunx fallow --only dead-code
+
+# 4. React Doctor audit (ensure UI health)
+bunx react-doctor --full --json-compact
 ```
 
 > `eslint-stylistic` handles formatting. It replaces Prettier. `bun run format` runs `eslint --fix`, not separate formatter.

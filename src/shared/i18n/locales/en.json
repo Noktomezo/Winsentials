@@ -176,6 +176,10 @@
     "cleanAll": "Clean all",
     "refresh": "Refresh",
     "refreshAll": "Refresh all",
+    "checkAll": "Select all targets",
+    "uncheckAll": "Deselect all targets",
+    "checkAllCategories": "Select all categories",
+    "uncheckAllCategories": "Deselect all categories",
     "cleaned": "Cleanup completed.",
     "cleanedAll": "All categories cleaned.",
     "scheduleReboot": "Delete after reboot",
@@ -219,7 +223,8 @@
     "errors": {
       "scan": "Failed to scan cleanup targets.",
       "clean": "Failed to run cleanup.",
-      "reboot": "Failed to schedule delete after reboot."
+      "reboot": "Failed to schedule delete after reboot.",
+      "nothingSelected": "No categories selected for cleaning."
     }
   },
   "contextMenu": {

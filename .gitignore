@@ -34,4 +34,5 @@ pnpm-lock.yaml
 *.sw?
 .symdex
 .fallow
+.codegraph/
 .codex/environments/environment.toml

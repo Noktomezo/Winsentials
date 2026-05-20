@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { CheckSquare, Plus, RefreshCw, Square, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCleanupUiState } from '@/entities/cleanup/model/ui-state'
@@ -23,6 +23,7 @@ interface CleanupSummary {
   cleanableCount: number
   sizeBytes: number
   targetCount: number
+  hasAnyChecked?: boolean
 }
 
 const CLEANUP_SUMMARY_EVENT = 'winsentials:cleanup-summary'
@@ -31,7 +32,7 @@ export function usePageHeader(pathname: string): PageHeader {
   const { i18n, t } = useTranslation()
   const staticInfo = useStaticInfo()
   const cleanupUiState = useCleanupUiState()
-  const [cleanupSummary, setCleanupSummary] = useState<CleanupSummary>({ cleanableCount: 0, sizeBytes: 0, targetCount: 0 })
+  const [cleanupSummary, setCleanupSummary] = useState<CleanupSummary>({ cleanableCount: 0, sizeBytes: 0, targetCount: 0, hasAnyChecked: true })
   const cleanupBusy = cleanupUiState.busy
   const cleanupRefreshing = cleanupUiState.refreshingCategories.size > 0
   const cleanupCleanDisabled = cleanupBusy || cleanupRefreshing || cleanupSummary.cleanableCount === 0
@@ -45,6 +46,7 @@ export function usePageHeader(pathname: string): PageHeader {
         cleanableCount: detail.cleanableCount,
         sizeBytes: detail.sizeBytes,
         targetCount: detail.targetCount,
+        hasAnyChecked: detail.hasAnyChecked ?? true,
       })
     }
 
@@ -133,6 +135,24 @@ export function usePageHeader(pathname: string): PageHeader {
               <Trash2 className="size-4" />
               {t('cleanup.cleanAll')}
             </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  aria-label={cleanupSummary.hasAnyChecked ? t('cleanup.uncheckAllCategories') : t('cleanup.checkAllCategories')}
+                  disabled={cleanupBusy || cleanupRefreshing}
+                  onClick={() => window.dispatchEvent(new Event('winsentials:cleanup-toggle-all-categories'))}
+                  size="icon"
+                  type="button"
+                  variant="ghost"
+                  className="ui-soft-surface transition-colors hover:bg-accent/50!"
+                >
+                  {cleanupSummary.hasAnyChecked ? <CheckSquare className="size-4" /> : <Square className="size-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent sideOffset={8}>
+                {cleanupSummary.hasAnyChecked ? t('cleanup.uncheckAllCategories') : t('cleanup.checkAllCategories')}
+              </TooltipContent>
+            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
