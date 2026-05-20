@@ -10,6 +10,7 @@ export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
+      // fallow-ignore-next-line unresolved-import
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },

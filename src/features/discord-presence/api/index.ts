@@ -1,10 +1,6 @@
 import type { DiscordPresenceMode } from '@/shared/config/app'
 import { invoke } from '@tauri-apps/api/core'
 
-export function setDiscordPresenceMode(mode: DiscordPresenceMode): Promise<void> {
-  return invoke('set_discord_presence_mode', { mode })
-}
-
 export function setDiscordPresenceActivity({
   mode,
   pageLabel,

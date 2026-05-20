@@ -2,9 +2,14 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use rayon::prelude::*;
+
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 use super::{
     cleanup_status_from_error, expand_env_path, expand_wildcard_path, target_size_bytes,
@@ -19,12 +24,21 @@ const WINAPPX: &str = include_str!("../../assets/Winappx.ini");
 const EXCLUDED_BROWSER_ENTRY_TERMS: &[&str] = &[
     "autofill",
     "backup",
+    "bookmark",
+    "cookies",
+    "credential",
     "download history",
-    "extension cookies",
+    "form",
+    "history",
+    "login",
+    "password",
     "pinned tabs",
-    "saved usernames",
-    "web browsing cookies",
-    "web browsing session",
+    "places",
+    "saved",
+    "session",
+    "site preferences",
+    "storage",
+    "sync",
 ];
 
 const EXCLUDED_WINDOWS_ENTRY_TERMS: &[&str] = &[
@@ -82,7 +96,7 @@ pub fn is_winapp_category(category_id: &str) -> bool {
 
 pub fn scan_category(category_id: &str) -> Result<CleanupCategoryReport, AppError> {
     let entries = if category_id == "appx" {
-        scan_appx_entries(false)?
+        scan_appx_entries(false, &[])?
     } else {
         winapp_targets_for_category(category_id)
             .into_par_iter()
@@ -96,13 +110,19 @@ pub fn scan_category(category_id: &str) -> Result<CleanupCategoryReport, AppErro
     })
 }
 
-pub fn clean_category(category_id: &str) -> Result<CleanupCategoryReport, AppError> {
+pub fn clean_category(
+    category_id: &str,
+    exclude_entry_ids: &[String],
+) -> Result<CleanupCategoryReport, AppError> {
     let entries = if category_id == "appx" {
-        scan_appx_entries(true)?
+        scan_appx_entries(true, exclude_entry_ids)?
     } else {
         winapp_targets_for_category(category_id)
             .into_par_iter()
-            .map(|target| scan_or_clean_winapp_target(&target, true))
+            .map(|target| {
+                let should_clean = !exclude_entry_ids.contains(&target.id);
+                scan_or_clean_winapp_target(&target, should_clean)
+            })
             .collect()
     };
 
@@ -585,14 +605,20 @@ fn parse_ini(content: &str) -> Vec<IniEntry> {
     entries
 }
 
-fn scan_appx_entries(clean: bool) -> Result<Vec<CleanupEntry>, AppError> {
+fn scan_appx_entries(
+    clean: bool,
+    exclude_entry_ids: &[String],
+) -> Result<Vec<CleanupEntry>, AppError> {
     let packages = installed_appx_packages()?;
     let entries = parse_ini(WINAPPX)
         .into_iter()
         .filter_map(|entry| {
             let package_name = entry.first("PackageName")?;
             let full_name = packages.get(&package_name.to_ascii_lowercase())?.clone();
-            let (status, error) = if clean {
+            let entry_id = format!("appx_{}", slug(&package_name));
+            let should_clean = clean && !exclude_entry_ids.contains(&entry_id);
+
+            let (status, error) = if should_clean {
                 match remove_appx_package(&full_name) {
                     Ok(()) => (CleanupEntryStatus::Removed, None),
                     Err(error) => (CleanupEntryStatus::Failed, Some(error.to_string())),
@@ -601,7 +627,7 @@ fn scan_appx_entries(clean: bool) -> Result<Vec<CleanupEntry>, AppError> {
                 (CleanupEntryStatus::Pending, None)
             };
             Some(CleanupEntry {
-                id: format!("appx_{}", slug(&package_name)),
+                id: entry_id,
                 name: entry.name,
                 path: package_name,
                 status,
@@ -618,17 +644,27 @@ fn scan_appx_entries(clean: bool) -> Result<Vec<CleanupEntry>, AppError> {
 fn installed_appx_packages() -> Result<HashMap<String, String>, AppError> {
     #[cfg(target_os = "windows")]
     {
-        let output = Command::new("powershell")
-            .args([
+        let expression = duct::cmd(
+            "powershell",
+            &[
                 "-NoProfile",
                 "-NonInteractive",
                 "-Command",
                 "Get-AppxPackage | ForEach-Object { $_.Name + '|' + $_.PackageFullName }",
-            ])
-            .output()
-            .map_err(|error| {
-                AppError::message(format!("failed to discover AppX packages: {error}"))
-            })?;
+            ],
+        )
+        .stdout_capture()
+        .stderr_capture()
+        .unchecked();
+
+        let expression = expression.before_spawn(|command| {
+            command.creation_flags(CREATE_NO_WINDOW);
+            Ok(())
+        });
+
+        let output = expression.run().map_err(|error| {
+            AppError::message(format!("failed to discover AppX packages: {error}"))
+        })?;
 
         if !output.status.success() {
             return Err(AppError::CommandFailed {
@@ -652,14 +688,26 @@ fn installed_appx_packages() -> Result<HashMap<String, String>, AppError> {
 
 fn remove_appx_package(package_full_name: &str) -> Result<(), AppError> {
     let escaped = package_full_name.replace('\'', "''");
-    let output = Command::new("powershell")
-        .args([
+    let expression = duct::cmd(
+        "powershell",
+        &[
             "-NoProfile",
             "-NonInteractive",
             "-Command",
             &format!("Remove-AppxPackage -Package '{}'", escaped),
-        ])
-        .output()?;
+        ],
+    )
+    .stdout_capture()
+    .stderr_capture()
+    .unchecked();
+
+    #[cfg(target_os = "windows")]
+    let expression = expression.before_spawn(|command| {
+        command.creation_flags(CREATE_NO_WINDOW);
+        Ok(())
+    });
+
+    let output = expression.run()?;
 
     if output.status.success() {
         Ok(())

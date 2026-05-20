@@ -25,20 +25,12 @@ ignoreExportsUsedInFile = true
 production = false
 ignoreExports = [
   # Planned usage for upcoming UI features (Shadcn UI standard exports)
-  { file = "src/shared/ui/breadcrumb.tsx", exports = [ "BreadcrumbEllipsis" ] },
-  { file = "src/shared/ui/card.tsx", exports = [ "CardFooter" ] },
-  { file = "src/shared/ui/dialog.tsx", exports = [ "DialogTrigger" ] },
+  { file = "src/shared/ui/breadcrumb.tsx", exports = [ "*" ] },
+  { file = "src/shared/ui/card.tsx", exports = [ "*" ] },
+  { file = "src/shared/ui/dialog.tsx", exports = [ "*" ] },
   { file = "src/shared/ui/dropdown-menu.tsx", exports = [ "*" ] },
-  { file = "src/shared/ui/select.tsx", exports = [
-    "SelectGroup",
-    "SelectLabel",
-    "SelectSeparator"
-  ] },
-  { file = "src/shared/ui/sheet.tsx", exports = [
-    "SheetClose",
-    "SheetFooter",
-    "SheetTrigger"
-  ] },
+  { file = "src/shared/ui/select.tsx", exports = [ "*" ] },
+  { file = "src/shared/ui/sheet.tsx", exports = [ "*" ] },
   { file = "src/shared/ui/sidebar.tsx", exports = [ "*" ] },
 ]
 

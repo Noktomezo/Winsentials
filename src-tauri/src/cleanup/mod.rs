@@ -46,8 +46,11 @@ pub fn cleanup_scan_category(category_id: &str) -> Result<CleanupCategoryReport,
     build_report(category_id, false)
 }
 
-pub fn cleanup_clean_category(category_id: &str) -> Result<CleanupCategoryReport, AppError> {
-    build_report_with_privileged_delete(category_id, true)
+pub fn cleanup_clean_category(
+    category_id: &str,
+    exclude_entry_ids: &[String],
+) -> Result<CleanupCategoryReport, AppError> {
+    build_report_with_privileged_delete(category_id, true, exclude_entry_ids)
 }
 
 pub fn cleanup_schedule_delete_on_reboot(
@@ -82,30 +85,34 @@ fn all_resolved_cleanup_targets() -> Vec<ResolvedTarget> {
 }
 
 fn build_report(category_id: &str, clean: bool) -> Result<CleanupCategoryReport, AppError> {
-    build_report_with_privileged_delete(category_id, clean)
+    build_report_with_privileged_delete(category_id, clean, &[])
 }
 
 fn build_report_with_privileged_delete(
     category_id: &str,
     clean: bool,
+    exclude_entry_ids: &[String],
 ) -> Result<CleanupCategoryReport, AppError> {
     if winapp::is_winapp_category(category_id) {
         return if clean {
-            winapp::clean_category(category_id)
+            winapp::clean_category(category_id, exclude_entry_ids)
         } else {
             winapp::scan_category(category_id)
         };
     }
 
     if category_id == UNUSED_DEVICES_CATEGORY {
-        return build_unused_devices_report(clean);
+        return build_unused_devices_report(clean, exclude_entry_ids);
     }
 
     let targets = dedupe_resolved_targets(resolved_targets_for_category(category_id)?);
 
     let entries = targets
         .par_iter()
-        .map(|target| scan_or_clean_target(target, clean))
+        .map(|target| {
+            let should_clean = clean && !exclude_entry_ids.contains(&target.id);
+            scan_or_clean_target(target, should_clean)
+        })
         .collect();
 
     Ok(CleanupCategoryReport {
@@ -297,9 +304,12 @@ struct GhostDevice {
     icon_data_url: Option<String>,
 }
 
-fn build_unused_devices_report(clean: bool) -> Result<CleanupCategoryReport, AppError> {
+fn build_unused_devices_report(
+    clean: bool,
+    exclude_entry_ids: &[String],
+) -> Result<CleanupCategoryReport, AppError> {
     let entries = if clean {
-        clean_unused_devices_entries().map_err(AppError::message)?
+        clean_unused_devices_entries(exclude_entry_ids).map_err(AppError::message)?
     } else {
         scan_unused_devices_entries().map_err(AppError::message)?
     };
@@ -324,15 +334,24 @@ fn scan_unused_devices_entries() -> Result<Vec<CleanupEntry>, String> {
 }
 
 #[cfg(target_os = "windows")]
-fn clean_unused_devices_entries() -> Result<Vec<CleanupEntry>, String> {
+fn clean_unused_devices_entries(exclude_entry_ids: &[String]) -> Result<Vec<CleanupEntry>, String> {
     let devices = enumerate_ghost_devices()?;
     let mut failed_entries = vec![];
 
     for device in devices {
-        if let Err(error) = remove_ghost_device(&device.instance_id) {
+        let entry_id = device.instance_id.clone();
+        let should_clean = !exclude_entry_ids.contains(&entry_id);
+
+        if should_clean {
+            if let Err(error) = remove_ghost_device(&device.instance_id) {
+                let mut entry = ghost_device_to_cleanup_entry(device);
+                entry.status = CleanupEntryStatus::Failed;
+                entry.error = Some(error);
+                failed_entries.push(entry);
+            }
+        } else {
             let mut entry = ghost_device_to_cleanup_entry(device);
-            entry.status = CleanupEntryStatus::Failed;
-            entry.error = Some(error);
+            entry.status = CleanupEntryStatus::Pending;
             failed_entries.push(entry);
         }
     }
@@ -354,7 +373,8 @@ fn clean_unused_devices_entries() -> Result<Vec<CleanupEntry>, String> {
 }
 
 #[cfg(not(target_os = "windows"))]
-fn clean_unused_devices_entries() -> Result<Vec<CleanupEntry>, String> {
+fn clean_unused_devices_entries(exclude_entry_ids: &[String]) -> Result<Vec<CleanupEntry>, String> {
+    let _ = exclude_entry_ids;
     Err("unused device cleanup is supported only on Windows".to_string())
 }
 
@@ -967,7 +987,13 @@ fn scan_target(target: &ResolvedTarget) -> CleanupEntry {
 }
 
 pub(super) fn target_size_bytes(path: &Path) -> io::Result<u64> {
-    let metadata = fs::symlink_metadata(path)?;
+    let metadata = match fs::symlink_metadata(path) {
+        Ok(m) => m,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0),
+        Err(e) if e.kind() == io::ErrorKind::PermissionDenied => return Ok(0),
+        Err(e) => return Err(e),
+    };
+
     if metadata.is_file() {
         return Ok(metadata.len());
     }
@@ -976,11 +1002,24 @@ pub(super) fn target_size_bytes(path: &Path) -> io::Result<u64> {
     }
 
     let mut total = 0;
-    for entry in fs::read_dir(path)? {
-        let entry = entry?;
-        let metadata = fs::symlink_metadata(entry.path())?;
+    let entries = match fs::read_dir(path) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == io::ErrorKind::PermissionDenied => return Ok(0),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0),
+        Err(e) => return Err(e),
+    };
+
+    for entry in entries {
+        let Ok(entry) = entry else {
+            continue;
+        };
+        let Ok(metadata) = fs::symlink_metadata(entry.path()) else {
+            continue;
+        };
         if metadata.is_dir() {
-            total += target_size_bytes(&entry.path())?;
+            if let Ok(size) = target_size_bytes(&entry.path()) {
+                total += size;
+            }
         } else if metadata.is_file() {
             total += metadata.len();
         }
@@ -1012,7 +1051,21 @@ fn delete_target_contents(path: &Path) -> io::Result<DeleteOutcome> {
     let mut first_error = None;
     let mut skipped_busy_error = None;
     let mut scheduled_on_reboot_error = None;
-    for entry in fs::read_dir(path)? {
+
+    let entries = match fs::read_dir(path) {
+        Ok(entries) => entries,
+        Err(error) => {
+            if trustedinstaller_remove_path(path, true).is_ok() {
+                return Ok(DeleteOutcome::Deleted);
+            }
+            if is_busy_delete_error(&error) {
+                return Ok(DeleteOutcome::SkippedBusy(error.to_string()));
+            }
+            return Err(error);
+        }
+    };
+
+    for entry in entries {
         let entry = match entry {
             Ok(entry) => entry,
             Err(error) => {
