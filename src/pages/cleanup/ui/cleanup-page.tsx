@@ -440,6 +440,17 @@ function CleanupPage() {
     () => Object.fromEntries(CLEANUP_CATEGORIES.map(c => [c.id, new Set<string>()])) as Record<CleanupCategoryId, Set<string>>,
   )
 
+  const checkedCategoriesRef = useRef(checkedCategories)
+  const uncheckedEntriesRef = useRef(uncheckedEntries)
+
+  useEffect(() => {
+    checkedCategoriesRef.current = checkedCategories
+  }, [checkedCategories])
+
+  useEffect(() => {
+    uncheckedEntriesRef.current = uncheckedEntries
+  }, [uncheckedEntries])
+
   function setBusyActionState(action: BusyAction) {
     busyActionRef.current = action
     setBusyAction(action)
@@ -556,7 +567,7 @@ function CleanupPage() {
   function cleanAllCategories() {
     if (busyActionRef.current !== null || hasRefreshingCategories()) return
 
-    const activeCategories = CLEANUP_CATEGORIES.filter(category => checkedCategories.has(category.id))
+    const activeCategories = CLEANUP_CATEGORIES.filter(category => checkedCategoriesRef.current.has(category.id))
     if (activeCategories.length === 0) {
       toast.error(t('cleanup.errors.nothingSelected') || 'No categories selected for cleaning')
       return
@@ -567,7 +578,7 @@ function CleanupPage() {
       activeCategories.map(category =>
         cleanCleanupCategory(
           category.id,
-          Array.from(uncheckedEntries[category.id] || []),
+          Array.from(uncheckedEntriesRef.current[category.id] || []),
         ),
       ),
     )

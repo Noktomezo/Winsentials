@@ -117,10 +117,11 @@ pub fn clean_category(
     let entries = if category_id == "appx" {
         scan_appx_entries(true, exclude_entry_ids)?
     } else {
+        let exclude_set: HashSet<String> = exclude_entry_ids.iter().cloned().collect();
         winapp_targets_for_category(category_id)
             .into_par_iter()
             .map(|target| {
-                let should_clean = !exclude_entry_ids.contains(&target.id);
+                let should_clean = !exclude_set.contains(&target.id);
                 scan_or_clean_winapp_target(&target, should_clean)
             })
             .collect()

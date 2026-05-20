@@ -1055,7 +1055,7 @@ fn delete_target_contents(path: &Path) -> io::Result<DeleteOutcome> {
     let entries = match fs::read_dir(path) {
         Ok(entries) => entries,
         Err(error) => {
-            if trustedinstaller_remove_path(path, true).is_ok() {
+            if trustedinstaller_remove_children(path).is_ok() {
                 return Ok(DeleteOutcome::Deleted);
             }
             if is_busy_delete_error(&error) {
@@ -1299,8 +1299,32 @@ fn trustedinstaller_remove_path(path: &Path, recursive: bool) -> Result<(), Stri
     .map_err(|error| error.to_string())
 }
 
+#[cfg(target_os = "windows")]
+fn trustedinstaller_remove_children(path: &Path) -> Result<(), String> {
+    let path_str = path.to_string_lossy();
+    let escaped_path = path_str.replace('\'', "''");
+
+    let ps_cmd = format!(
+        "Get-ChildItem -LiteralPath '{}' -Force | Remove-Item -Force -Recurse",
+        escaped_path
+    );
+
+    let args = vec!["-NoProfile", "-Command", &ps_cmd];
+
+    trustedinstaller::run_as_trustedinstaller(
+        "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        &args,
+    )
+    .map_err(|error| error.to_string())
+}
+
 #[cfg(not(target_os = "windows"))]
 fn trustedinstaller_remove_path(_path: &Path, _recursive: bool) -> Result<(), String> {
+    Err("TrustedInstaller cleanup is supported only on Windows".to_string())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn trustedinstaller_remove_children(_path: &Path) -> Result<(), String> {
     Err("TrustedInstaller cleanup is supported only on Windows".to_string())
 }
 
