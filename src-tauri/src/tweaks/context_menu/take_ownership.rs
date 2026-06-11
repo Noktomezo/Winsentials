@@ -8,22 +8,22 @@ const CUSTOM_VALUE: &str = "custom";
 
 const FILE_MENU_KEY: RegKey = RegKey {
     hive: Hive::CurrentUser,
-    path: r"Software\Classes\*\shell\runas",
+    path: r"Software\Classes\*\shell\Winsentials.TakeOwnership",
 };
 
 const FILE_COMMAND_KEY: RegKey = RegKey {
     hive: Hive::CurrentUser,
-    path: r"Software\Classes\*\shell\runas\command",
+    path: r"Software\Classes\*\shell\Winsentials.TakeOwnership\command",
 };
 
 const DIRECTORY_MENU_KEY: RegKey = RegKey {
     hive: Hive::CurrentUser,
-    path: r"Software\Classes\Directory\shell\runas",
+    path: r"Software\Classes\Directory\shell\Winsentials.TakeOwnership",
 };
 
 const DIRECTORY_COMMAND_KEY: RegKey = RegKey {
     hive: Hive::CurrentUser,
-    path: r"Software\Classes\Directory\shell\runas\command",
+    path: r"Software\Classes\Directory\shell\Winsentials.TakeOwnership\command",
 };
 
 pub struct TakeOwnershipTweak {
@@ -220,8 +220,18 @@ impl Tweak for TakeOwnershipTweak {
     }
 
     fn reset(&self) -> Result<(), AppError> {
-        FILE_MENU_KEY.delete_subkey_tree()?;
-        DIRECTORY_MENU_KEY.delete_subkey_tree()
+        let res1 = FILE_MENU_KEY.delete_subkey_tree();
+        let res2 = DIRECTORY_MENU_KEY.delete_subkey_tree();
+
+        match (res1, res2) {
+            (Ok(_), Ok(_)) => Ok(()),
+            (Err(e), Ok(_)) => Err(e),
+            (Ok(_), Err(e)) => Err(e),
+            (Err(e1), Err(e2)) => Err(AppError::message(format!(
+                "Failed to delete FILE_MENU_KEY: {} and DIRECTORY_MENU_KEY: {}",
+                e1, e2
+            ))),
+        }
     }
 
     fn get_status(&self) -> Result<TweakStatus, AppError> {

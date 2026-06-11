@@ -34,7 +34,7 @@ function ToolCard({
   return (
     <section className="flex h-fit flex-col overflow-hidden rounded-lg border border-border/70 bg-card">
       <button
-        className="group/summary flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-3 p-4 text-left focus-visible:outline-none hover:bg-accent/10 transition-colors"
+        className="group/summary flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-3 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 hover:bg-accent/10 transition-colors"
         onClick={handleNavigate}
         onFocus={handlePointerIntent}
         onMouseEnter={handlePointerIntent}

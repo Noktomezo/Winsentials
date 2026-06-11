@@ -66,12 +66,13 @@ impl CreateSymbolicLinkContextMenuTweak {
     }
 
     fn command_value() -> String {
-        r#"cmd /c echo @echo off>>%%windir%%\Symlinker.cmd & echo set IS_MINIMIZED=1>>%%windir%%\Symlinker.cmd & echo set "myCommand="(new-object -COM 'Shell.Application')^^.BrowseForFolder(0,'',0).self.path"">> %%windir%%\Symlinker.cmd & echo for /f "usebackq delims=" %%%%I in (`powershell %%myCommand%%`) do set "dir=%%%%I">>%%windir%%\Symlinker.cmd & echo setlocal enabledelayedexpansion>>%%windir%%\Symlinker.cmd & echo mklink "!dir!\%%~nx1" %%1 ^& del /f /q %%windir%%\Symlinker.cmd>>%%windir%%\Symlinker.cmd & start /min Symlinker.cmd "%1" ^& exit"#.into()
+        r#"cmd /c echo @echo off>"%temp%\Symlinker_%random%.cmd" & echo set "myCommand="(new-object -COM 'Shell.Application')^^.BrowseForFolder(0,'',0).self.path"">>"%temp%\Symlinker_%random%.cmd" & echo for /f "usebackq delims=" %%%%I in (`powershell %%myCommand%%`) do set "dir=%%%%I">>"%temp%\Symlinker_%random%.cmd" & echo if not defined dir (del /f /q "%%~f0" ^& exit)>>"%temp%\Symlinker_%random%.cmd" & echo setlocal enabledelayedexpansion>>"%temp%\Symlinker_%random%.cmd" & echo mklink "!dir!\%%~nx1" %%1>>"%temp%\Symlinker_%random%.cmd" & echo del /f /q "%%~f0">>"%temp%\Symlinker_%random%.cmd" & start /min "" "%temp%\Symlinker_%random%.cmd" "%1" ^& exit"#.into()
     }
 
     fn write_menu(menu_key: &RegKey, command_key: &RegKey, command: &str) -> Result<(), AppError> {
         menu_key.set_string("", MENU_LABEL)?;
         menu_key.set_string("Icon", MENU_ICON)?;
+        menu_key.set_string("HasLUAShield", "")?;
         command_key.set_string("", command)
     }
 
@@ -81,6 +82,7 @@ impl CreateSymbolicLinkContextMenuTweak {
             command_existed: command_key.key_exists()?,
             label: read_string_or_missing(menu_key, "")?,
             icon: read_string_or_missing(menu_key, "Icon")?,
+            has_lua_shield: read_string_or_missing(menu_key, "HasLUAShield")?,
             command: read_string_or_missing(command_key, "")?,
         })
     }
@@ -95,6 +97,7 @@ impl CreateSymbolicLinkContextMenuTweak {
         if snapshot.menu_existed {
             restore_string_value(menu_key, "", snapshot.label.as_deref());
             restore_string_value(menu_key, "Icon", snapshot.icon.as_deref());
+            restore_string_value(menu_key, "HasLUAShield", snapshot.has_lua_shield.as_deref());
         } else {
             let _ = menu_key.delete_subkey_tree();
         }
@@ -108,6 +111,7 @@ impl CreateSymbolicLinkContextMenuTweak {
         Ok(
             read_string_or_missing(menu_key, "")?.as_deref() == Some(MENU_LABEL)
                 && read_string_or_missing(menu_key, "Icon")?.as_deref() == Some(MENU_ICON)
+                && read_string_or_missing(menu_key, "HasLUAShield")?.is_some()
                 && read_string_or_missing(command_key, "")?.as_deref() == Some(command),
         )
     }
@@ -197,6 +201,7 @@ struct MenuSnapshot {
     command_existed: bool,
     label: Option<String>,
     icon: Option<String>,
+    has_lua_shield: Option<String>,
     command: Option<String>,
 }
 

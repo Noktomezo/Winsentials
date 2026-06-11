@@ -135,11 +135,21 @@ function localizeStartupError(
 const getFullRegistryPath = (entry: StartupEntry) => {
   if (!entry.registryPath) return ''
   let path = entry.registryPath
-  if (path.toUpperCase().startsWith('HKCU\\')) {
+  const upper = path.toUpperCase()
+  if (upper.startsWith('HKCU\\')) {
     path = `HKEY_CURRENT_USER\\${path.slice(5)}`
   }
-  else if (path.toUpperCase().startsWith('HKLM\\')) {
+  else if (upper.startsWith('HKLM\\')) {
     path = `HKEY_LOCAL_MACHINE\\${path.slice(5)}`
+  }
+  else if (upper.startsWith('HKCR\\')) {
+    path = `HKEY_CLASSES_ROOT\\${path.slice(5)}`
+  }
+  else if (upper.startsWith('HKU\\')) {
+    path = `HKEY_USERS\\${path.slice(4)}`
+  }
+  else if (upper.startsWith('HKCC\\')) {
+    path = `HKEY_CURRENT_CONFIG\\${path.slice(5)}`
   }
   return path
 }
