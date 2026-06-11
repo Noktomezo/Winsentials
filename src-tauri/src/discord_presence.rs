@@ -8,8 +8,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
 
-const DISCORD_CLIENT_ID_ENV: &str = "WINSENTIALS_DISCORD_CLIENT_ID";
-
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum DiscordPresenceMode {
@@ -49,17 +47,10 @@ impl DiscordPresenceState {
             return Ok(());
         }
 
-        let Some(client_id) = std::env::var(DISCORD_CLIENT_ID_ENV)
-            .ok()
-            .map(|value| value.trim().to_owned())
-            .filter(|value| !value.is_empty())
-        else {
-            log::warn!("Discord Rich Presence requested but {DISCORD_CLIENT_ID_ENV} is not set");
-            return Ok(());
-        };
+        let client_id = "1501589879614869625";
 
         if client.is_none() {
-            let mut next_client = DiscordIpcClient::new(client_id.as_str());
+            let mut next_client = DiscordIpcClient::new(client_id);
             next_client.connect().map_err(discord_error)?;
             *client = Some(next_client);
         }

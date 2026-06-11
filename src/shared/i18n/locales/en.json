@@ -239,6 +239,12 @@
         "name": "Add \"Create Symbolic Link\" Item",
         "riskDescription": "Creating symbolic links may require Developer Mode or administrator privileges depending on Windows policy. Existing files are not overwritten; a suffix is added when a name is already taken.",
         "shortDescription": "Adds a context menu action that creates a symbolic link to the selected file or folder."
+      },
+      "takeOwnership": {
+        "detailDescription": "Adds a context menu item to quickly take ownership and grant full access to files and folders using elevated takeown and icacls commands.",
+        "name": "Add \"Take Ownership\" Item",
+        "riskDescription": "Changing permissions on system files or folders can reduce system security. Use caution when modifying permissions on Windows or System32 folders.",
+        "shortDescription": "Adds a context menu item to quickly take ownership and grant full access to files and folders."
       }
     }
   },
@@ -665,8 +671,11 @@
       "copyRegistryPath": "Copy registry path",
       "copyTaskPath": "Copy task path",
       "copyPath": "Copy path",
+      "copyTargetPath": "Copy target path",
+      "copyStartupFolderPath": "Copy startup folder path",
       "copyLocation": "Copy location",
       "openContainingFolder": "Open containing folder",
+      "openStartupFolder": "Open startup folder",
       "openLocation": "Open location"
     },
     "confirm": {
@@ -693,7 +702,9 @@
       "copyCommand": "Command copied to clipboard.",
       "copyRegistryPath": "Registry path copied to clipboard.",
       "copyTaskPath": "Task path copied to clipboard.",
-      "copyPath": "Path copied to clipboard."
+      "copyPath": "Path copied to clipboard.",
+      "copyTargetPath": "Target path copied to clipboard.",
+      "copyStartupFolderPath": "Startup folder path copied to clipboard."
     },
     "states": {
       "idle": "Waiting to load.",

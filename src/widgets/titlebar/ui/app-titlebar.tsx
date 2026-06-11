@@ -174,7 +174,7 @@ export function AppTitlebar() {
 
   return (
     <header
-      className="relative flex h-10 shrink-0 items-center bg-transparent px-2 text-sidebar-foreground"
+      className="relative flex h-[42px] shrink-0 items-center bg-transparent p-1 text-sidebar-foreground"
       data-slot="app-titlebar"
       onDragStart={event => event.preventDefault()}
       onMouseDown={handleTitlebarMouseDown}

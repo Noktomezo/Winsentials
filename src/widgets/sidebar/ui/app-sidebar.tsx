@@ -58,11 +58,11 @@ export function AppSidebar() {
       style={
         {
           '--sidebar-width': '13.44rem',
-          '--sidebar-width-icon': 'calc(var(--spacing) * 12)',
+          '--sidebar-width-icon': '42px',
         } as React.CSSProperties
       }
     >
-      <SidebarContent className="p-2">
+      <SidebarContent className="p-1">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -234,7 +234,7 @@ export function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border/70 p-2">
+      <SidebarFooter className="border-t border-border/70 p-1">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton

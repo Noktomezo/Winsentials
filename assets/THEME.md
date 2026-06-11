@@ -14,39 +14,39 @@ A cold, modern palette inspired by snow and midnight skies. Designed for Fluent/
 
 | Token      | Hex       | Role                    |
 | ---------- | --------- | ----------------------- |
-| background | `#EEF2F7` | Main app background     |
-| card       | `#F7F9FC` | Card / elevated surface |
-| popover    | `#F7F9FC` | Dropdown / overlay      |
-| secondary  | `#DFE5EE` | Subtle fill / muted bg  |
-| border     | `#CDD5E0` | Borders and dividers    |
-| input      | `#C4CDD9` | Input field background  |
+| background | `#EFF3F6` | Main app background     |
+| card       | `#F5F8F9` | Card / elevated surface |
+| popover    | `#F5F8F9` | Dropdown / overlay      |
+| secondary  | `#E0E7EB` | Subtle fill / muted bg  |
+| border     | `#D4DDE2` | Borders and dividers    |
+| input      | `#C3CED5` | Input field background  |
 
 ### Text
 
 | Token            | Hex       | Role           |
 | ---------------- | --------- | -------------- |
-| foreground       | `#0C1425` | Primary text   |
-| muted-foreground | `#64748B` | Secondary text |
+| foreground       | `#0B1014` | Primary text   |
+| muted-foreground | `#647682` | Secondary text |
 
 ### Accents
 
 | Token       | Hex       | Usage      |
 | ----------- | --------- | ---------- |
-| primary     | `#2563EB` | CTA, links |
-| destructive | `#DC2626` | Errors     |
-| success     | `#16A34A` | Success    |
-| warning     | `#D97706` | Warnings   |
+| primary     | `#275ABE` | CTA, links |
+| destructive | `#B82E2E` | Errors     |
+| success     | `#2EB860` | Success    |
+| warning     | `#C5A420` | Warnings   |
 
 ### Badges
 
 | Token         | Hex       |
 | ------------- | --------- |
-| badge-blue    | `#2563EB` |
-| badge-cyan    | `#0891B2` |
-| badge-yellow  | `#D97706` |
-| badge-red     | `#DC2626` |
-| badge-purple  | `#7C3AED` |
-| badge-magenta | `#DB2777` |
+| badge-blue    | `#275ABE` |
+| badge-cyan    | `#29A9BC` |
+| badge-yellow  | `#C5A420` |
+| badge-red     | `#B82E2E` |
+| badge-purple  | `#6A2EB8` |
+| badge-magenta | `#BA2C8A` |
 
 ## Dark Theme — Arctic Midnight
 
@@ -54,39 +54,39 @@ A cold, modern palette inspired by snow and midnight skies. Designed for Fluent/
 
 | Token      | Hex       | Role                    |
 | ---------- | --------- | ----------------------- |
-| background | `#0B1120` | Main app background     |
-| card       | `#111827` | Card / elevated surface |
-| popover    | `#1E293B` | Dropdown / overlay      |
-| secondary  | `#1E293B` | Subtle fill / muted bg  |
-| border     | `#293548` | Borders and dividers    |
-| input      | `#1E293B` | Input field background  |
+| background | `#0B1014` | Main app background     |
+| card       | `#0F151A` | Card / elevated surface |
+| popover    | `#131B20` | Dropdown / overlay      |
+| secondary  | `#131B20` | Subtle fill / muted bg  |
+| border     | `#182025` | Borders and dividers    |
+| input      | `#131B20` | Input field background  |
 
 ### Text
 
 | Token            | Hex       | Role           |
 | ---------------- | --------- | -------------- |
-| foreground       | `#CBD5E1` | Primary text   |
-| muted-foreground | `#94A3B8` | Secondary text |
+| foreground       | `#E9EEF1` | Primary text   |
+| muted-foreground | `#95A6B1` | Secondary text |
 
 ### Accents
 
 | Token       | Hex       | Usage      |
 | ----------- | --------- | ---------- |
-| primary     | `#3B82F6` | CTA, links |
-| destructive | `#EF4444` | Errors     |
-| success     | `#22C55E` | Success    |
-| warning     | `#F59E0B` | Warnings   |
+| primary     | `#6A90DC` | CTA, links |
+| destructive | `#D77070` | Errors     |
+| success     | `#70D795` | Success    |
+| warning     | `#E2C965` | Warnings   |
 
 ### Badges
 
 | Token         | Hex       |
 | ------------- | --------- |
-| badge-blue    | `#3B82F6` |
-| badge-cyan    | `#06B6D4` |
-| badge-yellow  | `#F59E0B` |
-| badge-red     | `#EF4444` |
-| badge-purple  | `#8B5CF6` |
-| badge-magenta | `#EC4899` |
+| badge-blue    | `#6A90DC` |
+| badge-cyan    | `#6CCCDA` |
+| badge-yellow  | `#E2C965` |
+| badge-red     | `#D77070` |
+| badge-purple  | `#9C70D7` |
+| badge-magenta | `#D86EB5` |
 
 ## Principles
 

@@ -19,7 +19,6 @@ function ToolCard({
   title,
   to,
 }: ToolCardProps) {
-  const { t } = useTranslation()
   const navigate = useNavigate()
   const router = useRouter()
   const preloadRouteIntent = useRouteIntentPreload()
@@ -33,33 +32,30 @@ function ToolCard({
   }
 
   return (
-    <button
-      className="group/summary flex min-h-36 cursor-pointer flex-col gap-4 rounded-lg border border-border/70 bg-card p-4 text-left transition-colors hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      data-marquee-group="true"
-      onClick={handleNavigate}
-      onFocus={handlePointerIntent}
-      onMouseEnter={handlePointerIntent}
-      type="button"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="ui-soft-surface flex size-9 shrink-0 items-center justify-center rounded-md">
+    <section className="flex h-fit flex-col overflow-hidden rounded-lg border border-border/70 bg-card">
+      <button
+        className="group/summary flex min-w-0 flex-1 cursor-pointer items-center justify-between gap-3 p-4 text-left focus-visible:outline-none hover:bg-accent/10 transition-colors"
+        onClick={handleNavigate}
+        onFocus={handlePointerIntent}
+        onMouseEnter={handlePointerIntent}
+        type="button"
+      >
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="ui-soft-surface flex size-9 shrink-0 items-center justify-center rounded-md transition-colors group-hover/summary:bg-accent/40">
             <Icon className="size-4" />
           </span>
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-              {t('tools.eyebrow')}
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-sm font-medium text-foreground transition-colors group-hover/summary:text-primary">
+              {title}
+            </h2>
+            <p className="mt-1 text-xs text-muted-foreground line-clamp-1">
+              {description}
             </p>
-            <h2 className="text-sm font-medium text-foreground">{title}</h2>
           </div>
         </div>
         <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover/summary:translate-x-0.5" />
-      </div>
-
-      <p className="text-sm leading-6 text-muted-foreground">
-        {description}
-      </p>
-    </button>
+      </button>
+    </section>
   )
 }
 
@@ -68,7 +64,7 @@ function ToolsPage() {
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-      <div className="grid gap-4 md:grid-cols-[repeat(auto-fit,minmax(20rem,1fr))]">
+      <div className="tweak-card-grid">
         <ToolCard
           description={t('startup.description')}
           icon={Rocket}
