@@ -132,6 +132,28 @@ function localizeStartupError(
   }
 }
 
+const getFullRegistryPath = (entry: StartupEntry) => {
+  if (!entry.registryPath) return ''
+  let path = entry.registryPath
+  const upper = path.toUpperCase()
+  if (upper.startsWith('HKCU\\')) {
+    path = `HKEY_CURRENT_USER\\${path.slice(5)}`
+  }
+  else if (upper.startsWith('HKLM\\')) {
+    path = `HKEY_LOCAL_MACHINE\\${path.slice(5)}`
+  }
+  else if (upper.startsWith('HKCR\\')) {
+    path = `HKEY_CLASSES_ROOT\\${path.slice(5)}`
+  }
+  else if (upper.startsWith('HKU\\')) {
+    path = `HKEY_USERS\\${path.slice(4)}`
+  }
+  else if (upper.startsWith('HKCC\\')) {
+    path = `HKEY_CURRENT_CONFIG\\${path.slice(5)}`
+  }
+  return path
+}
+
 const StartupCard = memo(({
   entry,
   isPending,
@@ -244,71 +266,74 @@ const StartupCard = memo(({
                   align="end"
                   className="min-w-[12.5rem] rounded-[10px] p-1.5"
                 >
-                  {entry.source === 'registry' && (
-                    <>
-                      <DropdownMenuItem
-                        disabled={!entry.command}
-                        onSelect={() => onCopy(entry.command, 'startup.success.copyCommand')}
-                      >
-                        <Copy className="size-3.5" />
-                        {t('startup.actions.copyCommand')}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        disabled={!entry.registryPath}
-                        onSelect={() => onCopy(entry.registryPath, 'startup.success.copyRegistryPath')}
-                      >
-                        <Copy className="size-3.5" />
-                        {t('startup.actions.copyRegistryPath')}
-                      </DropdownMenuItem>
-                    </>
-                  )}
+                  <DropdownMenuItem
+                    disabled={!entry.command}
+                    onSelect={() => onCopy(entry.command, 'startup.success.copyCommand')}
+                  >
+                    <Copy className="size-3.5" />
+                    {t('startup.actions.copyCommand')}
+                  </DropdownMenuItem>
 
-                  {entry.source === 'startup_folder' && (
+                  {entry.targetPath && (
                     <>
                       <DropdownMenuItem
-                        disabled={!entry.targetPath}
                         onSelect={() => onReveal(entry.targetPath)}
                       >
                         <FolderUp className="size-3.5" />
                         {t('startup.actions.openContainingFolder')}
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        disabled={!entry.targetPath}
-                        onSelect={() => onCopy(entry.targetPath, 'startup.success.copyPath')}
+                        onSelect={() => onCopy(entry.targetPath, 'startup.success.copyTargetPath')}
                       >
                         <Copy className="size-3.5" />
-                        {t('startup.actions.copyPath')}
+                        {t('startup.actions.copyTargetPath')}
                       </DropdownMenuItem>
                     </>
                   )}
 
-                  {entry.source === 'scheduled_task' && (
-                    <DropdownMenuItem
-                      disabled={!entry.taskPath}
-                      onSelect={() => onCopy(entry.taskPath, 'startup.success.copyTaskPath')}
-                    >
-                      <Copy className="size-3.5" />
-                      {t('startup.actions.copyTaskPath')}
-                    </DropdownMenuItem>
+                  {((entry.source === 'registry' && entry.registryPath)
+                    || (entry.source === 'startup_folder' && entry.locationLabel)
+                    || (entry.source === 'scheduled_task' && entry.taskPath)) && (
+                    <>
+                      <DropdownMenuSeparator />
+
+                      {entry.source === 'registry' && entry.registryPath && (
+                        <DropdownMenuItem
+                          onSelect={() => onCopy(getFullRegistryPath(entry), 'startup.success.copyRegistryPath')}
+                        >
+                          <Copy className="size-3.5" />
+                          {t('startup.actions.copyRegistryPath')}
+                        </DropdownMenuItem>
+                      )}
+
+                      {entry.source === 'startup_folder' && entry.locationLabel && (
+                        <>
+                          <DropdownMenuItem
+                            onSelect={() => onOpenLocation(entry.locationLabel)}
+                          >
+                            <FolderUp className="size-3.5" />
+                            {t('startup.actions.openStartupFolder')}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => onCopy(entry.locationLabel, 'startup.success.copyStartupFolderPath')}
+                          >
+                            <Copy className="size-3.5" />
+                            {t('startup.actions.copyStartupFolderPath')}
+                          </DropdownMenuItem>
+                        </>
+                      )}
+
+                      {entry.source === 'scheduled_task' && entry.taskPath && (
+                        <DropdownMenuItem
+                          onSelect={() => onCopy(entry.taskPath, 'startup.success.copyTaskPath')}
+                        >
+                          <Copy className="size-3.5" />
+                          {t('startup.actions.copyTaskPath')}
+                        </DropdownMenuItem>
+                      )}
+                    </>
                   )}
 
-                  {entry.source !== 'scheduled_task' && <DropdownMenuSeparator />}
-                  {entry.source === 'startup_folder' && (
-                    <DropdownMenuItem
-                      disabled={!entry.locationLabel}
-                      onSelect={() => onOpenLocation(entry.locationLabel)}
-                    >
-                      <FolderUp className="size-3.5" />
-                      {t('startup.actions.openLocation')}
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem
-                    disabled={!entry.locationLabel}
-                    onSelect={() => onCopy(entry.locationLabel, 'startup.success.copyPath')}
-                  >
-                    <Copy className="size-3.5" />
-                    {t('startup.actions.copyLocation')}
-                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     disabled={isPending}
