@@ -47,6 +47,7 @@ windows = { version = "0.62", features = ["Win32_Devices_DeviceAndDriverInstalla
 duct = "1.1.1"
 discord-rich-presence = "1.1.0"
 mimalloc = "0.1.52"
+time = "=0.3.36"
 
 [target."cfg(windows)".dependencies]
 system_shutdown = "4"
