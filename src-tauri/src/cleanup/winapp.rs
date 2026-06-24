@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
 
 use rayon::prelude::*;
 
@@ -12,6 +11,9 @@ use std::os::windows::process::CommandExt;
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
+use super::winapp_db::{
+    ExcludeRule, ExcludeRuleType, IniEntry, all_exclude_rules, winapp2_entries, winappx_entries,
+};
 use super::{
     DeleteOutcome, cleanup_status_from_error, delete_target_contents, expand_env_path,
     expand_wildcard_path, force_remove_path, is_busy_delete_error, target_size_bytes,
@@ -19,77 +21,6 @@ use super::{
 };
 use crate::cleanup::types::{CleanupCategoryReport, CleanupEntry, CleanupEntryStatus};
 use crate::error::AppError;
-
-const WINAPP2: &str = include_str!("../../assets/Winapp2.ini");
-const WINAPPX: &str = include_str!("../../assets/Winappx.ini");
-
-static WINAPP2_ENTRIES: OnceLock<Vec<IniEntry>> = OnceLock::new();
-static WINAPPX_ENTRIES: OnceLock<Vec<IniEntry>> = OnceLock::new();
-static EXCLUDE_RULES: OnceLock<Vec<ExcludeRule>> = OnceLock::new();
-
-fn winapp2_entries() -> &'static Vec<IniEntry> {
-    WINAPP2_ENTRIES.get_or_init(|| parse_ini(WINAPP2))
-}
-
-fn winappx_entries() -> &'static Vec<IniEntry> {
-    WINAPPX_ENTRIES.get_or_init(|| parse_ini(WINAPPX))
-}
-
-fn all_exclude_rules() -> &'static Vec<ExcludeRule> {
-    EXCLUDE_RULES.get_or_init(|| {
-        winapp2_entries()
-            .iter()
-            .flat_map(exclude_rules_from_entry)
-            .collect()
-    })
-}
-
-#[derive(Clone)]
-enum ExcludeRuleType {
-    File,
-    Path,
-}
-
-#[derive(Clone)]
-struct ExcludeRule {
-    rule_type: ExcludeRuleType,
-    path: String,
-    file_pattern: Option<String>,
-}
-
-fn exclude_rules_from_entry(entry: &IniEntry) -> Vec<ExcludeRule> {
-    entry
-        .values
-        .iter()
-        .filter(|(key, _)| key.starts_with("ExcludeKey"))
-        .flat_map(|(_, values)| values)
-        .filter_map(|value| parse_exclude_rule(value))
-        .collect()
-}
-
-fn parse_exclude_rule(value: &str) -> Option<ExcludeRule> {
-    let mut parts = value.split('|');
-    let type_str = parts.next()?.trim().to_ascii_uppercase();
-    let path = parts.next()?.trim().to_string();
-
-    match type_str.as_str() {
-        "FILE" => Some(ExcludeRule {
-            rule_type: ExcludeRuleType::File,
-            path,
-            file_pattern: None,
-        }),
-        "PATH" => Some(ExcludeRule {
-            rule_type: ExcludeRuleType::Path,
-            path,
-            file_pattern: parts
-                .next()
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .map(str::to_string),
-        }),
-        _ => None,
-    }
-}
 
 fn is_excluded(path: &Path, exclude_rules: &[ExcludeRule]) -> bool {
     let path_str = path.to_string_lossy().to_ascii_lowercase();
@@ -139,12 +70,6 @@ pub const WINAPP_CATEGORIES: &[&str] = &[
 ];
 
 #[derive(Clone)]
-struct IniEntry {
-    name: String,
-    values: HashMap<String, Vec<String>>,
-}
-
-#[derive(Clone)]
 struct FileRule {
     root: String,
     patterns: Vec<String>,
@@ -175,9 +100,10 @@ pub fn scan_category(category_id: &str) -> Result<CleanupCategoryReport, AppErro
         scan_appx_entries(false, &[])?
     } else {
         let excludes = all_exclude_rules();
+        let excludes_ref: &[ExcludeRule] = &excludes;
         winapp_targets_for_category(category_id)
             .into_par_iter()
-            .map(|target| scan_or_clean_winapp_target(&target, false, excludes))
+            .map(|target| scan_or_clean_winapp_target(&target, false, excludes_ref))
             .collect()
     };
 
@@ -196,11 +122,12 @@ pub fn clean_category(
     } else {
         let exclude_set: HashSet<String> = exclude_entry_ids.iter().cloned().collect();
         let excludes = all_exclude_rules();
+        let excludes_ref: &[ExcludeRule] = &excludes;
         winapp_targets_for_category(category_id)
             .into_par_iter()
             .map(|target| {
                 let should_clean = !exclude_set.contains(&target.id);
-                scan_or_clean_winapp_target(&target, should_clean, excludes)
+                scan_or_clean_winapp_target(&target, should_clean, excludes_ref)
             })
             .collect()
     };
@@ -655,58 +582,6 @@ fn default_checked(entry: &IniEntry) -> bool {
 
 fn contains_any(value: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| value.contains(needle))
-}
-
-impl IniEntry {
-    fn first(&self, key: &str) -> Option<String> {
-        self.values
-            .get(key)
-            .and_then(|values| values.first())
-            .cloned()
-    }
-}
-
-fn parse_ini(content: &str) -> Vec<IniEntry> {
-    let mut entries = Vec::new();
-    let mut current: Option<IniEntry> = None;
-
-    for raw_line in content.lines() {
-        let line = raw_line.trim();
-        if line.is_empty() || line.starts_with(';') {
-            continue;
-        }
-
-        if line.starts_with('[') && line.ends_with(']') {
-            if let Some(entry) = current.take() {
-                entries.push(entry);
-            }
-            current = Some(IniEntry {
-                name: line
-                    .trim_matches(['[', ']'])
-                    .trim_end_matches(" *")
-                    .to_string(),
-                values: HashMap::new(),
-            });
-            continue;
-        }
-
-        let Some((key, value)) = line.split_once('=') else {
-            continue;
-        };
-        if let Some(entry) = current.as_mut() {
-            entry
-                .values
-                .entry(key.trim().to_string())
-                .or_default()
-                .push(value.trim().to_string());
-        }
-    }
-
-    if let Some(entry) = current {
-        entries.push(entry);
-    }
-
-    entries
 }
 
 fn scan_appx_entries(

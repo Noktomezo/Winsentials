@@ -1,5 +1,6 @@
 use crate::cleanup;
 use crate::cleanup::types::{CategoryCleanRequest, CleanupCategoryReport, CleanupScheduleReport};
+use crate::cleanup::winapp_db::{self, WinappDbStatus};
 use crate::error::AppError;
 
 #[tauri::command]
@@ -48,4 +49,26 @@ pub async fn cleanup_schedule_delete_on_reboot(
                 "cleanup_schedule_delete_on_reboot join error: {error}"
             ))
         })?
+}
+
+#[tauri::command]
+pub async fn cleanup_update_winapp_db() -> Result<WinappDbStatus, AppError> {
+    winapp_db::download_winapp2().await?;
+    match winapp_db::download_winappx().await {
+        Ok(_) => {}
+        Err(error) => log::warn!("Winappx.ini download skipped: {error}"),
+    }
+    Ok(winapp_db::winapp_db_status())
+}
+
+#[tauri::command]
+pub fn cleanup_winapp_db_status() -> WinappDbStatus {
+    winapp_db::winapp_db_status()
+}
+
+#[tauri::command]
+pub fn cleanup_set_custom_winapp2_path(path: Option<String>) -> Result<WinappDbStatus, AppError> {
+    winapp_db::set_custom_winapp2_path(path.map(std::path::PathBuf::from));
+    winapp_db::refresh_cache();
+    Ok(winapp_db::winapp_db_status())
 }

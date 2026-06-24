@@ -173,7 +173,7 @@ function NetworkStatsPage() {
 
   const adapters = deviceInventory?.networkAdapters ?? []
   const selectedAdapter = adapterParam !== null
-    ? adapters.find(adapter => adapter.name === adapterParam) ?? null
+    ? adapters.find(adapter => networkAdapterToParam(adapter.name) === adapterParam) ?? null
     : null
 
   if (liveInfo === null && isFetching) {

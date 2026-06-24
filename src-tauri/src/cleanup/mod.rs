@@ -4,6 +4,7 @@ mod targets;
 #[cfg(target_os = "windows")]
 mod trustedinstaller;
 mod winapp;
+pub mod winapp_db;
 
 use std::collections::HashSet;
 use std::env;
@@ -77,6 +78,11 @@ pub fn cleanup_scan_all() -> Result<Vec<CleanupCategoryReport>, AppError> {
 pub fn cleanup_clean_all(
     requests: &[CategoryCleanRequest],
 ) -> Result<Vec<CleanupCategoryReport>, AppError> {
+    log::info!(
+        "cleanup_clean_all: {} requests: {:?}",
+        requests.len(),
+        requests.iter().map(|r| &r.category_id).collect::<Vec<_>>()
+    );
     Ok(requests
         .par_iter()
         .map(
@@ -388,6 +394,11 @@ fn scan_unused_devices_entries() -> Result<Vec<CleanupEntry>, String> {
 #[cfg(target_os = "windows")]
 fn clean_unused_devices_entries(exclude_entry_ids: &[String]) -> Result<Vec<CleanupEntry>, String> {
     let devices = enumerate_ghost_devices()?;
+    log::info!(
+        "clean_unused_devices_entries: {} ghost devices found, {} excluded",
+        devices.len(),
+        exclude_entry_ids.len()
+    );
     let mut entries = Vec::with_capacity(devices.len());
 
     for device in devices {
@@ -398,9 +409,11 @@ fn clean_unused_devices_entries(exclude_entry_ids: &[String]) -> Result<Vec<Clea
         if should_clean {
             match remove_ghost_device(&entry_id) {
                 Ok(()) => {
+                    log::info!("remove_ghost_device: successfully removed {entry_id}");
                     entry.status = CleanupEntryStatus::Removed;
                 }
                 Err(error) => {
+                    log::warn!("remove_ghost_device: failed to remove {entry_id}: {error}");
                     entry.status = CleanupEntryStatus::Failed;
                     entry.error = Some(error);
                 }

@@ -33,3 +33,12 @@ export interface CategoryCleanRequest {
   categoryId: CleanupCategoryId
   excludeEntryIds: string[]
 }
+
+export type WinappDbSource = 'bundled' | 'cache' | 'custom'
+
+export interface WinappDbStatus {
+  source: WinappDbSource
+  lastUpdated: number | null
+  customPath: string | null
+  cachePath: string | null
+}

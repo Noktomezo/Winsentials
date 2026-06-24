@@ -14,6 +14,7 @@ import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
+import WinappDbStatusBar from './winapp-db-status-bar'
 
 interface CleanupCategoryDefinition {
   icon: LucideIcon
@@ -666,6 +667,7 @@ function CleanupPage() {
       categoryId: category.id,
       excludeEntryIds: Array.from(selectionRef.current.uncheckedEntries[category.id] || []),
     }))
+    console.warn('[cleanup] cleanAllCategories requests:', requests)
     cleanAllCleanupCategories(requests)
       .then((newReports) => {
         cleanupScanCache.setReports(newReports)
@@ -719,6 +721,7 @@ function CleanupPage() {
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
+      <WinappDbStatusBar />
       <div className="tweak-card-grid">
         {cards.map(category => (
           <CleanupCard
