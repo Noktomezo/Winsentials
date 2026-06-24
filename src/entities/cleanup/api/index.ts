@@ -1,4 +1,4 @@
-import type { CleanupCategoryId, CleanupCategoryReport } from '@/entities/cleanup/model/types'
+import type { CategoryCleanRequest, CleanupCategoryId, CleanupCategoryReport } from '@/entities/cleanup/model/types'
 import { invoke } from '@tauri-apps/api/core'
 
 export async function scanCleanupCategory(categoryId: CleanupCategoryId): Promise<CleanupCategoryReport> {
@@ -7,4 +7,12 @@ export async function scanCleanupCategory(categoryId: CleanupCategoryId): Promis
 
 export async function cleanCleanupCategory(categoryId: CleanupCategoryId, excludeEntryIds: string[] = []): Promise<CleanupCategoryReport> {
   return await invoke<CleanupCategoryReport>('cleanup_clean_category', { categoryId, excludeEntryIds })
+}
+
+export async function scanAllCleanupCategories(): Promise<CleanupCategoryReport[]> {
+  return await invoke<CleanupCategoryReport[]>('cleanup_scan_all')
+}
+
+export async function cleanAllCleanupCategories(requests: CategoryCleanRequest[]): Promise<CleanupCategoryReport[]> {
+  return await invoke<CleanupCategoryReport[]>('cleanup_clean_all', { requests })
 }

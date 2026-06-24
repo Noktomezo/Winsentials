@@ -1,10 +1,11 @@
 import type { LucideIcon } from 'lucide-react'
-import type { CleanupCategoryId, CleanupCategoryReport, CleanupEntry, CleanupEntryStatus } from '@/entities/cleanup/model/types'
+import type { CleanupCategoryId, CleanupCategoryReport, CleanupEntry, CleanupEntryStatus, ReportMap } from '@/entities/cleanup/model/types'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { AppWindow, Check, CheckSquare, ChevronDown, Code2, Gamepad2, Globe, Loader2, MonitorCog, PackageOpen, RefreshCw, Square, Trash2, Unplug, Video, X } from 'lucide-react'
+import { AlertTriangle, AppWindow, Check, CheckSquare, ChevronDown, Code2, Gamepad2, Globe, Loader2, MonitorCog, PackageOpen, RefreshCw, RotateCcw, Square, Trash2, Unplug, Video, X } from 'lucide-react'
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cleanCleanupCategory, scanCleanupCategory } from '@/entities/cleanup/api'
+import { cleanAllCleanupCategories, cleanCleanupCategory } from '@/entities/cleanup/api'
+import { cleanupScanCache, useCleanupReports } from '@/entities/cleanup/model/scan-cache'
 import { addRefreshingCategories, hasRefreshingCategories, removeRefreshingCategories, setCleanupBusy, useCleanupUiState } from '@/entities/cleanup/model/ui-state'
 import { formatBytesLocalized } from '@/shared/lib/format-size'
 import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
@@ -46,7 +47,6 @@ const STATUS_CLASS: Record<CleanupEntryStatus, string> = {
   removed: 'border-[color:color-mix(in_oklch,var(--success)_30%,transparent)] bg-[color:color-mix(in_oklch,var(--success)_12%,transparent)] text-[var(--success)]',
 }
 
-type ReportMap = Partial<Record<CleanupCategoryId, CleanupCategoryReport>>
 type BusyAction = 'all' | CleanupCategoryId | null
 const CLEAN_ALL_EVENT = 'winsentials:cleanup-clean-all'
 const REFRESH_ALL_EVENT = 'winsentials:cleanup-refresh-all'
@@ -60,16 +60,6 @@ function formatBytes(bytes: number, t: ReturnType<typeof useTranslation>['t'], l
 
 function isCategoryClean(entries: CleanupEntry[]): boolean {
   return entries.length > 0 && entries.every(entry => entry.status === 'clean' || entry.status === 'removed')
-}
-
-function reportMapFromReports(reports: CleanupCategoryReport[]): ReportMap {
-  return Object.fromEntries(reports.map(report => [report.id, report])) as ReportMap
-}
-
-function errorMessageFromReason(reason: unknown): string {
-  if (reason instanceof Error && reason.message) return reason.message
-  if (typeof reason === 'string' && reason) return reason
-  return 'Failed to scan cleanup category'
 }
 
 function cleanupEntryMessage(error: string, t: ReturnType<typeof useTranslation>['t']): string {
@@ -104,23 +94,6 @@ function formatEntryPath(path: string, t: ReturnType<typeof useTranslation>['t']
     return t('cleanup.matchedTargetsCount', { count })
   }
   return path
-}
-
-function failedScanReport(categoryId: CleanupCategoryId, reason: unknown, t: ReturnType<typeof useTranslation>['t']): CleanupCategoryReport {
-  return {
-    id: categoryId,
-    entries: [
-      {
-        error: errorMessageFromReason(reason),
-        iconDataUrl: null,
-        id: `${categoryId}-scan-error`,
-        name: t(`cleanup.categories.${categoryId}.name`),
-        path: '',
-        sizeBytes: 0,
-        status: 'failed',
-      },
-    ],
-  }
 }
 
 function cleanupSummaryFromReports(
@@ -208,6 +181,7 @@ function CleanupEntryRow({
   const { t, i18n } = useTranslation()
   const Icon = STATUS_ICON[entry.status]
   const isErrorEntry = entry.id.endsWith('-scan-error')
+  const displayName = entry.name || (isErrorEntry ? t(`cleanup.categories.${entry.id.replace(/-scan-error$/, '')}.name`) : entry.name)
 
   return (
     <div
@@ -238,7 +212,19 @@ function CleanupEntryRow({
           : <Icon className="size-3.5" />}
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate text-xs font-medium text-foreground">{entry.name}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-xs font-medium text-foreground">{displayName}</span>
+          {entry.warning && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <AlertTriangle className="size-3.5 shrink-0 text-[var(--warning)]" />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                {entry.warning}
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
         <p className="truncate text-[11px] text-muted-foreground">{formatEntryPath(entry.path, t)}</p>
         {entry.error && (
           <p className={cn(
@@ -329,6 +315,7 @@ function CleanupCard({
   uncheckedEntryIds,
   onToggleEntry,
   onToggleAllEntries,
+  onResetToDefaults,
 }: {
   category: CleanupCategoryDefinition
   isBusy: boolean
@@ -343,6 +330,7 @@ function CleanupCard({
   uncheckedEntryIds: Set<string>
   onToggleEntry: (categoryId: CleanupCategoryId, entryId: string) => void
   onToggleAllEntries: (id: CleanupCategoryId) => void
+  onResetToDefaults: (id: CleanupCategoryId) => void
 }) {
   const { t, i18n } = useTranslation()
   const Icon = category.icon
@@ -424,6 +412,22 @@ function CleanupCard({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              aria-label={t('cleanup.selectDefaults')}
+              disabled={isBusy || isRefreshing || !report || report.entries.length === 0}
+              onClick={() => onResetToDefaults(category.id)}
+              size="icon"
+              type="button"
+              variant="ghost"
+              className="ui-soft-surface transition-colors hover:bg-accent/50!"
+            >
+              <RotateCcw className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent sideOffset={8}>{t('cleanup.selectDefaults')}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
               aria-label={t('cleanup.refresh')}
               disabled={isBusy || isRefreshing}
               onClick={() => onRefresh(category.id)}
@@ -467,6 +471,7 @@ interface CleanupSelectionState {
   openCards: Set<CleanupCategoryId>
   checkedCategories: Set<CleanupCategoryId>
   uncheckedEntries: Record<CleanupCategoryId, Set<string>>
+  defaultsApplied: boolean
 }
 
 type CleanupSelectionAction
@@ -475,6 +480,8 @@ type CleanupSelectionAction
     | { type: 'toggleEntry', categoryId: CleanupCategoryId, entryId: string }
     | { type: 'toggleAllCategories' }
     | { type: 'toggleAllEntries', categoryId: CleanupCategoryId, validEntries: CleanupEntry[] }
+    | { type: 'initDefaults', reports: ReportMap }
+    | { type: 'resetToDefaults', categoryId: CleanupCategoryId, defaultFalseEntryIds: string[] }
 
 const INITIAL_CLEANUP_SELECTION: CleanupSelectionState = {
   openCards: new Set(),
@@ -482,6 +489,18 @@ const INITIAL_CLEANUP_SELECTION: CleanupSelectionState = {
   uncheckedEntries: Object.fromEntries(
     CLEANUP_CATEGORIES.map(c => [c.id, new Set<string>()]),
   ) as Record<CleanupCategoryId, Set<string>>,
+  defaultsApplied: false,
+}
+
+function defaultFalseEntryIds(report: CleanupCategoryReport | null | undefined): string[] {
+  if (!report) return []
+  const ids: string[] = []
+  for (const entry of report.entries) {
+    if (!entry.defaultChecked && !entry.id.endsWith('-scan-error')) {
+      ids.push(entry.id)
+    }
+  }
+  return ids
 }
 
 function cleanupSelectionReducer(
@@ -541,13 +560,36 @@ function cleanupSelectionReducer(
         : new Set<string>()
       return { ...state, uncheckedEntries }
     }
+    case 'initDefaults': {
+      if (state.defaultsApplied) return state
+      const uncheckedEntries = { ...state.uncheckedEntries }
+      for (const categoryId of CLEANUP_CATEGORIES.map(c => c.id)) {
+        const ids = defaultFalseEntryIds(action.reports[categoryId])
+        if (ids.length === 0) continue
+        const existing = uncheckedEntries[categoryId] || new Set<string>()
+        uncheckedEntries[categoryId] = new Set([...existing, ...ids])
+      }
+      return { ...state, uncheckedEntries, defaultsApplied: true }
+    }
+    case 'resetToDefaults': {
+      const uncheckedEntries = { ...state.uncheckedEntries }
+      uncheckedEntries[action.categoryId] = new Set(action.defaultFalseEntryIds)
+      return { ...state, uncheckedEntries }
+    }
   }
+}
+
+function refreshCleanupCategory(categoryId: CleanupCategoryId) {
+  addRefreshingCategories([categoryId])
+  cleanupScanCache.refreshCategory(categoryId).finally(() => {
+    removeRefreshingCategories([categoryId])
+  })
 }
 
 function CleanupPage() {
   const { t } = useTranslation()
   const cleanupUiState = useCleanupUiState()
-  const [reports, setReports] = useState<ReportMap>({})
+  const { reports } = useCleanupReports()
   const [busyAction, setBusyAction] = useState<BusyAction>(null)
   const busyActionRef = useRef<BusyAction>(null)
   const [selection, dispatchSelection] = useReducer(cleanupSelectionReducer, INITIAL_CLEANUP_SELECTION)
@@ -557,14 +599,16 @@ function CleanupPage() {
     selectionRef.current = selection
   }, [selection])
 
+  useEffect(() => {
+    if (!selection.defaultsApplied && Object.keys(reports).length > 0) {
+      dispatchSelection({ type: 'initDefaults', reports })
+    }
+  }, [reports, selection.defaultsApplied])
+
   function setBusyActionState(action: BusyAction) {
     busyActionRef.current = action
     setBusyAction(action)
     setCleanupBusy(action !== null)
-  }
-
-  function updateReports(updater: (current: ReportMap) => ReportMap) {
-    setReports(updater)
   }
 
   useEffect(() => {
@@ -573,43 +617,18 @@ function CleanupPage() {
     )
   }, [reports, selection.checkedCategories, selection.uncheckedEntries])
 
-  function scanCategories(categoryIds: CleanupCategoryId[]) {
-    addRefreshingCategories(categoryIds)
-
-    return Promise.allSettled(categoryIds.map(categoryId => scanCleanupCategory(categoryId)))
-      .then((results) => {
-        const categoryReports = results.map((result, index) => (
-          result.status === 'fulfilled'
-            ? result.value
-            : failedScanReport(categoryIds[index], result.reason, t)
-        ))
-
-        updateReports(current => ({ ...current, ...reportMapFromReports(categoryReports) }))
-
-        const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-        if (failures.length > 0) {
-          failures.forEach(result => console.error(result.reason))
-          toast.error(t('cleanup.errors.scan'))
-        }
-      })
-      .finally(() => {
-        removeRefreshingCategories(categoryIds)
-      })
-  }
-
   useMountEffect(() => {
-    void scanCategories(CLEANUP_CATEGORIES.map(category => category.id))
     return () => dispatchCleanupSummary()
   })
-
-  function refreshCategory(categoryId: CleanupCategoryId) {
-    void scanCategories([categoryId])
-  }
 
   function refreshAllCategories() {
     if (busyActionRef.current !== null || hasRefreshingCategories()) return
 
-    void scanCategories(CLEANUP_CATEGORIES.map(category => category.id))
+    const allIds = CLEANUP_CATEGORIES.map(category => category.id)
+    addRefreshingCategories(allIds)
+    cleanupScanCache.refreshAll().finally(() => {
+      removeRefreshingCategories(allIds)
+    })
   }
 
   function cleanCategory(categoryId: CleanupCategoryId) {
@@ -619,7 +638,7 @@ function CleanupPage() {
     const excludeEntryIds = Array.from(selection.uncheckedEntries[categoryId] || [])
     cleanCleanupCategory(categoryId, excludeEntryIds)
       .then((report) => {
-        updateReports(current => ({ ...current, [report.id]: report }))
+        cleanupScanCache.setReport(report)
         toast.success(t('cleanup.cleaned'))
       })
       .catch((error) => {
@@ -643,38 +662,26 @@ function CleanupPage() {
     }
 
     setBusyActionState('all')
-    Promise.allSettled(
-      activeCategories.map(category =>
-        cleanCleanupCategory(
-          category.id,
-          Array.from(selectionRef.current.uncheckedEntries[category.id] || []),
-        ),
-      ),
-    )
-      .then((results) => {
-        const categoryReports: CleanupCategoryReport[] = []
-        const failures: PromiseRejectedResult[] = []
-
-        for (const result of results) {
-          if (result.status === 'fulfilled') {
-            categoryReports.push(result.value)
-          }
-          else {
-            failures.push(result)
-          }
-        }
-
-        if (categoryReports.length > 0) {
-          updateReports(current => ({ ...current, ...reportMapFromReports(categoryReports) }))
-        }
-
-        if (failures.length > 0) {
-          failures.forEach(result => console.error(result.reason))
+    const requests = activeCategories.map(category => ({
+      categoryId: category.id,
+      excludeEntryIds: Array.from(selectionRef.current.uncheckedEntries[category.id] || []),
+    }))
+    cleanAllCleanupCategories(requests)
+      .then((newReports) => {
+        cleanupScanCache.setReports(newReports)
+        const hasFailures = newReports.some(report =>
+          report.entries.some(entry => entry.id.endsWith('-scan-error')),
+        )
+        if (hasFailures) {
           toast.error(t('cleanup.errors.clean'))
-          return
         }
-
-        toast.success(t('cleanup.cleanedAll'))
+        else {
+          toast.success(t('cleanup.cleanedAll'))
+        }
+      })
+      .catch((error) => {
+        console.error(error)
+        toast.error(t('cleanup.errors.clean'))
       })
       .finally(() => {
         setBusyActionState(null)
@@ -690,6 +697,11 @@ function CleanupPage() {
     if (!report) return
     const validEntries = report.entries.filter(entry => !entry.id.endsWith('-scan-error'))
     dispatchSelection({ type: 'toggleAllEntries', categoryId, validEntries })
+  }
+
+  function resetToDefaults(categoryId: CleanupCategoryId) {
+    const defaultFalseIds = defaultFalseEntryIds(reports[categoryId])
+    dispatchSelection({ type: 'resetToDefaults', categoryId, defaultFalseEntryIds: defaultFalseIds })
   }
 
   const cards = useMemo(() => CLEANUP_CATEGORIES, [])
@@ -715,7 +727,7 @@ function CleanupPage() {
             isRefreshing={cleanupUiState.refreshingCategories.has(category.id)}
             key={category.id}
             onClean={cleanCategory}
-            onRefresh={refreshCategory}
+            onRefresh={refreshCleanupCategory}
             onToggle={categoryId => dispatchSelection({ type: 'toggleCard', categoryId })}
             open={selection.openCards.has(category.id)}
             report={reports[category.id] ?? null}
@@ -724,6 +736,7 @@ function CleanupPage() {
             uncheckedEntryIds={selection.uncheckedEntries[category.id] || new Set<string>()}
             onToggleEntry={(categoryId, entryId) => dispatchSelection({ type: 'toggleEntry', categoryId, entryId })}
             onToggleAllEntries={toggleAllEntries}
+            onResetToDefaults={resetToDefaults}
           />
         ))}
       </div>

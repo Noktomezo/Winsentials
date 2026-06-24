@@ -178,6 +178,7 @@
     "refreshAll": "Refresh all",
     "checkAll": "Select all targets",
     "uncheckAll": "Deselect all targets",
+    "selectDefaults": "Restore default selection",
     "checkAllCategories": "Select all categories",
     "uncheckAllCategories": "Deselect all categories",
     "cleaned": "Cleanup completed.",

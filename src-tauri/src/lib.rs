@@ -13,7 +13,8 @@ pub mod tweaks;
 use crate::backup::{backup_create, backup_delete, backup_list, backup_rename, backup_restore};
 use crate::commands::app::greet;
 use crate::commands::cleanup::{
-    cleanup_clean_category, cleanup_scan_category, cleanup_schedule_delete_on_reboot,
+    cleanup_clean_all, cleanup_clean_category, cleanup_scan_all, cleanup_scan_category,
+    cleanup_schedule_delete_on_reboot,
 };
 use crate::commands::discord_presence::set_discord_presence_mode;
 use crate::commands::startup::{
@@ -162,6 +163,8 @@ pub fn run() {
             backup_delete,
             cleanup_scan_category,
             cleanup_clean_category,
+            cleanup_scan_all,
+            cleanup_clean_all,
             cleanup_schedule_delete_on_reboot,
             set_discord_presence_mode,
             greet,

@@ -178,6 +178,7 @@
     "refreshAll": "Обновить всё",
     "checkAll": "Выбрать все цели",
     "uncheckAll": "Снять выбор со всех целей",
+    "selectDefaults": "Восстановить выбор по умолчанию",
     "checkAllCategories": "Выбрать все категории",
     "uncheckAllCategories": "Снять выбор со всех категорий",
     "cleaned": "Очистка завершена.",

@@ -13,8 +13,8 @@ use std::path::{Component, Path, PathBuf};
 
 use rayon::prelude::*;
 use types::{
-    CleanupCategoryReport, CleanupEntry, CleanupEntryStatus, CleanupScheduleEntry,
-    CleanupScheduleReport,
+    CategoryCleanRequest, CleanupCategoryReport, CleanupEntry, CleanupEntryStatus,
+    CleanupScheduleEntry, CleanupScheduleReport,
 };
 
 use crate::error::AppError;
@@ -51,6 +51,58 @@ pub fn cleanup_clean_category(
     exclude_entry_ids: &[String],
 ) -> Result<CleanupCategoryReport, AppError> {
     build_report_with_privileged_delete(category_id, true, exclude_entry_ids)
+}
+
+const ALL_CATEGORY_IDS: &[&str] = &[
+    "windows",
+    "browsers",
+    "applications",
+    "development",
+    "gaming",
+    "media",
+    "appx",
+    "unused_devices",
+];
+
+pub fn cleanup_scan_all() -> Result<Vec<CleanupCategoryReport>, AppError> {
+    Ok(ALL_CATEGORY_IDS
+        .par_iter()
+        .map(|id| match cleanup_scan_category(id) {
+            Ok(report) => report,
+            Err(err) => failed_category_report(id, err),
+        })
+        .collect())
+}
+
+pub fn cleanup_clean_all(
+    requests: &[CategoryCleanRequest],
+) -> Result<Vec<CleanupCategoryReport>, AppError> {
+    Ok(requests
+        .par_iter()
+        .map(
+            |req| match cleanup_clean_category(&req.category_id, &req.exclude_entry_ids) {
+                Ok(report) => report,
+                Err(err) => failed_category_report(&req.category_id, err),
+            },
+        )
+        .collect())
+}
+
+fn failed_category_report(id: &str, err: AppError) -> CleanupCategoryReport {
+    CleanupCategoryReport {
+        id: id.to_string(),
+        entries: vec![CleanupEntry {
+            id: format!("{id}-scan-error"),
+            name: String::new(),
+            path: String::new(),
+            status: CleanupEntryStatus::Failed,
+            size_bytes: 0,
+            error: Some(err.to_string()),
+            icon_data_url: None,
+            default_checked: false,
+            warning: None,
+        }],
+    }
 }
 
 pub fn cleanup_schedule_delete_on_reboot(
@@ -336,38 +388,29 @@ fn scan_unused_devices_entries() -> Result<Vec<CleanupEntry>, String> {
 #[cfg(target_os = "windows")]
 fn clean_unused_devices_entries(exclude_entry_ids: &[String]) -> Result<Vec<CleanupEntry>, String> {
     let devices = enumerate_ghost_devices()?;
-    let mut failed_entries = vec![];
+    let mut entries = Vec::with_capacity(devices.len());
 
     for device in devices {
         let entry_id = device.instance_id.clone();
         let should_clean = !exclude_entry_ids.contains(&entry_id);
+        let mut entry = ghost_device_to_cleanup_entry(device);
 
         if should_clean {
-            if let Err(error) = remove_ghost_device(&device.instance_id) {
-                let mut entry = ghost_device_to_cleanup_entry(device);
-                entry.status = CleanupEntryStatus::Failed;
-                entry.error = Some(error);
-                failed_entries.push(entry);
+            match remove_ghost_device(&entry_id) {
+                Ok(()) => {
+                    entry.status = CleanupEntryStatus::Removed;
+                }
+                Err(error) => {
+                    entry.status = CleanupEntryStatus::Failed;
+                    entry.error = Some(error);
+                }
             }
         } else {
-            let mut entry = ghost_device_to_cleanup_entry(device);
             entry.status = CleanupEntryStatus::Pending;
-            failed_entries.push(entry);
         }
+
+        entries.push(entry);
     }
-
-    let failed_ids = failed_entries
-        .iter()
-        .map(|entry| entry.id.to_ascii_lowercase())
-        .collect::<HashSet<_>>();
-
-    let mut entries = failed_entries;
-    entries.extend(
-        enumerate_ghost_devices()?
-            .into_iter()
-            .filter(|device| !failed_ids.contains(&device.instance_id.to_ascii_lowercase()))
-            .map(ghost_device_to_cleanup_entry),
-    );
 
     Ok(entries)
 }
@@ -417,6 +460,8 @@ fn ghost_device_to_cleanup_entry(device: GhostDevice) -> CleanupEntry {
         size_bytes: 0,
         error: None,
         icon_data_url: device.icon_data_url,
+        default_checked: true,
+        warning: None,
     }
 }
 
@@ -441,17 +486,79 @@ fn enumerate_ghost_devices() -> Result<Vec<GhostDevice>, String> {
         .map(|id| id.to_ascii_lowercase())
         .collect::<HashSet<_>>();
 
-    enumerate_devices(false).map(|devices| {
-        devices
-            .into_iter()
-            .filter(|device| !present_ids.contains(&device.instance_id.to_ascii_lowercase()))
-            .collect()
-    })
+    let mut ghosts: Vec<GhostDevice> = enumerate_devices(false, false)?
+        .into_iter()
+        .filter(|device| !present_ids.contains(&device.instance_id.to_ascii_lowercase()))
+        .collect();
+
+    load_device_icons(&mut ghosts);
+
+    Ok(ghosts)
+}
+
+#[cfg(target_os = "windows")]
+fn load_device_icons(devices: &mut [GhostDevice]) {
+    use std::mem::size_of;
+
+    use windows::Win32::Devices::DeviceAndDriverInstallation::{
+        DIGCF_ALLCLASSES, SP_DEVINFO_DATA, SetupDiDestroyDeviceInfoList, SetupDiEnumDeviceInfo,
+        SetupDiGetClassDevsW,
+    };
+    use windows::Win32::Foundation::{ERROR_NO_MORE_ITEMS, GetLastError};
+    use windows::core::PCWSTR;
+
+    if devices.is_empty() {
+        return;
+    }
+
+    let target_ids: HashSet<String> = devices
+        .iter()
+        .map(|d| d.instance_id.to_ascii_lowercase())
+        .collect();
+
+    let device_info_set =
+        unsafe { SetupDiGetClassDevsW(None, PCWSTR::null(), None, DIGCF_ALLCLASSES) };
+    let Ok(device_info_set) = device_info_set else {
+        return;
+    };
+
+    let mut index = 0;
+    loop {
+        let mut device_info = SP_DEVINFO_DATA {
+            cbSize: size_of::<SP_DEVINFO_DATA>() as u32,
+            ..Default::default()
+        };
+
+        if unsafe { SetupDiEnumDeviceInfo(device_info_set, index, &mut device_info) }.is_err() {
+            if unsafe { GetLastError() } == ERROR_NO_MORE_ITEMS {
+                break;
+            }
+            break;
+        }
+        index += 1;
+
+        let Some(instance_id) = device_instance_id(device_info_set, &device_info) else {
+            continue;
+        };
+        if !target_ids.contains(&instance_id.to_ascii_lowercase()) {
+            continue;
+        }
+
+        if let Some(icon) = device_icon_data_url(device_info_set, &device_info)
+            && let Some(device) = devices
+                .iter_mut()
+                .find(|d| d.instance_id.eq_ignore_ascii_case(&instance_id))
+        {
+            device.icon_data_url = Some(icon);
+        }
+    }
+
+    let _ = unsafe { SetupDiDestroyDeviceInfoList(device_info_set) };
 }
 
 #[cfg(target_os = "windows")]
 fn enumerate_device_instance_ids(present_only: bool) -> Result<Vec<String>, String> {
-    enumerate_devices(present_only).map(|devices| {
+    enumerate_devices(present_only, false).map(|devices| {
         devices
             .into_iter()
             .map(|device| device.instance_id)
@@ -460,7 +567,7 @@ fn enumerate_device_instance_ids(present_only: bool) -> Result<Vec<String>, Stri
 }
 
 #[cfg(target_os = "windows")]
-fn enumerate_devices(present_only: bool) -> Result<Vec<GhostDevice>, String> {
+fn enumerate_devices(present_only: bool, load_icons: bool) -> Result<Vec<GhostDevice>, String> {
     use std::mem::size_of;
 
     use windows::Win32::Devices::DeviceAndDriverInstallation::{
@@ -516,7 +623,11 @@ fn enumerate_devices(present_only: bool) -> Result<Vec<GhostDevice>, String> {
             .as_deref()
             .and_then(device_driver_registry_info)
             .unwrap_or_default();
-        let icon_data_url = device_icon_data_url(device_info_set, &device_info);
+        let icon_data_url = if load_icons {
+            device_icon_data_url(device_info_set, &device_info)
+        } else {
+            None
+        };
 
         let mut status = CM_DEVNODE_STATUS_FLAGS(0);
         let mut problem = CM_PROB(0);
@@ -964,6 +1075,8 @@ fn scan_target(target: &ResolvedTarget) -> CleanupEntry {
             size_bytes,
             error: None,
             icon_data_url: None,
+            default_checked: true,
+            warning: None,
         },
         Err(error) if error.kind() == io::ErrorKind::NotFound => CleanupEntry {
             id: target.id.clone(),
@@ -973,6 +1086,8 @@ fn scan_target(target: &ResolvedTarget) -> CleanupEntry {
             size_bytes: 0,
             error: None,
             icon_data_url: None,
+            default_checked: true,
+            warning: None,
         },
         Err(error) => CleanupEntry {
             id: target.id.clone(),
@@ -982,6 +1097,8 @@ fn scan_target(target: &ResolvedTarget) -> CleanupEntry {
             size_bytes: 0,
             error: Some(error.to_string()),
             icon_data_url: None,
+            default_checked: true,
+            warning: None,
         },
     }
 }
