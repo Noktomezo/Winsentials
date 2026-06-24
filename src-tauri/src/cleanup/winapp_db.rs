@@ -96,11 +96,14 @@ fn load_settings() -> Option<WinappDbSettings> {
     serde_json::from_str(&content).ok()
 }
 
-fn save_settings(settings: &WinappDbSettings) {
-    let Some(path) = settings_path() else { return };
-    if let Ok(content) = serde_json::to_string(settings) {
-        let _ = std::fs::write(&path, content);
-    }
+fn save_settings(settings: &WinappDbSettings) -> Result<(), AppError> {
+    let path = settings_path()
+        .ok_or_else(|| AppError::message("cleanup data directory is not initialised"))?;
+    let content = serde_json::to_string(settings)
+        .map_err(|e| AppError::message(format!("failed to serialise winapp settings: {e}")))?;
+    std::fs::write(&path, content)
+        .map_err(|e| AppError::message(format!("failed to write winapp settings: {e}")))?;
+    Ok(())
 }
 
 pub(super) fn winapp2_entries() -> Arc<Vec<IniEntry>> {
@@ -202,6 +205,13 @@ pub fn winapp_db_status() -> WinappDbStatus {
         if custom.is_file() {
             let last_updated = file_mtime(custom);
             ("custom", last_updated)
+        } else if let Some(ref cache) = cache_path {
+            if cache.is_file() {
+                let last_updated = file_mtime(cache);
+                ("cache", last_updated)
+            } else {
+                ("bundled", None)
+            }
         } else {
             ("bundled", None)
         }
@@ -232,10 +242,10 @@ fn file_mtime(path: &std::path::Path) -> Option<u64> {
         .map(|d| d.as_secs())
 }
 
-pub fn set_custom_winapp2_path(path: Option<PathBuf>) {
+pub fn set_custom_winapp2_path(path: Option<PathBuf>) -> Result<(), AppError> {
     let mut settings = settings().write().expect("winapp settings lock poisoned");
     settings.custom_winapp2_path = path;
-    save_settings(&settings);
+    save_settings(&settings)
 }
 
 pub async fn download_winapp2() -> Result<DownloadReport, AppError> {

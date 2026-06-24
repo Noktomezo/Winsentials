@@ -67,8 +67,11 @@ pub fn run() {
         .manage(discord_presence::DiscordPresenceState::new())
         .setup(|app| {
             crate::backup::ensure_initial_backup();
-            if let Ok(local_data_dir) = app.path().app_local_data_dir() {
-                crate::cleanup::winapp_db::init(local_data_dir);
+            match app.path().app_local_data_dir() {
+                Ok(local_data_dir) => crate::cleanup::winapp_db::init(local_data_dir),
+                Err(error) => {
+                    log::warn!("winapp_db init skipped: app_local_data_dir error: {error}")
+                }
             }
             use std::time::{Duration, Instant};
             use sysinfo::{CpuRefreshKind, MemoryRefreshKind, Networks, RefreshKind, System};

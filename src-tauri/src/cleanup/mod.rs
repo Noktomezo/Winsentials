@@ -54,19 +54,14 @@ pub fn cleanup_clean_category(
     build_report_with_privileged_delete(category_id, true, exclude_entry_ids)
 }
 
-const ALL_CATEGORY_IDS: &[&str] = &[
-    "windows",
-    "browsers",
-    "applications",
-    "development",
-    "gaming",
-    "media",
-    "appx",
-    "unused_devices",
-];
+fn all_category_ids() -> Vec<&'static str> {
+    let mut ids: Vec<&'static str> = winapp::WINAPP_CATEGORIES.to_vec();
+    ids.push(UNUSED_DEVICES_CATEGORY);
+    ids
+}
 
 pub fn cleanup_scan_all() -> Result<Vec<CleanupCategoryReport>, AppError> {
-    Ok(ALL_CATEGORY_IDS
+    Ok(all_category_ids()
         .par_iter()
         .map(|id| match cleanup_scan_category(id) {
             Ok(report) => report,
@@ -84,7 +79,7 @@ pub fn cleanup_clean_all(
         requests.iter().map(|r| &r.category_id).collect::<Vec<_>>()
     );
     Ok(requests
-        .par_iter()
+        .iter()
         .map(
             |req| match cleanup_clean_category(&req.category_id, &req.exclude_entry_ids) {
                 Ok(report) => report,

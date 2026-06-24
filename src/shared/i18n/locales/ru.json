@@ -631,6 +631,7 @@
     "searchLabel": "Поиск записей автозагрузки",
     "searchPlaceholder": "Поиск записей автозагрузки",
     "filters": {
+      "title": "Фильтры",
       "source": "Источник",
       "status": "Статус",
       "allSources": "Все источники",

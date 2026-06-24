@@ -55,7 +55,6 @@ export function BackupCard({
           onClick={() => onToggleExpand(backup.filename)}
           type="button"
         >
-          {' '}
           <span className="ui-soft-surface flex size-9 shrink-0 items-center justify-center rounded-md">
             <DatabaseBackup className="size-4" />
           </span>

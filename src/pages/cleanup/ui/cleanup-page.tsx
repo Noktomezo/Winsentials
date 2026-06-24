@@ -55,6 +55,13 @@ const TOGGLE_ALL_CATEGORIES_EVENT = 'winsentials:cleanup-toggle-all-categories'
 const CLEANUP_SUMMARY_EVENT = 'winsentials:cleanup-summary'
 const EMPTY_CLEANUP_SUMMARY = { cleanableCount: 0, sizeBytes: 0, targetCount: 0 }
 
+interface CleanupSummary {
+  cleanableCount: number
+  sizeBytes: number
+  targetCount: number
+  hasAnyChecked?: boolean
+}
+
 function formatBytes(bytes: number, t: ReturnType<typeof useTranslation>['t'], locale: string): string {
   return formatBytesLocalized(bytes, { decimals: 1, locale, t })
 }
@@ -121,12 +128,12 @@ function cleanupSummaryFromReports(
         targetCount: acc.targetCount + activeEntries.length,
       }
     },
-    { ...EMPTY_CLEANUP_SUMMARY, hasAnyChecked: checkedCategories.size > 0 } as any,
+    { ...EMPTY_CLEANUP_SUMMARY, hasAnyChecked: checkedCategories.size > 0 } as CleanupSummary,
   )
   return summary
 }
 
-function dispatchCleanupSummary(summary: any = { ...EMPTY_CLEANUP_SUMMARY, hasAnyChecked: true }) {
+function dispatchCleanupSummary(summary: CleanupSummary = { ...EMPTY_CLEANUP_SUMMARY, hasAnyChecked: true }) {
   window.dispatchEvent(new CustomEvent(CLEANUP_SUMMARY_EVENT, {
     detail: summary,
   }))
@@ -667,12 +674,13 @@ function CleanupPage() {
       categoryId: category.id,
       excludeEntryIds: Array.from(selectionRef.current.uncheckedEntries[category.id] || []),
     }))
-    console.warn('[cleanup] cleanAllCategories requests:', requests)
     cleanAllCleanupCategories(requests)
       .then((newReports) => {
         cleanupScanCache.setReports(newReports)
         const hasFailures = newReports.some(report =>
-          report.entries.some(entry => entry.id.endsWith('-scan-error')),
+          report.entries.some(entry =>
+            entry.id.endsWith('-scan-error') || entry.status === 'failed',
+          ),
         )
         if (hasFailures) {
           toast.error(t('cleanup.errors.clean'))

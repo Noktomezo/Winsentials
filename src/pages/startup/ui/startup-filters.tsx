@@ -81,8 +81,9 @@ export function StartupFilters({
           />
         </div>
         <Button
+          aria-controls="startup-filters-panel"
           aria-expanded={filtersOpen}
-          aria-label={t('startup.filters.source')}
+          aria-label={t('startup.filters.title')}
           className={cn(
             'shrink-0 relative overflow-visible',
             (filtersOpen || hasActiveFilters)
@@ -118,12 +119,15 @@ export function StartupFilters({
       </div>
 
       <div
+        aria-hidden={!filtersOpen}
         className={cn(
           'overflow-hidden transition-[height,opacity,margin-top] duration-200 ease-out',
           filtersOpen
             ? 'mt-3 opacity-100 pointer-events-auto'
             : 'mt-0 opacity-0 pointer-events-none',
         )}
+        id="startup-filters-panel"
+        inert={!filtersOpen}
         ref={filtersOuterRef}
         style={{ height: filtersOpen ? `${filtersHeight}px` : '0px' }}
       >

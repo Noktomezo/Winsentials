@@ -12,6 +12,7 @@ const listeners = new Set<() => void>()
 let reports: ReportMap = {}
 let isLoading = false
 let inflight: Promise<void> | null = null
+let pendingForced: Promise<void> | null = null
 
 let snapshot: CleanupScanSnapshot = {
   reports,
@@ -41,7 +42,16 @@ function loadAllCleanupReports(force = false): Promise<void> {
   }
 
   if (inflight) {
-    return inflight
+    if (!force) {
+      return inflight
+    }
+    if (!pendingForced) {
+      pendingForced = inflight.then(() => {
+        pendingForced = null
+        return loadAllCleanupReports(true)
+      })
+    }
+    return pendingForced
   }
 
   isLoading = true

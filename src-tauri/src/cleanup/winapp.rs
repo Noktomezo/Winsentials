@@ -22,6 +22,15 @@ use super::{
 use crate::cleanup::types::{CleanupCategoryReport, CleanupEntry, CleanupEntryStatus};
 use crate::error::AppError;
 
+fn is_path_within_dir(path_lower: &str, dir_lower: &str) -> bool {
+    path_lower == dir_lower || path_str_starts_with_dir(path_lower, dir_lower)
+}
+
+fn path_str_starts_with_dir(path: &str, dir: &str) -> bool {
+    let dir_with_sep = format!("{dir}\\");
+    path.starts_with(&dir_with_sep) || path.starts_with(&format!("{dir}/"))
+}
+
 fn is_excluded(path: &Path, exclude_rules: &[ExcludeRule]) -> bool {
     let path_str = path.to_string_lossy().to_ascii_lowercase();
 
@@ -38,7 +47,7 @@ fn is_excluded(path: &Path, exclude_rules: &[ExcludeRule]) -> bool {
                 if let Some(expanded) = expand_winapp_path(&rule.path) {
                     for exclude_dir in expand_wildcard_path(PathBuf::from(expanded)) {
                         let dir_lower = exclude_dir.to_string_lossy().to_ascii_lowercase();
-                        if !path_str.starts_with(&dir_lower) {
+                        if !is_path_within_dir(&path_str, &dir_lower) {
                             continue;
                         }
                         if let Some(ref pattern) = rule.file_pattern {

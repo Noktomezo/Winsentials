@@ -627,6 +627,7 @@
     "searchLabel": "Search startup entries",
     "searchPlaceholder": "Search startup entries",
     "filters": {
+      "title": "Filters",
       "source": "Source",
       "status": "Status",
       "allSources": "All sources",

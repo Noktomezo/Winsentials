@@ -24,7 +24,9 @@ function WinappDbStatusBar() {
   const [updating, setUpdating] = useState(false)
 
   useEffect(() => {
-    getWinappDbStatus().then(setStatus).catch(() => {})
+    getWinappDbStatus().then(setStatus).catch((error) => {
+      console.error(error)
+    })
   }, [])
 
   function handleUpdate() {
