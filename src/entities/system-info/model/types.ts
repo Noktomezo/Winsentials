@@ -27,29 +27,13 @@ export interface GpuProcess {
   dedicatedMemMb: number
 }
 
-export interface GpuInfo {
-  index: number
+export interface GpuInfo extends LiveGpuInfo {
   name: string
   vendor: string
   isIntegrated: boolean
   driverVersion: string | null
   driverDate: string | null
   directxVersion: string | null
-  vramTotalMb: number
-  dedicatedVramMb: number
-  sharedSystemMb: number
-  vramUsedMb: number
-  vramSharedMb: number
-  vramReservedMb: number
-  temperatureC: number | null
-  powerW: number | null
-  util3d: number
-  utilCopy: number
-  utilEncode: number
-  utilDecode: number
-  utilHighPriority3d: number
-  utilHighPriorityCompute: number
-  processes: GpuProcess[]
   pciBus: number | null
   pciDevice: number | null
   pciFunction: number | null

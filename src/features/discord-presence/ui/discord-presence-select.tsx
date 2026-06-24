@@ -12,12 +12,12 @@ import { usePreferencesStore } from '@/entities/settings/model/preferences-store
 import { DISCORD_PRESENCE_MODES } from '@/shared/config/app'
 import { cn } from '@/shared/lib/utils'
 import {
-  filledSelectTriggerClassName,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
 } from '@/shared/ui/select'
+import { filledSelectTriggerClassName } from '@/shared/ui/select-variants'
 
 const PRESENCE_ICONS = {
   none: Unlink,

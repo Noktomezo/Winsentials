@@ -6,7 +6,7 @@ import { useDeviceInventory, useLiveNetwork } from '@/entities/system-info/model
 import { formatRateLocalized } from '@/shared/lib/format-size'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 import { networkAdapterToParam } from '@/shared/lib/mount-utils'
-import { Button, Skeleton } from '@/shared/ui'
+import { LiveErrorState, Skeleton } from '@/shared/ui'
 import { LiveChart } from '@/shared/ui/live-chart'
 
 function formatRate(bytesPerSec: number, locale: string, t: ReturnType<typeof useTranslation>['t']): string {
@@ -44,11 +44,6 @@ function signalColorClass(signalPercent: number): string {
   if (signalPercent >= 75) return 'metric-text-good'
   if (signalPercent >= 40) return 'metric-text-warning'
   return 'metric-text-danger'
-}
-
-interface LiveNetworkErrorStateProps {
-  message: string
-  onRetry: () => void
 }
 
 function getLiveAdapter(liveInfo: NetworkIfaceStats[] | null, adapter: NetworkAdapterInfo): NetworkIfaceStats | null {
@@ -100,23 +95,6 @@ function LiveNetworkLoadingState() {
           </div>
         </section>
       ))}
-    </section>
-  )
-}
-
-function LiveNetworkErrorState({ message, onRetry }: LiveNetworkErrorStateProps) {
-  const { t } = useTranslation()
-
-  return (
-    <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-      <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
-        <p className="text-sm text-muted-foreground">{message}</p>
-        <div>
-          <Button onClick={onRetry} size="sm" type="button" variant="outline">
-            {t('tweaks.actions.retry')}
-          </Button>
-        </div>
-      </section>
     </section>
   )
 }
@@ -184,34 +162,12 @@ function NetworkStatsPage() {
   if (deviceInventory === null) {
     if (inventoryError) {
       return (
-        <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-          <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
-            <p className="text-sm text-muted-foreground">{t('networkStats.loadError')}</p>
-            <div>
-              <Button onClick={retryInventory} size="sm" type="button" variant="outline">
-                {t('tweaks.actions.retry')}
-              </Button>
-            </div>
-          </section>
-        </section>
+        <LiveErrorState message={t('networkStats.loadError')} onRetry={retryInventory} />
       )
     }
 
     if (inventoryFetching) {
-      return (
-        <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <section className="rounded-lg border border-border/70 bg-card p-4" key={i}>
-              <Skeleton className="mb-3 h-4 w-40" />
-              <div className="space-y-2.5">
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-4/5" />
-                <Skeleton className="h-3 w-3/5" />
-              </div>
-            </section>
-          ))}
-        </section>
-      )
+      return <LiveNetworkLoadingState />
     }
   }
 
@@ -225,7 +181,7 @@ function NetworkStatsPage() {
   }
 
   if (liveInfo === null && liveError) {
-    return <LiveNetworkErrorState message={t('networkStats.liveLoadError')} onRetry={retry} />
+    return <LiveErrorState message={t('networkStats.liveLoadError')} onRetry={retry} />
   }
 
   if (adapterParam !== null && deviceInventory !== null && !selectedAdapter) {

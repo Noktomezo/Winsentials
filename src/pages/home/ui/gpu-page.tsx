@@ -1,244 +1,11 @@
-import type { ReactNode } from 'react'
-import type {
-  GpuInfo,
-  LiveGpuInfo,
-  StaticSystemInfo,
-} from '@/entities/system-info/model/types'
-import type { ChartPoint } from '@/shared/ui/live-chart'
+import type { LiveGpuInfo } from '@/entities/system-info/model/types'
 import { Navigate, useParams } from '@tanstack/react-router'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { useLiveGpu } from '@/entities/system-info/model/live-system-store'
-import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
-import { Button, Skeleton } from '@/shared/ui'
-import { LiveChart } from '@/shared/ui/live-chart'
-
-interface EngineChartProps {
-  label: string
-  value: number
-  data: ChartPoint[]
-}
-
-interface MemChartProps {
-  label: string
-  valueLabel: string
-  data: ChartPoint[]
-  unit?: string
-  yDomain?: [number, number]
-}
-
-interface LiveGpuErrorStateProps {
-  message: string
-  onRetry: () => void
-}
-
-function gpuUsage(
-  gpu: Pick<
-    LiveGpuInfo,
-    | 'util3d'
-    | 'utilCopy'
-    | 'utilEncode'
-    | 'utilDecode'
-    | 'utilHighPriority3d'
-    | 'utilHighPriorityCompute'
-  >,
-): number {
-  return Math.max(
-    gpu.util3d,
-    gpu.utilCopy,
-    gpu.utilEncode,
-    gpu.utilDecode,
-    gpu.utilHighPriority3d,
-    gpu.utilHighPriorityCompute,
-  )
-}
-
-function formatMb(
-  mb: number,
-  t: ReturnType<typeof useTranslation>['t'],
-): string {
-  if (mb === 0) return `0 ${t('format.megabyte')}`
-  if (mb >= 1024) return `${(mb / 1024).toFixed(1)} ${t('format.gigabyte')}`
-  return `${mb} ${t('format.megabyte')}`
-}
-
-function formatMbPair(
-  used: number,
-  total: number,
-  t: ReturnType<typeof useTranslation>['t'],
-): string {
-  const useGb = total >= 1024
-  if (useGb) {
-    return `${(used / 1024).toFixed(1)} / ${(total / 1024).toFixed(1)} ${t('format.gigabyte')}`
-  }
-  return `${used} / ${total} ${t('format.megabyte')}`
-}
-
-interface RowProps {
-  label: string
-  value: ReactNode
-}
-
-function Row({ label, value }: RowProps) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-right text-xs font-medium text-foreground">
-        {value}
-      </span>
-    </div>
-  )
-}
-
-function loadColor(pct: number): string {
-  if (pct >= 85) {
-    return 'metric-text-danger'
-  }
-  if (pct >= 60) {
-    return 'metric-text-warning'
-  }
-  return 'metric-text-good'
-}
-
-function tempColorClass(temp: number): string {
-  if (temp >= 80) {
-    return 'metric-text-danger'
-  }
-  if (temp >= 60) {
-    return 'metric-text-warning'
-  }
-  return 'metric-text-good'
-}
-
-function memoryColorClass(used: number, total: number): string {
-  if (total <= 0) {
-    return 'metric-text-accent'
-  }
-
-  return loadColor(Math.round((used / total) * 100))
-}
-
-function EngineChart({ label, value, data }: EngineChartProps) {
-  const { t } = useTranslation()
-
-  return (
-    <section className="flex flex-col gap-2 rounded-lg border border-border/70 bg-card p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
-        <span className="text-xs font-semibold tabular-nums text-muted-foreground">
-          {value}
-          %
-        </span>
-      </div>
-      <LiveChart data={data} height={64} unit="%" yDomain={[0, 100]} />
-      <div className="flex items-baseline justify-between">
-        <span className="text-xs text-muted-foreground">
-          {t('ram.seconds', { n: 60 })}
-        </span>
-        <span className="text-xs tabular-nums text-muted-foreground">0</span>
-      </div>
-    </section>
-  )
-}
-
-function MemChart({
-  label,
-  valueLabel,
-  data,
-  unit = '%',
-  yDomain,
-}: MemChartProps) {
-  const { t } = useTranslation()
-
-  return (
-    <section className="col-span-2 flex flex-col gap-2 rounded-lg border border-border/70 bg-card p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-medium text-muted-foreground">{label}</h3>
-        <span className="text-xs font-semibold tabular-nums text-muted-foreground">
-          {valueLabel}
-        </span>
-      </div>
-      <LiveChart data={data} height={64} unit={unit} yDomain={yDomain} />
-      <div className="flex items-baseline justify-between">
-        <span className="text-xs text-muted-foreground">
-          {t('ram.seconds', { n: 60 })}
-        </span>
-        <span className="text-xs tabular-nums text-muted-foreground">0</span>
-      </div>
-    </section>
-  )
-}
-
-function getEngineCharts(
-  gpu: GpuInfo,
-  live: LiveGpuInfo | undefined,
-  history: {
-    threeD: ChartPoint[]
-    copy: ChartPoint[]
-    encode: ChartPoint[]
-    decode: ChartPoint[]
-    highPriority3d: ChartPoint[]
-    highPriorityCompute: ChartPoint[]
-  },
-  t: (key: string) => string,
-) {
-  if (gpu.isIntegrated) {
-    return [
-      {
-        key: '3d',
-        label: t('gpu.engine3D'),
-        value: live?.util3d ?? 0,
-        data: history.threeD,
-      },
-      {
-        key: 'copy',
-        label: t('gpu.engineCopy'),
-        value: live?.utilCopy ?? 0,
-        data: history.copy,
-      },
-      {
-        key: 'hp3d',
-        label: t('gpu.engineHP3D'),
-        value: live?.utilHighPriority3d ?? 0,
-        data: history.highPriority3d,
-      },
-      {
-        key: 'hpcompute',
-        label: t('gpu.engineHPCompute'),
-        value: live?.utilHighPriorityCompute ?? 0,
-        data: history.highPriorityCompute,
-      },
-    ]
-  }
-
-  return [
-    {
-      key: '3d',
-      label: t('gpu.engine3D'),
-      value: live?.util3d ?? 0,
-      data: history.threeD,
-    },
-    {
-      key: 'copy',
-      label: t('gpu.engineCopy'),
-      value: live?.utilCopy ?? 0,
-      data: history.copy,
-    },
-    {
-      key: 'encode',
-      label: t('gpu.engineVideoEncode'),
-      value: live?.utilEncode ?? 0,
-      data: history.encode,
-    },
-    {
-      key: 'decode',
-      label: t('gpu.engineVideoDecode'),
-      value: live?.utilDecode ?? 0,
-      data: history.decode,
-    },
-  ]
-}
+import { useStaticSystemInfo } from '@/entities/system-info/model/static-system-info'
+import { LiveErrorState, Skeleton } from '@/shared/ui'
+import { GpuDetailView } from './gpu-detail-view'
+import { GpuOverview } from './gpu-overview'
 
 function LiveGpuLoadingState() {
   return (
@@ -265,35 +32,13 @@ function LiveGpuLoadingState() {
   )
 }
 
-function LiveGpuErrorState({ message, onRetry }: LiveGpuErrorStateProps) {
-  const { t } = useTranslation()
-
-  return (
-    <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-      <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
-        <p className="text-sm text-muted-foreground">{message}</p>
-        <div>
-          <Button onClick={onRetry} size="sm" type="button" variant="outline">
-            {t('tweaks.actions.retry')}
-          </Button>
-        </div>
-      </section>
-    </section>
-  )
-}
-
-type GpuStaticInfoState
-  = | { status: 'error' }
-    | { status: 'loading' }
-    | { info: StaticSystemInfo, status: 'ready' }
-
 function GpuPage() {
   const { t } = useTranslation()
   const params = useParams({ strict: false })
   const parsedGpuIndex
     = params.gpuIndex !== undefined ? Number(params.gpuIndex) : null
 
-  const [staticInfoState, setStaticInfoState] = useState<GpuStaticInfoState>({ status: 'loading' })
+  const { info: staticInfo, error: staticInfoError, retry: retryStaticInfo } = useStaticSystemInfo()
   const {
     data: liveInfo,
     error: liveError,
@@ -302,21 +47,6 @@ function GpuPage() {
     retry,
   } = useLiveGpu()
 
-  const loadStaticInfo = () => {
-    setStaticInfoState({ status: 'loading' })
-    getStaticSystemInfo()
-      .then(info => setStaticInfoState({ info, status: 'ready' }))
-      .catch((error) => {
-        console.error(error)
-        setStaticInfoState({ status: 'error' })
-      })
-  }
-
-  useMountEffect(() => {
-    loadStaticInfo()
-  })
-
-  const staticInfo = staticInfoState.status === 'ready' ? staticInfoState.info : null
   const gpuIndex
     = staticInfo
       && parsedGpuIndex !== null
@@ -338,50 +68,13 @@ function GpuPage() {
   }
 
   if (!staticInfo) {
-    if (staticInfoState.status === 'error') {
+    if (staticInfoError) {
       return (
-        <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-          <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
-            <p className="text-sm text-muted-foreground">
-              {t('gpu.loadError')}
-            </p>
-            <div>
-              <Button
-                onClick={loadStaticInfo}
-                size="sm"
-                type="button"
-                variant="outline"
-              >
-                {t('tweaks.actions.retry')}
-              </Button>
-            </div>
-          </section>
-        </section>
+        <LiveErrorState message={t('gpu.loadError')} onRetry={retryStaticInfo} />
       )
     }
 
-    return (
-      <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-        <div className="grid grid-cols-2 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <section
-              className="rounded-lg border border-border/70 bg-card p-4"
-              key={i}
-            >
-              <Skeleton className="mb-3 h-3 w-24" />
-              <Skeleton className="h-16 w-full" />
-            </section>
-          ))}
-          <section className="col-span-2 rounded-lg border border-border/70 bg-card p-4">
-            <div className="space-y-2.5">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton className="h-3 w-full" key={i} />
-              ))}
-            </div>
-          </section>
-        </div>
-      </section>
-    )
+    return <LiveGpuLoadingState />
   }
 
   // ── Detail view ──────────────────────────────────────────────────────────────
@@ -392,11 +85,11 @@ function GpuPage() {
 
     if (liveInfo === null && liveError) {
       return (
-        <LiveGpuErrorState message={t('gpu.liveLoadError')} onRetry={retry} />
+        <LiveErrorState message={t('gpu.liveLoadError')} onRetry={retry} />
       )
     }
 
-    const live = liveByIndex[gpuIndex]
+    const live = liveByIndex[gpuIndex] as LiveGpuInfo | undefined
     if (!live) {
       return (
         <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
@@ -409,243 +102,36 @@ function GpuPage() {
       )
     }
 
-    const totalMemoryMb = gpu.dedicatedVramMb + gpu.sharedSystemMb
-    const dedicatedBudgetMb = gpu.dedicatedVramMb
-    const dedicatedUsedMb = live?.vramUsedMb ?? 0
-    const sharedUsedMb = live?.vramSharedMb ?? 0
-    const totalUsedMb = dedicatedUsedMb + sharedUsedMb
-
-    const usage = live ? gpuUsage(live) : 0
-    const gpuHist = historyByIndex[gpuIndex]
-    const hist3D = (gpuHist?.threeD ?? []).map((v: number) => ({ value: v }))
-    const histCopy = (gpuHist?.copy ?? []).map((v: number) => ({ value: v }))
-    const histEncode = (gpuHist?.encode ?? []).map((v: number) => ({
-      value: v,
-    }))
-    const histDecode = (gpuHist?.decode ?? []).map((v: number) => ({
-      value: v,
-    }))
-    const histHP3D = (gpuHist?.highPriority3d ?? []).map((v: number) => ({
-      value: v,
-    }))
-    const histHPCompute = (gpuHist?.highPriorityCompute ?? []).map(
-      (v: number) => ({ value: v }),
-    )
-    const histDedicated = (gpuHist?.dedicatedPct ?? []).map((v: number) => ({
-      value: v,
-    }))
-    const histShared = (gpuHist?.sharedMb ?? []).map((v: number) => ({
-      value: v,
-    }))
-    const engineCharts = getEngineCharts(
-      gpu,
-      live,
-      {
-        threeD: hist3D,
-        copy: histCopy,
-        encode: histEncode,
-        decode: histDecode,
-        highPriority3d: histHP3D,
-        highPriorityCompute: histHPCompute,
-      },
-      t,
-    )
-
-    // PCI location string
-    const pciParts: string[] = []
-    if (gpu.pciBus != null) {
-      pciParts.push(`${t('gpu.pciBus')} ${gpu.pciBus}`)
-    }
-    if (gpu.pciDevice != null) {
-      pciParts.push(`${t('gpu.pciDevice')} ${gpu.pciDevice}`)
-    }
-    if (gpu.pciFunction != null) {
-      pciParts.push(`${t('gpu.pciFunction')} ${gpu.pciFunction}`)
-    }
-    const pciString = pciParts.length > 0 ? pciParts.join(', ') : null
-
     return (
-      <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-        {/* Engine charts 2×2 */}
-        <div className="grid grid-cols-2 gap-4">
-          {engineCharts.map(engine => (
-            <EngineChart
-              data={engine.data}
-              key={engine.key}
-              label={engine.label}
-              value={engine.value}
-            />
-          ))}
-        </div>
-
-        <div className="flex flex-col gap-4">
-          {dedicatedBudgetMb > 0 && (
-            <MemChart
-              data={histDedicated}
-              label={t('gpu.dedicated')}
-              valueLabel={formatMbPair(dedicatedUsedMb, dedicatedBudgetMb, t)}
-              yDomain={[0, 100]}
-            />
-          )}
-
-          {gpu.sharedSystemMb > 0 && (
-            <MemChart
-              data={histShared}
-              label={t('gpu.shared')}
-              unit={` ${t('format.megabyte')}`}
-              valueLabel={formatMbPair(sharedUsedMb, gpu.sharedSystemMb, t)}
-            />
-          )}
-        </div>
-
-        {/* Single info card */}
-        <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
-          <h3 className="text-sm font-medium text-foreground">{t('gpu.info')}</h3>
-          {gpu.vendor && gpu.vendor !== 'Unknown' && (
-            <Row label={t('home.vendor')} value={gpu.vendor} />
-          )}
-          <Row label={t('home.model')} value={gpu.name} />
-
-          {live && (
-            <Row
-              label={t('gpu.load')}
-              value={(
-                <span className={loadColor(usage)}>
-                  {usage}
-                  {' '}
-                  %
-                </span>
-              )}
-            />
-          )}
-
-          {totalMemoryMb > 0 && (
-            <Row
-              label={t('gpu.totalRam')}
-              value={<span className={memoryColorClass(totalUsedMb, totalMemoryMb)}>{formatMbPair(totalUsedMb, totalMemoryMb, t)}</span>}
-            />
-          )}
-
-          {dedicatedBudgetMb > 0 && (
-            <Row
-              label={t('gpu.dedicated')}
-              value={<span className={memoryColorClass(dedicatedUsedMb, dedicatedBudgetMb)}>{formatMbPair(dedicatedUsedMb, dedicatedBudgetMb, t)}</span>}
-            />
-          )}
-
-          {gpu.sharedSystemMb > 0 && (
-            <Row
-              label={t('gpu.shared')}
-              value={<span className={memoryColorClass(sharedUsedMb, gpu.sharedSystemMb)}>{formatMbPair(sharedUsedMb, gpu.sharedSystemMb, t)}</span>}
-            />
-          )}
-
-          {live?.temperatureC != null && (
-            <Row
-              label={t('gpu.temperature')}
-              value={(
-                <span className={tempColorClass(live.temperatureC)}>
-                  {live.temperatureC}
-                  {' '}
-                  {t('format.temperatureUnit')}
-                </span>
-              )}
-            />
-          )}
-
-          {gpu.driverVersion && (
-            <Row label={t('gpu.driverVersion')} value={gpu.driverVersion} />
-          )}
-
-          {gpu.driverDate && (
-            <Row label={t('gpu.driverDate')} value={gpu.driverDate} />
-          )}
-
-          {gpu.directxVersion && (
-            <Row label={t('gpu.directx')} value={gpu.directxVersion} />
-          )}
-
-          {pciString && <Row label={t('gpu.pciLocation')} value={pciString} />}
-        </section>
-      </section>
+      <GpuDetailView
+        gpu={gpu}
+        gpuIndex={gpuIndex}
+        historyByIndex={historyByIndex}
+        live={live}
+        t={t}
+      />
     )
   }
 
   // ── Overview (all GPUs, no index selected) ───────────────────────────────────
-  const gpusToShow
-    = gpuIndex !== null
-      ? [{ gpu: staticInfo.gpus[gpuIndex], idx: gpuIndex }]
-      : staticInfo.gpus.map((g, idx) => ({ gpu: g, idx }))
-
   if (liveInfo === null && isFetching) {
     return <LiveGpuLoadingState />
   }
 
   if (liveInfo === null && liveError) {
     return (
-      <LiveGpuErrorState message={t('gpu.liveLoadError')} onRetry={retry} />
+      <LiveErrorState message={t('gpu.liveLoadError')} onRetry={retry} />
     )
   }
 
-  const hasAnyLiveData
-    = liveInfo?.some(g => gpuUsage(g) > 0 || g.temperatureC != null) ?? false
-
   return (
-    <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {gpusToShow.map(({ gpu: g, idx }) => {
-          const gpuLive = liveByIndex[idx]
-          const liveUsage = gpuLive ? gpuUsage(gpuLive) : 0
-          return (
-            <section
-              className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4"
-              key={g.index}
-            >
-              {gpuIndex === null && (
-                <h3 className="text-sm font-medium text-foreground">
-                  {t('gpu.adapter')}
-                  {staticInfo.gpus.length > 1 ? ` ${idx}` : ''}
-                </h3>
-              )}
-              <Row label={t('home.model')} value={g.name} />
-              {g.vendor && g.vendor !== 'Unknown' && (
-                <Row label={t('home.vendor')} value={g.vendor} />
-              )}
-              {g.vramTotalMb > 0 && (
-                <Row
-                  label={t('home.vram')}
-                  value={formatMb(g.vramTotalMb, t)}
-                />
-              )}
-              {gpuLive && (
-                <Row
-                  label={t('gpu.load')}
-                  value={(
-                    <span className={loadColor(liveUsage)}>
-                      {liveUsage}
-                      {' '}
-                      %
-                    </span>
-                  )}
-                />
-              )}
-              {gpuLive?.temperatureC != null && (
-                <Row
-                  label={t('gpu.temperature')}
-                  value={`${gpuLive.temperatureC} ${t('format.temperatureUnit')}`}
-                />
-              )}
-            </section>
-          )
-        })}
-
-        {!hasAnyLiveData && liveInfo && (
-          <p className="col-span-2 text-xs text-muted-foreground">
-            {t('gpu.noLiveData')}
-          </p>
-        )}
-      </div>
-    </section>
+    <GpuOverview
+      gpus={staticInfo.gpus}
+      gpuIndex={gpuIndex}
+      liveByIndex={liveByIndex}
+      liveInfo={liveInfo}
+      t={t}
+    />
   )
 }
 

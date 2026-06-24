@@ -133,15 +133,6 @@
   --badge-red: #d77070; /* red-400 */
   --badge-purple: #9c70d7; /* purple-400 */
   --badge-magenta: #d86eb5; /* magenta-400 */
-  --state-info-strong: var(--primary);
-  --state-good-strong: var(--success);
-  --state-warning-strong: var(--warning);
-  --state-danger-strong: var(--destructive);
-  --metric-accent: var(--state-info-strong);
-  --metric-accent-text: var(--state-info-strong);
-  --metric-good: var(--state-good-strong);
-  --metric-warning: var(--state-warning-strong);
-  --metric-danger: var(--state-danger-strong);
 }
 
 [data-theme='light'][data-webview-material]:not([data-webview-material='none']) {

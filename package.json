@@ -15,7 +15,8 @@
     "tauri": "tauri",
     "typecheck": "tsc --noEmit",
     "prepare": "is-ci || bun --bun prek install",
-    "updeps": "bun update --latest --force"
+    "updeps": "bun update --latest --force",
+    "doctor": "npx react-doctor@latest"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",

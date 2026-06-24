@@ -105,6 +105,14 @@ function TitlebarButton({
   )
 }
 
+const handleMinimize = async () => {
+  await appWindow.minimize()
+}
+
+const handleClose = async () => {
+  await appWindow.close()
+}
+
 export function AppTitlebar() {
   const crumbs = useBreadcrumbs()
   const { t } = useTranslation()
@@ -141,14 +149,6 @@ export function AppTitlebar() {
       void unlistenPromise.then(unlisten => unlisten())
     }
   })
-
-  const handleMinimize = async () => {
-    await appWindow.minimize()
-  }
-
-  const handleClose = async () => {
-    await appWindow.close()
-  }
 
   const handleToggleMaximize = async () => {
     await appWindow.toggleMaximize()

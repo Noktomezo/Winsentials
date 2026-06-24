@@ -42,29 +42,13 @@ interface BackendCpuInfo {
   l3_cache_kb: number | null
 }
 
-interface BackendGpuInfo {
-  index: number
+interface BackendGpuInfo extends BackendLiveGpuInfo {
   name: string
   vendor: string
   is_integrated: boolean
   driver_version: string | null
   driver_date: string | null
   directx_version: string | null
-  vram_total_mb: number
-  dedicated_vram_mb: number
-  shared_system_mb: number
-  vram_used_mb: number
-  vram_shared_mb: number
-  vram_reserved_mb: number
-  temperature_c: number | null
-  power_w: number | null
-  util_3d: number
-  util_copy: number
-  util_encode: number
-  util_decode: number
-  util_high_priority_3d: number
-  util_high_priority_compute: number
-  processes: BackendGpuProcess[]
   pci_bus: number | null
   pci_device: number | null
   pci_function: number | null
@@ -223,15 +207,9 @@ function mapCpu(c: BackendCpuInfo): CpuInfo {
   }
 }
 
-function mapGpu(g: BackendGpuInfo): GpuInfo {
+function mapGpuRuntime(g: BackendLiveGpuInfo): LiveGpuInfo {
   return {
     index: g.index,
-    name: g.name,
-    vendor: g.vendor,
-    isIntegrated: g.is_integrated,
-    driverVersion: g.driver_version,
-    driverDate: g.driver_date,
-    directxVersion: g.directx_version,
     vramTotalMb: g.vram_total_mb,
     dedicatedVramMb: g.dedicated_vram_mb,
     sharedSystemMb: g.shared_system_mb,
@@ -247,6 +225,18 @@ function mapGpu(g: BackendGpuInfo): GpuInfo {
     utilHighPriority3d: g.util_high_priority_3d,
     utilHighPriorityCompute: g.util_high_priority_compute,
     processes: g.processes.map(p => ({ pid: p.pid, name: p.name, dedicatedMemMb: p.dedicated_mem_mb })),
+  }
+}
+
+function mapGpu(g: BackendGpuInfo): GpuInfo {
+  return {
+    ...mapGpuRuntime(g),
+    name: g.name,
+    vendor: g.vendor,
+    isIntegrated: g.is_integrated,
+    driverVersion: g.driver_version,
+    driverDate: g.driver_date,
+    directxVersion: g.directx_version,
     pciBus: g.pci_bus,
     pciDevice: g.pci_device,
     pciFunction: g.pci_function,
@@ -365,33 +355,12 @@ function mapLiveRam(raw: BackendLiveRamInfo): LiveRamInfo {
   }
 }
 
-function mapLiveGpu(g: BackendLiveGpuInfo): LiveGpuInfo {
-  return {
-    index: g.index,
-    vramTotalMb: g.vram_total_mb,
-    dedicatedVramMb: g.dedicated_vram_mb,
-    sharedSystemMb: g.shared_system_mb,
-    vramUsedMb: g.vram_used_mb,
-    vramSharedMb: g.vram_shared_mb,
-    vramReservedMb: g.vram_reserved_mb,
-    temperatureC: g.temperature_c,
-    powerW: g.power_w,
-    util3d: g.util_3d,
-    utilCopy: g.util_copy,
-    utilEncode: g.util_encode,
-    utilDecode: g.util_decode,
-    utilHighPriority3d: g.util_high_priority_3d,
-    utilHighPriorityCompute: g.util_high_priority_compute,
-    processes: g.processes.map(p => ({ pid: p.pid, name: p.name, dedicatedMemMb: p.dedicated_mem_mb })),
-  }
-}
-
 function mapLiveHome(raw: BackendLiveHomeInfo): LiveHomeInfo {
   return {
     cpuUsagePercent: raw.cpu_usage_percent,
     ramUsedBytes: raw.ram_used_bytes,
     network: raw.network.map(mapNetwork),
-    gpus: raw.gpus.map(mapLiveGpu),
+    gpus: raw.gpus.map(mapGpuRuntime),
   }
 }
 
@@ -434,5 +403,5 @@ export async function getLiveNetworkInfo(): Promise<NetworkIfaceStats[]> {
 
 export async function getLiveGpuInfo(): Promise<LiveGpuInfo[]> {
   const raw = await invoke<BackendLiveGpuInfo[]>('get_live_gpu_info')
-  return raw.map(mapLiveGpu)
+  return raw.map(mapGpuRuntime)
 }

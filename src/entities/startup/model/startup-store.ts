@@ -404,18 +404,23 @@ async function hydrateLoadedEntries(
     catch (error) {
       console.error('Failed to hydrate startup entries chunk, retrying per entry', error)
 
-      for (const id of chunk) {
-        try {
-          hydrated.push(...await hydrateStartupEntries([id]))
-        }
-        catch (retryError) {
-          console.error(`Failed to hydrate startup entry ${id}`, retryError)
-        }
-
-        if (get().hydrationRequestId !== requestId) {
-          return
-        }
+      if (get().hydrationRequestId !== requestId) {
+        return
       }
+
+      const retryResults = await Promise.all(
+        chunk.map(async (id) => {
+          try {
+            return await hydrateStartupEntries([id])
+          }
+          catch (retryError) {
+            console.error(`Failed to hydrate startup entry ${id}`, retryError)
+            return []
+          }
+        }),
+      )
+
+      hydrated.push(...retryResults.flat())
     }
 
     if (get().hydrationRequestId !== requestId || hydrated.length === 0) {
@@ -437,6 +442,23 @@ async function hydrateLoadedEntries(
   }
 
   await hydrateChunk(0)
+}
+
+async function runEntryMutation(
+  id: string,
+  action: (id: string) => Promise<StartupEntry>,
+  set: StartupStoreSetter,
+): Promise<void> {
+  set(state => ({ pendingIds: pushPending(state.pendingIds, id) }))
+  try {
+    const entry = await action(id)
+    set(current => ({
+      ...applyLocalSourceMutation(current, entry.source, applyEntryUpdate(current.entriesBySource, entry)),
+    }))
+  }
+  finally {
+    set(state => ({ pendingIds: popPending(state.pendingIds, id) }))
+  }
 }
 
 export const useStartupStore = create<StartupStoreState>()((set, get) => ({
@@ -469,28 +491,10 @@ export const useStartupStore = create<StartupStoreState>()((set, get) => ({
     void hydrateLoadedEntries(requestId, set, get)
   },
   async enableEntry(id) {
-    set(state => ({ pendingIds: pushPending(state.pendingIds, id) }))
-    try {
-      const entry = await enableStartupEntry(id)
-      set(current => ({
-        ...applyLocalSourceMutation(current, entry.source, applyEntryUpdate(current.entriesBySource, entry)),
-      }))
-    }
-    finally {
-      set(state => ({ pendingIds: popPending(state.pendingIds, id) }))
-    }
+    await runEntryMutation(id, enableStartupEntry, set)
   },
   async disableEntry(id) {
-    set(state => ({ pendingIds: pushPending(state.pendingIds, id) }))
-    try {
-      const entry = await disableStartupEntry(id)
-      set(current => ({
-        ...applyLocalSourceMutation(current, entry.source, applyEntryUpdate(current.entriesBySource, entry)),
-      }))
-    }
-    finally {
-      set(state => ({ pendingIds: popPending(state.pendingIds, id) }))
-    }
+    await runEntryMutation(id, disableStartupEntry, set)
   },
   async deleteEntry(id) {
     const source = sourceFromId(id)

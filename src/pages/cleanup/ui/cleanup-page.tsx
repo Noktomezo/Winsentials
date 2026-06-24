@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import type { CleanupCategoryId, CleanupCategoryReport, CleanupEntry, CleanupEntryStatus } from '@/entities/cleanup/model/types'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { AppWindow, Check, CheckSquare, ChevronDown, Code2, Gamepad2, Globe, Loader2, MonitorCog, PackageOpen, RefreshCw, Square, Trash2, Unplug, Video, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cleanCleanupCategory, scanCleanupCategory } from '@/entities/cleanup/api'
 import { addRefreshingCategories, hasRefreshingCategories, removeRefreshingCategories, setCleanupBusy, useCleanupUiState } from '@/entities/cleanup/model/ui-state'
@@ -463,31 +463,99 @@ function CleanupCard({
   )
 }
 
+interface CleanupSelectionState {
+  openCards: Set<CleanupCategoryId>
+  checkedCategories: Set<CleanupCategoryId>
+  uncheckedEntries: Record<CleanupCategoryId, Set<string>>
+}
+
+type CleanupSelectionAction
+  = | { type: 'toggleCard', categoryId: CleanupCategoryId }
+    | { type: 'toggleCategory', categoryId: CleanupCategoryId }
+    | { type: 'toggleEntry', categoryId: CleanupCategoryId, entryId: string }
+    | { type: 'toggleAllCategories' }
+    | { type: 'toggleAllEntries', categoryId: CleanupCategoryId, validEntries: CleanupEntry[] }
+
+const INITIAL_CLEANUP_SELECTION: CleanupSelectionState = {
+  openCards: new Set(),
+  checkedCategories: new Set(CLEANUP_CATEGORIES.map(c => c.id)),
+  uncheckedEntries: Object.fromEntries(
+    CLEANUP_CATEGORIES.map(c => [c.id, new Set<string>()]),
+  ) as Record<CleanupCategoryId, Set<string>>,
+}
+
+function cleanupSelectionReducer(
+  state: CleanupSelectionState,
+  action: CleanupSelectionAction,
+): CleanupSelectionState {
+  switch (action.type) {
+    case 'toggleCard': {
+      const openCards = new Set(state.openCards)
+      if (openCards.has(action.categoryId)) {
+        openCards.delete(action.categoryId)
+      }
+      else {
+        openCards.add(action.categoryId)
+      }
+      return { ...state, openCards }
+    }
+    case 'toggleCategory': {
+      const checkedCategories = new Set(state.checkedCategories)
+      if (checkedCategories.has(action.categoryId)) {
+        checkedCategories.delete(action.categoryId)
+      }
+      else {
+        checkedCategories.add(action.categoryId)
+      }
+      return { ...state, checkedCategories }
+    }
+    case 'toggleEntry': {
+      const uncheckedEntries = { ...state.uncheckedEntries }
+      const currentSet = uncheckedEntries[action.categoryId]
+        ? new Set(uncheckedEntries[action.categoryId])
+        : new Set<string>()
+      if (currentSet.has(action.entryId)) {
+        currentSet.delete(action.entryId)
+      }
+      else {
+        currentSet.add(action.entryId)
+      }
+      uncheckedEntries[action.categoryId] = currentSet
+      return { ...state, uncheckedEntries }
+    }
+    case 'toggleAllCategories': {
+      const checkedCategories = state.checkedCategories.size > 0
+        ? new Set<CleanupCategoryId>()
+        : new Set(CLEANUP_CATEGORIES.map(c => c.id))
+      return { ...state, checkedCategories }
+    }
+    case 'toggleAllEntries': {
+      const uncheckedEntries = { ...state.uncheckedEntries }
+      const currentUnchecked = state.uncheckedEntries[action.categoryId] || new Set<string>()
+      const checkedEntriesCount = action.validEntries.filter(
+        entry => !currentUnchecked.has(entry.id),
+      ).length
+      const hasAnyChecked = checkedEntriesCount > 0
+      uncheckedEntries[action.categoryId] = hasAnyChecked
+        ? new Set<string>(action.validEntries.map(entry => entry.id))
+        : new Set<string>()
+      return { ...state, uncheckedEntries }
+    }
+  }
+}
+
 function CleanupPage() {
   const { t } = useTranslation()
   const cleanupUiState = useCleanupUiState()
   const [reports, setReports] = useState<ReportMap>({})
-  const [openCards, setOpenCards] = useState<Set<CleanupCategoryId>>(() => new Set())
   const [busyAction, setBusyAction] = useState<BusyAction>(null)
   const busyActionRef = useRef<BusyAction>(null)
-
-  const [checkedCategories, setCheckedCategories] = useState<Set<CleanupCategoryId>>(
-    () => new Set(CLEANUP_CATEGORIES.map(c => c.id)),
-  )
-  const [uncheckedEntries, setUncheckedEntries] = useState<Record<CleanupCategoryId, Set<string>>>(
-    () => Object.fromEntries(CLEANUP_CATEGORIES.map(c => [c.id, new Set<string>()])) as Record<CleanupCategoryId, Set<string>>,
-  )
-
-  const checkedCategoriesRef = useRef(checkedCategories)
-  const uncheckedEntriesRef = useRef(uncheckedEntries)
+  const [selection, dispatchSelection] = useReducer(cleanupSelectionReducer, INITIAL_CLEANUP_SELECTION)
+  const selectionRef = useRef(selection)
 
   useEffect(() => {
-    checkedCategoriesRef.current = checkedCategories
-  }, [checkedCategories])
-
-  useEffect(() => {
-    uncheckedEntriesRef.current = uncheckedEntries
-  }, [uncheckedEntries])
+    selectionRef.current = selection
+  }, [selection])
 
   function setBusyActionState(action: BusyAction) {
     busyActionRef.current = action
@@ -500,8 +568,10 @@ function CleanupPage() {
   }
 
   useEffect(() => {
-    dispatchCleanupSummary(cleanupSummaryFromReports(reports, checkedCategories, uncheckedEntries))
-  }, [reports, checkedCategories, uncheckedEntries])
+    dispatchCleanupSummary(
+      cleanupSummaryFromReports(reports, selection.checkedCategories, selection.uncheckedEntries),
+    )
+  }, [reports, selection.checkedCategories, selection.uncheckedEntries])
 
   function scanCategories(categoryIds: CleanupCategoryId[]) {
     addRefreshingCategories(categoryIds)
@@ -542,52 +612,11 @@ function CleanupPage() {
     void scanCategories(CLEANUP_CATEGORIES.map(category => category.id))
   }
 
-  function toggleCard(categoryId: CleanupCategoryId) {
-    setOpenCards((current) => {
-      const next = new Set(current)
-      if (next.has(categoryId)) {
-        next.delete(categoryId)
-      }
-      else {
-        next.add(categoryId)
-      }
-      return next
-    })
-  }
-
-  function toggleCategoryChecked(categoryId: CleanupCategoryId) {
-    setCheckedCategories((current) => {
-      const next = new Set(current)
-      if (next.has(categoryId)) {
-        next.delete(categoryId)
-      }
-      else {
-        next.add(categoryId)
-      }
-      return next
-    })
-  }
-
-  function toggleEntryChecked(categoryId: CleanupCategoryId, entryId: string) {
-    setUncheckedEntries((current) => {
-      const next = { ...current }
-      const currentSet = next[categoryId] ? new Set(next[categoryId]) : new Set<string>()
-      if (currentSet.has(entryId)) {
-        currentSet.delete(entryId)
-      }
-      else {
-        currentSet.add(entryId)
-      }
-      next[categoryId] = currentSet
-      return next
-    })
-  }
-
   function cleanCategory(categoryId: CleanupCategoryId) {
     if (busyActionRef.current !== null || cleanupUiState.refreshingCategories.has(categoryId)) return
 
     setBusyActionState(categoryId)
-    const excludeEntryIds = Array.from(uncheckedEntries[categoryId] || [])
+    const excludeEntryIds = Array.from(selection.uncheckedEntries[categoryId] || [])
     cleanCleanupCategory(categoryId, excludeEntryIds)
       .then((report) => {
         updateReports(current => ({ ...current, [report.id]: report }))
@@ -605,7 +634,9 @@ function CleanupPage() {
   function cleanAllCategories() {
     if (busyActionRef.current !== null || hasRefreshingCategories()) return
 
-    const activeCategories = CLEANUP_CATEGORIES.filter(category => checkedCategoriesRef.current.has(category.id))
+    const activeCategories = CLEANUP_CATEGORIES.filter(
+      category => selectionRef.current.checkedCategories.has(category.id),
+    )
     if (activeCategories.length === 0) {
       toast.error(t('cleanup.errors.nothingSelected') || 'No categories selected for cleaning')
       return
@@ -616,7 +647,7 @@ function CleanupPage() {
       activeCategories.map(category =>
         cleanCleanupCategory(
           category.id,
-          Array.from(uncheckedEntriesRef.current[category.id] || []),
+          Array.from(selectionRef.current.uncheckedEntries[category.id] || []),
         ),
       ),
     )
@@ -650,36 +681,15 @@ function CleanupPage() {
       })
   }
 
-  function toggleAllCategories() {
-    setCheckedCategories((current) => {
-      if (current.size > 0) {
-        return new Set()
-      }
-      else {
-        return new Set(CLEANUP_CATEGORIES.map(category => category.id))
-      }
-    })
+  function handleToggleAllCategories() {
+    dispatchSelection({ type: 'toggleAllCategories' })
   }
 
   function toggleAllEntries(categoryId: CleanupCategoryId) {
-    setUncheckedEntries((current) => {
-      const next = { ...current }
-      const report = reports[categoryId]
-      if (report) {
-        const validEntries = report.entries.filter(entry => !entry.id.endsWith('-scan-error'))
-        const currentUnchecked = current[categoryId] || new Set<string>()
-        const checkedEntriesCount = validEntries.filter(entry => !currentUnchecked.has(entry.id)).length
-        const hasAnyChecked = checkedEntriesCount > 0
-
-        if (hasAnyChecked) {
-          next[categoryId] = new Set<string>(validEntries.map(entry => entry.id))
-        }
-        else {
-          next[categoryId] = new Set<string>()
-        }
-      }
-      return next
-    })
+    const report = reports[categoryId]
+    if (!report) return
+    const validEntries = report.entries.filter(entry => !entry.id.endsWith('-scan-error'))
+    dispatchSelection({ type: 'toggleAllEntries', categoryId, validEntries })
   }
 
   const cards = useMemo(() => CLEANUP_CATEGORIES, [])
@@ -687,11 +697,11 @@ function CleanupPage() {
   useMountEffect(() => {
     window.addEventListener(CLEAN_ALL_EVENT, cleanAllCategories)
     window.addEventListener(REFRESH_ALL_EVENT, refreshAllCategories)
-    window.addEventListener(TOGGLE_ALL_CATEGORIES_EVENT, toggleAllCategories)
+    window.addEventListener(TOGGLE_ALL_CATEGORIES_EVENT, handleToggleAllCategories)
     return () => {
       window.removeEventListener(CLEAN_ALL_EVENT, cleanAllCategories)
       window.removeEventListener(REFRESH_ALL_EVENT, refreshAllCategories)
-      window.removeEventListener(TOGGLE_ALL_CATEGORIES_EVENT, toggleAllCategories)
+      window.removeEventListener(TOGGLE_ALL_CATEGORIES_EVENT, handleToggleAllCategories)
     }
   })
 
@@ -706,13 +716,13 @@ function CleanupPage() {
             key={category.id}
             onClean={cleanCategory}
             onRefresh={refreshCategory}
-            onToggle={toggleCard}
-            open={openCards.has(category.id)}
+            onToggle={categoryId => dispatchSelection({ type: 'toggleCard', categoryId })}
+            open={selection.openCards.has(category.id)}
             report={reports[category.id] ?? null}
-            isChecked={checkedCategories.has(category.id)}
-            onCategoryToggle={toggleCategoryChecked}
-            uncheckedEntryIds={uncheckedEntries[category.id] || new Set<string>()}
-            onToggleEntry={toggleEntryChecked}
+            isChecked={selection.checkedCategories.has(category.id)}
+            onCategoryToggle={categoryId => dispatchSelection({ type: 'toggleCategory', categoryId })}
+            uncheckedEntryIds={selection.uncheckedEntries[category.id] || new Set<string>()}
+            onToggleEntry={(categoryId, entryId) => dispatchSelection({ type: 'toggleEntry', categoryId, entryId })}
             onToggleAllEntries={toggleAllEntries}
           />
         ))}
