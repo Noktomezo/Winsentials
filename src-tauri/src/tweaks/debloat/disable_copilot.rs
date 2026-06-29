@@ -68,36 +68,47 @@ Get-AppxPackage -AllUsers '*Copilot*' | Remove-AppxPackage -AllUsers -ErrorActio
 
 $appx = (Get-AppxPackage 'MicrosoftWindows.Client.CoreAI' -ErrorAction SilentlyContinue).PackageFullName
 if ($appx) {
-  $sid = $null
-  try {
-    $sid = [System.Security.Principal.NTAccount]::new($Env:UserName).Translate([System.Security.Principal.SecurityIdentifier]).Value
-  } catch {
-    try {
-      $formatArg = '/' + [char]102 + [char]111
-      $whoami = whoami /user $formatArg csv /nh
-      if ($whoami) {
-        $sid = ($whoami | ConvertFrom-Csv -Header Name,Sid).Sid
-      }
-    } catch {}
-  }
-
-  if ($sid) {
+    $sid = (Get-LocalUser $Env:UserName).Sid.Value
     New-Item "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\EndOfLife\$sid\$appx" -Force | Out-Null
-  }
-  Remove-AppxPackage $appx -ErrorAction SilentlyContinue
+    Remove-AppxPackage $appx -ErrorAction SilentlyContinue
 }
+
+$explorerKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+if (-not (Test-Path $explorerKey)) { New-Item $explorerKey -Force | Out-Null }
+Set-ItemProperty $explorerKey -Name 'SettingsPageVisibility' -Value 'hide:aicomponents' -Type String -ErrorAction SilentlyContinue
+
+$notepadKey = 'HKLM:\SOFTWARE\Policies\WindowsNotepad'
+if (-not (Test-Path $notepadKey)) { New-Item $notepadKey -Force | Out-Null }
+Set-ItemProperty $notepadKey -Name 'DisableAIFeatures' -Value 1 -Type DWord -ErrorAction SilentlyContinue
+
+Set-Service -Name WSAIFabricSvc -StartupType Disabled -ErrorAction SilentlyContinue
+Disable-WindowsOptionalFeature -FeatureName Recall -Online -NoRestart -ErrorAction SilentlyContinue
 
 Write-Host 'Copilot Removed'
 "#,
         )?;
-        if !copilot_packages_present()? {
-            STATE_KEY.set_dword("Removed", 1)?;
+
+        if copilot_packages_present()? {
+            return Err(AppError::message(
+                "Copilot packages could not be fully removed. They may be in use or protected by the system. Restart your PC and try again.",
+            ));
         }
 
+        STATE_KEY.set_dword("Removed", 1)?;
         Ok(())
     }
 
     fn install_copilot() -> Result<(), AppError> {
+        let _ = run_powershell(
+            r#"
+$ErrorActionPreference = 'SilentlyContinue'
+Remove-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer' -Name 'SettingsPageVisibility'
+Remove-ItemProperty 'HKLM:\SOFTWARE\Policies\WindowsNotepad' -Name 'DisableAIFeatures'
+Set-Service -Name WSAIFabricSvc -StartupType Manual
+Enable-WindowsOptionalFeature -FeatureName Recall -Online -NoRestart
+"#,
+        );
+
         let result = install_with_winget("9NHT9RB2F4HD", "msstore");
 
         if result.is_ok()

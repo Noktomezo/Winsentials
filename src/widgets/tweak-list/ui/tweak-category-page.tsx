@@ -1,5 +1,5 @@
 import type { TweakMeta } from '@/entities/tweak/model/types'
-import { Loader2, RotateCcw } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStaticInfo } from '@/entities/system-info/model/static-system-info'
@@ -52,7 +52,6 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
   const staticInfo = useStaticInfo()
   const [pendingIds, setPendingIds] = useState<string[]>([])
   const categoryState = cachedCategory ?? EMPTY_CATEGORY
-  const isApplyingTweak = pendingIds.length > 0
 
   useMountEffect(() => {
     const cached = useTweakCacheStore.getState().categories[category]
@@ -151,16 +150,6 @@ export function TweakCategoryPage({ category }: TweakCategoryPageProps) {
 
   return (
     <section className="relative flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-      {isApplyingTweak && (
-        <output
-          aria-live="polite"
-          className="pointer-events-none absolute top-2 left-4 z-20 flex w-fit items-center gap-2 rounded-md border border-border bg-popover px-3 py-2 text-xs font-medium text-popover-foreground shadow-sm md:left-6"
-        >
-          <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
-          {t('tweaks.progress.applying')}
-        </output>
-      )}
-
       {!categoryState.hasLoaded && (
         <div className="tweak-card-grid">
           <TweakCardSkeleton />

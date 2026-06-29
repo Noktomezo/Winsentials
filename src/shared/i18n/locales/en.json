@@ -278,10 +278,10 @@
         "shortDescription": "Disables Brave Rewards, Leo AI, Crypto Wallet, VPN, telemetry, and other optional Brave features."
       },
       "disableMicrosoftCopilot": {
-        "detailDescription": "Removes Copilot AppX packages for all users, marks the current user's MicrosoftWindows.Client.CoreAI package as end-of-life, and removes that CoreAI package when present. Reset reinstalls Copilot from Microsoft Store through winget.",
-        "name": "Disable Microsoft Copilot",
+        "detailDescription": "Removes Copilot and CoreAI AppX packages for all users, marks CoreAI as end-of-life, hides AI components from Settings, disables AI features in Notepad, disables the Windows AI Fabric service, and disables the Recall feature. Reset reverts all changes and reinstalls Copilot from Microsoft Store through winget.",
+        "name": "Disable and Remove AI Components",
         "riskDescription": "This is a long-running AppX and Microsoft Store operation. Reset requires winget and Microsoft Store access, and may fail if Store sources are blocked or unavailable.",
-        "shortDescription": "Removes Copilot and related AI AppX packages, with reset reinstalling Copilot through winget."
+        "shortDescription": "Removes Copilot and related AI packages, disables AI services, Recall, and Notepad AI features."
       },
       "microsoftEdgeDebloat": {
         "detailDescription": "Applies Microsoft Edge policies that disable telemetry and personalization reporting, recommendations, first-run prompts, feedback, alternate error pages, Collections, Shopping Assistant, Insider promotions, Rewards, Web Widget, asset delivery, donation wallet features, default browser campaigns, and the default desktop shortcut created by Edge Update.",
