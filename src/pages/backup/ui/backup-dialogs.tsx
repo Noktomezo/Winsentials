@@ -113,7 +113,7 @@ export function BackupDialogs({
       <Dialog
         open={renameTarget !== null}
         onOpenChange={(open) => {
-          if (!open) {
+          if (!open && !isRenaming) {
             setRenameTarget(null)
           }
         }}
@@ -149,7 +149,7 @@ export function BackupDialogs({
       <Dialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open) {
+          if (!open && !isDeleting) {
             setDeleteTarget(null)
           }
         }}
@@ -178,7 +178,7 @@ export function BackupDialogs({
       <Dialog
         open={applyTarget !== null}
         onOpenChange={(open) => {
-          if (!open) {
+          if (!open && !isApplying) {
             setApplyTarget(null)
           }
         }}

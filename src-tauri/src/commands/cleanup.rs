@@ -71,13 +71,16 @@ pub async fn cleanup_set_custom_winapp2_path(
     path: Option<String>,
 ) -> Result<WinappDbStatus, AppError> {
     let path = path.map(std::path::PathBuf::from);
-    tauri::async_runtime::spawn_blocking(move || winapp_db::set_custom_winapp2_path(path))
-        .await
-        .map_err(|error| {
-            AppError::message(format!(
-                "cleanup_set_custom_winapp2_path join error: {error}"
-            ))
-        })??;
-    winapp_db::refresh_cache();
+    tauri::async_runtime::spawn_blocking(move || {
+        winapp_db::set_custom_winapp2_path(path)?;
+        winapp_db::refresh_cache();
+        Ok::<_, AppError>(())
+    })
+    .await
+    .map_err(|error| {
+        AppError::message(format!(
+            "cleanup_set_custom_winapp2_path join error: {error}"
+        ))
+    })??;
     Ok(winapp_db::winapp_db_status())
 }

@@ -83,7 +83,6 @@ const emptySourceRequestIds: Record<StartupSource, number> = {
   scheduled_task: 0,
 }
 
-const hydrationChunkSize = 12
 const inFlightSourceLoads: Partial<Record<StartupSource, Promise<void>>> = {}
 
 function pushPending(current: string[], id: string) {
@@ -385,47 +384,12 @@ async function hydrateLoadedEntries(
     }
   }
 
-  const hydrateChunk = async (index: number): Promise<void> => {
-    if (get().hydrationRequestId !== requestId) {
-      return
-    }
+  if (ids.length === 0) return
 
-    const chunk = ids.slice(index, index + hydrationChunkSize)
+  if (get().hydrationRequestId !== requestId) return
 
-    if (chunk.length === 0) {
-      return
-    }
-
-    const hydrated: StartupEntry[] = []
-
-    try {
-      hydrated.push(...await hydrateStartupEntries(chunk))
-    }
-    catch (error) {
-      console.error('Failed to hydrate startup entries chunk, retrying per entry', error)
-
-      if (get().hydrationRequestId !== requestId) {
-        return
-      }
-
-      const retryResults = await Promise.all(
-        chunk.map(async (id) => {
-          try {
-            return await hydrateStartupEntries([id])
-          }
-          catch (retryError) {
-            console.error(`Failed to hydrate startup entry ${id}`, retryError)
-            return []
-          }
-        }),
-      )
-
-      hydrated.push(...retryResults.flat())
-    }
-
-    if (get().hydrationRequestId !== requestId || hydrated.length === 0) {
-      return hydrateChunk(index + hydrationChunkSize)
-    }
+  try {
+    const hydrated = await hydrateStartupEntries(ids)
 
     set((current) => {
       if (current.hydrationRequestId !== requestId) {
@@ -437,11 +401,10 @@ async function hydrateLoadedEntries(
         ...applyEntryUpdates(current.entriesBySource, hydrated),
       }
     })
-
-    return hydrateChunk(index + hydrationChunkSize)
   }
-
-  await hydrateChunk(0)
+  catch (error) {
+    console.error('Failed to hydrate startup entries', error)
+  }
 }
 
 async function runEntryMutation(
@@ -485,9 +448,9 @@ export const useStartupStore = create<StartupStoreState>()((set, get) => ({
     await Promise.allSettled([
       refreshSource('registry', false, set, get),
       refreshSource('startup_folder', false, set, get),
+      refreshSource('scheduled_task', false, set, get),
     ])
 
-    await refreshSource('scheduled_task', false, set, get)
     void hydrateLoadedEntries(requestId, set, get)
   },
   async enableEntry(id) {

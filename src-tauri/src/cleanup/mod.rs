@@ -404,11 +404,11 @@ fn clean_unused_devices_entries(exclude_entry_ids: &[String]) -> Result<Vec<Clea
         if should_clean {
             match remove_ghost_device(&entry_id) {
                 Ok(()) => {
-                    log::info!("remove_ghost_device: successfully removed {entry_id}");
+                    log::info!("remove_ghost_device: successfully removed device");
                     entry.status = CleanupEntryStatus::Removed;
                 }
                 Err(error) => {
-                    log::warn!("remove_ghost_device: failed to remove {entry_id}: {error}");
+                    log::warn!("remove_ghost_device: failed to remove device: {error}");
                     entry.status = CleanupEntryStatus::Failed;
                     entry.error = Some(error);
                 }
@@ -950,7 +950,7 @@ fn remove_ghost_device(instance_id: &str) -> Result<(), String> {
         DI_REMOVEDEVICE_GLOBAL, DIF_REMOVE, DIGCF_ALLCLASSES, SP_CLASSINSTALL_HEADER,
         SP_DEVINFO_DATA, SP_REMOVEDEVICE_PARAMS, SetupDiCallClassInstaller,
         SetupDiDestroyDeviceInfoList, SetupDiEnumDeviceInfo, SetupDiGetClassDevsW,
-        SetupDiSetClassInstallParamsW,
+        SetupDiRemoveDevice, SetupDiSetClassInstallParamsW,
     };
     use windows::Win32::Foundation::{ERROR_NO_MORE_ITEMS, GetLastError};
     use windows::core::PCWSTR;
@@ -995,7 +995,7 @@ fn remove_ghost_device(instance_id: &str) -> Result<(), String> {
             HwProfile: 0,
         };
 
-        result = unsafe {
+        let class_installer_result = unsafe {
             SetupDiSetClassInstallParamsW(
                 device_info_set,
                 Some(&device_info),
@@ -1008,6 +1008,25 @@ fn remove_ghost_device(instance_id: &str) -> Result<(), String> {
             unsafe { SetupDiCallClassInstaller(DIF_REMOVE, device_info_set, Some(&device_info)) }
                 .map_err(|error| error.to_string())
         });
+
+        result = match class_installer_result {
+            Ok(()) => Ok(()),
+            Err(class_installer_error) => {
+                log::warn!(
+                    "remove_ghost_device: class installer failed, trying default handler: {class_installer_error}"
+                );
+                let fallback_ok = unsafe { SetupDiRemoveDevice(device_info_set, &mut device_info) };
+                if fallback_ok.as_bool() {
+                    Ok(())
+                } else {
+                    let fallback_error = unsafe { GetLastError() };
+                    log::warn!(
+                        "remove_ghost_device: default handler also failed: {fallback_error:?}"
+                    );
+                    Err(class_installer_error)
+                }
+            }
+        };
         break;
     }
 

@@ -479,7 +479,7 @@ interface CleanupSelectionState {
   openCards: Set<CleanupCategoryId>
   checkedCategories: Set<CleanupCategoryId>
   uncheckedEntries: Record<CleanupCategoryId, Set<string>>
-  defaultsApplied: boolean
+  defaultsAppliedCategories: Set<CleanupCategoryId>
 }
 
 type CleanupSelectionAction
@@ -497,7 +497,7 @@ const INITIAL_CLEANUP_SELECTION: CleanupSelectionState = {
   uncheckedEntries: Object.fromEntries(
     CLEANUP_CATEGORIES.map(c => [c.id, new Set<string>()]),
   ) as Record<CleanupCategoryId, Set<string>>,
-  defaultsApplied: false,
+  defaultsAppliedCategories: new Set(),
 }
 
 function defaultFalseEntryIds(report: CleanupCategoryReport | null | undefined): string[] {
@@ -569,15 +569,23 @@ function cleanupSelectionReducer(
       return { ...state, uncheckedEntries }
     }
     case 'initDefaults': {
-      if (state.defaultsApplied) return state
       const uncheckedEntries = { ...state.uncheckedEntries }
+      const applied = new Set(state.defaultsAppliedCategories)
+      let changed = false
       for (const categoryId of CLEANUP_CATEGORIES.map(c => c.id)) {
-        const ids = defaultFalseEntryIds(action.reports[categoryId])
-        if (ids.length === 0) continue
-        const existing = uncheckedEntries[categoryId] || new Set<string>()
-        uncheckedEntries[categoryId] = new Set([...existing, ...ids])
+        if (applied.has(categoryId)) continue
+        const report = action.reports[categoryId]
+        if (!report) continue
+        const ids = defaultFalseEntryIds(report)
+        if (ids.length > 0) {
+          const existing = uncheckedEntries[categoryId] || new Set<string>()
+          uncheckedEntries[categoryId] = new Set([...existing, ...ids])
+        }
+        applied.add(categoryId)
+        changed = true
       }
-      return { ...state, uncheckedEntries, defaultsApplied: true }
+      if (!changed) return state
+      return { ...state, uncheckedEntries, defaultsAppliedCategories: applied }
     }
     case 'resetToDefaults': {
       const uncheckedEntries = { ...state.uncheckedEntries }
@@ -608,10 +616,10 @@ function CleanupPage() {
   }, [selection])
 
   useEffect(() => {
-    if (!selection.defaultsApplied && Object.keys(reports).length > 0) {
+    if (Object.keys(reports).length > 0) {
       dispatchSelection({ type: 'initDefaults', reports })
     }
-  }, [reports, selection.defaultsApplied])
+  }, [reports])
 
   function setBusyActionState(action: BusyAction) {
     busyActionRef.current = action

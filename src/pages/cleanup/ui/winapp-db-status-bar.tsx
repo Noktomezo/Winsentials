@@ -48,24 +48,31 @@ function WinappDbStatusBar() {
   }
 
   async function handleSetCustomPath() {
-    const selected = await open({
-      filters: [{ name: 'Winapp2.ini', extensions: ['ini'] }],
-      multiple: false,
-    })
-    if (typeof selected !== 'string') return
-    setCustomWinapp2Path(selected)
-      .then((newStatus) => {
-        setStatus(newStatus)
-        cleanupScanCache.refreshAll()
-        toast.success(t('cleanup.db.customPathSet'))
+    if (updating) return
+    setUpdating(true)
+    try {
+      const selected = await open({
+        filters: [{ name: 'Winapp2.ini', extensions: ['ini'] }],
+        multiple: false,
       })
-      .catch((error) => {
-        console.error(error)
-        toast.error(t('cleanup.db.customPathError'))
-      })
+      if (typeof selected !== 'string') return
+      const newStatus = await setCustomWinapp2Path(selected)
+      setStatus(newStatus)
+      cleanupScanCache.refreshAll()
+      toast.success(t('cleanup.db.customPathSet'))
+    }
+    catch (error) {
+      console.error(error)
+      toast.error(t('cleanup.db.customPathError'))
+    }
+    finally {
+      setUpdating(false)
+    }
   }
 
   function handleResetCustomPath() {
+    if (updating) return
+    setUpdating(true)
     setCustomWinapp2Path(null)
       .then((newStatus) => {
         setStatus(newStatus)
@@ -75,6 +82,9 @@ function WinappDbStatusBar() {
       .catch((error) => {
         console.error(error)
         toast.error(t('cleanup.db.customPathError'))
+      })
+      .finally(() => {
+        setUpdating(false)
       })
   }
 
@@ -101,6 +111,7 @@ function WinappDbStatusBar() {
                 variant="ghost"
                 size="sm"
                 onClick={handleResetCustomPath}
+                disabled={updating}
                 type="button"
               >
                 <RotateCcw className="size-3.5" />
@@ -112,6 +123,7 @@ function WinappDbStatusBar() {
                 variant="ghost"
                 size="sm"
                 onClick={handleSetCustomPath}
+                disabled={updating}
                 type="button"
               >
                 <FolderOpen className="size-3.5" />

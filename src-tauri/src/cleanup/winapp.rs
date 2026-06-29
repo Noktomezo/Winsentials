@@ -27,8 +27,9 @@ fn is_path_within_dir(path_lower: &str, dir_lower: &str) -> bool {
 }
 
 fn path_str_starts_with_dir(path: &str, dir: &str) -> bool {
-    let dir_with_sep = format!("{dir}\\");
-    path.starts_with(&dir_with_sep) || path.starts_with(&format!("{dir}/"))
+    let dir_trimmed = dir.trim_end_matches(['\\', '/']);
+    let dir_with_sep = format!("{dir_trimmed}\\");
+    path.starts_with(&dir_with_sep) || path.starts_with(&format!("{dir_trimmed}/"))
 }
 
 fn is_excluded(path: &Path, exclude_rules: &[ExcludeRule]) -> bool {
@@ -133,7 +134,7 @@ pub fn clean_category(
         let excludes = all_exclude_rules();
         let excludes_ref: &[ExcludeRule] = &excludes;
         winapp_targets_for_category(category_id)
-            .into_par_iter()
+            .into_iter()
             .map(|target| {
                 let should_clean = !exclude_set.contains(&target.id);
                 scan_or_clean_winapp_target(&target, should_clean, excludes_ref)
@@ -200,16 +201,23 @@ fn scan_or_clean_winapp_target(
     let mut remaining_count = 0;
 
     for matched in &matches {
-        if fs::symlink_metadata(&matched.path).is_err() {
-            continue;
-        }
-        remaining_count += 1;
-        match target_size_bytes(&matched.path) {
-            Ok(size) => size_bytes += size,
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
-            Err(error) if is_busy_delete_error(&error) => {
-                skipped_busy_error.get_or_insert(error.to_string());
+        match fs::symlink_metadata(&matched.path) {
+            Ok(_) => {
+                remaining_count += 1;
+                match target_size_bytes(&matched.path) {
+                    Ok(size) => size_bytes += size,
+                    Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                    Err(error) if is_busy_delete_error(&error) => {
+                        skipped_busy_error.get_or_insert(error.to_string());
+                    }
+                    Err(error) => {
+                        if first_error.is_none() {
+                            first_error = Some(error);
+                        }
+                    }
+                }
             }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
             Err(error) => {
                 if first_error.is_none() {
                     first_error = Some(error);
@@ -622,8 +630,8 @@ fn scan_appx_entries(
                 size_bytes: 0,
                 error,
                 icon_data_url: None,
-                default_checked: true,
-                warning: None,
+                default_checked: default_checked(entry),
+                warning: entry.first("Warning"),
             })
         })
         .collect();

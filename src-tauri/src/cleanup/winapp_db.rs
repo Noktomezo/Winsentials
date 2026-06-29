@@ -9,8 +9,8 @@ use crate::error::AppError;
 const WINAPP2_BUNDLED: &str = include_str!("../../assets/Winapp2.ini");
 const WINAPPX_BUNDLED: &str = include_str!("../../assets/Winappx.ini");
 
-const WINAPP2_URL: &str = "https://raw.githubusercontent.com/MoscaDotTo/Winapp2/main/Winapp2.ini";
-const WINAPPX_URL: &str = "https://raw.githubusercontent.com/MoscaDotTo/Winapp2/main/Winappx.ini";
+const WINAPP2_URL: &str = "https://cdn.jsdelivr.net/gh/MoscaDotTo/Winapp2@main/Winapp2.ini";
+const WINAPPX_URL: &str = "https://cdn.jsdelivr.net/gh/builtbybel/FluentCleaner@main/Winappx.ini";
 
 static APP_DATA_DIR: OnceLock<PathBuf> = OnceLock::new();
 
@@ -244,8 +244,21 @@ fn file_mtime(path: &std::path::Path) -> Option<u64> {
 
 pub fn set_custom_winapp2_path(path: Option<PathBuf>) -> Result<(), AppError> {
     let mut settings = settings().write().expect("winapp settings lock poisoned");
+    let old_path = settings.custom_winapp2_path.clone();
     settings.custom_winapp2_path = path;
-    save_settings(&settings)
+    match save_settings(&settings) {
+        Ok(()) => {
+            *WINAPP2_CACHE.write().expect("winapp2 cache lock poisoned") = None;
+            *EXCLUDE_RULES_CACHE
+                .write()
+                .expect("exclude rules cache lock poisoned") = None;
+            Ok(())
+        }
+        Err(err) => {
+            settings.custom_winapp2_path = old_path;
+            Err(err)
+        }
+    }
 }
 
 pub async fn download_winapp2() -> Result<DownloadReport, AppError> {

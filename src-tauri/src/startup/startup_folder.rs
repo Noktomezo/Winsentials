@@ -18,11 +18,24 @@ use crate::startup::types::{
 };
 
 pub fn list_entries() -> Result<Vec<StartupEntry>, AppError> {
+    list_entries_with_enrich(false)
+}
+
+pub fn hydrate_entries(ids: &[String]) -> Result<Vec<StartupEntry>, AppError> {
+    let id_set: std::collections::HashSet<&str> = ids.iter().map(|s| s.as_str()).collect();
+    let all = list_entries_with_enrich(true)?;
+    Ok(all
+        .into_iter()
+        .filter(|e| id_set.contains(e.id.as_str()))
+        .collect())
+}
+
+fn list_entries_with_enrich(enrich: bool) -> Result<Vec<StartupEntry>, AppError> {
     let mut entries = Vec::new();
-    entries.extend(list_active_entries(StartupScope::CurrentUser)?);
-    entries.extend(list_active_entries(StartupScope::AllUsers)?);
-    entries.extend(list_disabled_entries(StartupScope::CurrentUser)?);
-    entries.extend(list_disabled_entries(StartupScope::AllUsers)?);
+    entries.extend(list_active_entries(StartupScope::CurrentUser, enrich)?);
+    entries.extend(list_active_entries(StartupScope::AllUsers, enrich)?);
+    entries.extend(list_disabled_entries(StartupScope::CurrentUser, enrich)?);
+    entries.extend(list_disabled_entries(StartupScope::AllUsers, enrich)?);
     Ok(entries)
 }
 
@@ -157,7 +170,7 @@ pub fn entry_details(id: &str) -> Result<StartupEntryDetails, AppError> {
     Ok(build_details(entry, scope, disabled_file_path))
 }
 
-fn list_active_entries(scope: StartupScope) -> Result<Vec<StartupEntry>, AppError> {
+fn list_active_entries(scope: StartupScope, enrich: bool) -> Result<Vec<StartupEntry>, AppError> {
     let startup_dir = startup_dir(scope)?;
     let mut entries = Vec::new();
 
@@ -182,14 +195,14 @@ fn list_active_entries(scope: StartupScope) -> Result<Vec<StartupEntry>, AppErro
             StartupStatus::Enabled,
             false,
             None,
-            false,
+            enrich,
         )?);
     }
 
     Ok(entries)
 }
 
-fn list_disabled_entries(scope: StartupScope) -> Result<Vec<StartupEntry>, AppError> {
+fn list_disabled_entries(scope: StartupScope, enrich: bool) -> Result<Vec<StartupEntry>, AppError> {
     let disabled_dir = startup_disabled_dir(scope)?;
     let mut entries = Vec::new();
 
@@ -219,7 +232,7 @@ fn list_disabled_entries(scope: StartupScope) -> Result<Vec<StartupEntry>, AppEr
             StartupStatus::Disabled,
             false,
             Some(metadata.id),
-            false,
+            enrich,
         )?);
     }
 

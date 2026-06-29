@@ -37,8 +37,7 @@ export function GpuOverview({
       ? [{ gpu: gpus[gpuIndex], idx: gpuIndex }]
       : gpus.map((g, idx) => ({ gpu: g, idx }))
 
-  const hasAnyLiveData
-    = liveInfo?.some(g => gpuUsage(g) > 0 || g.temperatureC != null) ?? false
+  const hasAnyLiveData = (liveInfo?.length ?? 0) > 0
 
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">

@@ -2,140 +2,267 @@
 
 ## Project Overview
 
-**Winsentials** desktop app for Windows 10/11. Tune system settings with one click.
-
-App exposes clean UI over low-level OS ops (registry edits, COM commands, service control, etc.). Every tweak has typed contract on frontend + backend (`apply`, `revert`, current state, backup, etc.)
+**Winsentials** — Windows 10/11 desktop app. One-click system tuning via registry, COM, service control. Every tweak: typed frontend/backend contract (`apply`, `revert`, state, backup).
 
 ## Tech Stack
 
-| Layer             | Technology              |
-| ----------------- | ----------------------- |
-| Desktop shell     | Tauri v2                |
-| Frontend runtime  | Bun                     |
-| Build tool        | Vite                    |
-| UI framework      | React 19                |
-| Language          | TypeScript (strict)     |
-| Styling           | TailwindCSS v4          |
-| Component library | shadcn/ui               |
-| Routing           | TanStack Router         |
-| State management  | Zustand                 |
-| i18n              | i18next + react-i18next |
-| Backend language  | Rust (Tauri commands)   |
-| Window effects    | `window-vibrancy` crate |
-| Notifications     | Sonner (toast)          |
+| Layer | Technology |
+| --- | --- |
+| Desktop shell | Tauri v2 |
+| Frontend runtime | Bun |
+| Build tool | Vite |
+| UI framework | React 19 |
+| Language | TypeScript (strict) |
+| Styling | TailwindCSS v4 |
+| Component library | shadcn/ui |
+| Routing | TanStack Router |
+| State management | Zustand |
+| i18n | i18next + react-i18next |
+| Backend | Rust (Tauri commands) |
+| Window effects | `window-vibrancy` |
+| Notifications | Sonner |
 
 ## Folder Structure
 
 - Frontend: Feature-Sliced Design (FSD)
 - Backend: Vertical Slice Design
 
-## Dependency & Runtime Rules
+## Dependency Rules
 
 ### Frontend (src)
 
-- **Runtime:** `bun` only. Never use `npm`, `pnpm`, `node`.
-- Install packages: `bun add <pkg>`
-- Dev packages: `bun add -d <pkg>`
-- Run scripts: `bunx <tool>` or `bun run <script>`
-- Never commit `package-lock.json` or `pnpm-lock.yaml`. Use `bun.lock` only.
+- **Runtime:** `bun` only. Never `npm`/`pnpm`/`node`.
+- Install: `bun add <pkg>` / `bun add -d <pkg>`. Run: `bunx <tool>` / `bun run <script>`.
+- Commit `bun.lock` only. Never `package-lock.json` or `pnpm-lock.yaml`.
 
 ### Backend (src-tauri)
 
-- Add dependencies: `cargo add <crate>`. Never edit `Cargo.toml` version strings by hand.
-- When adding a crate with features: `cargo add <crate> --features <feat1>,<feat2>`
-- After adding deps, run `cargo check`
-- When adding or changing Rust code that collects independent data from many items, consider `rayon` mandatory-by-default. Use `rayon` when the work is CPU-heavy or bounded independent IO/status work, such as reading many tweak statuses, scanning many registry values, parsing many files, or building many independent metadata objects.
-- Keep `rayon` out of code that depends on strict order, shared mutable state, UI-thread affinity, non-thread-safe COM/Win32 objects, global process settings, service-control sequences, or operations where parallelism can amplify system load or side effects.
-- For Tauri commands, do not rely on `rayon` alone for responsiveness. Wrap blocking backend work in `tauri::async_runtime::spawn_blocking`, then use `rayon` inside that blocking task only when the per-item work is independent.
-- Prefer a small, direct sequential implementation when the collection is tiny, the operation is already asynchronous, or the added parallelism would make error handling or rollback behavior less predictable.
+- Add deps: `cargo add <crate>` (never edit `Cargo.toml` by hand). With features: `--features <f1>,<f2>`. Then `cargo check`.
+- **rayon** mandatory-by-default for CPU-heavy or bounded independent IO/status work across many items (tweak statuses, registry scans, file parsing, metadata building).
+- Keep `rayon` out of: strict-order, shared mutable state, UI-thread affinity, non-thread-safe COM/Win32, global process settings, service-control sequences, or where parallelism amplifies load/side effects.
+- For Tauri commands: wrap blocking work in `tauri::async_runtime::spawn_blocking`, use `rayon` inside only when per-item work is independent.
+- Prefer sequential when: tiny collection, already async, or parallelism makes error handling/rollback less predictable.
 
 ### Tauri
 
-- Use Tauri v2 APIs. Do not use v1 patterns (plugin system, command registration, etc.)
-- Register all commands in `lib.rs` via `tauri::Builder::default().invoke_handler(tauri::generate_handler![...])`
-- Use `tauri::command` macro on all public Rust handlers
+- Tauri v2 APIs only. Register commands in `lib.rs` via `invoke_handler(generate_handler![...])`. Use `#[tauri::command]` on all handlers.
 
 ## Core Priorities
 
-1. Performance first.
-2. Reliability first.
-3. Keep behavior predictable under load and during failures (session restarts, reconnects, partial streams).
-
-If a tradeoff is required, choose correctness and robustness over short-term convenience.
+Performance, reliability, predictability under load/failures. When trading off, choose correctness over convenience.
 
 ## Maintainability
 
-Long-term maintainability is a core priority. If you add new functionality, first check if there is shared logic that can be extracted to a separate module. Duplicate logic across multiple files is a code smell and should be avoided. Don't be afraid to change existing code. Don't take shortcuts by just adding local logic to solve a problem.
+Extract shared logic to modules. No duplicate logic across files. Change existing code; don't add local shortcuts.
 
-## Codebase Navigation & Intelligence
+## Codebase Navigation — `@colbymchenry/codegraph`
 
-**MANDATORY:** All codebase navigation, exploration, symbol discovery, and relationship analysis MUST be performed using `@colbymchenry/codegraph`. Generic file searches or regex greps are discouraged unless searching for raw literal strings not indexed as symbols.
-
-### Why codegraph?
-`codegraph` parses the entire codebase (both Rust & TypeScript) to build a semantic graph of functions, components, types, and files. This allows instantly finding usages, definitions, and dependencies across language boundaries without flooding the context window with raw text.
-
-### Usage & Commands
-Always bypass the unsafe Node version guard since the codebase uses modern runtimes:
+**MANDATORY:** Use codegraph for all codebase navigation, symbol discovery, relationship analysis. Generic grep discouraged unless searching raw literal strings.
 
 ```bash
-# 1. Re-index codebase (run after modifying code/files)
-bunx --bun @colbymchenry/codegraph index
-
-# 2. Query specific symbol (find where functions, types, components are defined/used)
-bunx --bun @colbymchenry/codegraph query <symbol_name>
-
-# 3. Generate structured Markdown context for specific task or feature
-bunx --bun @colbymchenry/codegraph context "<feature or task description>"
-
-# 4. View indexing stats and verify graph health
-bunx --bun @colbymchenry/codegraph status
+bunx --bun @colbymchenry/codegraph init # first time
+bunx --bun @colbymchenry/codegraph index # re-index after edits
+bunx --bun @colbymchenry/codegraph query <symbol> # find definitions/usages
+bunx --bun @colbymchenry/codegraph context "<task>" # structured markdown for a feature
+bunx --bun @colbymchenry/codegraph status # graph health
 ```
 
-### Workflow Rules for AI Agents:
-1. **Explore First:** When starting new task, query relevant symbols or generate context markdown using `codegraph context` instead of manually reading multiple files.
-2. **Post-edit Re-indexing:** After creating or modifying files, re-index using the `index` command to keep semantic graph current.
-3. **Trace Dependencies:** Use `query` to understand which modules, components, or Tauri commands are impacted before making modifications.
+Workflow: explore with `query`/`context` before reading files → re-index after edits → trace deps with `query` before modifications.
 
+## RTK — Token-Optimized Commands
+
+**Always prefix shell commands with `rtk`** (60-90% context savings, zero behavior change, passthrough if no filter).
+
+- Chain: `rtk git add . && rtk git commit -m "msg"`
+- Debugging: raw command without `rtk`
+- `rtk proxy <cmd>` — no filtering, tracks usage
 
 ## Post-Task Checks
 
-Run after every task. Do not skip, even for small changes.
+Run after every task. Do not skip.
 
-### Frontend
-
-Order matters: format first so typecheck sees clean code:
+### Frontend (format → typecheck → dead-code → audit)
 
 ```bash
-# 1. Fix formatting and lint errors
-bun run format
-# fallback if script not available:
-bunx eslint --fix .
-
-# 2. Type check — must pass with zero errors
-bun run typecheck
-# fallback:
-bunx tsc --noEmit
-
-# 3. Dead-code check (fallow) — must pass with zero issues
-bunx fallow --only dead-code
-
-# 4. React Doctor audit (ensure UI health)
-bunx react-doctor --yes --verbose
+bun run format # eslint --fix (eslint-stylistic replaces Prettier)
+bun run typecheck # tsc --noEmit, zero errors
+bunx fallow@latest # zero issues
+bunx react-doctor@latest  # UI health
 ```
 
-> `eslint-stylistic` handles formatting. It replaces Prettier. `bun run format` runs `eslint --fix`, not separate formatter.
-
-### Backend
-
-Order matters: `fmt` before `clippy`; run `check` after `clippy` fix to confirm clean build:
+### Backend (fmt → clippy → check)
 
 ```bash
-# 1. Format
 cargo fmt
-
-# 2. Lint + auto-fix what's fixable
-cargo clippy --fix --allow-dirty --allow-staged
-
-# 3. Verify the build compiles cleanly
+cargo clippy --fix --allow-dirty --allow-staged --all-targets -- -D warnings
 cargo check
 ```
+
+<!-- gortex:communities:start -->
+<!-- gortex:skills:start -->
+## Community Skills
+
+| Area | Description | Skill |
+|------|-------------|-------|
+| Src Tauri Src Tweaks Appearance 17 Dirs | 304 symbols | `/gortex-src-tauri-src-tweaks-appearance-17-dirs` |
+| Src Pages Home Ui 5 Dirs | 287 symbols | `/gortex-src-pages-home-ui-5-dirs` |
+| Src Tauri Src Tweaks Appearance 11 Dirs | 229 symbols | `/gortex-src-tauri-src-tweaks-appearance-11-dirs` |
+| Src Shared Ui 8 Dirs | 172 symbols | `/gortex-src-shared-ui-8-dirs` |
+| Src Tauri Src 6 Dirs | 159 symbols | `/gortex-src-tauri-src-6-dirs` |
+| Src Tauri Src Startup 1 Dirs Startupentry | 142 symbols | `/gortex-src-tauri-src-startup-1-dirs-startupentry` |
+| Src Tauri Src Tweaks Input Snapshot Dword | 141 symbols | `/gortex-src-tauri-src-tweaks-input-snapshot-dword` |
+| Src Tauri Src Tweaks Privacy New | 92 symbols | `/gortex-src-tauri-src-tweaks-privacy-new` |
+| Src Tauri Src Tweaks Context Menu Read String Or Missing | 66 symbols | `/gortex-src-tauri-src-tweaks-context-menu-read-string-or-missing` |
+| Src Tauri Src Startup Entry Details | 64 symbols | `/gortex-src-tauri-src-startup-entry-details` |
+| Src Features Theme Switcher Ui 9 Dirs | 63 symbols | `/gortex-src-features-theme-switcher-ui-9-dirs` |
+| Src Tauri Src Tweaks Context Menu 3 Dirs | 61 symbols | `/gortex-src-tauri-src-tweaks-context-menu-3-dirs` |
+| Src Tauri Src Backup 1 Dirs | 59 symbols | `/gortex-src-tauri-src-backup-1-dirs` |
+| Src Tauri Src Tweaks Appearance 6 Dirs | 57 symbols | `/gortex-src-tauri-src-tweaks-appearance-6-dirs` |
+| Src Tauri Src System Info 1 Dirs Gpuinfo | 56 symbols | `/gortex-src-tauri-src-system-info-1-dirs-gpuinfo` |
+| Src Entities Startup Model | 50 symbols | `/gortex-src-entities-startup-model` |
+| Src Shared Ui Scrollto | 45 symbols | `/gortex-src-shared-ui-scrollto` |
+| Src Shared Ui 2 Dirs Sidebarprovider | 44 symbols | `/gortex-src-shared-ui-2-dirs-sidebarprovider` |
+| Src Tauri Src Commands 3 Dirs | 42 symbols | `/gortex-src-tauri-src-commands-3-dirs` |
+| Src Tauri Src Startup Action Info | 41 symbols | `/gortex-src-tauri-src-startup-action-info` |
+<!-- gortex:skills:end -->
+
+<!-- gortex:communities:end -->
+
+<!-- rtk-instructions v2 -->
+# RTK (Rust Token Killer) - Token-Optimized Commands
+
+## Golden Rule
+
+**Always prefix commands with `rtk`**. If RTK has a dedicated filter, it uses it. If not, it passes through unchanged. This means RTK is always safe to use.
+
+**Important**: Even in command chains with `&&`, use `rtk`:
+```bash
+# ❌ Wrong
+git add . && git commit -m "msg" && git push
+
+# ✅ Correct
+rtk git add . && rtk git commit -m "msg" && rtk git push
+```
+
+## RTK Commands by Workflow
+
+### Build & Compile (80-90% savings)
+```bash
+rtk cargo build         # Cargo build output
+rtk cargo check         # Cargo check output
+rtk cargo clippy        # Clippy warnings grouped by file (80%)
+rtk tsc                 # TypeScript errors grouped by file/code (83%)
+rtk lint                # ESLint/Biome violations grouped (84%)
+rtk prettier --check    # Files needing format only (70%)
+rtk next build          # Next.js build with route metrics (87%)
+```
+
+### Test (60-99% savings)
+```bash
+rtk cargo test          # Cargo test failures only (90%)
+rtk go test             # Go test failures only (90%)
+rtk jest                # Jest failures only (99.5%)
+rtk vitest              # Vitest failures only (99.5%)
+rtk playwright test     # Playwright failures only (94%)
+rtk pytest              # Python test failures only (90%)
+rtk rake test           # Ruby test failures only (90%)
+rtk rspec               # RSpec test failures only (60%)
+rtk test <cmd>          # Generic test wrapper - failures only
+```
+
+### Git (59-80% savings)
+```bash
+rtk git status          # Compact status
+rtk git log             # Compact log (works with all git flags)
+rtk git diff            # Compact diff (80%)
+rtk git show            # Compact show (80%)
+rtk git add             # Ultra-compact confirmations (59%)
+rtk git commit          # Ultra-compact confirmations (59%)
+rtk git push            # Ultra-compact confirmations
+rtk git pull            # Ultra-compact confirmations
+rtk git branch          # Compact branch list
+rtk git fetch           # Compact fetch
+rtk git stash           # Compact stash
+rtk git worktree        # Compact worktree
+```
+
+Note: Git passthrough works for ALL subcommands, even those not explicitly listed.
+
+### GitHub (26-87% savings)
+```bash
+rtk gh pr view <num>    # Compact PR view (87%)
+rtk gh pr checks        # Compact PR checks (79%)
+rtk gh run list         # Compact workflow runs (82%)
+rtk gh issue list       # Compact issue list (80%)
+rtk gh api              # Compact API responses (26%)
+```
+
+### JavaScript/TypeScript Tooling (70-90% savings)
+```bash
+rtk pnpm list           # Compact dependency tree (70%)
+rtk pnpm outdated       # Compact outdated packages (80%)
+rtk pnpm install        # Compact install output (90%)
+rtk npm run <script>    # Compact npm script output
+rtk npx <cmd>           # Compact npx command output
+rtk prisma              # Prisma without ASCII art (88%)
+```
+
+### Files & Search (60-75% savings)
+```bash
+rtk ls <path>           # Tree format, compact (65%)
+rtk read <file>         # Code reading with filtering (60%)
+rtk grep <pattern>      # Search grouped by file (75%). Format flags (-c, -l, -L, -o, -Z) run raw.
+rtk find <pattern>      # Find grouped by directory (70%)
+```
+
+### Analysis & Debug (70-90% savings)
+```bash
+rtk err <cmd>           # Filter errors only from any command
+rtk log <file>          # Deduplicated logs with counts
+rtk json <file>         # JSON structure without values
+rtk deps                # Dependency overview
+rtk env                 # Environment variables compact
+rtk summary <cmd>       # Smart summary of command output
+rtk diff                # Ultra-compact diffs
+```
+
+### Infrastructure (85% savings)
+```bash
+rtk docker ps           # Compact container list
+rtk docker images       # Compact image list
+rtk docker logs <c>     # Deduplicated logs
+rtk kubectl get         # Compact resource list
+rtk kubectl logs        # Deduplicated pod logs
+```
+
+### Network (65-70% savings)
+```bash
+rtk curl <url>          # Compact HTTP responses (70%)
+rtk wget <url>          # Compact download output (65%)
+```
+
+### Meta Commands
+```bash
+rtk gain                # View token savings statistics
+rtk gain --history      # View command history with savings
+rtk discover            # Analyze Claude Code sessions for missed RTK usage
+rtk proxy <cmd>         # Run command without filtering (for debugging)
+rtk init                # Add RTK instructions to CLAUDE.md
+rtk init --global       # Add RTK to ~/.claude/CLAUDE.md
+```
+
+## Token Savings Overview
+
+| Category | Commands | Typical Savings |
+|----------|----------|-----------------|
+| Tests | vitest, playwright, cargo test | 90-99% |
+| Build | next, tsc, lint, prettier | 70-87% |
+| Git | status, log, diff, add, commit | 59-80% |
+| GitHub | gh pr, gh run, gh issue | 26-87% |
+| Package Managers | pnpm, npm, npx | 70-90% |
+| Files | ls, read, grep, find | 60-75% |
+| Infrastructure | docker, kubectl | 85% |
+| Network | curl, wget | 65-70% |
+
+Overall average: **60-90% token reduction** on common development operations.
+<!-- /rtk-instructions -->

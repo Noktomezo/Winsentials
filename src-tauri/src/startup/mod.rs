@@ -6,6 +6,9 @@ pub mod shell_hosts;
 pub mod startup_folder;
 pub mod types;
 
+use rayon::prelude::*;
+
+use crate::com::ComGuard;
 use crate::error::AppError;
 use crate::startup::types::{
     StartupEntry, StartupEntryDetails, StartupSource, StartupSourceListResponse,
@@ -27,7 +30,35 @@ pub fn startup_list_scheduled_tasks() -> StartupSourceListResponse {
 }
 
 pub fn startup_hydrate_entries(ids: &[String]) -> Result<Vec<StartupEntry>, AppError> {
-    ids.iter().map(|id| startup_entry(id)).collect()
+    let mut reg_ids: Vec<String> = Vec::new();
+    let mut folder_ids: Vec<String> = Vec::new();
+    let mut task_ids: Vec<String> = Vec::new();
+    for id in ids {
+        if id.starts_with("reg:") {
+            reg_ids.push(id.clone());
+        } else if id.starts_with("folder:") {
+            folder_ids.push(id.clone());
+        } else if id.starts_with("task:") {
+            task_ids.push(id.clone());
+        }
+    }
+
+    let groups: Vec<&[String]> = vec![&reg_ids, &folder_ids, &task_ids];
+    let results: Vec<Vec<StartupEntry>> = groups
+        .par_iter()
+        .enumerate()
+        .map(|(idx, group)| {
+            let _com = ComGuard::new().ok();
+            match idx {
+                0 => registry::hydrate_entries(group).unwrap_or_default(),
+                1 => startup_folder::hydrate_entries(group).unwrap_or_default(),
+                2 => scheduled_tasks::hydrate_entries(group).unwrap_or_default(),
+                _ => vec![],
+            }
+        })
+        .collect();
+
+    Ok(results.into_iter().flatten().collect())
 }
 
 pub fn startup_enable(id: &str) -> Result<StartupEntry, AppError> {
@@ -89,22 +120,6 @@ pub fn startup_details(id: &str) -> Result<StartupEntryDetails, AppError> {
 
     if id.starts_with("task:") {
         return scheduled_tasks::entry_details(id);
-    }
-
-    Err(AppError::message(format!("unknown startup entry id: {id}")))
-}
-
-fn startup_entry(id: &str) -> Result<StartupEntry, AppError> {
-    if id.starts_with("reg:") {
-        return registry::entry(id);
-    }
-
-    if id.starts_with("folder:") {
-        return startup_folder::entry(id);
-    }
-
-    if id.starts_with("task:") {
-        return scheduled_tasks::entry(id);
     }
 
     Err(AppError::message(format!("unknown startup entry id: {id}")))

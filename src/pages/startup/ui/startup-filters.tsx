@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import type { StartupSource } from '@/entities/startup/model/types'
+import type { StartupSourceFilter, StartupStatusFilter } from '@/entities/startup/model/types'
 import { ChevronDown, Filter, Search } from 'lucide-react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { cn } from '@/shared/lib/utils'
@@ -16,10 +16,10 @@ import {
 interface StartupFiltersProps {
   search: string
   setSearch: (value: string) => void
-  sourceFilter: StartupSource | 'all'
-  setSourceFilter: (value: StartupSource | 'all') => void
-  statusFilter: 'all' | 'enabled' | 'disabled'
-  setStatusFilter: (value: 'all' | 'enabled' | 'disabled') => void
+  sourceFilter: StartupSourceFilter
+  setSourceFilter: (value: StartupSourceFilter) => void
+  statusFilter: StartupStatusFilter
+  setStatusFilter: (value: StartupStatusFilter) => void
   t: TFunction
 }
 

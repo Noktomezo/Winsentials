@@ -106,11 +106,21 @@ function TitlebarButton({
 }
 
 const handleMinimize = async () => {
-  await appWindow.minimize()
+  try {
+    await appWindow.minimize()
+  }
+  catch (error) {
+    console.error('Failed to minimize window', error)
+  }
 }
 
 const handleClose = async () => {
-  await appWindow.close()
+  try {
+    await appWindow.close()
+  }
+  catch (error) {
+    console.error('Failed to close window', error)
+  }
 }
 
 export function AppTitlebar() {
