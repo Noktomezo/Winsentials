@@ -1,10 +1,10 @@
 import type { LucideIcon } from 'lucide-react'
 import { useNavigate, useRouter } from '@tanstack/react-router'
-import { ChevronRight, Rocket } from 'lucide-react'
+import { BrushCleaning, ChevronRight, Rocket } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 
-type ToolRoute = '/startup'
+type ToolRoute = '/startup' | '/cleanup'
 
 interface ToolCardProps {
   description: string
@@ -65,6 +65,12 @@ function ToolsPage() {
   return (
     <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
       <div className="tweak-card-grid">
+        <ToolCard
+          description={t('cleanup.description')}
+          icon={BrushCleaning}
+          title={t('navigation.cleanup')}
+          to="/cleanup"
+        />
         <ToolCard
           description={t('startup.description')}
           icon={Rocket}

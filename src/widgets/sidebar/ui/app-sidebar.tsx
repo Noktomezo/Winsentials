@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
-import { BrushCleaning, Bubbles, DatabaseBackup, EyeOff, FolderCog, Gauge, House, Keyboard, MemoryStick, MousePointerClick, Network, Palette, Settings2, Shield, Wrench } from 'lucide-react'
+import { Bubbles, DatabaseBackup, EyeOff, FolderCog, Gauge, House, Keyboard, MemoryStick, MousePointerClick, Network, Palette, Settings2, Shield, Wrench } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useRouteIntentPreload } from '@/shared/lib/hooks/use-route-intent-preload'
 import {
@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
 } from '@/shared/ui'
 
-type SidebarRoute = '/home' | '/appearance' | '/backup' | '/behaviour' | '/cleanup' | '/context-menu' | '/debloat' | '/security' | '/privacy' | '/network' | '/performance' | '/memory' | '/input' | '/startup' | '/tools' | '/settings'
+type SidebarRoute = '/home' | '/appearance' | '/backup' | '/behaviour' | '/context-menu' | '/debloat' | '/security' | '/privacy' | '/network' | '/performance' | '/memory' | '/input' | '/startup' | '/tools' | '/settings'
 
 export function AppSidebar() {
   const { t } = useTranslation()
@@ -222,20 +222,6 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="border-t border-border/70 p-1">
         <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              className="cursor-pointer"
-              isActive={pathname === '/cleanup'}
-              onClick={event => handleMenuClick(event, '/cleanup')}
-              onFocus={() => handlePointerIntent('/cleanup')}
-              onMouseEnter={() => handlePointerIntent('/cleanup')}
-              tooltip={t('navigation.cleanup')}
-              type="button"
-            >
-              <BrushCleaning />
-              <span data-sidebar-label>{t('navigation.cleanup')}</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               className="cursor-pointer"
