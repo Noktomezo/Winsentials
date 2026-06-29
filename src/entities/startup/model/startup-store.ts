@@ -403,7 +403,23 @@ async function hydrateLoadedEntries(
     })
   }
   catch (error) {
-    console.error('Failed to hydrate startup entries', error)
+    console.error('Failed to hydrate startup entries batch, retrying per-id', error)
+    for (const id of ids) {
+      if (get().hydrationRequestId !== requestId) return
+      try {
+        const hydrated = await hydrateStartupEntries([id])
+        set((current) => {
+          if (current.hydrationRequestId !== requestId) return current
+          return {
+            ...current,
+            ...applyEntryUpdates(current.entriesBySource, hydrated),
+          }
+        })
+      }
+      catch (err) {
+        console.error(`Failed to hydrate startup entry ${id}`, err)
+      }
+    }
   }
 }
 

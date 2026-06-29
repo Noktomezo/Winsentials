@@ -60,11 +60,11 @@ Extract shared logic to modules. No duplicate logic across files. Change existin
 **MANDATORY:** Use codegraph for all codebase navigation, symbol discovery, relationship analysis. Generic grep discouraged unless searching raw literal strings.
 
 ```bash
-bunx --bun @colbymchenry/codegraph init # first time
-bunx --bun @colbymchenry/codegraph index # re-index after edits
-bunx --bun @colbymchenry/codegraph query <symbol> # find definitions/usages
-bunx --bun @colbymchenry/codegraph context "<task>" # structured markdown for a feature
-bunx --bun @colbymchenry/codegraph status # graph health
+rtk bunx --bun @colbymchenry/codegraph init # first time
+rtk bunx --bun @colbymchenry/codegraph index # re-index after edits
+rtk bunx --bun @colbymchenry/codegraph query <symbol> # find definitions/usages
+rtk bunx --bun @colbymchenry/codegraph context "<task>" # structured markdown for a feature
+rtk bunx --bun @colbymchenry/codegraph status # graph health
 ```
 
 Workflow: explore with `query`/`context` before reading files → re-index after edits → trace deps with `query` before modifications.
@@ -84,18 +84,18 @@ Run after every task. Do not skip.
 ### Frontend (format → typecheck → dead-code → audit)
 
 ```bash
-bun run format # eslint --fix (eslint-stylistic replaces Prettier)
-bun run typecheck # tsc --noEmit, zero errors
-bunx fallow@latest # zero issues
-bunx react-doctor@latest  # UI health
+rtk bun run format # eslint --fix (eslint-stylistic replaces Prettier)
+rtk bun run typecheck # tsc --noEmit, zero errors
+rtk bunx fallow@latest # zero issues
+rtk bunx react-doctor@latest  # UI health
 ```
 
 ### Backend (fmt → clippy → check)
 
 ```bash
-cargo fmt
-cargo clippy --fix --allow-dirty --allow-staged --all-targets -- -D warnings
-cargo check
+rtk cargo fmt
+rtk cargo clippy --fix --allow-dirty --allow-staged --all-targets -- -D warnings
+rtk cargo check
 ```
 
 <!-- gortex:communities:start -->
@@ -199,11 +199,10 @@ rtk gh api              # Compact API responses (26%)
 
 ### JavaScript/TypeScript Tooling (70-90% savings)
 ```bash
-rtk pnpm list           # Compact dependency tree (70%)
-rtk pnpm outdated       # Compact outdated packages (80%)
-rtk pnpm install        # Compact install output (90%)
-rtk npm run <script>    # Compact npm script output
-rtk npx <cmd>           # Compact npx command output
+rtk bun add <pkg>        # Add dependency
+rtk bun add -d <pkg>     # Add dev dependency
+rtk bun run <script>     # Compact bun script output
+rtk bunx <cmd>           # Compact bunx command output
 rtk prisma              # Prisma without ASCII art (88%)
 ```
 

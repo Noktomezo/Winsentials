@@ -6,8 +6,6 @@ pub mod shell_hosts;
 pub mod startup_folder;
 pub mod types;
 
-use rayon::prelude::*;
-
 use crate::com::ComGuard;
 use crate::error::AppError;
 use crate::startup::types::{
@@ -43,22 +41,22 @@ pub fn startup_hydrate_entries(ids: &[String]) -> Result<Vec<StartupEntry>, AppE
         }
     }
 
-    let groups: Vec<&[String]> = vec![&reg_ids, &folder_ids, &task_ids];
-    let results: Vec<Vec<StartupEntry>> = groups
-        .par_iter()
-        .enumerate()
-        .map(|(idx, group)| {
-            let _com = ComGuard::new().ok();
-            match idx {
-                0 => registry::hydrate_entries(group).unwrap_or_default(),
-                1 => startup_folder::hydrate_entries(group).unwrap_or_default(),
-                2 => scheduled_tasks::hydrate_entries(group).unwrap_or_default(),
-                _ => vec![],
-            }
-        })
-        .collect();
+    let mut entries = Vec::new();
 
-    Ok(results.into_iter().flatten().collect())
+    if !reg_ids.is_empty() {
+        let _com = ComGuard::new().ok();
+        entries.extend(registry::hydrate_entries(&reg_ids)?);
+    }
+    if !folder_ids.is_empty() {
+        let _com = ComGuard::new().ok();
+        entries.extend(startup_folder::hydrate_entries(&folder_ids)?);
+    }
+    if !task_ids.is_empty() {
+        let _com = ComGuard::new().ok();
+        entries.extend(scheduled_tasks::hydrate_entries(&task_ids)?);
+    }
+
+    Ok(entries)
 }
 
 pub fn startup_enable(id: &str) -> Result<StartupEntry, AppError> {
