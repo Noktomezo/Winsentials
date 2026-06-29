@@ -193,20 +193,6 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               className="cursor-pointer"
-              isActive={pathname === '/cleanup'}
-              onClick={event => handleMenuClick(event, '/cleanup')}
-              onFocus={() => handlePointerIntent('/cleanup')}
-              onMouseEnter={() => handlePointerIntent('/cleanup')}
-              tooltip={t('navigation.cleanup')}
-              type="button"
-            >
-              <BrushCleaning />
-              <span data-sidebar-label>{t('navigation.cleanup')}</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              className="cursor-pointer"
               isActive={pathname === '/debloat'}
               onClick={event => handleMenuClick(event, '/debloat')}
               onFocus={() => handlePointerIntent('/debloat')}
@@ -236,6 +222,20 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter className="border-t border-border/70 p-1">
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              className="cursor-pointer"
+              isActive={pathname === '/cleanup'}
+              onClick={event => handleMenuClick(event, '/cleanup')}
+              onFocus={() => handlePointerIntent('/cleanup')}
+              onMouseEnter={() => handlePointerIntent('/cleanup')}
+              tooltip={t('navigation.cleanup')}
+              type="button"
+            >
+              <BrushCleaning />
+              <span data-sidebar-label>{t('navigation.cleanup')}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               className="cursor-pointer"
