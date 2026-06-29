@@ -656,6 +656,7 @@ function CleanupPage() {
       .then((report) => {
         cleanupScanCache.setReport(report)
         toast.success(t('cleanup.cleaned'))
+        refreshCleanupCategory(categoryId)
       })
       .catch((error) => {
         console.error(error)
@@ -703,6 +704,7 @@ function CleanupPage() {
       })
       .finally(() => {
         setBusyActionState(null)
+        refreshAllCategories()
       })
   }
 
