@@ -1,14 +1,11 @@
 import type { ReactNode } from 'react'
-import type { StaticSystemInfo } from '@/entities/system-info/model/types'
 import type { ChartPoint } from '@/shared/ui/live-chart'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getStaticSystemInfo } from '@/entities/system-info/api'
 import { formatCpuModel } from '@/entities/system-info/lib/format-hardware-name'
 import { useLiveCpu } from '@/entities/system-info/model/live-system-store'
-import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
-import { Button } from '@/shared/ui/button'
+import { useStaticSystemInfo } from '@/entities/system-info/model/static-system-info'
 import { LiveChart } from '@/shared/ui/live-chart'
+import { LiveErrorState } from '@/shared/ui/live-error-state'
 import { Progress } from '@/shared/ui/progress'
 import { Skeleton } from '@/shared/ui/skeleton'
 
@@ -52,46 +49,16 @@ function Row({ label, value }: RowProps) {
   )
 }
 
-type CpuStaticInfoState
-  = | { status: 'error' }
-    | { status: 'loading' }
-    | { info: StaticSystemInfo, status: 'ready' }
-
 function CpuPage() {
   const { t } = useTranslation()
-  const [staticInfoState, setStaticInfoState] = useState<CpuStaticInfoState>({ status: 'loading' })
+  const { info: staticInfo, error, retry } = useStaticSystemInfo()
   const { data: liveInfo, history: rawHistory } = useLiveCpu()
   const history: ChartPoint[] = rawHistory.map(v => ({ value: v }))
 
-  const loadStaticInfo = () => {
-    setStaticInfoState({ status: 'loading' })
-    getStaticSystemInfo()
-      .then((info) => {
-        setStaticInfoState({ info, status: 'ready' })
-      })
-      .catch((error) => {
-        console.error(error)
-        setStaticInfoState({ status: 'error' })
-      })
-  }
-
-  useMountEffect(() => {
-    loadStaticInfo()
-  })
-
-  if (staticInfoState.status !== 'ready') {
-    if (staticInfoState.status === 'error') {
+  if (!staticInfo) {
+    if (error) {
       return (
-        <section className="flex flex-1 flex-col gap-4 px-4 pb-4 md:px-6 md:pb-6">
-          <section className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card p-4">
-            <p className="text-sm text-muted-foreground">{t('cpu.loadError')}</p>
-            <div>
-              <Button onClick={loadStaticInfo} size="sm" type="button" variant="outline">
-                {t('tweaks.actions.retry')}
-              </Button>
-            </div>
-          </section>
-        </section>
+        <LiveErrorState message={t('cpu.loadError')} onRetry={retry} />
       )
     }
 
@@ -111,7 +78,7 @@ function CpuPage() {
     )
   }
 
-  const cpu = staticInfoState.info.cpu
+  const cpu = staticInfo.cpu
   const cpuModel = formatCpuModel(cpu.model)
 
   return (

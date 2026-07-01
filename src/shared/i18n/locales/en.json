@@ -178,6 +178,7 @@
     "refreshAll": "Refresh all",
     "checkAll": "Select all targets",
     "uncheckAll": "Deselect all targets",
+    "selectDefaults": "Restore default selection",
     "checkAllCategories": "Select all categories",
     "uncheckAllCategories": "Deselect all categories",
     "cleaned": "Cleanup completed.",
@@ -228,6 +229,21 @@
       "clean": "Failed to run cleanup.",
       "reboot": "Failed to schedule delete after reboot.",
       "nothingSelected": "No categories selected for cleaning."
+    },
+    "db": {
+      "update": "Update databases",
+      "updating": "Updating...",
+      "sourceBundled": "Built-in database",
+      "sourceCache": "Updated database",
+      "sourceCustom": "Custom database",
+      "lastUpdated": "Last updated: {{date}}",
+      "updateSuccess": "Databases updated successfully.",
+      "updateError": "Failed to update databases.",
+      "setCustom": "Use custom file",
+      "resetCustom": "Reset to default",
+      "customPathSet": "Custom database file set.",
+      "customPathReset": "Reset to default database.",
+      "customPathError": "Failed to set custom database path."
     }
   },
   "contextMenu": {
@@ -262,10 +278,10 @@
         "shortDescription": "Disables Brave Rewards, Leo AI, Crypto Wallet, VPN, telemetry, and other optional Brave features."
       },
       "disableMicrosoftCopilot": {
-        "detailDescription": "Removes Copilot AppX packages for all users, marks the current user's MicrosoftWindows.Client.CoreAI package as end-of-life, and removes that CoreAI package when present. Reset reinstalls Copilot from Microsoft Store through winget.",
-        "name": "Disable Microsoft Copilot",
+        "detailDescription": "Removes Copilot and CoreAI AppX packages for all users, marks CoreAI as end-of-life, hides AI components from Settings, disables AI features in Notepad, disables the Windows AI Fabric service, and disables the Recall feature. Reset reverts all changes and reinstalls Copilot from Microsoft Store through winget.",
+        "name": "Disable and Remove AI Components",
         "riskDescription": "This is a long-running AppX and Microsoft Store operation. Reset requires winget and Microsoft Store access, and may fail if Store sources are blocked or unavailable.",
-        "shortDescription": "Removes Copilot and related AI AppX packages, with reset reinstalling Copilot through winget."
+        "shortDescription": "Removes Copilot and related AI packages, disables AI services, Recall, and Notepad AI features."
       },
       "microsoftEdgeDebloat": {
         "detailDescription": "Applies Microsoft Edge policies that disable telemetry and personalization reporting, recommendations, first-run prompts, feedback, alternate error pages, Collections, Shopping Assistant, Insider promotions, Rewards, Web Widget, asset delivery, donation wallet features, default browser campaigns, and the default desktop shortcut created by Edge Update.",
@@ -304,7 +320,8 @@
     "delete": "Delete",
     "deleteConfirm": "Delete this backup? This action cannot be undone.",
     "key": "Key",
-    "tweakValues": "Tweak values",
+    "tweakValues_one": "tweak value",
+    "tweakValues_other": "tweak values",
     "noSnapshots": "No backups yet",
     "snapshotCreated": "Backup created",
     "renamed": "Backup renamed",
@@ -444,10 +461,10 @@
         "shortDescription": "Turns off GameDVR recording and related fullscreen capture hooks."
       },
       "optimizeMmcss": {
-        "detailDescription": "Prioritizes games and low-latency audio workloads more aggressively so Windows spends less time favoring background activity. This can help reduce microstutter, improve frame pacing, and make gameplay feel more responsive on systems that feel slightly sluggish under load.",
+        "detailDescription": "The Multimedia Class Scheduler Service (MMCSS) assigns CPU, GPU, and I/O priority to multimedia tasks via profiles stored in the registry. This tweak modifies two of them. The Games profile (Tasks\\Games) is raised: Scheduling Category Medium→High, CPU Priority 2→6, I/O (SFIO) Priority Normal→High. GPU Priority stays at 8. The Pro Audio profile (Tasks\\Pro Audio) only gets its I/O priority raised Normal→High; its CPU priority, scheduling category, and GPU priority are left at Windows defaults. The net effect is that during CPU or disk contention, Windows favors games over background work, which can reduce microstutter and smooth out frame pacing. A reboot is required for the scheduler to reload the profiles.",
         "name": "Optimize MMCSS",
-        "riskDescription": "Background audio, video playback, streaming helpers, or other non-game multimedia tasks can become less stable while this profile is active. If you notice worse multitasking behavior, reset the tweak and reboot Windows.",
-        "shortDescription": "Can reduce microstutter and make games feel more responsive by favoring gaming and low-latency audio."
+        "riskDescription": "Background tasks now compete with games at a lower priority for CPU and disk I/O. Other multimedia workloads — background audio, video playback, streaming, OBS — may feel less smooth while this profile is active. If multitasking gets worse, reset the tweak and reboot Windows.",
+        "shortDescription": "Raises CPU and I/O priority for the MMCSS Games task so games get more predictable scheduling under load."
       },
       "rawMouseThrottle": {
         "detailDescription": "Windows already groups very high-rate mouse events before passing them through the system, usually at about 125 Hz. This tweak makes that grouping more aggressive by switching it to 50 Hz. Your mouse does not physically become 50 Hz, but Windows spends less time processing huge bursts of mouse events from 2000-8000 Hz devices. That can noticeably reduce CPU and DPC overhead and make FPS drops during fast mouse movement much less severe after a full reboot.",
@@ -611,6 +628,7 @@
     "searchLabel": "Search startup entries",
     "searchPlaceholder": "Search startup entries",
     "filters": {
+      "title": "Filters",
       "source": "Source",
       "status": "Status",
       "allSources": "All sources",

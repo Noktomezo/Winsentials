@@ -7,7 +7,6 @@ import { Slot } from 'radix-ui'
 import * as React from 'react'
 
 import { useIsMobile } from '@/shared/lib/hooks/use-mobile'
-import { useMountEffect } from '@/shared/lib/hooks/use-mount-effect'
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
@@ -107,10 +106,11 @@ function SidebarProvider({
   })
 
   // Adds a keyboard shortcut to toggle the sidebar.
-  useMountEffect(() => {
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  })
+  React.useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => handleKeyDown(event)
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.
@@ -321,6 +321,7 @@ function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
       tabIndex={-1}
       onClick={toggleSidebar}
       title="Toggle Sidebar"
+      type="button"
       className={cn(
         'absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex',
         'in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize',

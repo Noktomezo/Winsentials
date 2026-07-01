@@ -190,7 +190,7 @@ export function usePageHeader(pathname: string): PageHeader {
         ),
       },
     }),
-    [cleanupBusy, cleanupCleanDisabled, cleanupRefreshing, cleanupSummary.sizeBytes, cleanupSummary.targetCount, i18n.language, t],
+    [cleanupBusy, cleanupCleanDisabled, cleanupRefreshing, cleanupSummary.hasAnyChecked, cleanupSummary.sizeBytes, cleanupSummary.targetCount, i18n.language, t],
   )
   if (staticMap[pathname]) return staticMap[pathname]
 

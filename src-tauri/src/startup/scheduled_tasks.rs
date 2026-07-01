@@ -30,6 +30,18 @@ pub fn list_entries() -> Result<Vec<StartupEntry>, AppError> {
     Ok(entries)
 }
 
+pub fn hydrate_entries(ids: &[String]) -> Result<Vec<StartupEntry>, AppError> {
+    let id_set: std::collections::HashSet<&str> = ids.iter().map(|s| s.as_str()).collect();
+    let session = TaskSchedulerSession::connect()?;
+    let root = session.root_folder()?;
+    let mut entries = Vec::new();
+    collect_folder_entries(&root, &mut entries, true)?;
+    Ok(entries
+        .into_iter()
+        .filter(|e| id_set.contains(e.id.as_str()))
+        .collect())
+}
+
 pub fn entry(id: &str) -> Result<StartupEntry, AppError> {
     let full_path = task_full_path_from_id(id)?;
     let session = TaskSchedulerSession::connect()?;

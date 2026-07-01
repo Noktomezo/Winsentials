@@ -15,7 +15,8 @@
     "tauri": "tauri",
     "typecheck": "tsc --noEmit",
     "prepare": "is-ci || bun --bun prek install",
-    "updeps": "bun update --latest --force"
+    "updeps": "bun update --latest --force",
+    "doctor": "bunx react-doctor@latest"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",
@@ -24,6 +25,7 @@
     "@tanstack/react-virtual": "^3.13.24",
     "@tauri-apps/api": "2.11.0",
     "@tauri-apps/plugin-clipboard-manager": "^2.3.2",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-opener": "^2.5.4",
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-store": "^2.4.3",

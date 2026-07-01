@@ -11,6 +11,9 @@ use std::os::windows::process::CommandExt;
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
+use super::winapp_db::{
+    ExcludeRule, ExcludeRuleType, IniEntry, all_exclude_rules, winapp2_entries, winappx_entries,
+};
 use super::{
     DeleteOutcome, cleanup_status_from_error, delete_target_contents, expand_env_path,
     expand_wildcard_path, force_remove_path, is_busy_delete_error, target_size_bytes,
@@ -19,41 +22,52 @@ use super::{
 use crate::cleanup::types::{CleanupCategoryReport, CleanupEntry, CleanupEntryStatus};
 use crate::error::AppError;
 
-const WINAPP2: &str = include_str!("../../assets/Winapp2.ini");
-const WINAPPX: &str = include_str!("../../assets/Winappx.ini");
+fn is_path_within_dir(path_lower: &str, dir_lower: &str) -> bool {
+    path_lower == dir_lower || path_str_starts_with_dir(path_lower, dir_lower)
+}
 
-const EXCLUDED_BROWSER_ENTRY_TERMS: &[&str] = &[
-    "autofill",
-    "backup",
-    "bookmark",
-    "cookies",
-    "credential",
-    "download history",
-    "form",
-    "history",
-    "login",
-    "password",
-    "pinned tabs",
-    "places",
-    "saved",
-    "session",
-    "site preferences",
-    "storage",
-    "sync",
-];
+fn path_str_starts_with_dir(path: &str, dir: &str) -> bool {
+    let dir_trimmed = dir.trim_end_matches(['\\', '/']);
+    let dir_with_sep = format!("{dir_trimmed}\\");
+    path.starts_with(&dir_with_sep) || path.starts_with(&format!("{dir_trimmed}/"))
+}
 
-const EXCLUDED_WINDOWS_ENTRY_TERMS: &[&str] = &[
-    "windows activity history",
-    "windows credential manager saved credentials",
-    "windows network certificate cache",
-    "windows notepad",
-    "windows recent access",
-    "windows recent documents",
-    "windows recent wallpaper locations",
-    "windows shell",
-    "windows start menu",
-    "windows taskbar",
-];
+fn is_excluded(path: &Path, exclude_rules: &[ExcludeRule]) -> bool {
+    let path_str = path.to_string_lossy().to_ascii_lowercase();
+
+    for rule in exclude_rules {
+        match rule.rule_type {
+            ExcludeRuleType::File => {
+                if let Some(expanded) = expand_winapp_path(&rule.path)
+                    && path_str == expanded.to_ascii_lowercase()
+                {
+                    return true;
+                }
+            }
+            ExcludeRuleType::Path => {
+                if let Some(expanded) = expand_winapp_path(&rule.path) {
+                    for exclude_dir in expand_wildcard_path(PathBuf::from(expanded)) {
+                        let dir_lower = exclude_dir.to_string_lossy().to_ascii_lowercase();
+                        if !is_path_within_dir(&path_str, &dir_lower) {
+                            continue;
+                        }
+                        if let Some(ref pattern) = rule.file_pattern {
+                            let file_name = path
+                                .file_name()
+                                .map(|n| n.to_string_lossy().to_string())
+                                .unwrap_or_default();
+                            if !wildcard_match(pattern, &file_name) {
+                                continue;
+                            }
+                        }
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    false
+}
 
 pub const WINAPP_CATEGORIES: &[&str] = &[
     "windows",
@@ -64,12 +78,6 @@ pub const WINAPP_CATEGORIES: &[&str] = &[
     "media",
     "appx",
 ];
-
-#[derive(Clone)]
-struct IniEntry {
-    name: String,
-    values: HashMap<String, Vec<String>>,
-}
 
 #[derive(Clone)]
 struct FileRule {
@@ -89,6 +97,8 @@ struct WinappTarget {
     id: String,
     name: String,
     rules: Vec<FileRule>,
+    default_checked: bool,
+    warning: Option<String>,
 }
 
 pub fn is_winapp_category(category_id: &str) -> bool {
@@ -99,9 +109,11 @@ pub fn scan_category(category_id: &str) -> Result<CleanupCategoryReport, AppErro
     let entries = if category_id == "appx" {
         scan_appx_entries(false, &[])?
     } else {
+        let excludes = all_exclude_rules();
+        let excludes_ref: &[ExcludeRule] = &excludes;
         winapp_targets_for_category(category_id)
             .into_par_iter()
-            .map(|target| scan_or_clean_winapp_target(&target, false))
+            .map(|target| scan_or_clean_winapp_target(&target, false, excludes_ref))
             .collect()
     };
 
@@ -119,11 +131,13 @@ pub fn clean_category(
         scan_appx_entries(true, exclude_entry_ids)?
     } else {
         let exclude_set: HashSet<String> = exclude_entry_ids.iter().cloned().collect();
+        let excludes = all_exclude_rules();
+        let excludes_ref: &[ExcludeRule] = &excludes;
         winapp_targets_for_category(category_id)
-            .into_par_iter()
+            .into_iter()
             .map(|target| {
                 let should_clean = !exclude_set.contains(&target.id);
-                scan_or_clean_winapp_target(&target, should_clean)
+                scan_or_clean_winapp_target(&target, should_clean, excludes_ref)
             })
             .collect()
     };
@@ -135,36 +149,29 @@ pub fn clean_category(
 }
 
 fn winapp_targets_for_category(category_id: &str) -> Vec<WinappTarget> {
-    parse_ini(WINAPP2)
-        .into_par_iter()
-        .filter(|entry| {
-            let broad_category = broad_category(entry);
-            broad_category == category_id && !is_excluded_winapp_entry(entry, broad_category)
-        })
-        .filter(is_detected)
+    winapp2_entries()
+        .par_iter()
+        .filter(|entry| category_for_entry(entry) == category_id)
+        .filter(|entry| is_detected(entry))
         .filter_map(|entry| {
-            let rules = file_rules(&entry);
+            let rules = file_rules(entry);
             (!rules.is_empty()).then(|| WinappTarget {
                 id: slug(&entry.name),
-                name: entry.name,
+                name: entry.name.clone(),
                 rules,
+                default_checked: default_checked(entry),
+                warning: entry.first("Warning"),
             })
         })
         .collect()
 }
 
-fn is_excluded_winapp_entry(entry: &IniEntry, broad_category: &str) -> bool {
-    let name = entry.name.to_ascii_lowercase();
-
-    match broad_category {
-        "browsers" => contains_any(&name, EXCLUDED_BROWSER_ENTRY_TERMS),
-        "windows" => contains_any(&name, EXCLUDED_WINDOWS_ENTRY_TERMS),
-        _ => false,
-    }
-}
-
-fn scan_or_clean_winapp_target(target: &WinappTarget, clean: bool) -> CleanupEntry {
-    let matches = matched_paths(&target.rules);
+fn scan_or_clean_winapp_target(
+    target: &WinappTarget,
+    clean: bool,
+    exclude_rules: &[ExcludeRule],
+) -> CleanupEntry {
+    let matches = matched_paths(&target.rules, exclude_rules);
     let mut first_error = None;
     let mut skipped_busy_error = None;
     let mut scheduled_on_reboot_error = None;
@@ -190,16 +197,27 @@ fn scan_or_clean_winapp_target(target: &WinappTarget, clean: bool) -> CleanupEnt
         }
     }
 
-    let remaining_matches = matched_paths(&target.rules);
     let mut size_bytes = 0;
+    let mut remaining_count = 0;
 
-    for matched in &remaining_matches {
-        match target_size_bytes(&matched.path) {
-            Ok(size) => size_bytes += size,
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
-            Err(error) if is_busy_delete_error(&error) => {
-                skipped_busy_error.get_or_insert(error.to_string());
+    for matched in &matches {
+        match fs::symlink_metadata(&matched.path) {
+            Ok(_) => {
+                remaining_count += 1;
+                match target_size_bytes(&matched.path) {
+                    Ok(size) => size_bytes += size,
+                    Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                    Err(error) if is_busy_delete_error(&error) => {
+                        skipped_busy_error.get_or_insert(error.to_string());
+                    }
+                    Err(error) => {
+                        if first_error.is_none() {
+                            first_error = Some(error);
+                        }
+                    }
+                }
             }
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
             Err(error) => {
                 if first_error.is_none() {
                     first_error = Some(error);
@@ -220,7 +238,7 @@ fn scan_or_clean_winapp_target(target: &WinappTarget, clean: bool) -> CleanupEnt
             CleanupEntryStatus::Busy,
             Some(format!("Some files are in use and were skipped. ({error})")),
         )
-    } else if remaining_matches.is_empty() {
+    } else if remaining_count == 0 {
         (CleanupEntryStatus::Clean, None)
     } else {
         (CleanupEntryStatus::Pending, None)
@@ -229,15 +247,17 @@ fn scan_or_clean_winapp_target(target: &WinappTarget, clean: bool) -> CleanupEnt
     CleanupEntry {
         id: target.id.clone(),
         name: target.name.clone(),
-        path: format_match_summary(remaining_matches.len()),
+        path: format_match_summary(remaining_count),
         status,
         size_bytes,
         error: error_message,
         icon_data_url: None,
+        default_checked: target.default_checked,
+        warning: target.warning.clone(),
     }
 }
 
-fn matched_paths(rules: &[FileRule]) -> Vec<FileRuleMatch> {
+fn matched_paths(rules: &[FileRule], exclude_rules: &[ExcludeRule]) -> Vec<FileRuleMatch> {
     let mut seen = HashSet::new();
     let mut matches = Vec::new();
 
@@ -249,6 +269,10 @@ fn matched_paths(rules: &[FileRule]) -> Vec<FileRuleMatch> {
         for root in expand_wildcard_path(PathBuf::from(root)) {
             collect_rule_matches(rule, &root, &mut seen, &mut matches);
         }
+    }
+
+    if !exclude_rules.is_empty() {
+        matches.retain(|m| !is_excluded(&m.path, exclude_rules));
     }
 
     matches
@@ -469,21 +493,34 @@ fn expand_winapp_path(path: &str) -> Option<String> {
     expand_env_path(&normalized)
 }
 
-fn broad_category(entry: &IniEntry) -> &'static str {
-    let name = entry.name.to_ascii_lowercase();
-    let lang = entry.first("LangSecRef").unwrap_or_default();
-
-    if lang == "3029"
-        || contains_any(
-            &name,
-            &[
-                "chrome", "firefox", "edge", "opera", "brave", "vivaldi", "browser", "chromium",
-                "safari",
-            ],
-        )
+fn category_for_entry(entry: &IniEntry) -> &'static str {
+    if let Some(lang) = entry.first("LangSecRef")
+        && let Some(category) = category_from_lang_sec_ref(&lang)
     {
-        "browsers"
-    } else if contains_any(
+        return category;
+    }
+    keyword_category(&entry.name)
+}
+
+fn category_from_lang_sec_ref(code: &str) -> Option<&'static str> {
+    let category = match code {
+        "3006" | "3026" | "3027" | "3029" | "3032" | "3033" | "3034" | "3035" | "3039" => {
+            "browsers"
+        }
+        "3025" => "windows",
+        "3021" | "3022" | "3024" | "3030" | "3031" | "3037" | "3038" | "3043" | "3044" => {
+            "applications"
+        }
+        "3023" | "3036" => "media",
+        _ => return None,
+    };
+    Some(category)
+}
+
+fn keyword_category(name: &str) -> &'static str {
+    let name = name.to_ascii_lowercase();
+
+    if contains_any(
         &name,
         &[
             "steam",
@@ -553,60 +590,15 @@ fn broad_category(entry: &IniEntry) -> &'static str {
     }
 }
 
+fn default_checked(entry: &IniEntry) -> bool {
+    entry
+        .first("Default")
+        .map(|value| value.eq_ignore_ascii_case("true"))
+        .unwrap_or(true)
+}
+
 fn contains_any(value: &str, needles: &[&str]) -> bool {
     needles.iter().any(|needle| value.contains(needle))
-}
-
-impl IniEntry {
-    fn first(&self, key: &str) -> Option<String> {
-        self.values
-            .get(key)
-            .and_then(|values| values.first())
-            .cloned()
-    }
-}
-
-fn parse_ini(content: &str) -> Vec<IniEntry> {
-    let mut entries = Vec::new();
-    let mut current: Option<IniEntry> = None;
-
-    for raw_line in content.lines() {
-        let line = raw_line.trim();
-        if line.is_empty() || line.starts_with(';') {
-            continue;
-        }
-
-        if line.starts_with('[') && line.ends_with(']') {
-            if let Some(entry) = current.take() {
-                entries.push(entry);
-            }
-            current = Some(IniEntry {
-                name: line
-                    .trim_matches(['[', ']'])
-                    .trim_end_matches(" *")
-                    .to_string(),
-                values: HashMap::new(),
-            });
-            continue;
-        }
-
-        let Some((key, value)) = line.split_once('=') else {
-            continue;
-        };
-        if let Some(entry) = current.as_mut() {
-            entry
-                .values
-                .entry(key.trim().to_string())
-                .or_default()
-                .push(value.trim().to_string());
-        }
-    }
-
-    if let Some(entry) = current {
-        entries.push(entry);
-    }
-
-    entries
 }
 
 fn scan_appx_entries(
@@ -614,8 +606,8 @@ fn scan_appx_entries(
     exclude_entry_ids: &[String],
 ) -> Result<Vec<CleanupEntry>, AppError> {
     let packages = installed_appx_packages()?;
-    let entries = parse_ini(WINAPPX)
-        .into_iter()
+    let entries = winappx_entries()
+        .iter()
         .filter_map(|entry| {
             let package_name = entry.first("PackageName")?;
             let full_name = packages.get(&package_name.to_ascii_lowercase())?.clone();
@@ -632,12 +624,14 @@ fn scan_appx_entries(
             };
             Some(CleanupEntry {
                 id: entry_id,
-                name: entry.name,
+                name: entry.name.clone(),
                 path: package_name,
                 status,
                 size_bytes: 0,
                 error,
                 icon_data_url: None,
+                default_checked: default_checked(entry),
+                warning: entry.first("Warning"),
             })
         })
         .collect();

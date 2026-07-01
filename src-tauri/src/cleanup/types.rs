@@ -20,6 +20,8 @@ pub struct CleanupEntry {
     pub size_bytes: u64,
     pub error: Option<String>,
     pub icon_data_url: Option<String>,
+    pub default_checked: bool,
+    pub warning: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,4 +43,11 @@ pub struct CleanupScheduleEntry {
 #[serde(rename_all = "camelCase")]
 pub struct CleanupScheduleReport {
     pub entries: Vec<CleanupScheduleEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CategoryCleanRequest {
+    pub category_id: String,
+    pub exclude_entry_ids: Vec<String>,
 }

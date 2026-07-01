@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -18,11 +19,42 @@ use crate::startup::types::{
 };
 
 pub fn list_entries() -> Result<Vec<StartupEntry>, AppError> {
+    list_entries_with_enrich(false, None)
+}
+
+pub fn hydrate_entries(ids: &[String]) -> Result<Vec<StartupEntry>, AppError> {
+    if ids.is_empty() {
+        return Ok(vec![]);
+    }
+    let id_set: HashSet<&str> = ids.iter().map(|s| s.as_str()).collect();
+    list_entries_with_enrich(true, Some(&id_set))
+}
+
+fn list_entries_with_enrich(
+    enrich: bool,
+    id_filter: Option<&HashSet<&str>>,
+) -> Result<Vec<StartupEntry>, AppError> {
     let mut entries = Vec::new();
-    entries.extend(list_active_entries(StartupScope::CurrentUser)?);
-    entries.extend(list_active_entries(StartupScope::AllUsers)?);
-    entries.extend(list_disabled_entries(StartupScope::CurrentUser)?);
-    entries.extend(list_disabled_entries(StartupScope::AllUsers)?);
+    entries.extend(list_active_entries(
+        StartupScope::CurrentUser,
+        enrich,
+        id_filter,
+    )?);
+    entries.extend(list_active_entries(
+        StartupScope::AllUsers,
+        enrich,
+        id_filter,
+    )?);
+    entries.extend(list_disabled_entries(
+        StartupScope::CurrentUser,
+        enrich,
+        id_filter,
+    )?);
+    entries.extend(list_disabled_entries(
+        StartupScope::AllUsers,
+        enrich,
+        id_filter,
+    )?);
     Ok(entries)
 }
 
@@ -157,7 +189,11 @@ pub fn entry_details(id: &str) -> Result<StartupEntryDetails, AppError> {
     Ok(build_details(entry, scope, disabled_file_path))
 }
 
-fn list_active_entries(scope: StartupScope) -> Result<Vec<StartupEntry>, AppError> {
+fn list_active_entries(
+    scope: StartupScope,
+    enrich: bool,
+    id_filter: Option<&HashSet<&str>>,
+) -> Result<Vec<StartupEntry>, AppError> {
     let startup_dir = startup_dir(scope)?;
     let mut entries = Vec::new();
 
@@ -176,20 +212,29 @@ fn list_active_entries(scope: StartupScope) -> Result<Vec<StartupEntry>, AppErro
         if should_skip_startup_path(&path) {
             continue;
         }
+        if let Some(filter) = id_filter
+            && !filter.contains(startup_folder_id(scope, &path).as_str())
+        {
+            continue;
+        }
         entries.push(build_entry_from_path(
             path,
             scope,
             StartupStatus::Enabled,
             false,
             None,
-            false,
+            enrich,
         )?);
     }
 
     Ok(entries)
 }
 
-fn list_disabled_entries(scope: StartupScope) -> Result<Vec<StartupEntry>, AppError> {
+fn list_disabled_entries(
+    scope: StartupScope,
+    enrich: bool,
+    id_filter: Option<&HashSet<&str>>,
+) -> Result<Vec<StartupEntry>, AppError> {
     let disabled_dir = startup_disabled_dir(scope)?;
     let mut entries = Vec::new();
 
@@ -213,13 +258,18 @@ fn list_disabled_entries(scope: StartupScope) -> Result<Vec<StartupEntry>, AppEr
         if !disabled_file_path.exists() {
             continue;
         }
+        if let Some(filter) = id_filter
+            && !filter.contains(metadata.id.as_str())
+        {
+            continue;
+        }
         entries.push(build_entry_from_path(
             disabled_file_path,
             scope,
             StartupStatus::Disabled,
             false,
             Some(metadata.id),
-            false,
+            enrich,
         )?);
     }
 

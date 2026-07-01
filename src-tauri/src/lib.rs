@@ -13,7 +13,9 @@ pub mod tweaks;
 use crate::backup::{backup_create, backup_delete, backup_list, backup_rename, backup_restore};
 use crate::commands::app::greet;
 use crate::commands::cleanup::{
-    cleanup_clean_category, cleanup_scan_category, cleanup_schedule_delete_on_reboot,
+    cleanup_clean_all, cleanup_clean_category, cleanup_scan_all, cleanup_scan_category,
+    cleanup_schedule_delete_on_reboot, cleanup_set_custom_winapp2_path, cleanup_update_winapp_db,
+    cleanup_winapp_db_status,
 };
 use crate::commands::discord_presence::set_discord_presence_mode;
 use crate::commands::startup::{
@@ -49,6 +51,7 @@ pub fn run() {
         )
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build());
 
     #[cfg(debug_assertions)]
@@ -64,6 +67,12 @@ pub fn run() {
         .manage(discord_presence::DiscordPresenceState::new())
         .setup(|app| {
             crate::backup::ensure_initial_backup();
+            match app.path().app_local_data_dir() {
+                Ok(local_data_dir) => crate::cleanup::winapp_db::init(local_data_dir),
+                Err(error) => {
+                    log::warn!("winapp_db init skipped: app_local_data_dir error: {error}")
+                }
+            }
             use std::time::{Duration, Instant};
             use sysinfo::{CpuRefreshKind, MemoryRefreshKind, Networks, RefreshKind, System};
 
@@ -162,7 +171,12 @@ pub fn run() {
             backup_delete,
             cleanup_scan_category,
             cleanup_clean_category,
+            cleanup_scan_all,
+            cleanup_clean_all,
             cleanup_schedule_delete_on_reboot,
+            cleanup_update_winapp_db,
+            cleanup_winapp_db_status,
+            cleanup_set_custom_winapp2_path,
             set_discord_presence_mode,
             greet,
             set_webview_material,

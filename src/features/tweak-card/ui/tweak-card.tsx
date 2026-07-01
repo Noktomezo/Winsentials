@@ -1,9 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import type { TweakMeta, WindowsVersion } from '@/entities/tweak/model/types'
-import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import {
-  AlertTriangle,
   ArrowLeftRight,
   BellOff,
   BotOff,
@@ -11,7 +9,6 @@ import {
   CircleAlert,
   Clock3,
   CloudOff,
-  Copy,
   Cpu,
   ExternalLink,
   EyeOff,
@@ -29,7 +26,6 @@ import {
   KeyboardOff,
   Link,
   ListX,
-  LogOut,
   MapPinned,
   MemoryStick,
   Menu,
@@ -41,7 +37,6 @@ import {
   PlugZap,
   Power,
   RotateCcw,
-  Settings,
   Shield,
   ShieldOff,
   Terminal,
@@ -51,20 +46,12 @@ import {
   Usb,
   Zap,
 } from 'lucide-react'
-import { Trans, useTranslation } from 'react-i18next'
-import { toast } from '@/shared/lib/toast'
-import { cn } from '@/shared/lib/utils'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/shared/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/ui/select'
 import { Skeleton } from '@/shared/ui/skeleton'
 import { LabeledSwitch } from '@/shared/ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
+import { TweakCardDropdown } from './tweak-card-dropdown'
+import { TweakCardFooter } from './tweak-card-footer'
 
 interface TweakCardProps {
   currentBuild: WindowsVersion
@@ -142,29 +129,6 @@ const TWEAK_ICONS: Record<string, LucideIcon> = {
   create_symbolic_link_context_menu: Link,
 }
 
-const COPYABLE_RISK_COMMANDS: Record<string, string> = {
-  disable_user_account_control: 'runas /trustlevel:0x20000 "program.exe"',
-}
-
-const DROPDOWN_OPTION_ICONS: Record<string, Record<string, LucideIcon>> = {
-  fast_keyboard_repeat: {
-    default: Settings,
-    balanced: Gauge,
-    fast: Keyboard,
-    ultra_fast: Zap,
-  },
-  disable_cloud_sync: {
-    default: Settings,
-    partial: BellOff,
-    full: CloudOff,
-  },
-  disable_ctf_ctfmon: {
-    default: Settings,
-    soft: Keyboard,
-    aggressive: KeyboardOff,
-  },
-}
-
 let tweakTitleMeasureCanvas: HTMLCanvasElement | null = null
 
 function measureTweakTitleWidth(title: string) {
@@ -239,166 +203,6 @@ function isBelowMinBuild(currentBuild: WindowsVersion, tweak: TweakMeta) {
   return currentBuild.ubr < tweak.minOsUbr
 }
 
-function dropdownOptionIcon(
-  tweakId: string,
-  optionValue: string,
-): LucideIcon | null {
-  return DROPDOWN_OPTION_ICONS[tweakId]?.[optionValue] ?? null
-}
-
-function metadataChipClassName(
-  tone: 'default' | 'details' | 'action' | 'warning' | 'danger' | 'system' = 'default',
-) {
-  if (tone === 'details') {
-    return '!border-border/60 !bg-accent/55 text-muted-foreground'
-  }
-
-  if (tone === 'action') {
-    return '!border-[color:color-mix(in_oklch,var(--badge-blue)_28%,transparent)] !bg-[color:color-mix(in_oklch,var(--badge-blue)_12%,transparent)] text-[var(--badge-blue)]'
-  }
-
-  if (tone === 'warning') {
-    return '!border-[color:color-mix(in_oklch,var(--badge-yellow)_28%,transparent)] !bg-[color:color-mix(in_oklch,var(--badge-yellow)_12%,transparent)] text-[var(--badge-yellow)]'
-  }
-
-  if (tone === 'danger') {
-    return '!border-[color:color-mix(in_oklch,var(--badge-red)_28%,transparent)] !bg-[color:color-mix(in_oklch,var(--badge-red)_12%,transparent)] text-[var(--badge-red)]'
-  }
-
-  if (tone === 'system') {
-    return '!border-[color:color-mix(in_oklch,var(--badge-purple)_28%,transparent)] !bg-[color:color-mix(in_oklch,var(--badge-purple)_12%,transparent)] text-[var(--badge-purple)]'
-  }
-
-  return '!border-border/70 !bg-secondary text-muted-foreground'
-}
-
-function requiresActionBadge(
-  tweak: TweakMeta,
-  t: ReturnType<typeof useTranslation>['t'],
-): { icon: LucideIcon, label: string, tooltip: string } | null {
-  switch (tweak.requiresAction.type) {
-    case 'none':
-      return null
-    case 'logout':
-      return {
-        icon: LogOut,
-        label: t('tweaks.meta.logout'),
-        tooltip: t('tweaks.prompts.logout'),
-      }
-    case 'restart_pc':
-      return {
-        icon: Power,
-        label: t('tweaks.meta.restart'),
-        tooltip: t('tweaks.prompts.restartPc'),
-      }
-    case 'restart_service':
-      return {
-        icon: Settings,
-        label: tweak.requiresAction.serviceName,
-        tooltip: t('tweaks.prompts.restartService', {
-          serviceName: tweak.requiresAction.serviceName,
-        }),
-      }
-    case 'restart_app':
-      return {
-        icon: RotateCcw,
-        label: tweak.requiresAction.appName,
-        tooltip: t('tweaks.prompts.restartApp', {
-          appName: tweak.requiresAction.appName,
-        }),
-      }
-    case 'restart_device':
-      return {
-        icon: Usb,
-        label: tweak.requiresAction.deviceName,
-        tooltip: t('tweaks.prompts.restartDevice', {
-          deviceName: tweak.requiresAction.deviceName,
-        }),
-      }
-  }
-}
-
-function MetadataChip({
-  children,
-  tone = 'default',
-  icon: Icon,
-}: React.PropsWithChildren<{
-  tone?: 'default' | 'details' | 'action' | 'warning' | 'danger' | 'system'
-  icon?: LucideIcon
-}>) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-[6px] border px-2 py-0.75 text-[10px] font-medium ${metadataChipClassName(tone)}`}
-    >
-      {Icon && <Icon className="mr-1 size-[11px]" />}
-      {children}
-    </span>
-  )
-}
-
-function MetadataChipButton({
-  ariaLabel,
-  children,
-  tone = 'default',
-  icon,
-  className,
-  type,
-  ref,
-  ...props
-}: React.PropsWithChildren<React.ComponentProps<'button'> & {
-  ariaLabel: string
-  tone?: 'default' | 'details' | 'action' | 'warning' | 'danger' | 'system'
-  icon?: LucideIcon
-  ref?: React.Ref<HTMLButtonElement>
-}>) {
-  return (
-    <button
-      aria-label={ariaLabel}
-      className={cn('cursor-help', className)}
-      ref={ref}
-      type={type ?? 'button'}
-      {...props}
-    >
-      <MetadataChip icon={icon} tone={tone}>
-        {children}
-      </MetadataChip>
-    </button>
-  )
-}
-
-function RiskCodeBlock({
-  children,
-  copyLabel,
-  isCopyable = false,
-  onCopy,
-}: React.PropsWithChildren<{
-  copyLabel?: string
-  isCopyable?: boolean
-  onCopy?: () => void
-}>) {
-  if (!isCopyable) {
-    return (
-      <code className="mt-2 block w-full rounded-md border border-border/70 bg-accent px-3 py-2 font-mono text-xs font-medium text-foreground shadow-xs">
-        {children}
-      </code>
-    )
-  }
-
-  return (
-    <button
-      aria-label={copyLabel}
-      className="mt-2 flex w-full items-start gap-3 rounded-md border border-border/70 bg-accent px-3 py-2 text-left font-mono text-xs font-medium text-foreground shadow-xs transition-colors hover:bg-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-      onClick={onCopy}
-      type="button"
-    >
-      <span className="min-w-0 flex-1 break-all">
-        {children}
-      </span>
-      <Copy className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-    </button>
-  )
-}
-
 export function TweakCard({
   currentBuild,
   currentInstalledMemoryBytes = null,
@@ -428,46 +232,11 @@ export function TweakCard({
       && !isEnabled
   const isApplyBlocked = isUnsupported && (isAtDefault || isCustomToggleBlocked)
   const minBuild = formatMinBuild(tweak)
-  const copyableRiskCommand = COPYABLE_RISK_COMMANDS[tweak.id]
-  const conflicts = tweak.conflicts ?? []
-  const requiresBadge = requiresActionBadge(tweak, t)
   const cardWidth = tweakCardWidth(tweakName, tweak)
   const cardStyle = {
     '--tweak-card-width': `${cardWidth}px`,
     '--tweak-card-grow': `${cardWidth}`,
   } as CSSProperties
-
-  const dropdownOptions
-    = tweak.control.kind === 'dropdown'
-      ? tweak.currentValue === 'custom'
-        ? [
-            ...tweak.control.options,
-            { label: 'tweaks.meta.customValue', value: 'custom' },
-          ]
-        : tweak.control.options
-      : []
-  const selectedDropdownOption
-    = tweak.control.kind === 'dropdown'
-      ? dropdownOptions.find(option => option.value === tweak.currentValue) ?? null
-      : null
-  const SelectedDropdownIcon
-    = selectedDropdownOption
-      ? dropdownOptionIcon(tweak.id, selectedDropdownOption.value)
-      : null
-
-  const handleCopyRiskCommand = async () => {
-    if (!copyableRiskCommand) {
-      return
-    }
-
-    try {
-      await writeText(copyableRiskCommand)
-      toast.success(t('tweaks.success.copyCommand'))
-    }
-    catch {
-      toast.error(t('tweaks.errors.copyCommand'))
-    }
-  }
 
   return (
     <article
@@ -520,58 +289,14 @@ export function TweakCard({
               />
             )}
             {tweak.control.kind === 'dropdown' && (
-              <Select
-                disabled={isPending || isApplyBlocked}
-                onValueChange={(value) => {
-                  if (isUnsupported && value !== tweak.defaultValue) {
-                    return
-                  }
-
-                  onApplyValue(value)
-                }}
-                value={tweak.currentValue}
-              >
-                <SelectTrigger className="ui-soft-surface bg-secondary! h-9 min-w-[10.5rem] justify-between rounded-md px-3 text-xs font-medium transition-colors hover:bg-accent/50! [&_svg]:size-3.5 [&_svg:not([class*='text-'])]:text-accent-foreground/70!">
-                  {selectedDropdownOption
-                    ? (
-                        <span className="flex min-w-0 items-center gap-2">
-                          {SelectedDropdownIcon && (
-                            <SelectedDropdownIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                          )}
-                          <span className="truncate">{t(selectedDropdownOption.label)}</span>
-                        </span>
-                      )
-                    : (
-                        <SelectValue
-                          placeholder={t('tweaks.controls.selectPreset')}
-                        />
-                      )}
-                </SelectTrigger>
-                <SelectContent
-                  align="end"
-                  className="ui-soft-surface min-w-[var(--radix-select-trigger-width)] rounded-[10px] text-xs font-medium"
-                >
-                  {dropdownOptions.map((option) => {
-                    const OptionIcon = dropdownOptionIcon(tweak.id, option.value)
-
-                    return (
-                      <SelectItem
-                        className="min-h-7 px-2 py-1 text-xs font-medium"
-                        disabled={option.value === 'custom' || (isUnsupported && option.value !== tweak.defaultValue)}
-                        key={option.value}
-                        value={option.value}
-                      >
-                        <span className="flex items-center gap-2">
-                          {OptionIcon
-                            ? <OptionIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                            : null}
-                          <span>{t(option.label)}</span>
-                        </span>
-                      </SelectItem>
-                    )
-                  })}
-                </SelectContent>
-              </Select>
+              <TweakCardDropdown
+                isApplyBlocked={isApplyBlocked}
+                isPending={isPending}
+                isUnsupported={isUnsupported}
+                onApplyValue={onApplyValue}
+                t={t}
+                tweak={tweak}
+              />
             )}
           </aside>
         </div>
@@ -580,160 +305,15 @@ export function TweakCard({
           {t(tweak.shortDescription)}
         </p>
 
-        <div className="mt-auto pt-4">
-          <footer>
-            <div className="flex flex-wrap gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <MetadataChipButton
-                    ariaLabel={t('tweaks.meta.details')}
-                    icon={Info}
-                    tone="details"
-                  >
-                    {t('tweaks.meta.details')}
-                  </MetadataChipButton>
-                </TooltipTrigger>
-                <TooltipContent
-                  className={cn('max-w-80 text-pretty', metadataChipClassName('details'))}
-                  sideOffset={8}
-                >
-                  {t(tweak.detailDescription)}
-                </TooltipContent>
-              </Tooltip>
-
-              {requiresBadge && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <MetadataChipButton
-                      ariaLabel={requiresBadge.tooltip}
-                      icon={requiresBadge.icon}
-                      tone="action"
-                    >
-                      {requiresBadge.label}
-                    </MetadataChipButton>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    className={cn('max-w-80 text-pretty whitespace-pre-line', metadataChipClassName('action'))}
-                    sideOffset={8}
-                  >
-                    {requiresBadge.tooltip}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-
-              {tweak.risk !== 'none' && tweak.riskDescription && (
-                <>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <MetadataChipButton
-                        ariaLabel={t('tweaks.meta.risk')}
-                        icon={TriangleAlert}
-                        tone="warning"
-                      >
-                        {t('tweaks.meta.risk')}
-                      </MetadataChipButton>
-                    </TooltipTrigger>
-                    <TooltipContent
-                      className={cn('max-w-80 text-pretty whitespace-pre-line', metadataChipClassName('warning'))}
-                      sideOffset={8}
-                    >
-                      <Trans
-                        components={{
-                          code: (
-                            <RiskCodeBlock
-                              copyLabel={t('tweaks.actions.copyCommand')}
-                              isCopyable={Boolean(copyableRiskCommand)}
-                              onCopy={() => {
-                                void handleCopyRiskCommand()
-                              }}
-                            />
-                          ),
-                        }}
-                        i18nKey={tweak.riskDescription}
-                      />
-                    </TooltipContent>
-                  </Tooltip>
-                </>
-              )}
-
-              {conflicts.length > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <MetadataChipButton
-                      ariaLabel={t('tweaks.meta.conflicts')}
-                      icon={AlertTriangle}
-                      tone="danger"
-                    >
-                      {t('tweaks.meta.conflicts')}
-                    </MetadataChipButton>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    className={cn('max-w-80 text-pretty whitespace-pre-line', metadataChipClassName('danger'))}
-                    sideOffset={8}
-                  >
-                    {conflicts.length === 1
-                      ? (
-                          <p>{t(conflicts[0].description)}</p>
-                        )
-                      : (
-                          <ul className="list-disc space-y-1 pl-4">
-                            {conflicts.map(conflict => (
-                              <li key={conflict.description}>
-                                {t(conflict.description)}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-
-              {isBelowBuildRequirement && minBuild && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <MetadataChipButton
-                      ariaLabel={t('tweaks.requires.windowsBuild', {
-                        build: minBuild,
-                      })}
-                      icon={CircleAlert}
-                      tone="system"
-                    >
-                      {t('tweaks.requires.windowsBuild', { build: minBuild })}
-                    </MetadataChipButton>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    className={cn(metadataChipClassName('system'))}
-                    sideOffset={8}
-                  >
-                    {t('tweaks.requires.windowsBuild', { build: minBuild })}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-
-              {(isBelowMemoryRequirement || isMemoryRequirementPending) && minInstalledMemoryGb && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <MetadataChipButton
-                      ariaLabel={t('tweaks.requires.memoryGb', {
-                        gb: minInstalledMemoryGb,
-                      })}
-                      icon={CircleAlert}
-                      tone="system"
-                    >
-                      {t('tweaks.requires.memoryGb', { gb: minInstalledMemoryGb })}
-                    </MetadataChipButton>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    className={cn(metadataChipClassName('system'))}
-                    sideOffset={8}
-                  >
-                    {t('tweaks.requires.memoryGb', { gb: minInstalledMemoryGb })}
-                  </TooltipContent>
-                </Tooltip>
-              )}
-            </div>
-          </footer>
-        </div>
+        <TweakCardFooter
+          isBelowBuildRequirement={isBelowBuildRequirement}
+          isBelowMemoryRequirement={isBelowMemoryRequirement}
+          isMemoryRequirementPending={isMemoryRequirementPending}
+          minBuild={minBuild}
+          minInstalledMemoryGb={minInstalledMemoryGb}
+          t={t}
+          tweak={tweak}
+        />
       </div>
     </article>
   )

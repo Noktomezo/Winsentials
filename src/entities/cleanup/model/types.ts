@@ -18,9 +18,27 @@ export interface CleanupEntry {
   path: string
   sizeBytes: number
   status: CleanupEntryStatus
+  defaultChecked: boolean
+  warning: string | null
 }
 
 export interface CleanupCategoryReport {
   entries: CleanupEntry[]
   id: CleanupCategoryId
+}
+
+export type ReportMap = Partial<Record<CleanupCategoryId, CleanupCategoryReport>>
+
+export interface CategoryCleanRequest {
+  categoryId: CleanupCategoryId
+  excludeEntryIds: string[]
+}
+
+export type WinappDbSource = 'bundled' | 'cache' | 'custom'
+
+export interface WinappDbStatus {
+  source: WinappDbSource
+  lastUpdated: number | null
+  customPath: string | null
+  cachePath: string | null
 }

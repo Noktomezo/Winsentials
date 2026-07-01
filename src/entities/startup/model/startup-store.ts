@@ -83,7 +83,6 @@ const emptySourceRequestIds: Record<StartupSource, number> = {
   scheduled_task: 0,
 }
 
-const hydrationChunkSize = 12
 const inFlightSourceLoads: Partial<Record<StartupSource, Promise<void>>> = {}
 
 function pushPending(current: string[], id: string) {
@@ -385,42 +384,12 @@ async function hydrateLoadedEntries(
     }
   }
 
-  const hydrateChunk = async (index: number): Promise<void> => {
-    if (get().hydrationRequestId !== requestId) {
-      return
-    }
+  if (ids.length === 0) return
 
-    const chunk = ids.slice(index, index + hydrationChunkSize)
+  if (get().hydrationRequestId !== requestId) return
 
-    if (chunk.length === 0) {
-      return
-    }
-
-    const hydrated: StartupEntry[] = []
-
-    try {
-      hydrated.push(...await hydrateStartupEntries(chunk))
-    }
-    catch (error) {
-      console.error('Failed to hydrate startup entries chunk, retrying per entry', error)
-
-      for (const id of chunk) {
-        try {
-          hydrated.push(...await hydrateStartupEntries([id]))
-        }
-        catch (retryError) {
-          console.error(`Failed to hydrate startup entry ${id}`, retryError)
-        }
-
-        if (get().hydrationRequestId !== requestId) {
-          return
-        }
-      }
-    }
-
-    if (get().hydrationRequestId !== requestId || hydrated.length === 0) {
-      return hydrateChunk(index + hydrationChunkSize)
-    }
+  try {
+    const hydrated = await hydrateStartupEntries(ids)
 
     set((current) => {
       if (current.hydrationRequestId !== requestId) {
@@ -432,11 +401,43 @@ async function hydrateLoadedEntries(
         ...applyEntryUpdates(current.entriesBySource, hydrated),
       }
     })
-
-    return hydrateChunk(index + hydrationChunkSize)
   }
+  catch (error) {
+    console.error('Failed to hydrate startup entries batch, retrying per-id', error)
+    for (const id of ids) {
+      if (get().hydrationRequestId !== requestId) return
+      try {
+        const hydrated = await hydrateStartupEntries([id])
+        set((current) => {
+          if (current.hydrationRequestId !== requestId) return current
+          return {
+            ...current,
+            ...applyEntryUpdates(current.entriesBySource, hydrated),
+          }
+        })
+      }
+      catch (err) {
+        console.error(`Failed to hydrate startup entry ${id}`, err)
+      }
+    }
+  }
+}
 
-  await hydrateChunk(0)
+async function runEntryMutation(
+  id: string,
+  action: (id: string) => Promise<StartupEntry>,
+  set: StartupStoreSetter,
+): Promise<void> {
+  set(state => ({ pendingIds: pushPending(state.pendingIds, id) }))
+  try {
+    const entry = await action(id)
+    set(current => ({
+      ...applyLocalSourceMutation(current, entry.source, applyEntryUpdate(current.entriesBySource, entry)),
+    }))
+  }
+  finally {
+    set(state => ({ pendingIds: popPending(state.pendingIds, id) }))
+  }
 }
 
 export const useStartupStore = create<StartupStoreState>()((set, get) => ({
@@ -463,34 +464,16 @@ export const useStartupStore = create<StartupStoreState>()((set, get) => ({
     await Promise.allSettled([
       refreshSource('registry', false, set, get),
       refreshSource('startup_folder', false, set, get),
+      refreshSource('scheduled_task', false, set, get),
     ])
 
-    await refreshSource('scheduled_task', false, set, get)
     void hydrateLoadedEntries(requestId, set, get)
   },
   async enableEntry(id) {
-    set(state => ({ pendingIds: pushPending(state.pendingIds, id) }))
-    try {
-      const entry = await enableStartupEntry(id)
-      set(current => ({
-        ...applyLocalSourceMutation(current, entry.source, applyEntryUpdate(current.entriesBySource, entry)),
-      }))
-    }
-    finally {
-      set(state => ({ pendingIds: popPending(state.pendingIds, id) }))
-    }
+    await runEntryMutation(id, enableStartupEntry, set)
   },
   async disableEntry(id) {
-    set(state => ({ pendingIds: pushPending(state.pendingIds, id) }))
-    try {
-      const entry = await disableStartupEntry(id)
-      set(current => ({
-        ...applyLocalSourceMutation(current, entry.source, applyEntryUpdate(current.entriesBySource, entry)),
-      }))
-    }
-    finally {
-      set(state => ({ pendingIds: popPending(state.pendingIds, id) }))
-    }
+    await runEntryMutation(id, disableStartupEntry, set)
   },
   async deleteEntry(id) {
     const source = sourceFromId(id)

@@ -76,14 +76,27 @@ impl RegistryLocation {
 }
 
 pub fn list_entries() -> Result<Vec<StartupEntry>, AppError> {
+    list_entries_with_enrich(false)
+}
+
+pub fn hydrate_entries(ids: &[String]) -> Result<Vec<StartupEntry>, AppError> {
+    let id_set: std::collections::HashSet<&str> = ids.iter().map(|s| s.as_str()).collect();
+    let all = list_entries_with_enrich(true)?;
+    Ok(all
+        .into_iter()
+        .filter(|e| id_set.contains(e.id.as_str()))
+        .collect())
+}
+
+fn list_entries_with_enrich(enrich: bool) -> Result<Vec<StartupEntry>, AppError> {
     let mut entries = Vec::new();
 
     for location in REGISTRY_LOCATIONS {
-        entries.extend(list_active_entries(location)?);
+        entries.extend(list_active_entries(location, enrich)?);
     }
 
-    entries.extend(list_disabled_entries("hkcu")?);
-    entries.extend(list_disabled_entries("hklm")?);
+    entries.extend(list_disabled_entries("hkcu", enrich)?);
+    entries.extend(list_disabled_entries("hklm", enrich)?);
 
     Ok(entries)
 }
@@ -229,7 +242,10 @@ pub fn entry_details(id: &str) -> Result<StartupEntryDetails, AppError> {
     })
 }
 
-fn list_active_entries(location: RegistryLocation) -> Result<Vec<StartupEntry>, AppError> {
+fn list_active_entries(
+    location: RegistryLocation,
+    enrich: bool,
+) -> Result<Vec<StartupEntry>, AppError> {
     let root = open_root(location.hive)?;
     let key = match root.open_subkey(location.path) {
         Ok(key) => key,
@@ -262,14 +278,14 @@ fn list_active_entries(location: RegistryLocation) -> Result<Vec<StartupEntry>, 
                 registry_path: location.path.to_string(),
                 last_error: None,
             },
-            false,
+            enrich,
         ));
     }
 
     Ok(entries)
 }
 
-fn list_disabled_entries(hive: &str) -> Result<Vec<StartupEntry>, AppError> {
+fn list_disabled_entries(hive: &str, enrich: bool) -> Result<Vec<StartupEntry>, AppError> {
     let store = match ensure_disabled_store_read(hive) {
         Ok(store) => store,
         Err(AppError::Io(error)) if error.kind() == ErrorKind::NotFound => return Ok(vec![]),
@@ -277,6 +293,7 @@ fn list_disabled_entries(hive: &str) -> Result<Vec<StartupEntry>, AppError> {
     };
 
     let mut entries = Vec::new();
+
     for subkey_name in store.enum_keys() {
         let subkey_name = subkey_name.map_err(AppError::from)?;
         let subkey = store.open_subkey(&subkey_name).map_err(AppError::from)?;
@@ -284,9 +301,8 @@ fn list_disabled_entries(hive: &str) -> Result<Vec<StartupEntry>, AppError> {
         if is_system_command(&record.command) {
             continue;
         }
-        entries.push(entry_from_record(record, StartupStatus::Disabled, false)?);
+        entries.push(entry_from_record(record, StartupStatus::Disabled, enrich)?);
     }
-
     Ok(entries)
 }
 
