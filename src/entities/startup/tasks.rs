@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::types::{StartupEntry, StartupScope, StartupSource, StartupStatus};
+use super::vendor::{extract_clean_exe_path, get_file_publisher};
 
 pub fn scan_tasks_startup() -> Vec<StartupEntry> {
     let mut entries = Vec::new();
@@ -46,7 +47,13 @@ fn parse_task_file(root: &Path, file_path: &Path) -> Option<StartupEntry> {
 
     // Extract Command
     let command = extract_xml_tag(&content, "Command")?;
+    let trimmed_cmd = command.trim();
+    if trimmed_cmd.is_empty() {
+        return None;
+    }
+
     let arguments = extract_xml_tag(&content, "Arguments");
+    let author = extract_xml_tag(&content, "Author");
 
     let full_command = match arguments {
         Some(ref args) if !args.trim().is_empty() => format!("{command} {args}"),
@@ -85,28 +92,46 @@ fn parse_task_file(root: &Path, file_path: &Path) -> Option<StartupEntry> {
         .unwrap_or(&rel_path);
 
     let display_name = file_stem.to_string();
-    let target_path = super::registry::extract_target_path(&command);
+    let target_exe = extract_clean_exe_path(&command);
+    let target_str = target_exe.as_ref().map(|p| p.to_string_lossy().to_string());
+
+    let publisher = target_exe
+        .as_deref()
+        .and_then(get_file_publisher)
+        .or_else(|| {
+            author.and_then(|a| {
+                let a_trimmed = a.trim();
+                if !a_trimmed.is_empty() && !a_trimmed.eq_ignore_ascii_case("unknown") {
+                    Some(a_trimmed.to_string())
+                } else {
+                    None
+                }
+            })
+        });
 
     Some(StartupEntry {
         id: format!("task_{rel_path}"),
         name: file_stem.to_string(),
         display_name,
+        publisher,
         source: StartupSource::ScheduledTask,
         scope: StartupScope::AllUsers,
         status,
         command: Some(full_command),
-        target_path,
+        target_path: target_str,
         location_label: "Task Scheduler".to_string(),
         raw_id: task_tn,
     })
 }
 
-fn extract_xml_tag(content: &str, tag: &str) -> Option<String> {
-    let open_tag = format!("<{tag}>");
-    let close_tag = format!("</{tag}>");
-    let start_idx = content.find(&open_tag)? + open_tag.len();
-    let end_idx = content[start_idx..].find(&close_tag)? + start_idx;
-    let val = content[start_idx..end_idx].trim();
+fn extract_xml_tag(xml: &str, tag_name: &str) -> Option<String> {
+    let open_tag = format!("<{tag_name}>");
+    let close_tag = format!("</{tag_name}>");
+
+    let start_idx = xml.find(&open_tag)? + open_tag.len();
+    let end_idx = xml[start_idx..].find(&close_tag)? + start_idx;
+
+    let val = xml[start_idx..end_idx].trim();
     if val.is_empty() {
         None
     } else {
@@ -124,7 +149,7 @@ pub fn toggle_task_entry(entry: &StartupEntry) -> bool {
 
     #[cfg(target_os = "windows")]
     {
-        let status = std::process::Command::new("schtasks.exe")
+        let status = std::process::Command::new("schtasks")
             .args(["/change", "/tn", task_name, action])
             .status();
         matches!(status, Ok(s) if s.success())
@@ -141,7 +166,7 @@ pub fn delete_task_entry(entry: &StartupEntry) -> bool {
 
     #[cfg(target_os = "windows")]
     {
-        let status = std::process::Command::new("schtasks.exe")
+        let status = std::process::Command::new("schtasks")
             .args(["/delete", "/tn", task_name, "/f"])
             .status();
         matches!(status, Ok(s) if s.success())

@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::types::{StartupEntry, StartupScope, StartupSource, StartupStatus};
+use super::vendor::{extract_clean_exe_path, get_file_publisher};
 
 pub fn scan_folder_startup() -> Vec<StartupEntry> {
     let mut entries = Vec::new();
@@ -71,6 +72,10 @@ fn scan_dir(dir: &Path, scope: StartupScope, entries: &mut Vec<StartupEntry>) {
             StartupScope::AllUsers => "shell:common startup".to_string(),
         };
 
+        // Try extracting target exe or publisher
+        let target_exe = extract_clean_exe_path(&path_str);
+        let publisher = target_exe.as_deref().and_then(get_file_publisher);
+
         entries.push(StartupEntry {
             id: format!(
                 "folder_{}_{clean_name}",
@@ -81,6 +86,7 @@ fn scan_dir(dir: &Path, scope: StartupScope, entries: &mut Vec<StartupEntry>) {
             ),
             name: clean_name.to_string(),
             display_name,
+            publisher,
             source: StartupSource::StartupFolder,
             scope,
             status,
@@ -98,18 +104,24 @@ pub fn toggle_folder_entry(entry: &StartupEntry) -> bool {
         return false;
     }
 
-    let path_str = entry.raw_id.as_str();
-    if entry.status == StartupStatus::Enabled {
-        // Disable: rename foo.lnk to foo.lnk.disabled
-        let disabled_path = PathBuf::from(format!("{path_str}.disabled"));
-        fs::rename(&current_path, disabled_path).is_ok()
-    } else {
-        // Enable: rename foo.lnk.disabled to foo.lnk
-        if let Some(enabled_str) = path_str.strip_suffix(".disabled") {
-            let enabled_path = PathBuf::from(enabled_str);
-            fs::rename(&current_path, enabled_path).is_ok()
-        } else {
-            false
+    match entry.status {
+        StartupStatus::Enabled => {
+            let file_name = current_path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("");
+            let disabled_name = format!("{file_name}.disabled");
+            let new_path = current_path.with_file_name(disabled_name);
+            fs::rename(&current_path, new_path).is_ok()
+        }
+        StartupStatus::Disabled => {
+            let file_name = current_path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("");
+            let enabled_name = file_name.trim_end_matches(".disabled");
+            let new_path = current_path.with_file_name(enabled_name);
+            fs::rename(&current_path, new_path).is_ok()
         }
     }
 }

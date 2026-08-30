@@ -384,11 +384,10 @@ fn render_startup_card(
                 .color(theme.text_muted),
         );
 
-    let display_cmd = entry
-        .command
-        .as_deref()
-        .or(entry.target_path.as_deref())
-        .unwrap_or(&entry.location_label);
+    let secondary_text = entry
+        .publisher
+        .clone()
+        .unwrap_or_else(|| rust_i18n::t!("startup.unknown_publisher").to_string());
 
     let tt_h1 = handlers.hover_tt.clone();
     let tt_h2 = handlers.hover_tt.clone();
@@ -463,7 +462,7 @@ fn render_startup_card(
                                 .text_ellipsis()
                                 .overflow_hidden()
                                 .whitespace_nowrap()
-                                .child(display_cmd.to_string()),
+                                .child(secondary_text),
                         ),
                 ),
         )
@@ -613,25 +612,25 @@ impl RenderOnce for StartupPage {
                         self.on_select_filter.clone(),
                     ))
                     .child(render_filter_pill(
-                        Some(StartupSource::Registry),
-                        self.active_filter,
-                        &theme,
-                        self.on_select_filter.clone(),
-                    ))
-                    .child(render_filter_pill(
                         Some(StartupSource::StartupFolder),
                         self.active_filter,
                         &theme,
                         self.on_select_filter.clone(),
                     ))
                     .child(render_filter_pill(
-                        Some(StartupSource::Service),
+                        Some(StartupSource::ScheduledTask),
                         self.active_filter,
                         &theme,
                         self.on_select_filter.clone(),
                     ))
                     .child(render_filter_pill(
-                        Some(StartupSource::ScheduledTask),
+                        Some(StartupSource::Registry),
+                        self.active_filter,
+                        &theme,
+                        self.on_select_filter.clone(),
+                    ))
+                    .child(render_filter_pill(
+                        Some(StartupSource::Service),
                         self.active_filter,
                         &theme,
                         self.on_select_filter,

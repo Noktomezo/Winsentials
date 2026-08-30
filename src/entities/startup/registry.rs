@@ -1,6 +1,9 @@
+use std::path::Path;
+
 use windows_registry::{CURRENT_USER, Key, LOCAL_MACHINE};
 
 use super::types::{StartupEntry, StartupScope, StartupSource, StartupStatus};
+use super::vendor::{extract_clean_exe_path, get_file_publisher};
 
 const REG_RUN: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 const REG_RUN_ONCE: &str = r"Software\Microsoft\Windows\CurrentVersion\RunOnce";
@@ -22,19 +25,32 @@ fn scan_key_values(
     };
 
     for (name, _) in values {
+        if name.trim().is_empty() {
+            continue;
+        }
+
         if let Ok(cmd) = key.get_string(&name) {
+            let trimmed_cmd = cmd.trim();
+            if trimmed_cmd.is_empty() {
+                continue;
+            }
+
             let id = format!("{prefix}_{name}");
-            let display_name = extract_display_name(&name, &cmd);
-            let target_path = extract_target_path(&cmd);
+            let target_exe = extract_clean_exe_path(trimmed_cmd);
+            let target_str = target_exe.as_ref().map(|p| p.to_string_lossy().to_string());
+            let display_name = extract_display_name(&name, trimmed_cmd, target_exe.as_deref());
+            let publisher = target_exe.as_deref().and_then(get_file_publisher);
+
             entries.push(StartupEntry {
                 id,
                 name: name.clone(),
                 display_name,
+                publisher,
                 source: StartupSource::Registry,
                 scope,
                 status: StartupStatus::Enabled,
                 command: Some(cmd),
-                target_path,
+                target_path: target_str,
                 location_label: label.to_string(),
                 raw_id: format!("{prefix}|{key_path}|{name}"),
             });
@@ -86,17 +102,23 @@ pub fn scan_registry_startup() -> Vec<StartupEntry> {
                             StartupScope::CurrentUser
                         };
                         let id = format!("reg_disabled_{name}");
-                        let display_name = extract_display_name(orig_name, cmd);
-                        let target_path = extract_target_path(cmd);
+                        let target_exe = extract_clean_exe_path(cmd);
+                        let target_str =
+                            target_exe.as_ref().map(|p| p.to_string_lossy().to_string());
+                        let display_name =
+                            extract_display_name(orig_name, cmd, target_exe.as_deref());
+                        let publisher = target_exe.as_deref().and_then(get_file_publisher);
+
                         entries.push(StartupEntry {
                             id,
                             name: orig_name.to_string(),
                             display_name,
+                            publisher,
                             source: StartupSource::Registry,
                             scope,
                             status: StartupStatus::Disabled,
                             command: Some(cmd.to_string()),
-                            target_path,
+                            target_path: target_str,
                             location_label: format!("{hive}\\...\\Disabled"),
                             raw_id: format!("DISABLED|{name}|{stored_val}"),
                         });
@@ -197,34 +219,14 @@ pub fn delete_registry_entry(entry: &StartupEntry) -> bool {
     false
 }
 
-pub fn extract_target_path(cmd: &str) -> Option<String> {
-    let trimmed = cmd.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-
-    if let Some(stripped) = trimmed.strip_prefix('"') {
-        if let Some(end_idx) = stripped.find('"') {
-            return Some(stripped[..end_idx].to_string());
-        }
-    }
-
-    if let Some(space_idx) = trimmed.find(' ') {
-        Some(trimmed[..space_idx].to_string())
-    } else {
-        Some(trimmed.to_string())
-    }
-}
-
-pub fn extract_display_name(name: &str, cmd: &str) -> String {
+pub fn extract_display_name(name: &str, _cmd: &str, target_exe: Option<&Path>) -> String {
     let trimmed_name = name.trim();
     if !trimmed_name.is_empty() {
         return trimmed_name.to_string();
     }
 
-    if let Some(path) = extract_target_path(cmd) {
-        let p = std::path::Path::new(&path);
-        if let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {
+    if let Some(path) = target_exe {
+        if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
             return stem.to_string();
         }
     }

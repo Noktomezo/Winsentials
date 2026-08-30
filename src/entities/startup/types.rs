@@ -78,6 +78,7 @@ pub struct StartupEntry {
     pub id: String,
     pub name: String,
     pub display_name: String,
+    pub publisher: Option<String>,
     pub source: StartupSource,
     pub scope: StartupScope,
     pub status: StartupStatus,

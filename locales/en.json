@@ -311,6 +311,7 @@
     "action_delete": "Delete",
     "empty": "No startup items found in this category",
     "total": "Total",
-    "enabled": "Enabled"
+    "enabled": "Enabled",
+    "unknown_publisher": "Unknown publisher"
   }
 }

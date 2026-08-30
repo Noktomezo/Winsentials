@@ -1,6 +1,7 @@
 use windows_registry::LOCAL_MACHINE;
 
 use super::types::{StartupEntry, StartupScope, StartupSource, StartupStatus};
+use super::vendor::{extract_clean_exe_path, get_file_publisher};
 
 const REG_SERVICES: &str = r"SYSTEM\CurrentControlSet\Services";
 
@@ -49,6 +50,10 @@ pub fn scan_services_startup() -> Vec<StartupEntry> {
     };
 
     for service_name in service_names {
+        if service_name.trim().is_empty() {
+            continue;
+        }
+
         let Ok(service_key) = services_root.open(&service_name) else {
             continue;
         };
@@ -65,9 +70,13 @@ pub fn scan_services_startup() -> Vec<StartupEntry> {
         let Ok(image_path) = service_key.get_string("ImagePath") else {
             continue;
         };
+        let trimmed_path = image_path.trim();
+        if trimmed_path.is_empty() {
+            continue;
+        }
 
         // 3. Filter out Windows core internal services
-        if is_windows_core_service(&service_name, &image_path) {
+        if is_windows_core_service(&service_name, trimmed_path) {
             continue;
         }
 
@@ -79,22 +88,25 @@ pub fn scan_services_startup() -> Vec<StartupEntry> {
             StartupStatus::Disabled
         };
 
-        // 5. Read DisplayName
+        // 5. Read DisplayName and Description
         let display_name = service_key
             .get_string("DisplayName")
             .unwrap_or_else(|_| service_name.clone());
 
-        let target_path = super::registry::extract_target_path(&image_path);
+        let target_exe = extract_clean_exe_path(trimmed_path);
+        let target_str = target_exe.as_ref().map(|p| p.to_string_lossy().to_string());
+        let publisher = target_exe.as_deref().and_then(get_file_publisher);
 
         entries.push(StartupEntry {
             id: format!("svc_{service_name}"),
             name: service_name.clone(),
             display_name,
+            publisher,
             source: StartupSource::Service,
             scope: StartupScope::AllUsers,
             status,
             command: Some(image_path),
-            target_path,
+            target_path: target_str,
             location_label: "HKLM\\...\\Services".to_string(),
             raw_id: service_name,
         });
