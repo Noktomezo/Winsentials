@@ -294,13 +294,12 @@ impl RenderOnce for ToolsPage {
         let on_hover = self.on_hover_card;
         let hovered_card = self.hovered_card;
 
-        let window_w = window.viewport_size().width;
         let sidebar_w = if self.sidebar_expanded {
             px(200.0)
         } else {
             px(40.0)
         };
-        let available_w = (window_w - sidebar_w - px(64.0)).max(px(300.0));
+        let available_w = (window.viewport_size().width - sidebar_w - px(32.0)).max(px(320.0));
 
         let card_elements: Vec<(&'static str, AnyElement)> = SYSTEM_TOOLS
             .iter()
@@ -315,16 +314,16 @@ impl RenderOnce for ToolsPage {
         div()
             .flex()
             .flex_col()
-            .gap(px(20.0))
-            .p(px(24.0))
+            .gap(px(16.0))
+            .p(px(16.0))
             .w_full()
             .child(PageHeader::new(route.title(), route.description()))
             .child(render_animated_grid(
                 "tools_grid",
                 available_w,
-                px(340.0),
+                px(360.0),
                 px(68.0),
-                px(10.0),
+                px(12.0),
                 card_elements,
             ))
     }
