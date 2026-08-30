@@ -11,8 +11,9 @@ use crate::features::navigation::AppRoute;
 use crate::pages::page_header::PageHeader;
 use crate::shared::theme::Theme;
 use crate::shared::ui::TooltipState;
-use crate::shared::ui::animated_grid::render_animated_grid;
+use crate::shared::ui::animated_grid::{VirtualGridConfig, render_virtual_animated_grid};
 use crate::shared::ui::icon::Icon;
+use crate::shared::ui::smooth_scroll::SmoothScroll;
 use crate::shared::ui::switch::Switch;
 
 pub type StartupToggleHandler = Arc<dyn Fn(&StartupEntry, &mut Window, &mut App) + 'static>;
@@ -586,15 +587,6 @@ impl RenderOnce for StartupPage {
             toggle_menu: self.on_toggle_menu,
         };
 
-        let card_elements: Vec<(String, AnyElement)> = filtered_entries
-            .iter()
-            .map(|entry| {
-                let is_menu_open = self.open_menu_id.as_ref().is_some_and(|id| id == &entry.id);
-                let elem = render_startup_card(entry, &theme, is_menu_open, &handlers);
-                (entry.id.clone(), elem)
-            })
-            .collect();
-
         let filter_bar = div()
             .flex()
             .items_center()
@@ -650,7 +642,9 @@ impl RenderOnce for StartupPage {
                     )),
             );
 
-        let content_el = if card_elements.is_empty() {
+        let (scroll_y, viewport_h) = SmoothScroll::get_scroll_offset(route.id(), window, cx);
+
+        let content_el = if filtered_entries.is_empty() {
             div()
                 .flex()
                 .items_center()
@@ -662,14 +656,19 @@ impl RenderOnce for StartupPage {
                 .child(rust_i18n::t!("startup.empty").to_string())
                 .into_any_element()
         } else {
-            render_animated_grid(
-                "startup_grid",
+            let config = VirtualGridConfig::new(
                 available_w,
                 px(360.0),
                 px(68.0),
                 px(12.0),
-                card_elements,
-            )
+                scroll_y,
+                viewport_h,
+            );
+            render_virtual_animated_grid("startup_grid", config, &filtered_entries, |_i, entry| {
+                let is_menu_open = self.open_menu_id.as_ref().is_some_and(|id| id == &entry.id);
+                let elem = render_startup_card(entry, &theme, is_menu_open, &handlers);
+                (entry.id.clone(), elem)
+            })
             .into_any_element()
         };
 
