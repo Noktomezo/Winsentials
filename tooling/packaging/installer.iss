@@ -1,4 +1,4 @@
-﻿; Winsentials Inno Setup 6 Script
+; Winsentials Inno Setup 6 Script
 ; Modern UI with High-DPI, 64-bit Architecture, and Solid LZMA2 Compression
 
 #ifndef MyAppVersion
@@ -38,7 +38,7 @@ SolidCompression=yes
 WizardStyle=modern
 WizardSizePercent=100
 WizardImageFile=..\..\assets\app-installer-sidebar.bmp
-WizardSmallImageFile=..\..\assets\app-installer-header.bmp
+WizardSmallImageFile=..\..\assets\app-installer-small.bmp
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=admin
