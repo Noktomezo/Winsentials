@@ -402,18 +402,52 @@ fn prepare_installer_bmps() -> Result<(), String> {
     Ok(())
 }
 
-fn build_nsis_installer(version: &str, output_path: &Path) -> Result<(), String> {
+fn build_installer(version: &str, output_path: &Path) -> Result<(), String> {
     prepare_installer_bmps()?;
 
-    let nsi_script = Path::new("tooling").join("packaging").join("installer.nsi");
-    let version_flag = format!("-DVERSION={version}");
-    let out_flag = format!("-DOUTFILE=..\\..\\{}", output_path.to_string_lossy());
+    let iss_script = Path::new("tooling").join("packaging").join("installer.iss");
+    if iss_script.exists() {
+        let version_flag = format!("/DMyAppVersion={version}");
+        let out_dir_flag = format!(
+            "/DMyOutputDir=..\\..\\{}",
+            output_path
+                .parent()
+                .unwrap_or(Path::new("."))
+                .to_string_lossy()
+        );
+        let file_stem = output_path
+            .file_stem()
+            .unwrap_or_default()
+            .to_string_lossy();
+        let out_name_flag = format!("/DMyOutputBaseFilename={file_stem}");
 
-    let makensis = "makensis";
-    run_external(
-        makensis,
-        &[&version_flag, &out_flag, &nsi_script.to_string_lossy()],
-    )?;
+        println!("=== Building Inno Setup installer ===");
+        if let Ok(()) = run_external(
+            "iscc",
+            &[
+                &version_flag,
+                &out_dir_flag,
+                &out_name_flag,
+                "/Q",
+                &iss_script.to_string_lossy(),
+            ],
+        ) {
+            return Ok(());
+        }
+    }
+
+    let nsi_script = Path::new("tooling").join("packaging").join("installer.nsi");
+    if nsi_script.exists() {
+        let version_flag = format!("-DVERSION={version}");
+        let out_flag = format!("-DOUTFILE=..\\..\\{}", output_path.to_string_lossy());
+
+        println!("=== Building NSIS installer (fallback) ===");
+        let makensis = "makensis";
+        run_external(
+            makensis,
+            &[&version_flag, &out_flag, &nsi_script.to_string_lossy()],
+        )?;
+    }
     Ok(())
 }
 
@@ -438,9 +472,8 @@ fn run_build() -> Result<(), String> {
     let portable_zip_path = release_dir.join("winsentials-win-x64-portable.zip");
     package_portable_zip(&binary, &portable_zip_path)?;
 
-    println!("=== Building NSIS installer ===");
     let setup_exe_path = release_dir.join("winsentials-win-x64-setup.exe");
-    build_nsis_installer(version, &setup_exe_path)?;
+    build_installer(version, &setup_exe_path)?;
 
     println!("\n=== Release distribution artifacts ready in target/release/ ===");
     let artifacts = [
