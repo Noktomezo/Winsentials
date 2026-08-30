@@ -48,6 +48,7 @@ pub struct AppView {
     startup_search_query: String,
     startup_search_focused: bool,
     startup_search_hovered: bool,
+    startup_search_selection: Option<(usize, usize)>,
     startup_search_focus: Option<gpui::FocusHandle>,
     startup_open_menu_id: Option<String>,
 }
@@ -109,6 +110,7 @@ impl AppView {
             startup_search_query: String::new(),
             startup_search_focused: false,
             startup_search_hovered: false,
+            startup_search_selection: None,
             startup_search_focus: None,
             startup_open_menu_id: None,
         }
@@ -361,6 +363,18 @@ impl AppView {
 
     pub fn set_startup_search_focused(&mut self, focused: bool, cx: &mut Context<Self>) {
         self.startup_search_focused = focused;
+        if !focused {
+            self.startup_search_selection = None;
+        }
+        cx.notify();
+    }
+
+    pub fn set_startup_search_selection(
+        &mut self,
+        selection: Option<(usize, usize)>,
+        cx: &mut Context<Self>,
+    ) {
+        self.startup_search_selection = selection;
         cx.notify();
     }
 
@@ -368,6 +382,7 @@ impl AppView {
         self.startup_open_menu_id = menu_id;
         if self.startup_open_menu_id.is_some() {
             self.startup_search_focused = false;
+            self.startup_search_selection = None;
         }
         cx.notify();
     }
@@ -1045,6 +1060,11 @@ impl Render for AppView {
             this.set_startup_search_focused(focused, cx);
         });
 
+        let on_selection_startup_search =
+            cx.listener(|this, selection: &Option<(usize, usize)>, _window, cx| {
+                this.set_startup_search_selection(*selection, cx);
+            });
+
         let minimize_to_tray = self.config.minimize_to_tray;
         let autostart = self.config.autostart;
         let autostart_to_tray = self.config.autostart_to_tray;
@@ -1090,6 +1110,7 @@ impl Render for AppView {
                 &self.startup_search_query,
                 self.startup_search_focused,
                 self.startup_search_hovered,
+                self.startup_search_selection,
                 &startup_search_focus,
                 startup_open_menu_id,
                 move |target_route, window, cx| {
@@ -1175,6 +1196,9 @@ impl Render for AppView {
                 },
                 move |foc, window, cx| {
                     on_focus_startup_search(&foc, window, cx);
+                },
+                move |sel, window, cx| {
+                    on_selection_startup_search(&sel, window, cx);
                 },
             ));
 

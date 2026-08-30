@@ -27,6 +27,8 @@ pub type MenuToggleHandler = Arc<dyn Fn(Option<String>, &mut Window, &mut App) +
 pub type FilterSelectHandler = Arc<dyn Fn(Option<StartupSource>, &mut Window, &mut App) + 'static>;
 pub type SearchHoverHandler = Arc<dyn Fn(&bool, &mut Window, &mut App) + 'static>;
 pub type SearchFocusHandler = Arc<dyn Fn(bool, &mut Window, &mut App) + 'static>;
+pub type SearchSelectionHandler =
+    Arc<dyn Fn(Option<(usize, usize)>, &mut Window, &mut App) + 'static>;
 
 #[derive(Clone)]
 struct StartupCardHandlers {
@@ -46,6 +48,7 @@ pub struct StartupPage {
     search_query: String,
     search_focused: bool,
     search_hovered: bool,
+    search_selection: Option<(usize, usize)>,
     open_menu_id: Option<String>,
     search_focus: Option<FocusHandle>,
     on_toggle: Option<StartupToggleHandler>,
@@ -59,6 +62,7 @@ pub struct StartupPage {
     on_change_search: Option<SearchChangeHandler>,
     on_hover_search: Option<SearchHoverHandler>,
     on_focus_search: Option<SearchFocusHandler>,
+    on_selection_search: Option<SearchSelectionHandler>,
 }
 
 impl StartupPage {
@@ -69,6 +73,7 @@ impl StartupPage {
         search_query: impl Into<String>,
         search_focused: bool,
         search_hovered: bool,
+        search_selection: Option<(usize, usize)>,
         open_menu_id: Option<String>,
     ) -> Self {
         Self {
@@ -77,6 +82,7 @@ impl StartupPage {
             search_query: search_query.into(),
             search_focused,
             search_hovered,
+            search_selection,
             open_menu_id,
             search_focus: None,
             on_toggle: None,
@@ -90,6 +96,7 @@ impl StartupPage {
             on_change_search: None,
             on_hover_search: None,
             on_focus_search: None,
+            on_selection_search: None,
         }
     }
 
@@ -123,6 +130,15 @@ impl StartupPage {
         handler: impl Fn(bool, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_focus_search = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    pub fn on_selection_search(
+        mut self,
+        handler: impl Fn(Option<(usize, usize)>, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_selection_search = Some(Arc::new(handler));
         self
     }
 
@@ -827,7 +843,8 @@ impl RenderOnce for StartupPage {
         let mut search_input = SearchInput::new("startup_search", &self.search_query)
             .width(px(220.0))
             .focused(self.search_focused)
-            .hovered(self.search_hovered);
+            .hovered(self.search_hovered)
+            .selection(self.search_selection);
         if let Some(ref f) = self.search_focus {
             search_input = search_input.track_focus(f);
         }
@@ -847,6 +864,12 @@ impl RenderOnce for StartupPage {
             let h_clone = h.clone();
             search_input = search_input.on_focus_change(move |foc, window, cx| {
                 h_clone(foc, window, cx);
+            });
+        }
+        if let Some(ref h) = self.on_selection_search {
+            let h_clone = h.clone();
+            search_input = search_input.on_selection_change(move |sel, window, cx| {
+                h_clone(sel, window, cx);
             });
         }
 

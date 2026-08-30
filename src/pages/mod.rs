@@ -84,6 +84,7 @@ pub fn render_route(
     startup_search_query: &str,
     startup_search_focused: bool,
     startup_search_hovered: bool,
+    startup_search_selection: Option<(usize, usize)>,
     startup_search_focus: &gpui::FocusHandle,
     startup_open_menu_id: Option<&str>,
     on_navigate: impl Fn(AppRoute, &mut Window, &mut App) + Send + Sync + 'static,
@@ -121,6 +122,7 @@ pub fn render_route(
     on_change_startup_search: impl Fn(String, &mut Window, &mut App) + 'static,
     on_hover_startup_search: impl Fn(&bool, &mut Window, &mut App) + 'static,
     on_focus_startup_search: impl Fn(bool, &mut Window, &mut App) + 'static,
+    on_selection_startup_search: impl Fn(Option<(usize, usize)>, &mut Window, &mut App) + 'static,
 ) -> AnyElement {
     let on_nav_arc = Arc::new(on_navigate);
     let on_nav_dash = on_nav_arc.clone();
@@ -313,12 +315,14 @@ pub fn render_route(
             startup_search_query,
             startup_search_focused,
             startup_search_hovered,
+            startup_search_selection,
             startup_open_menu_id.map(ToString::to_string),
         )
         .search_focus(startup_search_focus)
         .on_change_search(on_change_startup_search)
         .on_hover_search(on_hover_startup_search)
         .on_focus_search(on_focus_startup_search)
+        .on_selection_search(on_selection_startup_search)
         .on_toggle(on_toggle_startup)
         .on_delete(on_delete_startup)
         .on_open_folder(on_open_startup_folder)
