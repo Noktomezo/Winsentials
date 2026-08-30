@@ -1,7 +1,6 @@
 use crate::entities::tweaks::context_menu::{
     is_classic_context_menu_applied, is_create_symlink_applied, is_menu_show_delay_disabled,
-    is_open_with_notepad_applied, set_classic_context_menu, set_create_symlink,
-    set_menu_show_delay_disabled, set_open_with_notepad,
+    set_classic_context_menu, set_create_symlink, set_menu_show_delay_disabled,
 };
 use crate::entities::tweaks::explorer::{
     is_hide_gallery_applied, is_hide_home_applied, is_hide_linux_applied, is_hide_network_applied,
@@ -100,19 +99,6 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         restart: RestartRequirement::None,
         is_applied: is_menu_show_delay_disabled,
         set_applied: set_menu_show_delay_disabled,
-    },
-    TweakDefinition {
-        id: "open_with_editor",
-        category: TweakCategory::ContextMenu,
-        icon: "icons/file-text.svg",
-        title_key: "tweaks.open_with_editor_title",
-        desc_key: "tweaks.open_with_editor_desc",
-        min_build: None,
-        max_build: None,
-        custom_support: None,
-        restart: RestartRequirement::None,
-        is_applied: is_open_with_notepad_applied,
-        set_applied: set_open_with_notepad,
     },
     TweakDefinition {
         id: "create_symlink",
