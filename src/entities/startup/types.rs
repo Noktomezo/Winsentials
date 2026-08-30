@@ -25,6 +25,7 @@ impl StartupSource {
     }
 
     #[must_use]
+    #[allow(dead_code)]
     pub fn label(self) -> String {
         match self {
             Self::Registry => rust_i18n::t!("startup.source_registry").to_string(),

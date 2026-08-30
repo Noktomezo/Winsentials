@@ -235,9 +235,8 @@ fn render_source_badge(
         .id(ElementId::Name(format!("{}_src_badge", entry.id).into()))
         .flex()
         .items_center()
-        .gap(px(4.0))
-        .px(px(6.0))
-        .py(px(2.0))
+        .justify_center()
+        .size(px(18.0))
         .rounded(px(4.0))
         .bg(source_col.opacity(0.12))
         .border_1()
@@ -266,13 +265,6 @@ fn render_source_badge(
             Icon::new(entry.source.icon())
                 .size(px(11.0))
                 .color(source_col),
-        )
-        .child(
-            div()
-                .text_size(px(10.5))
-                .font_weight(FontWeight::SEMIBOLD)
-                .text_color(source_col)
-                .child(entry.source.label()),
         )
 }
 
@@ -803,7 +795,7 @@ impl RenderOnce for StartupPage {
             .justify_center()
             .px(px(8.0))
             .py(px(2.0))
-            .rounded_full()
+            .rounded(px(6.0))
             .bg(theme.button_selected)
             .border_1()
             .border_color(theme.card_border)
