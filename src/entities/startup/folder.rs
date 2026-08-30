@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::types::{StartupEntry, StartupScope, StartupSource, StartupStatus};
-use super::vendor::{extract_clean_exe_path, get_file_publisher};
+use super::vendor::{clean_display_name, extract_clean_exe_path, get_file_metadata};
 
 pub fn scan_folder_startup() -> Vec<StartupEntry> {
     let mut entries = Vec::new();
@@ -54,13 +54,18 @@ fn scan_dir(dir: &Path, scope: StartupScope, entries: &mut Vec<StartupEntry>) {
             file_name
         };
 
-        let display_name = Path::new(clean_name)
+        let path_str = path.to_string_lossy().to_string();
+        let target_exe = extract_clean_exe_path(&path_str);
+        let (publisher, _) = target_exe
+            .as_deref()
+            .map_or((None, None), get_file_metadata);
+
+        let stem = Path::new(clean_name)
             .file_stem()
             .and_then(|s| s.to_str())
-            .unwrap_or(clean_name)
-            .to_string();
+            .unwrap_or(clean_name);
+        let display_name = clean_display_name(stem, target_exe.as_deref());
 
-        let path_str = path.to_string_lossy().to_string();
         let status = if is_disabled {
             StartupStatus::Disabled
         } else {
@@ -71,10 +76,6 @@ fn scan_dir(dir: &Path, scope: StartupScope, entries: &mut Vec<StartupEntry>) {
             StartupScope::CurrentUser => "shell:startup".to_string(),
             StartupScope::AllUsers => "shell:common startup".to_string(),
         };
-
-        // Try extracting target exe or publisher
-        let target_exe = extract_clean_exe_path(&path_str);
-        let publisher = target_exe.as_deref().and_then(get_file_publisher);
 
         entries.push(StartupEntry {
             id: format!(

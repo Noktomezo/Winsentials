@@ -3,6 +3,7 @@ use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
 /// Expands environment variables in a string (e.g. `%SystemRoot%`, `%ProgramFiles%`, `%APPDATA%`).
+#[must_use]
 pub fn expand_env_vars(input: &str) -> String {
     let mut result = input.to_string();
     if !result.contains('%') {
@@ -34,6 +35,7 @@ pub fn expand_env_vars(input: &str) -> String {
 }
 
 /// Extracts a clean executable path from a command string with arguments or quotes.
+#[must_use]
 pub fn extract_clean_exe_path(cmd: &str) -> Option<PathBuf> {
     let trimmed = cmd.trim();
     if trimmed.is_empty() {
@@ -85,14 +87,15 @@ type GetInfoFn = unsafe extern "system" fn(*const u16, u32, u32, *mut u8) -> i32
 #[cfg(target_os = "windows")]
 type QueryValFn = unsafe extern "system" fn(*const u8, *const u16, *mut *mut u8, *mut u32) -> i32;
 
-/// Retrieves the publisher or company name from the PE version info of a file.
+/// Retrieves publisher (`CompanyName`) and description (`FileDescription`) from PE version info.
 #[cfg(target_os = "windows")]
-#[allow(unsafe_code)]
-pub fn get_file_publisher(path: &Path) -> Option<String> {
+#[allow(unsafe_code, clippy::too_many_lines)]
+#[must_use]
+pub fn get_file_metadata(path: &Path) -> (Option<String>, Option<String>) {
     use windows_sys::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryW};
 
     if !path.exists() {
-        return None;
+        return (None, None);
     }
 
     let wide_path: Vec<u16> = path
@@ -108,7 +111,7 @@ pub fn get_file_publisher(path: &Path) -> Option<String> {
             .collect();
         let version_dll = LoadLibraryW(dll_name.as_ptr());
         if version_dll.is_null() {
-            return None;
+            return (None, None);
         }
 
         let get_size_ptr = GetProcAddress(version_dll, c"GetFileVersionInfoSizeW".as_ptr().cast());
@@ -116,7 +119,7 @@ pub fn get_file_publisher(path: &Path) -> Option<String> {
         let query_val_ptr = GetProcAddress(version_dll, c"VerQueryValueW".as_ptr().cast());
 
         if get_size_ptr.is_none() || get_info_ptr.is_none() || query_val_ptr.is_none() {
-            return None;
+            return (None, None);
         }
 
         let get_size: GetSizeFn = std::mem::transmute(get_size_ptr);
@@ -126,15 +129,14 @@ pub fn get_file_publisher(path: &Path) -> Option<String> {
         let mut handle = 0u32;
         let size = get_size(wide_path.as_ptr(), &raw mut handle);
         if size == 0 {
-            return None;
+            return (None, None);
         }
 
         let mut buffer = vec![0u8; size as usize];
         if get_info(wide_path.as_ptr(), 0, size, buffer.as_mut_ptr()) == 0 {
-            return None;
+            return (None, None);
         }
 
-        // Try Translation table first
         let mut trans_ptr = std::ptr::null_mut();
         let mut trans_len = 0u32;
         let trans_block_name: Vec<u16> = OsStr::new(r"\VarFileInfo\Translation")
@@ -162,14 +164,13 @@ pub fn get_file_publisher(path: &Path) -> Option<String> {
             }
         }
 
-        // Common fallback codepages
         lang_codepages.push("040904b0".to_string()); // US English Unicode
         lang_codepages.push("040904e4".to_string()); // US English Windows
         lang_codepages.push("000004b0".to_string()); // Neutral Unicode
         lang_codepages.push("041904b0".to_string()); // Russian Unicode
         lang_codepages.push("041904e4".to_string()); // Russian Windows
 
-        for sub_key in &["CompanyName", "FileDescription", "ProductName"] {
+        let read_prop = |sub_key: &str| -> Option<String> {
             for lc in &lang_codepages {
                 let query_str = format!(r"\StringFileInfo\{lc}\{sub_key}");
                 let query_wide: Vec<u16> = OsStr::new(&query_str)
@@ -197,13 +198,225 @@ pub fn get_file_publisher(path: &Path) -> Option<String> {
                     }
                 }
             }
-        }
+            None
+        };
 
-        None
+        let publisher = read_prop("CompanyName").or_else(|| read_prop("LegalCopyright"));
+        let description = read_prop("FileDescription").or_else(|| read_prop("ProductName"));
+
+        (publisher, description)
     }
 }
 
 #[cfg(not(target_os = "windows"))]
-pub fn get_file_publisher(_path: &Path) -> Option<String> {
-    None
+pub fn get_file_metadata(_path: &Path) -> (Option<String>, Option<String>) {
+    (None, None)
+}
+
+#[allow(dead_code)]
+#[must_use]
+pub fn get_file_publisher(path: &Path) -> Option<String> {
+    get_file_metadata(path).0
+}
+
+#[must_use]
+pub fn get_file_description(path: &Path) -> Option<String> {
+    get_file_metadata(path).1
+}
+
+/// Checks if a string looks like a technical GUID or UUID (e.g. `{8F0D756C-...}` or pure hex).
+fn is_guid_or_hex(s: &str) -> bool {
+    let trimmed = s.trim_matches(|c| c == '{' || c == '}');
+    if trimmed.len() >= 32
+        && trimmed
+            .chars()
+            .all(|c| c.is_ascii_hexdigit() || c == '-' || c == '_')
+    {
+        return true;
+    }
+    false
+}
+
+/// Strips Windows GUIDs and SID patterns from names.
+fn strip_guids_and_sids(name: &str) -> String {
+    let mut result = name.to_string();
+
+    // Remove {GUID} e.g. {85B8898F-2E0F-4F4D-93D3-8E5A737D8D74}
+    while let Some(start) = result.find('{') {
+        if let Some(end) = result[start..].find('}') {
+            let full_end = start + end + 1;
+            let inside = &result[start + 1..start + end];
+            if inside.len() >= 32 && inside.chars().all(|c| c.is_ascii_hexdigit() || c == '-') {
+                result.replace_range(start..full_end, "");
+                continue;
+            }
+        }
+        break;
+    }
+
+    // Remove S-1-5-21-... or -S-1-5-21-... Windows SID
+    if let Some(sid_pos) = result.find("S-1-") {
+        let start_idx = if sid_pos > 0
+            && (result.as_bytes()[sid_pos - 1] == b'-' || result.as_bytes()[sid_pos - 1] == b'_')
+        {
+            sid_pos - 1
+        } else {
+            sid_pos
+        };
+        let after_s1 = &result[sid_pos + 4..];
+        let end_offset = after_s1
+            .find(|c: char| !c.is_ascii_digit() && c != '-')
+            .unwrap_or(after_s1.len());
+        result.replace_range(start_idx..sid_pos + 4 + end_offset, "");
+    }
+
+    // Trim trailing separators
+    let cleaned =
+        result.trim_matches(|c: char| c == '-' || c == '_' || c == '.' || c.is_whitespace());
+    cleaned.to_string()
+}
+
+/// Cleans and formats a technical startup entry name into a clean, human-readable display name.
+#[must_use]
+pub fn clean_display_name(raw_name: &str, target_exe: Option<&Path>) -> String {
+    let trimmed = raw_name.trim();
+
+    // 1. Try PE FileDescription first if raw_name looks technical
+    let is_technical = trimmed.starts_with("electron.app.")
+        || trimmed.starts_with("com.")
+        || trimmed.starts_with("org.")
+        || trimmed.starts_with("net.")
+        || trimmed.contains('{')
+        || trimmed.contains("-S-1-")
+        || (trimmed.contains('.') && !trimmed.contains(' '))
+        || is_guid_or_hex(trimmed);
+
+    if let Some(path) = target_exe {
+        if let Some(desc) = get_file_description(path) {
+            let desc_trimmed = desc.trim();
+            if !desc_trimmed.is_empty()
+                && !desc_trimmed.eq_ignore_ascii_case("unknown")
+                && (is_technical || desc_trimmed.len() > trimmed.len())
+            {
+                return desc_trimmed.to_string();
+            }
+        }
+    }
+
+    // 2. Handle reverse-domain / bundle prefixes (e.g. electron.app.Notion -> Notion, com.squirrel.Discord.Discord -> Discord)
+    if let Some(after) = trimmed.strip_prefix("electron.app.") {
+        return after.replace('_', " ");
+    }
+    if let Some(after) = trimmed.strip_prefix("com.squirrel.") {
+        let parts: Vec<&str> = after.split('.').collect();
+        if let Some(last) = parts.last() {
+            if !last.is_empty() {
+                return (*last).to_string();
+            }
+        }
+    }
+    if (trimmed.starts_with("com.") || trimmed.starts_with("org.") || trimmed.starts_with("net."))
+        && trimmed.matches('.').count() >= 2
+    {
+        if let Some(last_dot) = trimmed.rfind('.') {
+            let last_part = &trimmed[last_dot + 1..];
+            if !last_part.is_empty() && last_part.chars().any(char::is_alphabetic) {
+                return last_part.replace('_', " ");
+            }
+        }
+    }
+
+    // 3. Strip GUIDs and SIDs
+    let without_guids = strip_guids_and_sids(trimmed);
+    let mut candidate = if without_guids.is_empty() {
+        if let Some(path) = target_exe {
+            path.file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or(trimmed)
+                .to_string()
+        } else {
+            trimmed.to_string()
+        }
+    } else {
+        without_guids
+    };
+
+    // 4. Dot-separated names without spaces (e.g. COD.Broker.Service -> COD Broker Service)
+    if candidate.contains('.') && !candidate.contains(' ') {
+        candidate = candidate.replace('.', " ");
+    }
+
+    // 5. Underscores between words (e.g. User_Feed_Synchronization -> User Feed Synchronization)
+    if candidate.contains('_') && !candidate.contains("://") {
+        candidate = candidate.replace('_', " ");
+    }
+
+    // 6. Clean multiple spaces
+    let mut words = Vec::new();
+    for w in candidate.split_whitespace() {
+        words.push(w);
+    }
+    let final_name = words.join(" ");
+
+    if final_name.is_empty() {
+        trimmed.to_string()
+    } else {
+        final_name
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_clean_electron_notion() {
+        assert_eq!(clean_display_name("electron.app.Notion", None), "Notion");
+    }
+
+    #[test]
+    fn test_clean_squirrel_discord() {
+        assert_eq!(
+            clean_display_name("com.squirrel.Discord.Discord", None),
+            "Discord"
+        );
+    }
+
+    #[test]
+    fn test_clean_dot_service() {
+        assert_eq!(
+            clean_display_name("COD.Broker.Service", None),
+            "COD Broker Service"
+        );
+    }
+
+    #[test]
+    fn test_clean_task_with_sid() {
+        assert_eq!(
+            clean_display_name(
+                "OneDrive Standalone Update Task-S-1-5-21-3948574-1001",
+                None
+            ),
+            "OneDrive Standalone Update Task"
+        );
+    }
+
+    #[test]
+    fn test_clean_task_with_guid() {
+        assert_eq!(
+            clean_display_name(
+                "MicrosoftEdgeUpdateTaskMachine{8F0D756C-B2D1-4E6D-967E-D1E8F2312674}",
+                None
+            ),
+            "MicrosoftEdgeUpdateTaskMachine"
+        );
+    }
+
+    #[test]
+    fn test_clean_underscores() {
+        assert_eq!(
+            clean_display_name("User_Feed_Synchronization", None),
+            "User Feed Synchronization"
+        );
+    }
 }

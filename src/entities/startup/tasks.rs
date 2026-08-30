@@ -2,7 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::types::{StartupEntry, StartupScope, StartupSource, StartupStatus};
-use super::vendor::{extract_clean_exe_path, get_file_publisher};
+use super::vendor::{clean_display_name, extract_clean_exe_path, get_file_metadata};
 
 pub fn scan_tasks_startup() -> Vec<StartupEntry> {
     let mut entries = Vec::new();
@@ -140,21 +140,22 @@ fn parse_task_file(root: &Path, file_path: &Path) -> Option<StartupEntry> {
         .and_then(|s| s.to_str())
         .unwrap_or(&rel_path);
 
-    let display_name = file_stem.to_string();
+    let display_name = clean_display_name(file_stem, target_exe.as_deref());
 
-    let publisher = target_exe
+    let (pe_publisher, _) = target_exe
         .as_deref()
-        .and_then(get_file_publisher)
-        .or_else(|| {
-            author.and_then(|a| {
-                let a_trimmed = a.trim();
-                if !a_trimmed.is_empty() && !a_trimmed.eq_ignore_ascii_case("unknown") {
-                    Some(a_trimmed.to_string())
-                } else {
-                    None
-                }
-            })
-        });
+        .map_or((None, None), get_file_metadata);
+
+    let publisher = pe_publisher.or_else(|| {
+        author.and_then(|a| {
+            let a_trimmed = a.trim();
+            if !a_trimmed.is_empty() && !a_trimmed.eq_ignore_ascii_case("unknown") {
+                Some(a_trimmed.to_string())
+            } else {
+                None
+            }
+        })
+    });
 
     Some(StartupEntry {
         id: format!("task_{rel_path}"),

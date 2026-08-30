@@ -1,9 +1,7 @@
-use std::path::Path;
-
 use windows_registry::{CURRENT_USER, Key, LOCAL_MACHINE};
 
 use super::types::{StartupEntry, StartupScope, StartupSource, StartupStatus};
-use super::vendor::{extract_clean_exe_path, get_file_publisher};
+use super::vendor::{clean_display_name, extract_clean_exe_path, get_file_metadata};
 
 const REG_RUN: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 const REG_RUN_ONCE: &str = r"Software\Microsoft\Windows\CurrentVersion\RunOnce";
@@ -38,8 +36,10 @@ fn scan_key_values(
             let id = format!("{prefix}_{name}");
             let target_exe = extract_clean_exe_path(trimmed_cmd);
             let target_str = target_exe.as_ref().map(|p| p.to_string_lossy().to_string());
-            let display_name = extract_display_name(&name, trimmed_cmd, target_exe.as_deref());
-            let publisher = target_exe.as_deref().and_then(get_file_publisher);
+            let (publisher, _) = target_exe
+                .as_deref()
+                .map_or((None, None), get_file_metadata);
+            let display_name = clean_display_name(&name, target_exe.as_deref());
 
             entries.push(StartupEntry {
                 id,
@@ -106,9 +106,10 @@ pub fn scan_registry_startup() -> Vec<StartupEntry> {
                         let target_exe = extract_clean_exe_path(cmd);
                         let target_str =
                             target_exe.as_ref().map(|p| p.to_string_lossy().to_string());
-                        let display_name =
-                            extract_display_name(orig_name, cmd, target_exe.as_deref());
-                        let publisher = target_exe.as_deref().and_then(get_file_publisher);
+                        let (publisher, _) = target_exe
+                            .as_deref()
+                            .map_or((None, None), get_file_metadata);
+                        let display_name = clean_display_name(orig_name, target_exe.as_deref());
 
                         entries.push(StartupEntry {
                             id,
@@ -219,19 +220,4 @@ pub fn delete_registry_entry(entry: &StartupEntry) -> bool {
         }
     }
     false
-}
-
-pub fn extract_display_name(name: &str, _cmd: &str, target_exe: Option<&Path>) -> String {
-    let trimmed_name = name.trim();
-    if !trimmed_name.is_empty() {
-        return trimmed_name.to_string();
-    }
-
-    if let Some(path) = target_exe {
-        if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-            return stem.to_string();
-        }
-    }
-
-    "Startup Program".to_string()
 }

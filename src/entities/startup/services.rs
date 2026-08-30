@@ -3,7 +3,7 @@ use std::path::Path;
 use windows_registry::LOCAL_MACHINE;
 
 use super::types::{StartupEntry, StartupScope, StartupSource, StartupStatus};
-use super::vendor::{extract_clean_exe_path, get_file_publisher};
+use super::vendor::{clean_display_name, extract_clean_exe_path, get_file_metadata};
 
 const REG_SERVICES: &str = r"SYSTEM\CurrentControlSet\Services";
 
@@ -106,9 +106,11 @@ pub fn scan_services_startup() -> Vec<StartupEntry> {
 
         let target_exe = extract_clean_exe_path(trimmed_path);
         let target_str = target_exe.as_ref().map(|p| p.to_string_lossy().to_string());
+        let (publisher, _) = target_exe
+            .as_deref()
+            .map_or((None, None), get_file_metadata);
         let display_name =
             clean_service_display_name(&raw_display_name, &service_name, target_exe.as_deref());
-        let publisher = target_exe.as_deref().and_then(get_file_publisher);
 
         entries.push(StartupEntry {
             id: format!("svc_{service_name}"),
@@ -141,24 +143,18 @@ fn clean_service_display_name(
         if let Some(semi_pos) = after_at.find(';') {
             let name_part = after_at[semi_pos + 1..].trim();
             if !name_part.is_empty() {
-                return name_part.to_string();
+                return clean_display_name(name_part, target_exe);
             }
         }
     }
 
-    // 2. If it is non-empty and doesn't contain corrupted replacement characters ''
+    // 2. If it is non-empty and doesn't contain corrupted replacement characters
     if !trimmed.is_empty() && !trimmed.contains('\u{FFFD}') && !trimmed.starts_with('@') {
-        return trimmed.to_string();
+        return clean_display_name(trimmed, target_exe);
     }
 
-    // 3. Fallback: try stem from target exe or service_name
-    if let Some(path) = target_exe {
-        if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-            return stem.to_string();
-        }
-    }
-
-    service_name.to_string()
+    // 3. Fallback: clean service_name or use target_exe stem
+    clean_display_name(service_name, target_exe)
 }
 
 fn is_windows_core_service(name: &str, image_path: &str, raw_display_name: &str) -> bool {
