@@ -10,12 +10,13 @@ use std::path::{Path, PathBuf};
 
 use gpui::{
     App, AppContext, Application, Bounds, Context, Div, FontWeight, InteractiveElement,
-    IntoElement, MouseButton, MouseDownEvent, ParentElement, Render, SharedString, Styled,
-    TitlebarOptions, WeakEntity, WindowBackgroundAppearance, WindowBounds, WindowOptions, div, img,
-    point, px, rgb, rgba, size, svg,
+    IntoElement, MouseButton, MouseDownEvent, ParentElement, Render, SharedString,
+    StatefulInteractiveElement, Styled, TitlebarOptions, WeakEntity, WindowBackgroundAppearance,
+    WindowBounds, WindowControlArea, WindowOptions, div, img, point, px, rgb, rgba, size,
 };
 use winsentials::shared::assets::EmbeddedAssetSource;
 use winsentials::shared::theme::{Theme, arclate};
+use winsentials::shared::ui::{Icon, Switch};
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -365,7 +366,7 @@ impl Render for SetupView {
             .rounded(px(10.0))
             .overflow_hidden()
             .child(self.render_titlebar(cx))
-            .child(div().flex_1().flex().flex_col().p(px(18.0)).child(content))
+            .child(div().flex_1().flex().flex_col().p(px(16.0)).child(content))
     }
 }
 
@@ -382,23 +383,28 @@ impl SetupView {
             "Установка Winsentials"
         };
 
+        // Window dragging on caption area
         div()
             .flex()
             .items_center()
             .justify_between()
             .h(px(36.0))
-            .px(px(12.0))
+            .pl(px(12.0))
+            .pr(px(6.0))
             .bg(rgb(arclate::BG_DARK))
             .border_b_1()
             .border_color(rgb(arclate::BORDER_MAIN_DARK))
-            .on_mouse_down(MouseButton::Left, |_ev, window, _cx| {
-                window.start_window_move();
-            })
             .child(
                 div()
+                    .flex_1()
+                    .h_full()
                     .flex()
                     .items_center()
                     .gap(px(8.0))
+                    .window_control_area(WindowControlArea::Drag)
+                    .on_mouse_down(MouseButton::Left, |_ev, window, _cx| {
+                        window.start_window_move();
+                    })
                     .child(img("app-logo.png").size(px(16.0)).rounded(px(3.0)))
                     .child(
                         div()
@@ -415,43 +421,40 @@ impl SetupView {
                     .gap(px(4.0))
                     .child(
                         div()
-                            .id("minimize-btn")
+                            .id("win-ctrl-min")
                             .flex()
                             .items_center()
                             .justify_center()
-                            .size(px(24.0))
+                            .size(px(26.0))
                             .rounded(px(4.0))
+                            .cursor_pointer()
                             .hover(|s| s.bg(rgb(arclate::BG3_DARK)))
                             .on_mouse_down(MouseButton::Left, |_ev, window, _cx| {
                                 window.minimize_window();
                             })
                             .child(
-                                svg()
-                                    .path("icons/minus.svg")
-                                    .size(px(12.0))
-                                    .text_color(rgb(arclate::TEXT_MUTED_DARK)),
+                                Icon::new("icons/minus.svg")
+                                    .size(px(13.0))
+                                    .color(rgb(arclate::TEXT_MUTED_DARK)),
                             ),
                     )
                     .child(
                         div()
-                            .id("close-btn")
+                            .id("win-ctrl-close")
                             .flex()
                             .items_center()
                             .justify_center()
-                            .size(px(24.0))
+                            .size(px(26.0))
                             .rounded(px(4.0))
-                            .hover(|s| {
-                                s.bg(rgb(arclate::RED_DARK))
-                                    .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
-                            })
+                            .cursor_pointer()
+                            .hover(|s| s.bg(rgb(arclate::RED_DARK)))
                             .on_mouse_down(MouseButton::Left, |_ev, _window, cx| {
                                 cx.quit();
                             })
                             .child(
-                                svg()
-                                    .path("icons/x.svg")
-                                    .size(px(12.0))
-                                    .text_color(rgb(arclate::TEXT_MUTED_DARK)),
+                                Icon::new("icons/x.svg")
+                                    .size(px(13.0))
+                                    .color(rgb(arclate::TEXT_MUTED_DARK)),
                             ),
                     ),
             )
@@ -469,61 +472,65 @@ impl SetupView {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(px(14.0))
+                    .gap(px(12.0))
                     .child(
-                        // Header Section
+                        // Header Card
                         div()
                             .flex()
                             .items_center()
-                            .gap(px(14.0))
+                            .justify_between()
+                            .p(px(12.0))
+                            .rounded(px(8.0))
+                            .bg(rgb(arclate::BG_DARK))
+                            .border_1()
+                            .border_color(rgb(arclate::BORDER_CARD_DARK))
                             .child(
                                 div()
                                     .flex()
                                     .items_center()
-                                    .justify_center()
-                                    .size(px(48.0))
-                                    .rounded(px(12.0))
-                                    .bg(rgb(arclate::BG_DARK))
-                                    .border_1()
-                                    .border_color(rgb(arclate::BORDER_CARD_DARK))
-                                    .child(img("app-logo.png").size(px(36.0)).rounded(px(8.0))),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .gap(px(2.0))
+                                    .gap(px(12.0))
                                     .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .gap(px(8.0))
-                                            .child(
-                                                div()
-                                                    .text_size(px(18.0))
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
-                                                    .child("Winsentials"),
-                                            )
-                                            .child(
-                                                div()
-                                                    .px(px(6.0))
-                                                    .py(px(1.0))
-                                                    .rounded(px(4.0))
-                                                    .bg(rgba(0x70A2_D726))
-                                                    .border_1()
-                                                    .border_color(rgba(0x70A2_D74D))
-                                                    .text_size(px(10.0))
-                                                    .font_weight(FontWeight::MEDIUM)
-                                                    .text_color(rgb(arclate::BLUE_DARK))
-                                                    .child(format!("v{APP_VERSION}")),
-                                            ),
+                                        img("app-logo.png")
+                                            .size(px(40.0))
+                                            .rounded(px(8.0)),
                                     )
                                     .child(
                                         div()
-                                            .text_size(px(12.0))
-                                            .text_color(rgb(arclate::TEXT_MUTED_DARK))
-                                            .child("Умная оптимизация, телеметрия и твики Windows"),
+                                            .flex()
+                                            .flex_col()
+                                            .gap(px(1.0))
+                                            .child(
+                                                div()
+                                                    .flex()
+                                                    .items_center()
+                                                    .gap(px(8.0))
+                                                    .child(
+                                                        div()
+                                                            .text_size(px(16.0))
+                                                            .font_weight(FontWeight::BOLD)
+                                                            .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
+                                                            .child("Winsentials"),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .px(px(6.0))
+                                                            .py(px(1.0))
+                                                            .rounded(px(4.0))
+                                                            .bg(rgba(0x70A2_D726))
+                                                            .border_1()
+                                                            .border_color(rgba(0x70A2_D74D))
+                                                            .text_size(px(10.0))
+                                                            .font_weight(FontWeight::MEDIUM)
+                                                            .text_color(rgb(arclate::BLUE_DARK))
+                                                            .child(format!("v{APP_VERSION}")),
+                                                    ),
+                                            )
+                                            .child(
+                                                div()
+                                                    .text_size(px(12.0))
+                                                    .text_color(rgb(arclate::TEXT_MUTED_DARK))
+                                                    .child("Умная оптимизация, телеметрия и твики Windows"),
+                                            ),
                                     ),
                             ),
                     )
@@ -532,13 +539,13 @@ impl SetupView {
                         div()
                             .flex()
                             .flex_col()
-                            .gap(px(6.0))
+                            .gap(px(4.0))
                             .child(
                                 div()
                                     .text_size(px(11.0))
                                     .font_weight(FontWeight::MEDIUM)
                                     .text_color(rgb(arclate::TEXT_MUTED_DARK))
-                                    .child("Папка установки:"),
+                                    .child("Папка установки"),
                             )
                             .child(
                                 div()
@@ -552,10 +559,16 @@ impl SetupView {
                                             .px(px(10.0))
                                             .flex()
                                             .items_center()
+                                            .gap(px(8.0))
                                             .bg(rgb(arclate::BG3_DARK))
                                             .border_1()
                                             .border_color(rgb(arclate::BORDER_INPUT_DARK))
                                             .rounded(px(6.0))
+                                            .child(
+                                                Icon::new("icons/folder.svg")
+                                                    .size(px(14.0))
+                                                    .color(rgb(arclate::TEXT_MUTED_DARK)),
+                                            )
                                             .child(
                                                 div()
                                                     .text_size(px(12.0))
@@ -564,38 +577,18 @@ impl SetupView {
                                                     .child(dir_str),
                                             ),
                                     )
-                                    .child(
-                                        div()
-                                            .id("browse-btn")
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .h(px(32.0))
-                                            .px(px(12.0))
-                                            .bg(rgb(arclate::BG_DARK))
-                                            .border_1()
-                                            .border_color(rgb(arclate::BORDER_CARD_DARK))
-                                            .rounded(px(6.0))
-                                            .text_size(px(12.0))
-                                            .font_weight(FontWeight::MEDIUM)
-                                            .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
-                                            .cursor_pointer()
-                                            .hover(|s| {
-                                                s.bg(rgb(arclate::BG3_DARK))
-                                                    .border_color(rgb(arclate::BLUE_DARK))
-                                            })
-                                            .on_mouse_down(
-                                                MouseButton::Left,
-                                                cx.listener(|this, _ev, _window, cx| {
-                                                    this.select_directory(cx);
-                                                }),
-                                            )
-                                            .child("Обзор..."),
-                                    ),
+                                    .child(self.render_spring_button(
+                                        "browse_btn",
+                                        "Обзор...",
+                                        false,
+                                        cx.listener(|this, _ev, _window, cx| {
+                                            this.select_directory(cx);
+                                        }),
+                                    )),
                             ),
                     )
                     .child(
-                        // Options checkboxes
+                        // Options Card with Animated Switches
                         div()
                             .flex()
                             .flex_col()
@@ -605,33 +598,58 @@ impl SetupView {
                             .bg(rgb(arclate::BG_DARK))
                             .border_1()
                             .border_color(rgb(arclate::BORDER_CARD_DARK))
-                            .child(self.render_checkbox(
-                                "opt-desktop",
-                                "Создать ярлык на рабочем столе",
-                                self.desktop_shortcut,
-                                cx.listener(|this, _ev, _window, cx| {
-                                    this.desktop_shortcut = !this.desktop_shortcut;
+                            .child({
+                                let on_change = cx.listener(|this, &val: &bool, _window, cx| {
+                                    this.desktop_shortcut = val;
                                     cx.notify();
-                                }),
-                            ))
-                            .child(self.render_checkbox(
-                                "opt-startmenu",
-                                "Создать ярлык в меню «Пуск»",
-                                self.start_menu_shortcut,
-                                cx.listener(|this, _ev, _window, cx| {
-                                    this.start_menu_shortcut = !this.start_menu_shortcut;
+                                });
+                                self.render_switch_row(
+                                    "icons/monitor.svg",
+                                    "Ярлык на рабочем столе",
+                                    "Добавить иконку быстрого запуска на рабочий стол",
+                                    "opt-desktop",
+                                    self.desktop_shortcut,
+                                    move |val, window, cx| on_change(&val, window, cx),
+                                )
+                            })
+                            .child(
+                                div()
+                                    .h(px(1.0))
+                                    .bg(rgb(arclate::BORDER_MAIN_DARK)),
+                            )
+                            .child({
+                                let on_change = cx.listener(|this, &val: &bool, _window, cx| {
+                                    this.start_menu_shortcut = val;
                                     cx.notify();
-                                }),
-                            ))
-                            .child(self.render_checkbox(
-                                "opt-launch",
-                                "Запустить Winsentials сразу после установки",
-                                self.launch_after,
-                                cx.listener(|this, _ev, _window, cx| {
-                                    this.launch_after = !this.launch_after;
+                                });
+                                self.render_switch_row(
+                                    "icons/layout-grid.svg",
+                                    "Ярлык в меню «Пуск»",
+                                    "Зарегистрировать в списке установленных программ",
+                                    "opt-startmenu",
+                                    self.start_menu_shortcut,
+                                    move |val, window, cx| on_change(&val, window, cx),
+                                )
+                            })
+                            .child(
+                                div()
+                                    .h(px(1.0))
+                                    .bg(rgb(arclate::BORDER_MAIN_DARK)),
+                            )
+                            .child({
+                                let on_change = cx.listener(|this, &val: &bool, _window, cx| {
+                                    this.launch_after = val;
                                     cx.notify();
-                                }),
-                            )),
+                                });
+                                self.render_switch_row(
+                                    "icons/play.svg",
+                                    "Запустить сразу после установки",
+                                    "Открыть главное окно приложения по завершении",
+                                    "opt-launch",
+                                    self.launch_after,
+                                    move |val, window, cx| on_change(&val, window, cx),
+                                )
+                            }),
                     ),
             )
             .child(
@@ -640,105 +658,135 @@ impl SetupView {
                     .flex()
                     .items_center()
                     .justify_end()
-                    .gap(px(10.0))
-                    .pt(px(12.0))
+                    .gap(px(8.0))
+                    .pt(px(10.0))
                     .border_t_1()
                     .border_color(rgb(arclate::BORDER_MAIN_DARK))
-                    .child(
-                        div()
-                            .id("cancel-btn")
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .h(px(32.0))
-                            .px(px(16.0))
-                            .rounded(px(6.0))
-                            .bg(rgb(arclate::BG_DARK))
-                            .border_1()
-                            .border_color(rgb(arclate::BORDER_CARD_DARK))
-                            .text_size(px(12.0))
-                            .font_weight(FontWeight::MEDIUM)
-                            .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
-                            .cursor_pointer()
-                            .hover(|s| s.bg(rgb(arclate::BG3_DARK)))
-                            .on_mouse_down(MouseButton::Left, |_ev, _window, cx| {
-                                cx.quit();
-                            })
-                            .child("Отмена"),
-                    )
-                    .child(
-                        div()
-                            .id("install-btn")
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .h(px(32.0))
-                            .px(px(22.0))
-                            .rounded(px(6.0))
-                            .bg(rgb(arclate::BLUE_DARK))
-                            .text_size(px(12.0))
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(rgb(arclate::BG_DARK))
-                            .cursor_pointer()
-                            .hover(|s| s.bg(rgba(0x70A2_D7D9)))
-                            .on_mouse_down(
-                                MouseButton::Left,
-                                cx.listener(|this, _ev, _window, cx| {
-                                    this.start_installation(cx);
-                                }),
-                            )
-                            .child("Установить"),
-                    ),
+                    .child(self.render_spring_button(
+                        "cancel_btn",
+                        "Отмена",
+                        false,
+                        |_ev, _window, cx| {
+                            cx.quit();
+                        },
+                    ))
+                    .child(self.render_spring_button(
+                        "install_btn",
+                        "Установить",
+                        true,
+                        cx.listener(|this, _ev, _window, cx| {
+                            this.start_installation(cx);
+                        }),
+                    )),
             )
     }
 
-    fn render_checkbox(
+    fn render_switch_row(
         &self,
-        id: &'static str,
-        label: &'static str,
+        icon_path: &'static str,
+        title: &'static str,
+        desc: &'static str,
+        switch_id: &'static str,
         checked: bool,
-        on_click: impl Fn(&MouseDownEvent, &mut gpui::Window, &mut App) + 'static,
-    ) -> gpui::Stateful<Div> {
+        on_toggle: impl Fn(bool, &mut gpui::Window, &mut App) + 'static,
+    ) -> Div {
         div()
-            .id(id)
             .flex()
             .items_center()
-            .gap(px(8.0))
-            .cursor_pointer()
-            .on_mouse_down(MouseButton::Left, on_click)
+            .justify_between()
+            .py(px(2.0))
             .child(
                 div()
                     .flex()
                     .items_center()
-                    .justify_center()
-                    .size(px(16.0))
-                    .rounded(px(4.0))
-                    .border_1()
-                    .border_color(if checked {
-                        rgb(arclate::BLUE_DARK)
-                    } else {
-                        rgb(arclate::BORDER_CARD_DARK)
-                    })
-                    .bg(if checked {
-                        rgb(arclate::BLUE_DARK)
-                    } else {
-                        rgb(arclate::BG3_DARK)
-                    })
-                    .child(if checked {
-                        svg()
-                            .path("icons/check.svg")
-                            .size(px(11.0))
-                            .text_color(rgb(arclate::BG_DARK))
-                    } else {
-                        svg()
-                    }),
+                    .gap(px(10.0))
+                    .child(
+                        Icon::new(icon_path)
+                            .size(px(16.0))
+                            .color(rgb(arclate::BLUE_DARK)),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap(px(1.0))
+                            .child(
+                                div()
+                                    .text_size(px(12.0))
+                                    .font_weight(FontWeight::MEDIUM)
+                                    .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
+                                    .child(title),
+                            )
+                            .child(
+                                div()
+                                    .text_size(px(10.0))
+                                    .text_color(rgb(arclate::TEXT_MUTED_DARK))
+                                    .child(desc),
+                            ),
+                    ),
             )
-            .child(
-                div()
-                    .text_size(px(12.0))
-                    .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
-                    .child(label),
-            )
+            .child(Switch::new(switch_id, checked).on_toggle(on_toggle))
+    }
+
+    fn render_spring_button(
+        &self,
+        id: &'static str,
+        label: &'static str,
+        is_primary: bool,
+        on_click: impl Fn(&MouseDownEvent, &mut gpui::Window, &mut App) + 'static,
+    ) -> gpui::Stateful<Div> {
+        let base_bg = if is_primary {
+            rgb(arclate::BLUE_DARK)
+        } else {
+            rgb(arclate::BG_DARK)
+        };
+
+        let text_col = if is_primary {
+            rgb(arclate::BG_DARK)
+        } else {
+            rgb(arclate::TEXT_PRIMARY_DARK)
+        };
+
+        div()
+            .id(id)
+            .flex()
+            .items_center()
+            .justify_center()
+            .h(px(32.0))
+            .px(if is_primary { px(20.0) } else { px(14.0) })
+            .rounded(px(6.0))
+            .bg(base_bg)
+            .border_1()
+            .border_color(if is_primary {
+                rgb(arclate::BLUE_DARK)
+            } else {
+                rgb(arclate::BORDER_CARD_DARK)
+            })
+            .text_size(px(12.0))
+            .font_weight(if is_primary {
+                FontWeight::BOLD
+            } else {
+                FontWeight::MEDIUM
+            })
+            .text_color(text_col)
+            .cursor_pointer()
+            .hover(move |s| {
+                if is_primary {
+                    s.bg(rgba(0x70A2_D7E6))
+                } else {
+                    s.bg(rgb(arclate::BG3_DARK))
+                        .border_color(rgb(arclate::BLUE_DARK))
+                }
+            })
+            .active(move |s| {
+                if is_primary {
+                    s.bg(rgba(0x70A2_D7FF))
+                } else {
+                    s.bg(rgb(arclate::BG2_DARK))
+                }
+            })
+            .on_mouse_down(MouseButton::Left, on_click)
+            .child(label)
     }
 
     fn render_installing(&self, _cx: &mut Context<Self>) -> Div {
@@ -758,10 +806,9 @@ impl SetupView {
                     .rounded_full()
                     .bg(rgba(0x70A2_D71F))
                     .child(
-                        svg()
-                            .path("icons/loader.svg")
+                        Icon::new("icons/loader.svg")
                             .size(px(24.0))
-                            .text_color(rgb(arclate::BLUE_DARK)),
+                            .color(rgb(arclate::BLUE_DARK)),
                     ),
             )
             .child(
@@ -806,10 +853,9 @@ impl SetupView {
                             .border_1()
                             .border_color(rgba(0x70D7_954D))
                             .child(
-                                svg()
-                                    .path("icons/check-circle.svg")
+                                Icon::new("icons/check-circle.svg")
                                     .size(px(26.0))
-                                    .text_color(rgb(arclate::GREEN_DARK)),
+                                    .color(rgb(arclate::GREEN_DARK)),
                             ),
                     )
                     .child(
@@ -908,10 +954,9 @@ impl SetupView {
                             .border_1()
                             .border_color(rgba(0xD770_704D))
                             .child(
-                                svg()
-                                    .path("icons/alert-triangle.svg")
+                                Icon::new("icons/alert-triangle.svg")
                                     .size(px(26.0))
-                                    .text_color(rgb(arclate::RED_DARK)),
+                                    .color(rgb(arclate::RED_DARK)),
                             ),
                     )
                     .child(
@@ -987,10 +1032,9 @@ impl SetupView {
                             .border_1()
                             .border_color(rgba(0xD770_704D))
                             .child(
-                                svg()
-                                    .path("icons/trash-2.svg")
+                                Icon::new("icons/trash-2.svg")
                                     .size(px(24.0))
-                                    .text_color(rgb(arclate::RED_DARK)),
+                                    .color(rgb(arclate::RED_DARK)),
                             ),
                     )
                     .child(
@@ -1082,10 +1126,9 @@ impl SetupView {
                     .rounded_full()
                     .bg(rgba(0xD770_701F))
                     .child(
-                        svg()
-                            .path("icons/loader.svg")
+                        Icon::new("icons/loader.svg")
                             .size(px(24.0))
-                            .text_color(rgb(arclate::RED_DARK)),
+                            .color(rgb(arclate::RED_DARK)),
                     ),
             )
             .child(
@@ -1122,10 +1165,9 @@ impl SetupView {
                             .border_1()
                             .border_color(rgba(0x70A2_D74D))
                             .child(
-                                svg()
-                                    .path("icons/check-circle.svg")
+                                Icon::new("icons/check-circle.svg")
                                     .size(px(26.0))
-                                    .text_color(rgb(arclate::BLUE_DARK)),
+                                    .color(rgb(arclate::BLUE_DARK)),
                             ),
                     )
                     .child(
@@ -1217,7 +1259,7 @@ fn main() {
             cx.set_global(Theme::dark());
 
             let window_bounds =
-                WindowBounds::Windowed(Bounds::centered(None, size(px(520.0), px(350.0)), cx));
+                WindowBounds::Windowed(Bounds::centered(None, size(px(520.0), px(360.0)), cx));
 
             let window_options = WindowOptions {
                 window_bounds: Some(window_bounds),
