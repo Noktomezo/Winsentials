@@ -25,6 +25,7 @@ InstallDirRegKey HKLM "Software\Winsentials" "InstallDir"
 ; Modern UI 2 Configuration
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
+!include "LogicLib.nsh"
 
 !define MUI_ICON "..\..\assets\app-logo.ico"
 !define MUI_UNICON "..\..\assets\app-logo.ico"
@@ -33,30 +34,121 @@ InstallDirRegKey HKLM "Software\Winsentials" "InstallDir"
 !define MUI_HEADERIMAGE_RIGHT
 !define MUI_HEADERIMAGE_BITMAP "..\..\assets\app-installer-header.bmp"
 !define MUI_WELCOMEFINISHPAGE_BITMAP "..\..\assets\app-installer-sidebar.bmp"
+!define MUI_UNWELCOMEFINISHPAGE_BITMAP "..\..\assets\app-installer-sidebar.bmp"
 !define MUI_ABORTWARNING
 
 ; Dark Theme Styling (matching Winsentials Arclate Dark #0F151A / #E9EEF1)
 !define MUI_BGCOLOR "0F151A"
 !define MUI_TEXTCOLOR "E9EEF1"
 
+!define MUI_CUSTOMFUNCTION_GUIINIT onGUIInit
+!define MUI_CUSTOMFUNCTION_UNGUIINIT un.customUnGUIInit
+
 ; Installer Pages
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW onPageShow
 !insertmacro MUI_PAGE_WELCOME
+
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW onPageShow
 !insertmacro MUI_PAGE_DIRECTORY
+
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW onPageShow
 !insertmacro MUI_PAGE_INSTFILES
 
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW onPageShow
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Winsentials.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Запустить Winsentials"
 !insertmacro MUI_PAGE_FINISH
 
 ; Uninstaller Pages
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW un.unPageShow
 !insertmacro MUI_UNPAGE_WELCOME
+
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW un.unPageShow
 !insertmacro MUI_UNPAGE_CONFIRM
+
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW un.unPageShow
 !insertmacro MUI_UNPAGE_INSTFILES
+
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW un.unPageShow
 !insertmacro MUI_UNPAGE_FINISH
 
 ; Languages
 !insertmacro MUI_LANGUAGE "Russian"
 !insertmacro MUI_LANGUAGE "English"
+
+; Dark Theme Painter Functions
+Function onGUIInit
+    ; 1. Dark titlebar (DWMWA_USE_IMMERSIVE_DARK_MODE = 20)
+    System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, *i 1, i 4)'
+    ; 2. Parent dialog background (bottom button bar)
+    SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
+FunctionEnd
+
+Function onPageShow
+    ; 1. Dark titlebar
+    System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, *i 1, i 4)'
+    ; 2. Outer parent dialog (buttons area)
+    SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
+    
+    ; 3. Branding text
+    GetDlgItem $1 $HWNDPARENT 1028
+    ${If} $1 != 0
+        SetCtlColors $1 0x7E8C9A 0x0F151A
+    ${EndIf}
+
+    ; 4. Inner dialog & all child controls
+    FindWindow $0 "#32770" "" $HWNDPARENT
+    ${If} $0 != 0
+        SetCtlColors $0 0xE9EEF1 0x0F151A
+        
+        StrCpy $2 1000
+        ${While} $2 <= 1040
+            GetDlgItem $1 $0 $2
+            ${If} $1 != 0
+                ${If} $2 == 1019
+                    ; Edit box for path: bg #1A2228, text #E9EEF1
+                    SetCtlColors $1 0xE9EEF1 0x1A2228
+                ${Else}
+                    SetCtlColors $1 0xE9EEF1 0x0F151A
+                ${EndIf}
+            ${EndIf}
+            IntOp $2 $2 + 1
+        ${EndWhile}
+    ${EndIf}
+FunctionEnd
+
+Function un.customUnGUIInit
+    System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, *i 1, i 4)'
+    SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
+FunctionEnd
+
+Function un.unPageShow
+    System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, *i 1, i 4)'
+    SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
+    
+    GetDlgItem $1 $HWNDPARENT 1028
+    ${If} $1 != 0
+        SetCtlColors $1 0x7E8C9A 0x0F151A
+    ${EndIf}
+
+    FindWindow $0 "#32770" "" $HWNDPARENT
+    ${If} $0 != 0
+        SetCtlColors $0 0xE9EEF1 0x0F151A
+        
+        StrCpy $2 1000
+        ${While} $2 <= 1040
+            GetDlgItem $1 $0 $2
+            ${If} $1 != 0
+                ${If} $2 == 1019
+                    SetCtlColors $1 0xE9EEF1 0x1A2228
+                ${Else}
+                    SetCtlColors $1 0xE9EEF1 0x0F151A
+                ${EndIf}
+            ${EndIf}
+            IntOp $2 $2 + 1
+        ${EndWhile}
+    ${EndIf}
+FunctionEnd
 
 Section "Winsentials" SecMain
     SectionIn RO
