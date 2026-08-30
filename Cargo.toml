@@ -1,0 +1,60 @@
+[package]
+name = "winsentials"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+authors = ["Noktomezo <https://github.com/Noktomezo>"]
+repository = "https://github.com/Noktomezo/Winsentials"
+homepage = "https://github.com/Noktomezo/Winsentials"
+
+[[bin]]
+name = "Winsentials"
+path = "src/main.rs"
+
+[workspace]
+members = [
+    ".",
+    "tooling/xtask",
+]
+
+[dependencies]
+gpui = { git = "https://github.com/zed-industries/zed", branch = "main" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", branch = "main" }
+rfd = "0.17.2"
+rust-i18n = "3"
+rust-embed = { version = "8.12.0", features = ["debug-embed", "include-exclude"] }
+serde = { version = "1.0.229", features = ["derive"] }
+toml = "1.1.4"
+windows-registry = "0.5"
+discord-rich-presence = "0.2.3"
+tray-icon = "0.19"
+system_shutdown = "4"
+image = { version = "0.25", default-features = false, features = ["ico", "png"] }
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Shell",
+    "Win32_System_SystemInformation",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Threading",
+    "Win32_System_IO",
+    "Win32_System_Ioctl",
+    "Win32_Storage_FileSystem",
+    "Win32_Security",
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_NetworkManagement_Ndis",
+] }
+
+[build-dependencies]
+winres = "0.1"
+image = { version = "0.25", default-features = false, features = ["ico", "png"] }
+
+[dev-dependencies]
+gpui = { git = "https://github.com/zed-industries/zed", branch = "main", features = ["test-support"] }
+
+[lints.rust]
+unsafe_code = "warn"
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"
