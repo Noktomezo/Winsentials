@@ -1,5 +1,7 @@
+use std::sync::Arc;
 use std::time::Instant;
 
+use gpui::prelude::FluentBuilder;
 use gpui::{
     AnyElement, App, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels,
     RenderOnce, ScrollHandle, StatefulInteractiveElement, Styled, Window, div, point, px,
@@ -26,23 +28,43 @@ impl SmoothScroll {
             child: child.into_any_element(),
         }
     }
+}
+
+type VirtualItemRenderer = Arc<dyn Fn(usize, &mut Window, &mut App) -> AnyElement>;
+
+#[derive(IntoElement)]
+pub struct SmoothVirtualList {
+    id: &'static str,
+    header: Option<AnyElement>,
+    total_items: usize,
+    item_height: Pixels,
+    gap: Pixels,
+    render_item: VirtualItemRenderer,
+}
+
+impl SmoothVirtualList {
+    #[must_use]
+    pub fn new(
+        id: &'static str,
+        total_items: usize,
+        item_height: Pixels,
+        gap: Pixels,
+        render_item: impl Fn(usize, &mut Window, &mut App) -> AnyElement + 'static,
+    ) -> Self {
+        Self {
+            id,
+            header: None,
+            total_items,
+            item_height,
+            gap,
+            render_item: Arc::new(render_item),
+        }
+    }
 
     #[must_use]
-    pub fn get_scroll_offset(
-        id: &'static str,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> (Pixels, Pixels) {
-        let state = window.use_keyed_state((id, 0usize), cx, |_, _| SmoothScrollState::default());
-        let read = state.read(cx);
-        let offset_y = (-read.handle.offset().y).max(px(0.0));
-        let bounds_h = read.handle.bounds().size.height;
-        let viewport_h = if bounds_h > px(0.0) {
-            bounds_h
-        } else {
-            window.viewport_size().height
-        };
-        (offset_y, viewport_h)
+    pub fn header(mut self, header: impl IntoElement) -> Self {
+        self.header = Some(header.into_any_element());
+        self
     }
 }
 
@@ -209,186 +231,273 @@ fn schedule_animation(state: Entity<SmoothScrollState>, window: &Window) {
     });
 }
 
+#[allow(clippy::too_many_lines)]
+fn render_scroll_viewport(
+    id: &'static str,
+    content: AnyElement,
+    window: &mut Window,
+    cx: &mut App,
+) -> impl IntoElement {
+    let theme = Theme::get(cx);
+    let state = window.use_keyed_state((id, 0usize), cx, |_, _| SmoothScrollState::default());
+    let handle = state.read(cx).handle.clone();
+    let geometry = thumb_geometry(
+        handle.bounds().size.height,
+        handle.max_offset().y,
+        handle.offset().y,
+    );
+
+    let wheel_state = state.clone();
+    let viewport = div()
+        .id((id, 1usize))
+        .size_full()
+        .overflow_y_hidden()
+        .track_scroll(&handle)
+        .on_scroll_wheel(move |event, window, cx| {
+            if event.modifiers.control {
+                return;
+            }
+            let delta = event.delta.pixel_delta(window.line_height()).y;
+            let (handled, start) = wheel_state.update(cx, |state, cx| {
+                let result = state.scroll_by(delta, cx.reduce_motion());
+                if result.0 {
+                    cx.notify();
+                }
+                result
+            });
+            if handled {
+                cx.stop_propagation();
+            }
+            if start {
+                schedule_animation(wheel_state.clone(), window);
+            }
+        })
+        .child(content);
+
+    let mut root = div()
+        .relative()
+        .size_full()
+        .overflow_hidden()
+        .child(viewport);
+
+    if state.read(cx).dragging.is_some() {
+        let move_state = state.clone();
+        let up_state = state.clone();
+        root = root.child(
+            div()
+                .id((id, 2usize))
+                .absolute()
+                .inset_0()
+                .on_mouse_move(move |event, _window, cx| {
+                    move_state.update(cx, |state, cx| {
+                        let Some(grab_offset) = state.dragging else {
+                            return;
+                        };
+                        let viewport = state.handle.bounds();
+                        let Some((_, thumb_height)) = thumb_geometry(
+                            viewport.size.height,
+                            state.handle.max_offset().y,
+                            state.handle.offset().y,
+                        ) else {
+                            return;
+                        };
+                        let track_height = viewport.size.height - TRACK_PADDING * 2.0;
+                        let pointer_y = event.position.y - viewport.origin.y - TRACK_PADDING;
+                        let offset = offset_from_thumb(
+                            pointer_y,
+                            grab_offset,
+                            track_height,
+                            thumb_height,
+                            state.handle.max_offset().y,
+                        );
+                        state.set_offset(offset);
+                        cx.notify();
+                    });
+                    cx.stop_propagation();
+                })
+                .on_mouse_up(MouseButton::Left, move |_, _window, cx| {
+                    up_state.update(cx, |state, cx| {
+                        state.dragging = None;
+                        cx.notify();
+                    });
+                    cx.stop_propagation();
+                }),
+        );
+    }
+
+    if let Some((thumb_top, thumb_height)) = geometry {
+        let hover_state = state.clone();
+        let track_state = state.clone();
+        let thumb_state = state.clone();
+        let thumb_width = state.read(cx).thumb_width;
+        let thumb_color = if state.read(cx).hovered || state.read(cx).dragging.is_some() {
+            theme.text_muted.opacity(0.65)
+        } else {
+            theme.text_muted.opacity(0.38)
+        };
+
+        root = root.child(
+            div()
+                .id((id, 3usize))
+                .absolute()
+                .top_0()
+                .right(px(2.0))
+                .h_full()
+                .w(px(14.0))
+                .on_hover(move |hovered, window, cx| {
+                    let start = hover_state.update(cx, |state, cx| {
+                        let changed = state.set_hovered(*hovered, cx.reduce_motion());
+                        if changed {
+                            cx.notify();
+                        }
+                        changed && state.animating
+                    });
+                    if start {
+                        schedule_animation(hover_state.clone(), window);
+                    }
+                })
+                .on_mouse_down(MouseButton::Left, move |event, _window, cx| {
+                    track_state.update(cx, |state, cx| {
+                        let viewport = state.handle.bounds();
+                        let pointer_y = event.position.y - viewport.origin.y - TRACK_PADDING;
+                        let track_height = viewport.size.height - TRACK_PADDING * 2.0;
+                        let offset = offset_from_thumb(
+                            pointer_y,
+                            thumb_height * 0.5,
+                            track_height,
+                            thumb_height,
+                            state.handle.max_offset().y,
+                        );
+                        state.set_offset(offset);
+                        cx.notify();
+                    });
+                    cx.stop_propagation();
+                })
+                .child(
+                    div()
+                        .id((id, 4usize))
+                        .absolute()
+                        .top(TRACK_PADDING + thumb_top)
+                        .right((px(12.0) - thumb_width) / 2.0)
+                        .h(thumb_height)
+                        .w(thumb_width)
+                        .rounded(px(4.0))
+                        .bg(thumb_color)
+                        .on_mouse_down(MouseButton::Left, move |event, _window, cx| {
+                            thumb_state.update(cx, |state, cx| {
+                                let viewport = state.handle.bounds();
+                                let Some((thumb_top, _)) = thumb_geometry(
+                                    viewport.size.height,
+                                    state.handle.max_offset().y,
+                                    state.handle.offset().y,
+                                ) else {
+                                    return;
+                                };
+                                state.dragging = Some(
+                                    event.position.y
+                                        - viewport.origin.y
+                                        - TRACK_PADDING
+                                        - thumb_top,
+                                );
+                                state.target_y = state.handle.offset().y;
+                                cx.notify();
+                            });
+                            cx.stop_propagation();
+                        }),
+                ),
+        );
+    }
+
+    root
+}
+
 impl RenderOnce for SmoothScroll {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+        render_scroll_viewport(self.id, self.child, window, cx)
+    }
+}
+
+impl RenderOnce for SmoothVirtualList {
     #[allow(clippy::too_many_lines)]
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let theme = Theme::get(cx);
         let state =
             window.use_keyed_state((self.id, 0usize), cx, |_, _| SmoothScrollState::default());
         let handle = state.read(cx).handle.clone();
-        let geometry = thumb_geometry(
-            handle.bounds().size.height,
-            handle.max_offset().y,
-            handle.offset().y,
-        );
 
-        let wheel_state = state.clone();
-        let viewport = div()
-            .id((self.id, 1usize))
-            .size_full()
-            .overflow_y_hidden()
-            .track_scroll(&handle)
-            .on_scroll_wheel(move |event, window, cx| {
-                if event.modifiers.control {
-                    return;
-                }
-                let delta = event.delta.pixel_delta(window.line_height()).y;
-                let (handled, start) = wheel_state.update(cx, |state, cx| {
-                    let result = state.scroll_by(delta, cx.reduce_motion());
-                    if result.0 {
-                        cx.notify();
-                    }
-                    result
-                });
-                if handled {
-                    cx.stop_propagation();
-                }
-                if start {
-                    schedule_animation(wheel_state.clone(), window);
-                }
-            })
-            .child(self.child);
+        let offset_y = (-handle.offset().y).max(px(0.0));
+        let viewport_h = if handle.bounds().size.height > px(0.0) {
+            handle.bounds().size.height
+        } else {
+            window.viewport_size().height
+        };
 
-        let mut root = div()
-            .relative()
-            .size_full()
-            .overflow_hidden()
-            .child(viewport);
+        let total_items = self.total_items;
+        let item_h = self.item_height;
+        let gap = self.gap;
+        let stride = item_h + gap;
 
-        if state.read(cx).dragging.is_some() {
-            let move_state = state.clone();
-            let up_state = state.clone();
-            root = root.child(
-                div()
-                    .id((self.id, 2usize))
-                    .absolute()
-                    .inset_0()
-                    .on_mouse_move(move |event, _window, cx| {
-                        move_state.update(cx, |state, cx| {
-                            let Some(grab_offset) = state.dragging else {
-                                return;
-                            };
-                            let viewport = state.handle.bounds();
-                            let Some((_, thumb_height)) = thumb_geometry(
-                                viewport.size.height,
-                                state.handle.max_offset().y,
-                                state.handle.offset().y,
-                            ) else {
-                                return;
-                            };
-                            let track_height = viewport.size.height - TRACK_PADDING * 2.0;
-                            let pointer_y = event.position.y - viewport.origin.y - TRACK_PADDING;
-                            let offset = offset_from_thumb(
-                                pointer_y,
-                                grab_offset,
-                                track_height,
-                                thumb_height,
-                                state.handle.max_offset().y,
-                            );
-                            state.set_offset(offset);
-                            cx.notify();
-                        });
-                        cx.stop_propagation();
-                    })
-                    .on_mouse_up(MouseButton::Left, move |_, _window, cx| {
-                        up_state.update(cx, |state, cx| {
-                            state.dragging = None;
-                            cx.notify();
-                        });
-                        cx.stop_propagation();
-                    }),
-            );
-        }
+        let items_content = if total_items == 0 {
+            div().into_any_element()
+        } else {
+            #[allow(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                clippy::cast_precision_loss
+            )]
+            let first_visible = ((offset_y / stride).floor() as usize).min(total_items);
+            #[allow(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                clippy::cast_precision_loss
+            )]
+            let visible_count = ((viewport_h / stride).ceil() as usize).max(1) + 2;
 
-        if let Some((thumb_top, thumb_height)) = geometry {
-            let hover_state = state.clone();
-            let track_state = state.clone();
-            let thumb_state = state.clone();
-            let thumb_width = state.read(cx).thumb_width;
-            let thumb_color = if state.read(cx).hovered || state.read(cx).dragging.is_some() {
-                theme.text_muted.opacity(0.65)
-            } else {
-                theme.text_muted.opacity(0.38)
-            };
+            let overscan = 6usize;
+            let start_idx = first_visible.saturating_sub(overscan);
+            let end_idx = (first_visible + visible_count + overscan).min(total_items);
 
-            root = root.child(
-                div()
-                    .id((self.id, 3usize))
-                    .absolute()
-                    .top_0()
-                    .right(px(2.0))
-                    .h_full()
-                    .w(px(12.0))
-                    .on_hover(move |hovered, window, cx| {
-                        let start = hover_state.update(cx, |state, cx| {
-                            let start = state.set_hovered(*hovered, cx.reduce_motion());
-                            cx.notify();
-                            start
-                        });
-                        if start {
-                            schedule_animation(hover_state.clone(), window);
-                        }
-                    })
-                    .on_mouse_down(MouseButton::Left, move |event, _window, cx| {
-                        track_state.update(cx, |state, cx| {
-                            let viewport = state.handle.bounds();
-                            let Some((_, thumb_height)) = thumb_geometry(
-                                viewport.size.height,
-                                state.handle.max_offset().y,
-                                state.handle.offset().y,
-                            ) else {
-                                return;
-                            };
-                            let track_height = viewport.size.height - TRACK_PADDING * 2.0;
-                            let pointer_y = event.position.y - viewport.origin.y - TRACK_PADDING;
-                            let offset = offset_from_thumb(
-                                pointer_y,
-                                thumb_height / 2.0,
-                                track_height,
-                                thumb_height,
-                                state.handle.max_offset().y,
-                            );
-                            state.set_offset(offset);
-                            cx.notify();
-                        });
-                        cx.stop_propagation();
-                    })
-                    .child(
-                        div()
-                            .id((self.id, 4usize))
-                            .absolute()
-                            .top(TRACK_PADDING + thumb_top)
-                            .right((px(12.0) - thumb_width) / 2.0)
-                            .h(thumb_height)
-                            .w(thumb_width)
-                            .rounded(px(4.0))
-                            .bg(thumb_color)
-                            .on_mouse_down(MouseButton::Left, move |event, _window, cx| {
-                                thumb_state.update(cx, |state, cx| {
-                                    let viewport = state.handle.bounds();
-                                    let Some((thumb_top, _)) = thumb_geometry(
-                                        viewport.size.height,
-                                        state.handle.max_offset().y,
-                                        state.handle.offset().y,
-                                    ) else {
-                                        return;
-                                    };
-                                    state.dragging = Some(
-                                        event.position.y
-                                            - viewport.origin.y
-                                            - TRACK_PADDING
-                                            - thumb_top,
-                                    );
-                                    state.target_y = state.handle.offset().y;
-                                    cx.notify();
-                                });
-                                cx.stop_propagation();
-                            }),
-                    ),
-            );
-        }
+            #[allow(clippy::cast_precision_loss)]
+            let top_spacer = stride * start_idx as f32;
+            #[allow(clippy::cast_precision_loss)]
+            let bottom_spacer = stride * (total_items.saturating_sub(end_idx)) as f32;
 
-        root
+            let mut visible_elements = Vec::with_capacity(end_idx - start_idx);
+            for i in start_idx..end_idx {
+                visible_elements.push((self.render_item)(i, window, cx));
+            }
+
+            div()
+                .flex()
+                .flex_col()
+                .w_full()
+                .when(top_spacer > px(0.0), |this| {
+                    this.child(div().h(top_spacer).w_full().flex_none())
+                })
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(gap)
+                        .w_full()
+                        .children(visible_elements),
+                )
+                .when(bottom_spacer > px(0.0), |this| {
+                    this.child(div().h(bottom_spacer).w_full().flex_none())
+                })
+                .into_any_element()
+        };
+
+        let content = div()
+            .flex()
+            .flex_col()
+            .gap(px(16.0))
+            .p(px(16.0))
+            .w_full()
+            .children(self.header)
+            .child(items_content)
+            .into_any_element();
+
+        render_scroll_viewport(self.id, content, window, cx)
     }
 }
 

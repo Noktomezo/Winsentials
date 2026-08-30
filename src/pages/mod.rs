@@ -351,8 +351,13 @@ pub fn render_route(
         })
         .into_any_element(),
     };
-
     let anim_id = format!("page_enter_{}", route.id());
+
+    let page_container = if route == AppRoute::Startup {
+        page_element
+    } else {
+        SmoothScroll::new(route.id(), page_element).into_any_element()
+    };
 
     div()
         .size_full()
@@ -365,6 +370,6 @@ pub fn render_route(
                 page_box.opacity(opacity).mt(px(offset_y))
             },
         )
-        .child(SmoothScroll::new(route.id(), page_element))
+        .child(page_container)
         .into_any_element()
 }

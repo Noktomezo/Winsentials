@@ -12,7 +12,7 @@ use crate::pages::page_header::PageHeader;
 use crate::shared::theme::Theme;
 use crate::shared::ui::TooltipState;
 use crate::shared::ui::icon::Icon;
-use crate::shared::ui::smooth_scroll::SmoothScroll;
+use crate::shared::ui::smooth_scroll::SmoothVirtualList;
 use crate::shared::ui::switch::Switch;
 
 pub type StartupToggleHandler = Arc<dyn Fn(&StartupEntry, &mut Window, &mut App) + 'static>;
@@ -545,7 +545,7 @@ fn render_filter_pill(
 
 impl RenderOnce for StartupPage {
     #[allow(clippy::too_many_lines)]
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
         let route = AppRoute::Startup;
 
@@ -634,76 +634,34 @@ impl RenderOnce for StartupPage {
             );
 
         let total_items = filtered_entries.len();
-        let (scroll_y, viewport_h) = SmoothScroll::get_scroll_offset(route.id(), window, cx);
+        let entries_arc = Arc::new(filtered_entries);
+        let entries_render = entries_arc.clone();
+        let open_menu = self.open_menu_id;
+        let card_theme = theme;
 
-        let content_el = if filtered_entries.is_empty() {
-            div()
-                .flex()
-                .items_center()
-                .justify_center()
-                .h(px(160.0))
-                .w_full()
-                .text_sm()
-                .text_color(theme.text_muted)
-                .child(rust_i18n::t!("startup.empty").to_string())
-                .into_any_element()
-        } else {
-            let item_h = px(58.0);
-            let gap = px(8.0);
-            let stride = item_h + gap;
-
-            #[allow(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                clippy::cast_precision_loss
-            )]
-            let first_visible = ((scroll_y / stride).floor() as usize).min(total_items);
-            #[allow(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                clippy::cast_precision_loss
-            )]
-            let visible_count = ((viewport_h / stride).ceil() as usize).max(1) + 2;
-
-            let overscan = 6usize;
-            let start_idx = first_visible.saturating_sub(overscan);
-            let end_idx = (first_visible + visible_count + overscan).min(total_items);
-
-            #[allow(clippy::cast_precision_loss)]
-            let top_spacer = stride * start_idx as f32;
-            #[allow(clippy::cast_precision_loss)]
-            let bottom_spacer = stride * total_items.saturating_sub(end_idx) as f32;
-
-            let visible_slice = &filtered_entries[start_idx..end_idx];
-
+        SmoothVirtualList::new(
+            route.id(),
+            total_items,
+            px(58.0),
+            px(8.0),
+            move |idx, _window, _cx| {
+                if let Some(entry) = entries_render.get(idx) {
+                    let is_menu_open = open_menu.as_ref().is_some_and(|id| id == &entry.id);
+                    render_startup_card(entry, &card_theme, is_menu_open, &handlers)
+                        .into_any_element()
+                } else {
+                    div().into_any_element()
+                }
+            },
+        )
+        .header(
             div()
                 .flex()
                 .flex_col()
+                .gap(px(16.0))
                 .w_full()
-                .when(top_spacer > px(0.0), |this| {
-                    this.child(div().h(top_spacer).w_full().flex_none())
-                })
-                .child(div().flex().flex_col().gap(gap).w_full().children(
-                    visible_slice.iter().map(|entry| {
-                        let is_menu_open =
-                            self.open_menu_id.as_ref().is_some_and(|id| id == &entry.id);
-                        render_startup_card(entry, &theme, is_menu_open, &handlers)
-                    }),
-                ))
-                .when(bottom_spacer > px(0.0), |this| {
-                    this.child(div().h(bottom_spacer).w_full().flex_none())
-                })
-                .into_any_element()
-        };
-
-        div()
-            .flex()
-            .flex_col()
-            .gap(px(16.0))
-            .p(px(16.0))
-            .w_full()
-            .child(PageHeader::new(route.title(), route.description()))
-            .child(filter_bar)
-            .child(content_el)
+                .child(PageHeader::new(route.title(), route.description()))
+                .child(filter_bar),
+        )
     }
 }
