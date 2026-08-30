@@ -10,6 +10,7 @@ pub mod network_page;
 pub mod page_header;
 pub mod ram_page;
 pub mod settings_page;
+pub mod tools_page;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -39,6 +40,8 @@ pub use page_header::PageHeader;
 pub use ram_page::RamPage;
 #[allow(unused_imports)]
 pub use settings_page::SettingsPage;
+#[allow(unused_imports)]
+pub use tools_page::ToolsPage;
 
 use gpui::{
     Animation, AnimationExt, AnyElement, App, ElementId, IntoElement, ParentElement, SharedString,
@@ -96,6 +99,10 @@ pub fn render_route(
     let on_nav_dash = on_nav_arc.clone();
     let on_nav_cpu = on_nav_arc;
 
+    let on_hover_card_arc = Arc::new(on_hover_telemetry_card);
+    let on_hover_card_dash = on_hover_card_arc.clone();
+    let on_hover_card_tools = on_hover_card_arc;
+
     let on_select_gpu_engine_arc = Arc::new(on_select_gpu_engine);
     let on_reset_gpu_slots_arc = Arc::new(on_reset_gpu_slots);
 
@@ -129,8 +136,10 @@ pub fn render_route(
 
     let page_element = match route {
         AppRoute::Dashboard => {
-            DashboardPage::new(telemetry, hovered_telemetry_card, sidebar_expanded)
-                .on_hover_card(on_hover_telemetry_card)
+            DashboardPage::new(telemetry, hovered_telemetry_card.clone(), sidebar_expanded)
+                .on_hover_card(move |id, val, window, cx| {
+                    on_hover_card_dash(id, val, window, cx);
+                })
                 .on_navigate(move |target_route, window, cx| {
                     on_nav_dash(target_route, window, cx);
                 })
@@ -259,6 +268,11 @@ pub fn render_route(
             })
             .on_hover_tooltip(move |tt, window, cx| {
                 on_hover_tt_input(tt, window, cx);
+            })
+            .into_any_element(),
+        AppRoute::Tools => ToolsPage::new(hovered_telemetry_card, sidebar_expanded)
+            .on_hover_card(move |id, val, window, cx| {
+                on_hover_card_tools(id, val, window, cx);
             })
             .into_any_element(),
         AppRoute::Settings => SettingsPage::new(

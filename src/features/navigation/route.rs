@@ -11,6 +11,7 @@ pub enum AppRoute {
     Explorer,
     Interface,
     Input,
+    Tools,
     Settings,
 }
 
@@ -28,6 +29,7 @@ impl AppRoute {
             Self::Explorer => rust_i18n::t!("nav.explorer").to_string(),
             Self::Interface => rust_i18n::t!("nav.interface").to_string(),
             Self::Input => rust_i18n::t!("nav.input").to_string(),
+            Self::Tools => rust_i18n::t!("nav.tools").to_string(),
             Self::Settings => rust_i18n::t!("nav.settings").to_string(),
         }
     }
@@ -45,6 +47,7 @@ impl AppRoute {
             Self::Explorer => "File Explorer".to_string(),
             Self::Interface => "Interface".to_string(),
             Self::Input => "Input".to_string(),
+            Self::Tools => "Tools".to_string(),
             Self::Settings => "Settings".to_string(),
         }
     }
@@ -76,6 +79,7 @@ impl AppRoute {
             Self::Explorer => rust_i18n::t!("nav.explorer_desc").to_string(),
             Self::Interface => rust_i18n::t!("nav.interface_desc").to_string(),
             Self::Input => rust_i18n::t!("nav.input_desc").to_string(),
+            Self::Tools => rust_i18n::t!("nav.tools_desc").to_string(),
             Self::Settings => rust_i18n::t!("nav.settings_desc").to_string(),
         }
     }
@@ -93,6 +97,7 @@ impl AppRoute {
             Self::Explorer => "icons/folder.svg",
             Self::Interface => "icons/layout-grid.svg",
             Self::Input => "icons/mouse.svg",
+            Self::Tools => "icons/wrench.svg",
             Self::Settings => "icons/settings.svg",
         }
     }
@@ -110,6 +115,7 @@ impl AppRoute {
             Self::Explorer => "nav_explorer",
             Self::Interface => "nav_interface",
             Self::Input => "nav_input",
+            Self::Tools => "nav_tools",
             Self::Settings => "nav_settings",
         }
     }
@@ -121,6 +127,8 @@ impl AppRoute {
         Self::Interface,
         Self::Input,
     ];
+
+    pub const BOTTOM_NAV: [Self; 2] = [Self::Tools, Self::Settings];
 }
 
 #[cfg(test)]
@@ -139,6 +147,7 @@ mod tests {
         assert_eq!(AppRoute::Explorer.english_name(), "File Explorer");
         assert_eq!(AppRoute::Interface.english_name(), "Interface");
         assert_eq!(AppRoute::Input.english_name(), "Input");
+        assert_eq!(AppRoute::Tools.english_name(), "Tools");
         assert_eq!(AppRoute::Settings.english_name(), "Settings");
     }
 
@@ -155,5 +164,6 @@ mod tests {
         );
         assert_eq!(AppRoute::ContextMenu.breadcrumb_english(), "Context Menu");
         assert_eq!(AppRoute::Input.breadcrumb_english(), "Input");
+        assert_eq!(AppRoute::Tools.breadcrumb_english(), "Tools");
     }
 }

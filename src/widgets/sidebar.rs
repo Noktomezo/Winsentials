@@ -120,48 +120,43 @@ impl RenderOnce for Sidebar {
             ));
         }
 
-        let settings_route = AppRoute::Settings;
-        let is_settings_selected = current_route == settings_route;
-        let is_settings_hovered = hovered_route == Some(settings_route);
-        let settings_target = if is_settings_selected {
-            1.0
-        } else if is_settings_hovered {
-            0.5
-        } else {
-            0.0
-        };
+        let mut bottom_stack = div().flex().flex_col().items_center().gap(px(4.0)).w_full();
 
-        let nav_handler = on_navigate;
-        let hover_handler = on_hover_route;
-        let tooltip_handler = on_hover_tooltip;
+        for route in AppRoute::BOTTOM_NAV {
+            let is_selected = current_route == route;
+            let is_hovered = hovered_route == Some(route);
+            let target_state = if is_selected {
+                1.0
+            } else if is_hovered {
+                0.5
+            } else {
+                0.0
+            };
 
-        let bottom_item = render_sidebar_item(
-            settings_route.id(),
-            settings_route.icon(),
-            settings_route.title().into(),
-            settings_target,
-            expanded,
-            &theme,
-            move |window, cx| {
-                if let Some(ref h) = nav_handler {
-                    h(&settings_route, window, cx);
-                }
-            },
-            move |hovered, window, cx| {
-                if let Some(ref h) = hover_handler {
-                    h(&(settings_route, hovered), window, cx);
-                }
-            },
-            tooltip_handler,
-        );
+            let nav_handler = on_navigate.clone();
+            let hover_handler = on_hover_route.clone();
+            let tooltip_handler = on_hover_tooltip.clone();
 
-        let bottom_stack = div()
-            .flex()
-            .flex_col()
-            .items_center()
-            .gap(px(4.0))
-            .w_full()
-            .child(bottom_item);
+            bottom_stack = bottom_stack.child(render_sidebar_item(
+                route.id(),
+                route.icon(),
+                route.title().into(),
+                target_state,
+                expanded,
+                &theme,
+                move |window, cx| {
+                    if let Some(ref h) = nav_handler {
+                        h(&route, window, cx);
+                    }
+                },
+                move |hovered, window, cx| {
+                    if let Some(ref h) = hover_handler {
+                        h(&(route, hovered), window, cx);
+                    }
+                },
+                tooltip_handler,
+            ));
+        }
 
         let target_width = if expanded { px(200.0) } else { px(40.0) };
         let spring = SpringAnimation::new(SpringConfig::new(320.0, 26.0, 1.0))
