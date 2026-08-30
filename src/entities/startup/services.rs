@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use windows_registry::LOCAL_MACHINE;
 
 use super::types::{StartupEntry, StartupScope, StartupSource, StartupStatus};
@@ -36,6 +38,10 @@ const SYSTEM_BINARIES: &[&str] = &[
     "consent.exe",
     "smartscreen.exe",
     "securityhealthservice.exe",
+    "alg.exe",
+    "appvclient.exe",
+    "gameinputsvc.exe",
+    "presentationhost.exe",
 ];
 
 pub fn scan_services_startup() -> Vec<StartupEntry> {
@@ -58,7 +64,12 @@ pub fn scan_services_startup() -> Vec<StartupEntry> {
             continue;
         };
 
-        // 1. Check service type (Only Win32 services: 0x10 Own Process, 0x20 Share Process, 0x100/0x200 interactive)
+        // 1. Skip Per-User services by UserServiceFlags
+        if service_key.get_u32("UserServiceFlags").is_ok() {
+            continue;
+        }
+
+        // 2. Check service type (Only Win32 services: 0x10 Own Process, 0x20 Share Process, 0x100/0x200 interactive)
         let Ok(svc_type) = service_key.get_u32("Type") else {
             continue;
         };
@@ -66,7 +77,7 @@ pub fn scan_services_startup() -> Vec<StartupEntry> {
             continue; // Skip kernel / file system drivers
         }
 
-        // 2. Read ImagePath
+        // 3. Read ImagePath
         let Ok(image_path) = service_key.get_string("ImagePath") else {
             continue;
         };
@@ -75,12 +86,17 @@ pub fn scan_services_startup() -> Vec<StartupEntry> {
             continue;
         }
 
-        // 3. Filter out Windows core internal services
-        if is_windows_core_service(&service_name, trimmed_path) {
+        // 4. Read raw DisplayName
+        let raw_display_name = service_key
+            .get_string("DisplayName")
+            .unwrap_or_else(|_| service_name.clone());
+
+        // 5. Filter out Windows core internal services
+        if is_windows_core_service(&service_name, trimmed_path, &raw_display_name) {
             continue;
         }
 
-        // 4. Read Start type (2 = Auto, 3 = Manual, 4 = Disabled)
+        // 6. Read Start type (2 = Auto, 3 = Manual, 4 = Disabled)
         let start_type = service_key.get_u32("Start").unwrap_or(3);
         let status = if start_type == 2 {
             StartupStatus::Enabled
@@ -88,13 +104,10 @@ pub fn scan_services_startup() -> Vec<StartupEntry> {
             StartupStatus::Disabled
         };
 
-        // 5. Read DisplayName and Description
-        let display_name = service_key
-            .get_string("DisplayName")
-            .unwrap_or_else(|_| service_name.clone());
-
         let target_exe = extract_clean_exe_path(trimmed_path);
         let target_str = target_exe.as_ref().map(|p| p.to_string_lossy().to_string());
+        let display_name =
+            clean_service_display_name(&raw_display_name, &service_name, target_exe.as_deref());
         let publisher = target_exe.as_deref().and_then(get_file_publisher);
 
         entries.push(StartupEntry {
@@ -115,9 +128,54 @@ pub fn scan_services_startup() -> Vec<StartupEntry> {
     entries
 }
 
-fn is_windows_core_service(name: &str, image_path: &str) -> bool {
+fn clean_service_display_name(
+    raw_display_name: &str,
+    service_name: &str,
+    target_exe: Option<&Path>,
+) -> String {
+    let trimmed = raw_display_name.trim();
+
+    // 1. If it starts with '@': e.g. "@oem40.inf,%amd3dvcacheSvc.DisplayName%;AMD 3D V-Cache Performance Optimizer Service"
+    if let Some(after_at) = trimmed.strip_prefix('@') {
+        if let Some(semi_pos) = after_at.find(';') {
+            let name_part = after_at[semi_pos + 1..].trim();
+            if !name_part.is_empty() {
+                return name_part.to_string();
+            }
+        }
+    }
+
+    // 2. If it is non-empty and doesn't contain corrupted replacement characters ''
+    if !trimmed.is_empty() && !trimmed.contains('\u{FFFD}') && !trimmed.starts_with('@') {
+        return trimmed.to_string();
+    }
+
+    // 3. Fallback: try stem from target exe or service_name
+    if let Some(path) = target_exe {
+        if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
+            return stem.to_string();
+        }
+    }
+
+    service_name.to_string()
+}
+
+fn is_windows_core_service(name: &str, image_path: &str, raw_display_name: &str) -> bool {
     let lower_path = image_path.to_ascii_lowercase();
     let lower_name = name.to_ascii_lowercase();
+    let trimmed_dn = raw_display_name.trim();
+
+    if lower_path.contains("svchost") || lower_path.contains("presentationhost") {
+        return true;
+    }
+
+    if lower_name.ends_with("usersvc") || is_per_user_service_name(&lower_name) {
+        return true;
+    }
+
+    if trimmed_dn.starts_with('@') && !trimmed_dn.contains(';') {
+        return true;
+    }
 
     for bin in SYSTEM_BINARIES {
         if lower_path.contains(bin) {
@@ -129,8 +187,15 @@ fn is_windows_core_service(name: &str, image_path: &str) -> bool {
     if (lower_path.starts_with(r"c:\windows\system32\")
         || lower_path.starts_with(r"%systemroot%\system32\")
         || lower_path.starts_with(r"\systemroot\system32\"))
+        && !lower_path.contains("driverstore")
         && !lower_path.contains("driver")
         && !lower_path.contains("thirdparty")
+        && !lower_path.contains("nvidia")
+        && !lower_path.contains("amd")
+        && !lower_path.contains("realtek")
+        && !lower_path.contains("razer")
+        && !lower_name.starts_with("amd")
+        && !lower_name.starts_with("nv")
     {
         return true;
     }
@@ -144,6 +209,14 @@ fn is_windows_core_service(name: &str, image_path: &str) -> bool {
     }
 
     false
+}
+
+fn is_per_user_service_name(name: &str) -> bool {
+    if let Some((_, suffix)) = name.rsplit_once('_') {
+        suffix.len() >= 4 && suffix.len() <= 8 && suffix.chars().all(|c| c.is_ascii_hexdigit())
+    } else {
+        false
+    }
 }
 
 pub fn toggle_service_entry(entry: &StartupEntry) -> bool {

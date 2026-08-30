@@ -23,10 +23,11 @@ fn scan_task_dir(root: &Path, current_dir: &Path, entries: &mut Vec<StartupEntry
     for entry in read_dir.flatten() {
         let path = entry.path();
         if path.is_dir() {
-            // Skip Microsoft internal system tasks
             let path_str = path.to_string_lossy();
+            // Skip Microsoft Windows core OS scheduled tasks
             if path_str.ends_with(r"\Microsoft\Windows")
                 || path_str.ends_with(r"\Microsoft\XblGameSave")
+                || path_str.ends_with(r"\Microsoft\Windows Defender")
             {
                 continue;
             }
@@ -39,8 +40,46 @@ fn scan_task_dir(root: &Path, current_dir: &Path, entries: &mut Vec<StartupEntry
     }
 }
 
+fn read_task_file_content(file_path: &Path) -> Option<String> {
+    let bytes = fs::read(file_path).ok()?;
+    if bytes.is_empty() {
+        return None;
+    }
+
+    // UTF-16 LE with BOM (0xFF, 0xFE)
+    if bytes.len() >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE {
+        let u16_slice: Vec<u16> = bytes[2..]
+            .chunks_exact(2)
+            .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+            .collect();
+        return Some(String::from_utf16_lossy(&u16_slice));
+    }
+
+    // UTF-16 BE with BOM (0xFE, 0xFF)
+    if bytes.len() >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF {
+        let u16_slice: Vec<u16> = bytes[2..]
+            .chunks_exact(2)
+            .map(|chunk| u16::from_be_bytes([chunk[0], chunk[1]]))
+            .collect();
+        return Some(String::from_utf16_lossy(&u16_slice));
+    }
+
+    // Try UTF-8
+    if let Ok(s) = String::from_utf8(bytes.clone()) {
+        return Some(s);
+    }
+
+    // Fallback: UTF-16 LE without BOM
+    let u16_slice: Vec<u16> = bytes
+        .chunks_exact(2)
+        .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+        .collect();
+    let s = String::from_utf16_lossy(&u16_slice);
+    if s.contains("<Task") { Some(s) } else { None }
+}
+
 fn parse_task_file(root: &Path, file_path: &Path) -> Option<StartupEntry> {
-    let content = fs::read_to_string(file_path).ok()?;
+    let content = read_task_file_content(file_path)?;
     if !content.contains("<Task") {
         return None;
     }
@@ -60,11 +99,21 @@ fn parse_task_file(root: &Path, file_path: &Path) -> Option<StartupEntry> {
         _ => command.clone(),
     };
 
-    // Filter out core system binaries
-    let lower_cmd = command.to_ascii_lowercase();
-    if lower_cmd.contains(r"\windows\system32\") && !lower_cmd.contains("driver") {
-        return None;
+    // Extract target executable or target dll
+    let mut target_exe = extract_clean_exe_path(&command);
+    if let Some(ref args) = arguments {
+        let lower_cmd = command.to_ascii_lowercase();
+        if lower_cmd.contains("rundll32")
+            || lower_cmd.contains("powershell")
+            || lower_cmd.contains("cmd.exe")
+        {
+            if let Some(arg_target) = extract_clean_exe_path(args) {
+                target_exe = Some(arg_target);
+            }
+        }
     }
+
+    let target_str = target_exe.as_ref().map(|p| p.to_string_lossy().to_string());
 
     // Extract Enabled status
     let enabled_str = extract_xml_tag(&content, "Enabled").unwrap_or_else(|| "true".to_string());
@@ -92,8 +141,6 @@ fn parse_task_file(root: &Path, file_path: &Path) -> Option<StartupEntry> {
         .unwrap_or(&rel_path);
 
     let display_name = file_stem.to_string();
-    let target_exe = extract_clean_exe_path(&command);
-    let target_str = target_exe.as_ref().map(|p| p.to_string_lossy().to_string());
 
     let publisher = target_exe
         .as_deref()
