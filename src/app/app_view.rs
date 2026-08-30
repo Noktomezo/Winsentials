@@ -51,6 +51,7 @@ pub struct AppView {
     startup_search_selection: Option<(usize, usize)>,
     startup_search_focus: Option<gpui::FocusHandle>,
     startup_open_menu_id: Option<String>,
+    hovered_startup_card: Option<String>,
 }
 
 impl AppView {
@@ -113,6 +114,7 @@ impl AppView {
             startup_search_selection: None,
             startup_search_focus: None,
             startup_open_menu_id: None,
+            hovered_startup_card: None,
         }
     }
 
@@ -467,6 +469,13 @@ impl AppView {
             }
         } else if self.hovered_telemetry_card.as_ref() == Some(&card_id) {
             self.hovered_telemetry_card = None;
+            cx.notify();
+        }
+    }
+
+    pub fn set_hovered_startup_card(&mut self, card_id: Option<String>, cx: &mut Context<Self>) {
+        if self.hovered_startup_card != card_id {
+            self.hovered_startup_card = card_id;
             cx.notify();
         }
     }
@@ -1065,12 +1074,17 @@ impl Render for AppView {
                 this.set_startup_search_selection(*selection, cx);
             });
 
+        let on_hover_startup_card = cx.listener(|this, card_id: &Option<String>, _window, cx| {
+            this.set_hovered_startup_card(card_id.clone(), cx);
+        });
+
         let minimize_to_tray = self.config.minimize_to_tray;
         let autostart = self.config.autostart;
         let autostart_to_tray = self.config.autostart_to_tray;
         let discord_rpc = self.config.discord_rpc;
         let startup_filter = self.startup_filter;
         let startup_open_menu_id = self.startup_open_menu_id.as_deref();
+        let hovered_startup_card = self.hovered_startup_card.clone();
         let startup_search_focus = self
             .startup_search_focus
             .get_or_insert_with(|| cx.focus_handle())
@@ -1113,6 +1127,7 @@ impl Render for AppView {
                 self.startup_search_selection,
                 &startup_search_focus,
                 startup_open_menu_id,
+                hovered_startup_card,
                 move |target_route, window, cx| {
                     on_navigate_page(&target_route, window, cx);
                 },
@@ -1199,6 +1214,9 @@ impl Render for AppView {
                 },
                 move |sel, window, cx| {
                     on_selection_startup_search(&sel, window, cx);
+                },
+                move |card_id, window, cx| {
+                    on_hover_startup_card(&card_id, window, cx);
                 },
             ));
 

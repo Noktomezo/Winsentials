@@ -22,7 +22,7 @@ pub fn resolve_entry_icon(target_path: Option<&str>, command: Option<&str>) -> O
 
     #[cfg(target_os = "windows")]
     {
-        // 1. Direct icon extraction from target executable
+        // 1. Direct icon extraction from target executable (if PE has real icons)
         if clean_path.exists() {
             if let Some(icon) = extract_direct_icon(&clean_path) {
                 return Some(icon);
@@ -33,11 +33,17 @@ pub fn resolve_entry_icon(target_path: Option<&str>, command: Option<&str>) -> O
             }
         }
 
-        // 3. Fallback: if it's powershell running a script, resolve PowerShell icon
-        let name_lower = clean_path
-            .file_name()
-            .map_or(String::new(), |n| n.to_string_lossy().to_lowercase());
-        if name_lower == "powershell.exe" || name_lower == "pwsh.exe" {
+        // 3. Fallback for PowerShell scripts or PowerShell host commands
+        let is_ps = clean_path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("ps1"))
+            || clean_path.file_name().is_some_and(|n| {
+                let s = n.to_string_lossy().to_lowercase();
+                s == "powershell.exe" || s == "pwsh.exe"
+            })
+            || command.is_some_and(|c| c.to_ascii_lowercase().contains("powershell"));
+
+        if is_ps {
             let ps_path =
                 PathBuf::from(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe");
             if ps_path.exists() {
@@ -46,6 +52,25 @@ pub fn resolve_entry_icon(target_path: Option<&str>, command: Option<&str>) -> O
                 }
             }
         }
+
+        // 4. Fallback for Batch / CMD scripts
+        let is_cmd = clean_path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("bat") || e.eq_ignore_ascii_case("cmd"))
+            || clean_path.file_name().is_some_and(|n| {
+                let s = n.to_string_lossy().to_lowercase();
+                s == "cmd.exe"
+            });
+
+        if is_cmd {
+            let cmd_path = PathBuf::from(r"C:\Windows\System32\cmd.exe");
+            if cmd_path.exists() {
+                if let Some(icon) = extract_direct_icon(&cmd_path) {
+                    return Some(icon);
+                }
+            }
+        }
+
         None
     }
 
@@ -71,7 +96,7 @@ fn normalize_path(path: &Path) -> PathBuf {
 
 #[cfg(target_os = "windows")]
 fn get_cache_dir() -> PathBuf {
-    let dir = std::env::temp_dir().join("winsentials_icon_cache");
+    let dir = std::env::temp_dir().join("winsentials_icon_cache_v3");
     let _ = std::fs::create_dir_all(&dir);
     dir
 }
@@ -113,6 +138,7 @@ fn find_sibling_icon(exe_path: &Path) -> Option<PathBuf> {
         } else if current_stem.starts_with(&stem) || stem.starts_with(&current_stem) {
             1
         } else if stem.contains("radeon")
+            || stem.contains("amd")
             || stem.contains("control")
             || stem.contains("main")
             || stem.contains("launcher")
@@ -138,9 +164,7 @@ fn extract_direct_icon(path: &Path) -> Option<PathBuf> {
     use std::ffi::OsStr;
     use std::os::windows::ffi::OsStrExt;
     use std::ptr::null_mut;
-    use windows_sys::Win32::UI::Shell::{
-        ExtractIconExW, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON, SHGetFileInfoW,
-    };
+    use windows_sys::Win32::UI::Shell::ExtractIconExW;
     use windows_sys::Win32::UI::WindowsAndMessaging::HICON;
 
     let mut hasher = DefaultHasher::new();
@@ -157,31 +181,13 @@ fn extract_direct_icon(path: &Path) -> Option<PathBuf> {
     let mut wide: Vec<u16> = OsStr::new(path).encode_wide().collect();
     wide.push(0);
 
-    // 1. Try ExtractIconExW first (extracts authentic embedded PE icon)
+    // Extract authentic embedded PE icon
     let mut large_icon: HICON = null_mut();
     let icon_count =
         unsafe { ExtractIconExW(wide.as_ptr(), 0, &raw mut large_icon, null_mut(), 1) };
 
     if icon_count > 0 && !large_icon.is_null() {
         if let Some(saved) = hicon_to_png(large_icon, &cache_file) {
-            return Some(saved);
-        }
-    }
-
-    // 2. Fallback to SHGetFileInfoW
-    let mut shfi: SHFILEINFOW = unsafe { std::mem::zeroed() };
-    let res = unsafe {
-        SHGetFileInfoW(
-            wide.as_ptr(),
-            0,
-            &raw mut shfi,
-            std::mem::size_of::<SHFILEINFOW>() as u32,
-            SHGFI_ICON | SHGFI_LARGEICON,
-        )
-    };
-
-    if res != 0 && !shfi.hIcon.is_null() {
-        if let Some(saved) = hicon_to_png(shfi.hIcon, &cache_file) {
             return Some(saved);
         }
     }
@@ -354,5 +360,49 @@ mod tests {
         assert!(icon.is_some());
         let path = icon.unwrap();
         assert!(Path::new(&path).exists());
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_extract_powershell_script_icon() {
+        let icon = resolve_entry_icon(
+            Some(r"C:\ProgramData\Winhance\OpenWebSearch\OpenWebSearchRepair.ps1"),
+            Some(
+                r#"powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "iex([IO.File]::ReadAllText('C:\ProgramData\Winhance\OpenWebSearch\OpenWebSearchRepair.ps1'))""#,
+            ),
+        );
+        assert!(icon.is_some());
+        let path = icon.unwrap();
+        assert!(Path::new(&path).exists());
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_extract_amnezia_service_icon() {
+        let amnezia_path = r"C:\Program Files\AmneziaVPN\AmneziaVPN-service.exe";
+        if Path::new(amnezia_path).exists() {
+            let icon = resolve_entry_icon(Some(amnezia_path), None);
+            assert!(icon.is_some());
+        }
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_extract_cncmd_sibling_icon() {
+        let cncmd_path = r"C:\Program Files\AMD\CNext\CNext\cncmd.exe";
+        if Path::new(cncmd_path).exists() {
+            let icon = resolve_entry_icon(Some(cncmd_path), None);
+            assert!(icon.is_some());
+        }
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_extract_auepdu_relative_icon() {
+        let auep_rel = r"C:\Program Files\AMD\CIM\..\Performance Profile Client\AUEPDU.exe";
+        if Path::new(r"C:\Program Files\AMD\Performance Profile Client\AUEPDU.exe").exists() {
+            let icon = resolve_entry_icon(Some(auep_rel), None);
+            assert!(icon.is_some());
+        }
     }
 }

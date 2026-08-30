@@ -198,6 +198,10 @@ impl RenderOnce for TweakCard {
             .border_1()
             .border_color(theme.card_border)
             .bg(theme.card_bg)
+            .hover(|s| {
+                s.border_color(theme.accent_blue)
+                    .bg(theme.input_bg.opacity(0.3))
+            })
             .child(top_content);
 
         // 3. Third row: Badges (anchored at bottom)

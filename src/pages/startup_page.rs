@@ -4,8 +4,8 @@ use std::time::Duration;
 use gpui::prelude::FluentBuilder;
 use gpui::{
     Animation, AnimationExt, AnyElement, App, ElementId, FocusHandle, FontWeight,
-    InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce,
-    StatefulInteractiveElement, Styled, Window, deferred, div, ease_in_out, img, px,
+    InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce, SpringAnimation,
+    SpringConfig, StatefulInteractiveElement, Styled, Window, deferred, div, ease_in_out, img, px,
 };
 
 use crate::entities::startup::search::matches_startup_query;
@@ -18,6 +18,7 @@ use crate::shared::ui::icon::Icon;
 use crate::shared::ui::search_input::{SearchChangeHandler, SearchInput};
 use crate::shared::ui::smooth_scroll::SmoothVirtualList;
 use crate::shared::ui::switch::Switch;
+use crate::widgets::sidebar::lerp_rgba;
 
 pub type StartupToggleHandler = Arc<dyn Fn(&StartupEntry, &mut Window, &mut App) + 'static>;
 pub type StartupDeleteHandler = Arc<dyn Fn(&StartupEntry, &mut Window, &mut App) + 'static>;
@@ -29,6 +30,7 @@ pub type SearchHoverHandler = Arc<dyn Fn(&bool, &mut Window, &mut App) + 'static
 pub type SearchFocusHandler = Arc<dyn Fn(bool, &mut Window, &mut App) + 'static>;
 pub type SearchSelectionHandler =
     Arc<dyn Fn(Option<(usize, usize)>, &mut Window, &mut App) + 'static>;
+pub type StartupHoverCardHandler = Arc<dyn Fn(Option<String>, &mut Window, &mut App) + 'static>;
 
 #[derive(Clone)]
 struct StartupCardHandlers {
@@ -39,6 +41,8 @@ struct StartupCardHandlers {
     copy_path: Option<StartupActionHandler>,
     hover_tt: Option<TooltipHoverHandler>,
     toggle_menu: Option<MenuToggleHandler>,
+    hover_card: Option<StartupHoverCardHandler>,
+    hovered_card_id: Option<String>,
 }
 
 #[derive(IntoElement)]
@@ -50,6 +54,7 @@ pub struct StartupPage {
     search_hovered: bool,
     search_selection: Option<(usize, usize)>,
     open_menu_id: Option<String>,
+    hovered_card_id: Option<String>,
     search_focus: Option<FocusHandle>,
     on_toggle: Option<StartupToggleHandler>,
     on_delete: Option<StartupDeleteHandler>,
@@ -63,10 +68,12 @@ pub struct StartupPage {
     on_hover_search: Option<SearchHoverHandler>,
     on_focus_search: Option<SearchFocusHandler>,
     on_selection_search: Option<SearchSelectionHandler>,
+    on_hover_card: Option<StartupHoverCardHandler>,
 }
 
 impl StartupPage {
     #[must_use]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         entries: Vec<StartupEntry>,
         active_filter: Option<StartupSource>,
@@ -75,6 +82,7 @@ impl StartupPage {
         search_hovered: bool,
         search_selection: Option<(usize, usize)>,
         open_menu_id: Option<String>,
+        hovered_card_id: Option<String>,
     ) -> Self {
         Self {
             entries,
@@ -84,6 +92,7 @@ impl StartupPage {
             search_hovered,
             search_selection,
             open_menu_id,
+            hovered_card_id,
             search_focus: None,
             on_toggle: None,
             on_delete: None,
@@ -97,7 +106,17 @@ impl StartupPage {
             on_hover_search: None,
             on_focus_search: None,
             on_selection_search: None,
+            on_hover_card: None,
         }
+    }
+
+    #[must_use]
+    pub fn on_hover_card(
+        mut self,
+        handler: impl Fn(Option<String>, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_hover_card = Some(Arc::new(handler));
+        self
     }
 
     #[must_use]
@@ -601,6 +620,21 @@ fn render_startup_card(
             )
     };
 
+    let is_card_hovered = handlers
+        .hovered_card_id
+        .as_ref()
+        .is_some_and(|id| id == &entry.id);
+    let target = if is_card_hovered { 1.0 } else { 0.0 };
+    let spring = SpringAnimation::new(SpringConfig::new(350.0, 28.0, 1.0))
+        .to(target)
+        .with_epsilon(0.005);
+    let card_id = entry.id.clone();
+    let on_hover_c = handlers.hover_card.clone();
+    let card_bg = theme.card_bg;
+    let input_bg = theme.input_bg;
+    let card_border = theme.card_border;
+    let accent_blue = theme.accent_blue;
+
     div()
         .id(ElementId::Name(format!("{}_card", entry.id).into()))
         .relative()
@@ -614,9 +648,25 @@ fn render_startup_card(
         .py(px(10.0))
         .rounded(px(10.0))
         .border_1()
-        .border_color(theme.card_border)
-        .bg(theme.card_bg)
-        .hover(|s| s.border_color(theme.accent_blue))
+        .on_hover(move |&hovered, window, cx| {
+            if let Some(ref h) = on_hover_c {
+                h(
+                    if hovered { Some(card_id.clone()) } else { None },
+                    window,
+                    cx,
+                );
+            }
+        })
+        .with_spring(
+            ElementId::Name(format!("{}_hover_spring", entry.id).into()),
+            spring,
+            move |card, val| {
+                let t = val.clamp(0.0, 1.0);
+                let border = lerp_rgba(card_border, accent_blue, t);
+                let bg = lerp_rgba(card_bg, input_bg, t * 0.4);
+                card.bg(bg).border_color(border)
+            },
+        )
         .child(
             div()
                 .flex()
@@ -777,6 +827,8 @@ impl RenderOnce for StartupPage {
             copy_path: self.on_copy_path,
             hover_tt: self.on_hover_tooltip.clone(),
             toggle_menu: self.on_toggle_menu,
+            hover_card: self.on_hover_card,
+            hovered_card_id: self.hovered_card_id,
         };
 
         let tt_handler = self.on_hover_tooltip.clone();

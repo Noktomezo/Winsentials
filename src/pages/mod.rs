@@ -87,6 +87,7 @@ pub fn render_route(
     startup_search_selection: Option<(usize, usize)>,
     startup_search_focus: &gpui::FocusHandle,
     startup_open_menu_id: Option<&str>,
+    hovered_startup_card: Option<String>,
     on_navigate: impl Fn(AppRoute, &mut Window, &mut App) + Send + Sync + 'static,
     on_hover_telemetry_card: impl Fn(SharedString, bool, &mut Window, &mut App) + Send + Sync + 'static,
     on_toggle_tweak: impl Fn(&'static str, bool, &mut Window, &mut App) + 'static,
@@ -123,6 +124,7 @@ pub fn render_route(
     on_hover_startup_search: impl Fn(&bool, &mut Window, &mut App) + 'static,
     on_focus_startup_search: impl Fn(bool, &mut Window, &mut App) + 'static,
     on_selection_startup_search: impl Fn(Option<(usize, usize)>, &mut Window, &mut App) + 'static,
+    on_hover_startup_card: impl Fn(Option<String>, &mut Window, &mut App) + 'static,
 ) -> AnyElement {
     let on_nav_arc = Arc::new(on_navigate);
     let on_nav_dash = on_nav_arc.clone();
@@ -317,12 +319,14 @@ pub fn render_route(
             startup_search_hovered,
             startup_search_selection,
             startup_open_menu_id.map(ToString::to_string),
+            hovered_startup_card,
         )
         .search_focus(startup_search_focus)
         .on_change_search(on_change_startup_search)
         .on_hover_search(on_hover_startup_search)
         .on_focus_search(on_focus_startup_search)
         .on_selection_search(on_selection_startup_search)
+        .on_hover_card(on_hover_startup_card)
         .on_toggle(on_toggle_startup)
         .on_delete(on_delete_startup)
         .on_open_folder(on_open_startup_folder)
