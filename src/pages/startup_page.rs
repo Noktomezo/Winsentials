@@ -1,9 +1,11 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use gpui::prelude::FluentBuilder;
 use gpui::{
-    AnyElement, App, ElementId, FontWeight, InteractiveElement, IntoElement, ParentElement,
-    RenderOnce, StatefulInteractiveElement, Styled, Window, div, px,
+    Animation, AnimationExt, AnyElement, App, ElementId, FontWeight, InteractiveElement,
+    IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, deferred,
+    div, ease_in_out, px,
 };
 
 use crate::entities::startup::{StartupEntry, StartupSource, StartupStatus};
@@ -270,6 +272,8 @@ fn render_action_menu(
     handlers: &StartupCardHandlers,
 ) -> impl IntoElement {
     let entry_id = entry.id.clone();
+    let toggle_close = handlers.toggle_menu.clone();
+
     let folder_row = render_menu_row(
         format!("{entry_id}_act_folder"),
         "icons/folder.svg",
@@ -314,16 +318,19 @@ fn render_action_menu(
         handlers.toggle_menu.clone(),
     );
 
-    div()
+    let mut box_el = div()
+        .id(ElementId::Name(
+            format!("{entry_id}_action_menu_box").into(),
+        ))
         .absolute()
-        .top(px(40.0))
-        .right(px(0.0))
+        .top_full()
+        .right_0()
         .w(px(220.0))
         .bg(theme.card_bg)
         .border_1()
         .border_color(theme.card_border)
         .rounded_lg()
-        .shadow_md()
+        .shadow_lg()
         .p(px(4.0))
         .gap(px(2.0))
         .flex()
@@ -332,7 +339,22 @@ fn render_action_menu(
         .child(copy_row)
         .child(src_row)
         .child(div().h(px(1.0)).w_full().bg(theme.main_border).my(px(2.0)))
-        .child(del_row)
+        .child(del_row);
+
+    if let Some(close_fn) = toggle_close {
+        box_el = box_el.on_mouse_down_out(move |_, window, cx| {
+            close_fn(None, window, cx);
+        });
+    }
+
+    box_el.with_animation(
+        ElementId::Name(format!("{entry_id}_menu_enter").into()),
+        Animation::new(Duration::from_millis(150)).with_easing(ease_in_out),
+        move |menu, delta| {
+            let offset_y = 2.0 + delta * 4.0;
+            menu.opacity(delta).mt(px(offset_y))
+        },
+    )
 }
 
 #[allow(clippy::too_many_lines)]
@@ -357,6 +379,17 @@ fn render_startup_card(
 
     let menu_toggle_id = entry_id.clone();
     let on_toggle_menu_btn = handlers.toggle_menu.clone();
+    let menu_btn_bg = if is_menu_open {
+        theme.button_selected
+    } else {
+        theme.card_bg
+    };
+    let menu_icon_col = if is_menu_open {
+        theme.accent_blue
+    } else {
+        theme.text_muted
+    };
+
     let menu_btn = div()
         .id(ElementId::Name(format!("{}_more_btn", entry.id).into()))
         .flex()
@@ -364,8 +397,9 @@ fn render_startup_card(
         .justify_center()
         .size(px(28.0))
         .rounded_md()
+        .bg(menu_btn_bg)
         .cursor_pointer()
-        .hover(|s| s.bg(theme.button_hover))
+        .hover(move |s| s.bg(theme.button_hover))
         .on_click(move |_, window, cx| {
             if let Some(ref h) = on_toggle_menu_btn {
                 if is_menu_open {
@@ -378,7 +412,7 @@ fn render_startup_card(
         .child(
             Icon::new("icons/ellipsis-vertical.svg")
                 .size(px(16.0))
-                .color(theme.text_muted),
+                .color(menu_icon_col),
         );
 
     let secondary_text = entry
@@ -472,11 +506,12 @@ fn render_startup_card(
                 .gap(px(8.0))
                 .flex_none()
                 .child(switch_el)
-                .child(menu_btn),
+                .child(div().relative().child(menu_btn).when(is_menu_open, |this| {
+                    this.child(
+                        deferred(render_action_menu(entry, theme, handlers)).with_priority(100),
+                    )
+                })),
         )
-        .when(is_menu_open, |this| {
-            this.child(render_action_menu(entry, theme, handlers))
-        })
         .into_any_element()
 }
 
