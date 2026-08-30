@@ -6,7 +6,7 @@ use crate::entities::startup::vendor::extract_clean_exe_path;
 
 /// Resolves or extracts a PNG icon for the given executable / target path and caches it.
 #[must_use]
-pub fn resolve_entry_icon(target_path: Option<&str>, command: Option<&str>) -> Option<String> {
+pub fn resolve_entry_icon(target_path: Option<&str>, command: Option<&str>) -> Option<PathBuf> {
     let clean_path = target_path
         .and_then(|p| {
             if Path::new(p).exists() {
@@ -48,7 +48,7 @@ fn get_cache_dir() -> PathBuf {
     clippy::cast_possible_wrap,
     clippy::cast_sign_loss
 )]
-fn extract_windows_icon(path: &Path) -> Option<String> {
+fn extract_windows_icon(path: &Path) -> Option<PathBuf> {
     use std::ffi::OsStr;
     use std::os::windows::ffi::OsStrExt;
     use std::ptr::null_mut;
@@ -67,7 +67,7 @@ fn extract_windows_icon(path: &Path) -> Option<String> {
     let cache_file = cache_dir.join(format!("{hash_str}.png"));
 
     if cache_file.exists() && cache_file.metadata().map_or(0, |m| m.len()) > 0 {
-        return Some(cache_file.to_string_lossy().to_string());
+        return Some(cache_file);
     }
 
     let mut wide: Vec<u16> = OsStr::new(path).encode_wide().collect();
@@ -219,8 +219,22 @@ fn extract_windows_icon(path: &Path) -> Option<String> {
     )
     .is_ok()
     {
-        Some(cache_file.to_string_lossy().to_string())
+        Some(cache_file)
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_extract_explorer_icon() {
+        let icon = resolve_entry_icon(Some("C:\\Windows\\explorer.exe"), None);
+        assert!(icon.is_some());
+        let path = icon.unwrap();
+        assert!(Path::new(&path).exists());
     }
 }

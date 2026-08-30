@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use gpui::Rgba;
 use serde::{Deserialize, Serialize};
 
@@ -84,7 +86,7 @@ pub struct StartupEntry {
     pub status: StartupStatus,
     pub command: Option<String>,
     pub target_path: Option<String>,
-    pub icon_path: Option<String>,
+    pub icon_path: Option<PathBuf>,
     pub location_label: String,
     pub raw_id: String,
 }
