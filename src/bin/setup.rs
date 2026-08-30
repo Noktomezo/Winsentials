@@ -370,7 +370,7 @@ impl Render for SetupView {
             .rounded(px(10.0))
             .overflow_hidden()
             .child(self.render_titlebar(cx))
-            .child(div().flex_1().flex().flex_col().p(px(12.0)).child(content))
+            .child(div().flex_1().flex().flex_col().p(px(16.0)).child(content))
     }
 }
 
@@ -416,7 +416,7 @@ impl SetupView {
             .items_center()
             .justify_between()
             .h(px(40.0))
-            .px(px(8.0))
+            .p(px(4.0))
             .bg(rgb(arclate::BG_DARK))
             .border_b_1()
             .border_color(rgb(arclate::BORDER_MAIN_DARK))
@@ -427,6 +427,7 @@ impl SetupView {
                     .flex()
                     .items_center()
                     .gap(px(8.0))
+                    .pl(px(8.0))
                     .window_control_area(WindowControlArea::Drag)
                     .on_mouse_down(MouseButton::Left, |_ev, window, _cx| {
                         window.start_window_move();
@@ -1255,7 +1256,7 @@ fn main() {
             cx.set_global(Theme::dark());
 
             let window_bounds =
-                WindowBounds::Windowed(Bounds::centered(None, size(px(540.0), px(460.0)), cx));
+                WindowBounds::Windowed(Bounds::centered(None, size(px(540.0), px(480.0)), cx));
 
             let window_options = WindowOptions {
                 window_bounds: Some(window_bounds),
@@ -1269,7 +1270,7 @@ fn main() {
                     traffic_light_position: Some(point(px(12.0), px(12.0))),
                 }),
                 window_background: WindowBackgroundAppearance::Opaque,
-                window_min_size: Some(size(px(540.0), px(460.0))),
+                window_min_size: Some(size(px(540.0), px(480.0))),
                 focus: true,
                 show: true,
                 kind: gpui::WindowKind::PopUp,
