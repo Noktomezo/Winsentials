@@ -345,6 +345,7 @@ impl AppView {
         cx: &mut Context<Self>,
     ) {
         self.startup_filter = filter;
+        self.startup_search_focused = false;
         cx.notify();
     }
 
@@ -365,6 +366,9 @@ impl AppView {
 
     pub fn set_startup_menu(&mut self, menu_id: Option<String>, cx: &mut Context<Self>) {
         self.startup_open_menu_id = menu_id;
+        if self.startup_open_menu_id.is_some() {
+            self.startup_search_focused = false;
+        }
         cx.notify();
     }
 

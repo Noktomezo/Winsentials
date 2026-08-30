@@ -105,13 +105,9 @@ impl SearchInput {
 
 impl RenderOnce for SearchInput {
     #[allow(clippy::too_many_lines)]
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
-        let is_focused = self.focused
-            || self
-                .focus_handle
-                .as_ref()
-                .is_some_and(|f| f.is_focused(window));
+        let is_focused = self.focused;
         let is_hovered = self.hovered;
 
         let current_val = self.value.clone();
@@ -142,7 +138,7 @@ impl RenderOnce for SearchInput {
         let blue_border = theme.accent_blue;
         let hover_blue_border = theme.accent_hover_bg;
 
-        // Animated blinking caret
+        // Smoothly animated blinking caret (smooth cosine pulsation without hard cuts)
         let caret_anim_id = format!("{id_str}_caret_blink");
         let caret_el = div()
             .id(ElementId::Name(format!("{id_str}_caret").into()))
@@ -152,11 +148,12 @@ impl RenderOnce for SearchInput {
             .rounded(px(1.0))
             .with_animation(
                 ElementId::Name(caret_anim_id.into()),
-                Animation::new(Duration::from_secs(1))
+                Animation::new(Duration::from_millis(850))
                     .repeat()
                     .with_easing(ease_in_out),
                 move |el, delta| {
-                    let alpha = if delta < 0.5 { 1.0 } else { 0.0 };
+                    let wave = (delta * std::f32::consts::PI * 2.0).cos();
+                    let alpha = (0.5 + 0.5 * wave).clamp(0.0, 1.0);
                     el.opacity(alpha)
                 },
             );
