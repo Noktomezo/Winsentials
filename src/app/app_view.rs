@@ -43,6 +43,9 @@ pub struct AppView {
     closing_toast_id: Option<SharedString>,
     hovered_toast_button: Option<(SharedString, usize)>,
     toast_stack_expanded: bool,
+    startup_entries: Vec<crate::entities::startup::StartupEntry>,
+    startup_filter: Option<crate::entities::startup::StartupSource>,
+    startup_open_menu_id: Option<String>,
 }
 
 impl AppView {
@@ -67,6 +70,7 @@ impl AppView {
         let tray_manager = TrayManager::new();
         let open_item_id = tray_manager.open_item_id.clone();
         let quit_item_id = tray_manager.quit_item_id.clone();
+        let startup_entries = crate::entities::startup::fetch_all_startup_entries();
 
         Self {
             sidebar_expanded: false,
@@ -96,6 +100,9 @@ impl AppView {
             closing_toast_id: None,
             hovered_toast_button: None,
             toast_stack_expanded: false,
+            startup_entries,
+            startup_filter: None,
+            startup_open_menu_id: None,
         }
     }
 
@@ -172,6 +179,9 @@ impl AppView {
             self.hovered_telemetry_card = None;
             self.hovered_titlebar_breadcrumb = None;
             self.active_tooltip = None;
+            if route == AppRoute::Startup {
+                self.startup_entries = crate::entities::startup::fetch_all_startup_entries();
+            }
             cx.notify();
         }
     }
@@ -296,6 +306,43 @@ impl AppView {
             self.toast_stack_expanded = expanded;
             cx.notify();
         }
+    }
+
+    pub fn refresh_startup_entries(&mut self, cx: &mut Context<Self>) {
+        self.startup_entries = crate::entities::startup::fetch_all_startup_entries();
+        cx.notify();
+    }
+
+    pub fn toggle_startup(
+        &mut self,
+        entry: &crate::entities::startup::StartupEntry,
+        cx: &mut Context<Self>,
+    ) {
+        crate::entities::startup::toggle_startup_entry(entry);
+        self.refresh_startup_entries(cx);
+    }
+
+    pub fn delete_startup(
+        &mut self,
+        entry: &crate::entities::startup::StartupEntry,
+        cx: &mut Context<Self>,
+    ) {
+        crate::entities::startup::delete_startup_entry(entry);
+        self.refresh_startup_entries(cx);
+    }
+
+    pub fn set_startup_filter(
+        &mut self,
+        filter: Option<crate::entities::startup::StartupSource>,
+        cx: &mut Context<Self>,
+    ) {
+        self.startup_filter = filter;
+        cx.notify();
+    }
+
+    pub fn set_startup_menu(&mut self, menu_id: Option<String>, cx: &mut Context<Self>) {
+        self.startup_open_menu_id = menu_id;
+        cx.notify();
     }
 
     pub fn show_explorer_restart_toast(&mut self, cx: &mut Context<Self>) {
@@ -914,10 +961,57 @@ impl Render for AppView {
             this.navigate_to(*route, window, cx);
         });
 
+        let on_toggle_startup = cx.listener(
+            |this, entry: &crate::entities::startup::StartupEntry, _window, cx| {
+                this.toggle_startup(entry, cx);
+            },
+        );
+
+        let on_delete_startup = cx.listener(
+            |this, entry: &crate::entities::startup::StartupEntry, _window, cx| {
+                this.delete_startup(entry, cx);
+            },
+        );
+
+        let on_open_startup_folder = cx.listener(
+            |_this, entry: &crate::entities::startup::StartupEntry, _window, _cx| {
+                crate::entities::startup::open_startup_file_location(entry);
+            },
+        );
+
+        let on_open_startup_source = cx.listener(
+            |_this, entry: &crate::entities::startup::StartupEntry, _window, _cx| {
+                crate::entities::startup::open_startup_source_manager(entry);
+            },
+        );
+
+        let on_copy_startup_path = cx.listener(
+            |_this, entry: &crate::entities::startup::StartupEntry, _window, cx| {
+                let path_to_copy = entry
+                    .target_path
+                    .as_deref()
+                    .or(entry.command.as_deref())
+                    .unwrap_or(&entry.raw_id);
+                cx.write_to_clipboard(gpui::ClipboardItem::new_string(path_to_copy.to_string()));
+            },
+        );
+
+        let on_toggle_startup_menu = cx.listener(|this, menu_id: &Option<String>, _window, cx| {
+            this.set_startup_menu(menu_id.clone(), cx);
+        });
+
+        let on_select_startup_filter = cx.listener(
+            |this, filter: &Option<crate::entities::startup::StartupSource>, _window, cx| {
+                this.set_startup_filter(*filter, cx);
+            },
+        );
+
         let minimize_to_tray = self.config.minimize_to_tray;
         let autostart = self.config.autostart;
         let autostart_to_tray = self.config.autostart_to_tray;
         let discord_rpc = self.config.discord_rpc;
+        let startup_filter = self.startup_filter;
+        let startup_open_menu_id = self.startup_open_menu_id.as_deref();
 
         let main_panel = div()
             .flex()
@@ -948,6 +1042,9 @@ impl Render for AppView {
                 autostart,
                 autostart_to_tray,
                 discord_rpc,
+                &self.startup_entries,
+                startup_filter,
+                startup_open_menu_id,
                 move |target_route, window, cx| {
                     on_navigate_page(&target_route, window, cx);
                 },
@@ -1001,6 +1098,27 @@ impl Render for AppView {
                 },
                 move |tt, window, cx| {
                     page_tooltip_listener(&tt, window, cx);
+                },
+                move |entry, window, cx| {
+                    on_toggle_startup(entry, window, cx);
+                },
+                move |entry, window, cx| {
+                    on_delete_startup(entry, window, cx);
+                },
+                move |entry, window, cx| {
+                    on_open_startup_folder(entry, window, cx);
+                },
+                move |entry, window, cx| {
+                    on_open_startup_source(entry, window, cx);
+                },
+                move |entry, window, cx| {
+                    on_copy_startup_path(entry, window, cx);
+                },
+                move |menu_id, window, cx| {
+                    on_toggle_startup_menu(&menu_id, window, cx);
+                },
+                move |filter, window, cx| {
+                    on_select_startup_filter(&filter, window, cx);
                 },
             ));
 

@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use gpui::{
     AnimationExt, App, ElementId, InteractiveElement, IntoElement, ParentElement, RenderOnce,
-    SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, Window, div, px,
+    SharedString, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, Window, div,
+    px,
 };
 
 use crate::shared::theme::Theme;
@@ -12,16 +13,16 @@ pub type SwitchToggleHandler = Arc<dyn Fn(bool, &mut Window, &mut App) + 'static
 
 #[derive(IntoElement)]
 pub struct Switch {
-    id: &'static str,
+    id: SharedString,
     checked: bool,
     on_toggle: Option<SwitchToggleHandler>,
 }
 
 impl Switch {
     #[must_use]
-    pub fn new(id: &'static str, checked: bool) -> Self {
+    pub fn new(id: impl Into<SharedString>, checked: bool) -> Self {
         Self {
-            id,
+            id: id.into(),
             checked,
             on_toggle: None,
         }
@@ -66,7 +67,7 @@ impl RenderOnce for Switch {
         };
 
         div()
-            .id(ElementId::Name(id_str.into()))
+            .id(ElementId::Name(id_str.clone()))
             .relative()
             .w(px(36.0))
             .h(px(20.0))

@@ -290,5 +290,27 @@
     "power_desc": "Настройка схем управления питанием и спящего режима.",
     "dxdiag_title": "DirectX Диагностика",
     "dxdiag_desc": "Сведения о графической подсистеме, звуке и драйверах DirectX."
+  },
+  "startup": {
+    "title": "Автозагрузка",
+    "desc": "Управление программами, службами и задачами автозапуска Windows.",
+    "filter_all": "Все",
+    "filter_registry": "Реестр",
+    "filter_folder": "Папка",
+    "filter_services": "Службы",
+    "filter_tasks": "Планировщик",
+    "source_registry": "Реестр Windows",
+    "source_folder": "Папка автозагрузки",
+    "source_service": "Служба Windows",
+    "source_task": "Планировщик задач",
+    "scope_current_user": "Текущий пользователь",
+    "scope_all_users": "Все пользователи",
+    "action_open_folder": "Открыть расположение файла",
+    "action_copy_path": "Копировать путь",
+    "action_open_source": "Открыть в источнике",
+    "action_delete": "Удалить",
+    "empty": "Нет элементов автозагрузки в выбранной категории",
+    "total": "Всего",
+    "enabled": "Включено"
   }
 }

@@ -290,5 +290,27 @@
     "power_desc": "Configure system power schemes, performance plans, and sleep.",
     "dxdiag_title": "DirectX Diagnostics",
     "dxdiag_desc": "Detailed diagnostics for display, audio, and DirectX hardware."
+  },
+  "startup": {
+    "title": "Startup",
+    "desc": "Manage startup applications, services, and scheduled tasks in Windows.",
+    "filter_all": "All",
+    "filter_registry": "Registry",
+    "filter_folder": "Folder",
+    "filter_services": "Services",
+    "filter_tasks": "Tasks",
+    "source_registry": "Windows Registry",
+    "source_folder": "Startup Folder",
+    "source_service": "Windows Service",
+    "source_task": "Scheduled Task",
+    "scope_current_user": "Current User",
+    "scope_all_users": "All Users",
+    "action_open_folder": "Open File Location",
+    "action_copy_path": "Copy Path",
+    "action_open_source": "Open in Source Manager",
+    "action_delete": "Delete",
+    "empty": "No startup items found in this category",
+    "total": "Total",
+    "enabled": "Enabled"
   }
 }

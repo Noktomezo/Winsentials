@@ -226,6 +226,28 @@ impl RenderOnce for Titlebar {
                             .current(true),
                     )
             }
+            AppRoute::Startup => {
+                let on_nav_tools = self.on_navigate.clone();
+                let mut tools_item = BreadcrumbItem::new("tools", rust_i18n::t!("nav.tools"))
+                    .hovered(hovered_breadcrumb == Some("tools"))
+                    .on_click(move |window, cx| {
+                        if let Some(ref h) = on_nav_tools {
+                            h(AppRoute::Tools, window, cx);
+                        }
+                    });
+                if let Some(handler) = on_hover_breadcrumb {
+                    tools_item = tools_item.on_hover(move |hovered, window, cx| {
+                        handler("tools", hovered, window, cx);
+                    });
+                }
+
+                Breadcrumbs::new(format!("titlebar_{}_breadcrumbs", current_route.id()))
+                    .item(tools_item)
+                    .item(
+                        BreadcrumbItem::new(current_route.id(), current_route.title())
+                            .current(true),
+                    )
+            }
             _ => Breadcrumbs::new(current_route.id())
                 .item(BreadcrumbItem::new("current", current_route.title()).current(true)),
         };

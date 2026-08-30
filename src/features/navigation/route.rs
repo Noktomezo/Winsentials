@@ -12,6 +12,7 @@ pub enum AppRoute {
     Interface,
     Input,
     Tools,
+    Startup,
     Settings,
 }
 
@@ -30,6 +31,7 @@ impl AppRoute {
             Self::Interface => rust_i18n::t!("nav.interface").to_string(),
             Self::Input => rust_i18n::t!("nav.input").to_string(),
             Self::Tools => rust_i18n::t!("nav.tools").to_string(),
+            Self::Startup => rust_i18n::t!("startup.title").to_string(),
             Self::Settings => rust_i18n::t!("nav.settings").to_string(),
         }
     }
@@ -48,6 +50,7 @@ impl AppRoute {
             Self::Interface => "Interface".to_string(),
             Self::Input => "Input".to_string(),
             Self::Tools => "Tools".to_string(),
+            Self::Startup => "Startup".to_string(),
             Self::Settings => "Settings".to_string(),
         }
     }
@@ -62,6 +65,7 @@ impl AppRoute {
             | Self::GpuDetail(_) => {
                 format!("Dashboard > {}", self.english_name())
             }
+            Self::Startup => "Tools > Startup".to_string(),
             _ => self.english_name(),
         }
     }
@@ -80,6 +84,7 @@ impl AppRoute {
             Self::Interface => rust_i18n::t!("nav.interface_desc").to_string(),
             Self::Input => rust_i18n::t!("nav.input_desc").to_string(),
             Self::Tools => rust_i18n::t!("nav.tools_desc").to_string(),
+            Self::Startup => rust_i18n::t!("startup.desc").to_string(),
             Self::Settings => rust_i18n::t!("nav.settings_desc").to_string(),
         }
     }
@@ -98,6 +103,7 @@ impl AppRoute {
             Self::Interface => "icons/layout-grid.svg",
             Self::Input => "icons/mouse.svg",
             Self::Tools => "icons/wrench.svg",
+            Self::Startup => "icons/rocket.svg",
             Self::Settings => "icons/settings.svg",
         }
     }
@@ -116,6 +122,7 @@ impl AppRoute {
             Self::Interface => "nav_interface",
             Self::Input => "nav_input",
             Self::Tools => "nav_tools",
+            Self::Startup => "nav_startup",
             Self::Settings => "nav_settings",
         }
     }
@@ -148,6 +155,7 @@ mod tests {
         assert_eq!(AppRoute::Interface.english_name(), "Interface");
         assert_eq!(AppRoute::Input.english_name(), "Input");
         assert_eq!(AppRoute::Tools.english_name(), "Tools");
+        assert_eq!(AppRoute::Startup.english_name(), "Startup");
         assert_eq!(AppRoute::Settings.english_name(), "Settings");
     }
 
@@ -165,5 +173,6 @@ mod tests {
         assert_eq!(AppRoute::ContextMenu.breadcrumb_english(), "Context Menu");
         assert_eq!(AppRoute::Input.breadcrumb_english(), "Input");
         assert_eq!(AppRoute::Tools.breadcrumb_english(), "Tools");
+        assert_eq!(AppRoute::Startup.breadcrumb_english(), "Tools > Startup");
     }
 }

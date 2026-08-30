@@ -10,6 +10,7 @@ pub mod network_page;
 pub mod page_header;
 pub mod ram_page;
 pub mod settings_page;
+pub mod startup_page;
 pub mod tools_page;
 
 use std::collections::HashMap;
@@ -40,6 +41,8 @@ pub use page_header::PageHeader;
 pub use ram_page::RamPage;
 #[allow(unused_imports)]
 pub use settings_page::SettingsPage;
+#[allow(unused_imports)]
+pub use startup_page::StartupPage;
 #[allow(unused_imports)]
 pub use tools_page::ToolsPage;
 
@@ -76,6 +79,9 @@ pub fn render_route(
     autostart: bool,
     autostart_to_tray: bool,
     discord_rpc: crate::features::discord_rpc::DiscordRpcActivity,
+    startup_entries: &[crate::entities::startup::StartupEntry],
+    startup_filter: Option<crate::entities::startup::StartupSource>,
+    startup_open_menu_id: Option<&str>,
     on_navigate: impl Fn(AppRoute, &mut Window, &mut App) + Send + Sync + 'static,
     on_hover_telemetry_card: impl Fn(SharedString, bool, &mut Window, &mut App) + Send + Sync + 'static,
     on_toggle_tweak: impl Fn(&'static str, bool, &mut Window, &mut App) + 'static,
@@ -94,10 +100,25 @@ pub fn render_route(
     on_hover_option: impl Fn(&'static str, &'static str, &bool, &mut Window, &mut App) + 'static,
     on_close_dropdowns: impl Fn(&mut Window, &mut App) + 'static,
     on_hover_tooltip: impl Fn(Option<TooltipState>, &mut Window, &mut App) + 'static,
+    on_toggle_startup: impl Fn(&crate::entities::startup::StartupEntry, &mut Window, &mut App) + 'static,
+    on_delete_startup: impl Fn(&crate::entities::startup::StartupEntry, &mut Window, &mut App) + 'static,
+    on_open_startup_folder: impl Fn(&crate::entities::startup::StartupEntry, &mut Window, &mut App)
+    + 'static,
+    on_open_startup_source: impl Fn(&crate::entities::startup::StartupEntry, &mut Window, &mut App)
+    + 'static,
+    on_copy_startup_path: impl Fn(&crate::entities::startup::StartupEntry, &mut Window, &mut App)
+    + 'static,
+    on_toggle_startup_menu: impl Fn(Option<String>, &mut Window, &mut App) + 'static,
+    on_select_startup_filter: impl Fn(
+        Option<crate::entities::startup::StartupSource>,
+        &mut Window,
+        &mut App,
+    ) + 'static,
 ) -> AnyElement {
     let on_nav_arc = Arc::new(on_navigate);
     let on_nav_dash = on_nav_arc.clone();
-    let on_nav_cpu = on_nav_arc;
+    let on_nav_cpu = on_nav_arc.clone();
+    let on_nav_tools = on_nav_arc;
 
     let on_hover_card_arc = Arc::new(on_hover_telemetry_card);
     let on_hover_card_dash = on_hover_card_arc.clone();
@@ -132,7 +153,8 @@ pub fn render_route(
     let on_hover_tt_ctx = on_hover_tooltip_arc.clone();
     let on_hover_tt_exp = on_hover_tooltip_arc.clone();
     let on_hover_tt_iface = on_hover_tooltip_arc.clone();
-    let on_hover_tt_input = on_hover_tooltip_arc;
+    let on_hover_tt_input = on_hover_tooltip_arc.clone();
+    let on_hover_tt_startup = on_hover_tooltip_arc;
 
     let page_element = match route {
         AppRoute::Dashboard => {
@@ -274,7 +296,27 @@ pub fn render_route(
             .on_hover_card(move |id, val, window, cx| {
                 on_hover_card_tools(id, val, window, cx);
             })
+            .on_navigate(move |r, window, cx| {
+                on_nav_tools(r, window, cx);
+            })
             .into_any_element(),
+        AppRoute::Startup => StartupPage::new(
+            startup_entries.to_vec(),
+            startup_filter,
+            startup_open_menu_id.map(ToString::to_string),
+            sidebar_expanded,
+        )
+        .on_toggle(on_toggle_startup)
+        .on_delete(on_delete_startup)
+        .on_open_folder(on_open_startup_folder)
+        .on_open_source(on_open_startup_source)
+        .on_copy_path(on_copy_startup_path)
+        .on_hover_tooltip(move |tt, window, cx| {
+            on_hover_tt_startup(tt, window, cx);
+        })
+        .on_toggle_menu(on_toggle_startup_menu)
+        .on_select_filter(on_select_startup_filter)
+        .into_any_element(),
         AppRoute::Settings => SettingsPage::new(
             current_locale,
             minimize_to_tray,

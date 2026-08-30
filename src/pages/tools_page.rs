@@ -149,11 +149,13 @@ fn render_tool_chevron(
         )
 }
 
+#[allow(clippy::too_many_lines)]
 fn render_tool_card(
     tool: ToolItem,
     theme: &Theme,
     is_hovered: bool,
     on_hover: Option<ToolHoverHandler>,
+    on_nav: Option<ToolNavigateHandler>,
 ) -> AnyElement {
     let title = rust_i18n::t!(tool.title_key).to_string();
     let desc = rust_i18n::t!(tool.desc_key).to_string();
@@ -195,8 +197,14 @@ fn render_tool_card(
                 h(id_str.clone(), hovered, window, cx);
             }
         })
-        .on_click(move |_ev, _window, _cx| {
-            launch_system_tool(tool.command);
+        .on_click(move |_ev, window, cx| {
+            if tool.id == "startup" {
+                if let Some(ref nav) = on_nav {
+                    nav(AppRoute::Startup, window, cx);
+                }
+            } else {
+                launch_system_tool(tool.command);
+            }
         })
         .with_spring(
             ElementId::Name(format!("{card_id}_bg_spring").into()),
@@ -260,11 +268,14 @@ fn render_tool_card(
         .into_any_element()
 }
 
+pub type ToolNavigateHandler = Arc<dyn Fn(AppRoute, &mut Window, &mut App) + Send + Sync + 'static>;
+
 #[derive(IntoElement)]
 pub struct ToolsPage {
     hovered_card: Option<SharedString>,
     sidebar_expanded: bool,
     on_hover_card: Option<ToolHoverHandler>,
+    on_navigate: Option<ToolNavigateHandler>,
 }
 
 impl ToolsPage {
@@ -274,6 +285,7 @@ impl ToolsPage {
             hovered_card,
             sidebar_expanded,
             on_hover_card: None,
+            on_navigate: None,
         }
     }
 
@@ -285,6 +297,15 @@ impl ToolsPage {
         self.on_hover_card = Some(Arc::new(handler));
         self
     }
+
+    #[must_use]
+    pub fn on_navigate(
+        mut self,
+        handler: impl Fn(AppRoute, &mut Window, &mut App) + Send + Sync + 'static,
+    ) -> Self {
+        self.on_navigate = Some(Arc::new(handler));
+        self
+    }
 }
 
 impl RenderOnce for ToolsPage {
@@ -292,6 +313,7 @@ impl RenderOnce for ToolsPage {
         let theme = Theme::get(cx);
         let route = AppRoute::Tools;
         let on_hover = self.on_hover_card;
+        let on_nav = self.on_navigate;
         let hovered_card = self.hovered_card;
 
         let sidebar_w = if self.sidebar_expanded {
@@ -306,7 +328,8 @@ impl RenderOnce for ToolsPage {
             .map(|tool| {
                 let tool = *tool;
                 let is_hovered = hovered_card.as_ref().is_some_and(|id| id == tool.id);
-                let elem = render_tool_card(tool, &theme, is_hovered, on_hover.clone());
+                let elem =
+                    render_tool_card(tool, &theme, is_hovered, on_hover.clone(), on_nav.clone());
                 (tool.id, elem)
             })
             .collect();
