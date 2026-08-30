@@ -1,4 +1,4 @@
-; Winsentials NSIS Installer Script
+﻿; Winsentials NSIS Installer Script
 ; Modern UI 2 with High-DPI, Solid LZMA Compression, and 64-bit Architecture
 
 !ifndef VERSION
@@ -56,7 +56,7 @@ InstallDirRegKey HKLM "Software\Winsentials" "InstallDir"
 
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW onPageShow
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Winsentials.exe"
-!define MUI_FINISHPAGE_RUN_TEXT "Запустить Winsentials"
+!define MUI_FINISHPAGE_RUN_TEXT "Р—Р°РїСѓСЃС‚РёС‚СЊ Winsentials"
 !insertmacro MUI_PAGE_FINISH
 
 ; Uninstaller Pages
@@ -76,25 +76,41 @@ InstallDirRegKey HKLM "Software\Winsentials" "InstallDir"
 !insertmacro MUI_LANGUAGE "Russian"
 !insertmacro MUI_LANGUAGE "English"
 
-; Dark Theme Painter Functions
+; Dark Theme Initialization
+Function .onInit
+    ; SetPreferredAppMode(2 = ForceDark) - uxtheme ordinal 135
+    System::Call 'uxtheme::#135(i 2) i.r0'
+FunctionEnd
+
+Function un.onInit
+    System::Call 'uxtheme::#135(i 2) i.r0'
+FunctionEnd
+
 Function onGUIInit
-    ; 1. Dark titlebar (DWMWA_USE_IMMERSIVE_DARK_MODE = 20)
+    ; 1. Dark titlebar (DWMWA_USE_IMMERSIVE_DARK_MODE = 20 on Win11, 19 on Win10)
     System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, *i 1, i 4)'
-    ; 2. Parent dialog background (bottom button bar)
-    SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
+    System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 19, *i 1, i 4)'
     
-    ; 3. Dark theme for buttons (IDs 1 = Next/Install, 2 = Cancel, 3 = Back)
+    ; 2. AllowDarkModeForWindow (uxtheme ordinal 133)
+    System::Call 'uxtheme::#133(p $HWNDPARENT, i 1)'
+    System::Call 'uxtheme::SetWindowTheme(p $HWNDPARENT, w "DarkMode_Explorer", w "")'
+    SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
+
+    ; 3. Dark theme for buttons
     GetDlgItem $1 $HWNDPARENT 1
     ${If} $1 != 0
-        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+        System::Call 'uxtheme::#133(p $1, i 1)'
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
     ${EndIf}
     GetDlgItem $1 $HWNDPARENT 2
     ${If} $1 != 0
-        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+        System::Call 'uxtheme::#133(p $1, i 1)'
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
     ${EndIf}
     GetDlgItem $1 $HWNDPARENT 3
     ${If} $1 != 0
-        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+        System::Call 'uxtheme::#133(p $1, i 1)'
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
     ${EndIf}
 
     ; 4. Hide 3D etched dividers on parent dialog
@@ -117,26 +133,31 @@ Function onGUIInit
 FunctionEnd
 
 Function onPageShow
-    ; 1. Dark titlebar
+    ; 1. Dark titlebar & window mode
     System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, *i 1, i 4)'
-    ; 2. Outer parent dialog (buttons area)
+    System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 19, *i 1, i 4)'
+    System::Call 'uxtheme::#133(p $HWNDPARENT, i 1)'
+    System::Call 'uxtheme::SetWindowTheme(p $HWNDPARENT, w "DarkMode_Explorer", w "")'
     SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
     
-    ; 3. Dark theme for buttons
+    ; 2. Dark theme for buttons
     GetDlgItem $1 $HWNDPARENT 1
     ${If} $1 != 0
-        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+        System::Call 'uxtheme::#133(p $1, i 1)'
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
     ${EndIf}
     GetDlgItem $1 $HWNDPARENT 2
     ${If} $1 != 0
-        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+        System::Call 'uxtheme::#133(p $1, i 1)'
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
     ${EndIf}
     GetDlgItem $1 $HWNDPARENT 3
     ${If} $1 != 0
-        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+        System::Call 'uxtheme::#133(p $1, i 1)'
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
     ${EndIf}
 
-    ; 4. Hide 3D etched dividers
+    ; 3. Hide 3D etched dividers
     GetDlgItem $1 $HWNDPARENT 1034
     ${If} $1 != 0
         ShowWindow $1 0
@@ -154,18 +175,20 @@ Function onPageShow
         ShowWindow $1 0
     ${EndIf}
     
-    ; 5. Branding text
+    ; 4. Branding text
     GetDlgItem $1 $HWNDPARENT 1028
     ${If} $1 != 0
         SetCtlColors $1 0x7E8C9A 0x0F151A
     ${EndIf}
 
-    ; 6. Inner dialog & all child controls
+    ; 5. Inner dialog & all child controls
     FindWindow $0 "#32770" "" $HWNDPARENT
     ${If} $0 != 0
+        System::Call 'uxtheme::#133(p $0, i 1)'
+        System::Call 'uxtheme::SetWindowTheme(p $0, w "DarkMode_Explorer", w "")'
         SetCtlColors $0 0xE9EEF1 0x0F151A
         
-        ; Hide inner etched divider lines if any
+        ; Hide inner etched divider lines
         GetDlgItem $1 $0 1034
         ${If} $1 != 0
             ShowWindow $1 0
@@ -186,24 +209,26 @@ Function onPageShow
         ; Browse button on Directory page (ID 1001)
         GetDlgItem $1 $0 1001
         ${If} $1 != 0
-            System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+            System::Call 'uxtheme::#133(p $1, i 1)'
+            System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
         ${EndIf}
 
         StrCpy $2 1000
         ${While} $2 <= 1210
             GetDlgItem $1 $0 $2
             ${If} $1 != 0
+                System::Call 'uxtheme::#133(p $1, i 1)'
+                System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
+                
                 ${If} $2 == 1019
                     ; Edit box for path: bg #1A2228, text #E9EEF1
                     SetCtlColors $1 0xE9EEF1 0x1A2228
-                    System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
                 ${ElseIf} $2 == 1021
                     ; Groupbox border - hide 3D rectangle
                     ShowWindow $1 0
                 ${ElseIf} $2 >= 1200
                     ; Finish page checkbox (1203) / links
                     SetCtlColors $1 0xE9EEF1 0x0F151A
-                    System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
                 ${ElseIf} $2 != 1001
                     SetCtlColors $1 0xE9EEF1 0x0F151A
                 ${EndIf}
@@ -215,19 +240,25 @@ FunctionEnd
 
 Function un.customUnGUIInit
     System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, *i 1, i 4)'
+    System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 19, *i 1, i 4)'
+    System::Call 'uxtheme::#133(p $HWNDPARENT, i 1)'
+    System::Call 'uxtheme::SetWindowTheme(p $HWNDPARENT, w "DarkMode_Explorer", w "")'
     SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
     
     GetDlgItem $1 $HWNDPARENT 1
     ${If} $1 != 0
-        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+        System::Call 'uxtheme::#133(p $1, i 1)'
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
     ${EndIf}
     GetDlgItem $1 $HWNDPARENT 2
     ${If} $1 != 0
-        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+        System::Call 'uxtheme::#133(p $1, i 1)'
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
     ${EndIf}
     GetDlgItem $1 $HWNDPARENT 3
     ${If} $1 != 0
-        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+        System::Call 'uxtheme::#133(p $1, i 1)'
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
     ${EndIf}
 
     GetDlgItem $1 $HWNDPARENT 1034
@@ -250,19 +281,25 @@ FunctionEnd
 
 Function un.unPageShow
     System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, *i 1, i 4)'
+    System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 19, *i 1, i 4)'
+    System::Call 'uxtheme::#133(p $HWNDPARENT, i 1)'
+    System::Call 'uxtheme::SetWindowTheme(p $HWNDPARENT, w "DarkMode_Explorer", w "")'
     SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
     
     GetDlgItem $1 $HWNDPARENT 1
     ${If} $1 != 0
-        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+        System::Call 'uxtheme::#133(p $1, i 1)'
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
     ${EndIf}
     GetDlgItem $1 $HWNDPARENT 2
     ${If} $1 != 0
-        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+        System::Call 'uxtheme::#133(p $1, i 1)'
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
     ${EndIf}
     GetDlgItem $1 $HWNDPARENT 3
     ${If} $1 != 0
-        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+        System::Call 'uxtheme::#133(p $1, i 1)'
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
     ${EndIf}
 
     GetDlgItem $1 $HWNDPARENT 1034
@@ -289,6 +326,8 @@ Function un.unPageShow
 
     FindWindow $0 "#32770" "" $HWNDPARENT
     ${If} $0 != 0
+        System::Call 'uxtheme::#133(p $0, i 1)'
+        System::Call 'uxtheme::SetWindowTheme(p $0, w "DarkMode_Explorer", w "")'
         SetCtlColors $0 0xE9EEF1 0x0F151A
         
         GetDlgItem $1 $0 1034
@@ -312,14 +351,15 @@ Function un.unPageShow
         ${While} $2 <= 1210
             GetDlgItem $1 $0 $2
             ${If} $1 != 0
+                System::Call 'uxtheme::#133(p $1, i 1)'
+                System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
+                
                 ${If} $2 == 1019
                     SetCtlColors $1 0xE9EEF1 0x1A2228
-                    System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
                 ${ElseIf} $2 == 1021
                     ShowWindow $1 0
                 ${ElseIf} $2 >= 1200
                     SetCtlColors $1 0xE9EEF1 0x0F151A
-                    System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
                 ${ElseIf} $2 != 1001
                     SetCtlColors $1 0xE9EEF1 0x0F151A
                 ${EndIf}
@@ -334,7 +374,7 @@ Section "Winsentials" SecMain
     SetOutPath "$INSTDIR"
 
     ; Close running instances if any
-    DetailPrint "Проверка и завершение запущенных процессов Winsentials..."
+    DetailPrint "РџСЂРѕРІРµСЂРєР° Рё Р·Р°РІРµСЂС€РµРЅРёРµ Р·Р°РїСѓС‰РµРЅРЅС‹С… РїСЂРѕС†РµСЃСЃРѕРІ Winsentials..."
     nsExec::Exec 'taskkill /F /IM Winsentials.exe /T'
 
     File "/oname=Winsentials.exe" "${BINARY_PATH}"
@@ -345,7 +385,7 @@ Section "Winsentials" SecMain
     ; Create Shortcuts
     CreateDirectory "$SMPROGRAMS\Winsentials"
     CreateShortcut "$SMPROGRAMS\Winsentials\Winsentials.lnk" "$INSTDIR\Winsentials.exe" "" "$INSTDIR\Winsentials.exe" 0
-    CreateShortcut "$SMPROGRAMS\Winsentials\Удалить Winsentials.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
+    CreateShortcut "$SMPROGRAMS\Winsentials\РЈРґР°Р»РёС‚СЊ Winsentials.lnk" "$INSTDIR\Uninstall.exe" "" "$INSTDIR\Uninstall.exe" 0
     CreateShortcut "$DESKTOP\Winsentials.lnk" "$INSTDIR\Winsentials.exe" "" "$INSTDIR\Winsentials.exe" 0
 
     ; Write Add/Remove Programs Registry Entries
@@ -366,12 +406,12 @@ Section "Winsentials" SecMain
 SectionEnd
 
 Section "Uninstall"
-    DetailPrint "Завершение процессов Winsentials..."
+    DetailPrint "Р—Р°РІРµСЂС€РµРЅРёРµ РїСЂРѕС†РµСЃСЃРѕРІ Winsentials..."
     nsExec::Exec 'taskkill /F /IM Winsentials.exe /T'
 
     Delete "$DESKTOP\Winsentials.lnk"
     Delete "$SMPROGRAMS\Winsentials\Winsentials.lnk"
-    Delete "$SMPROGRAMS\Winsentials\Удалить Winsentials.lnk"
+    Delete "$SMPROGRAMS\Winsentials\РЈРґР°Р»РёС‚СЊ Winsentials.lnk"
     RMDir "$SMPROGRAMS\Winsentials"
 
     Delete "$INSTDIR\Winsentials.exe"
