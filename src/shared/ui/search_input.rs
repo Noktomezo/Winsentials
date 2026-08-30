@@ -256,6 +256,25 @@ impl RenderOnce for SearchInput {
                         cx.write_to_clipboard(gpui::ClipboardItem::new_string(sel_text));
                     }
                 }
+            } else if is_ctrl && (key == "x" || key == "X" || key == "ч" || key == "Ч") {
+                if let Some((s, e)) = current_sel {
+                    let chars: Vec<char> = current_val.chars().collect();
+                    let start = s.min(chars.len());
+                    let end = e.min(chars.len()).max(start);
+                    let sel_text: String = chars[start..end].iter().collect();
+                    if !sel_text.is_empty() {
+                        cx.write_to_clipboard(gpui::ClipboardItem::new_string(sel_text));
+                        let mut res = String::new();
+                        res.extend(&chars[..start]);
+                        res.extend(&chars[end..]);
+                        if let Some(ref h) = on_sel_cb {
+                            h(None, window, cx);
+                        }
+                        if let Some(ref h) = on_change_key {
+                            h(res, window, cx);
+                        }
+                    }
+                }
             } else if is_ctrl && (key == "v" || key == "V" || key == "м" || key == "М") {
                 if let Some(clip) = cx.read_from_clipboard() {
                     if let Some(text) = clip.text() {
