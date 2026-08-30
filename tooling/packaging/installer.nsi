@@ -91,9 +91,7 @@ Function onGUIInit
     System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, *i 1, i 4)'
     System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 19, *i 1, i 4)'
     
-    ; 2. AllowDarkModeForWindow (uxtheme ordinal 133)
-    System::Call 'uxtheme::#133(p $HWNDPARENT, i 1)'
-    System::Call 'uxtheme::SetWindowTheme(p $HWNDPARENT, w "DarkMode_Explorer", w "")'
+    ; 2. Background color
     SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
 
     ; 3. Dark theme for buttons
@@ -136,8 +134,6 @@ Function onPageShow
     ; 1. Dark titlebar & window mode
     System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, *i 1, i 4)'
     System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 19, *i 1, i 4)'
-    System::Call 'uxtheme::#133(p $HWNDPARENT, i 1)'
-    System::Call 'uxtheme::SetWindowTheme(p $HWNDPARENT, w "DarkMode_Explorer", w "")'
     SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
     
     ; 2. Dark theme for buttons
@@ -184,8 +180,6 @@ Function onPageShow
     ; 5. Inner dialog & all child controls
     FindWindow $0 "#32770" "" $HWNDPARENT
     ${If} $0 != 0
-        System::Call 'uxtheme::#133(p $0, i 1)'
-        System::Call 'uxtheme::SetWindowTheme(p $0, w "DarkMode_Explorer", w "")'
         SetCtlColors $0 0xE9EEF1 0x0F151A
         
         ; Hide inner etched divider lines
@@ -241,8 +235,6 @@ FunctionEnd
 Function un.customUnGUIInit
     System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, *i 1, i 4)'
     System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 19, *i 1, i 4)'
-    System::Call 'uxtheme::#133(p $HWNDPARENT, i 1)'
-    System::Call 'uxtheme::SetWindowTheme(p $HWNDPARENT, w "DarkMode_Explorer", w "")'
     SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
     
     GetDlgItem $1 $HWNDPARENT 1
@@ -282,8 +274,6 @@ FunctionEnd
 Function un.unPageShow
     System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, *i 1, i 4)'
     System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 19, *i 1, i 4)'
-    System::Call 'uxtheme::#133(p $HWNDPARENT, i 1)'
-    System::Call 'uxtheme::SetWindowTheme(p $HWNDPARENT, w "DarkMode_Explorer", w "")'
     SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
     
     GetDlgItem $1 $HWNDPARENT 1
@@ -326,8 +316,6 @@ Function un.unPageShow
 
     FindWindow $0 "#32770" "" $HWNDPARENT
     ${If} $0 != 0
-        System::Call 'uxtheme::#133(p $0, i 1)'
-        System::Call 'uxtheme::SetWindowTheme(p $0, w "DarkMode_Explorer", w "")'
         SetCtlColors $0 0xE9EEF1 0x0F151A
         
         GetDlgItem $1 $0 1034
