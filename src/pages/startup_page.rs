@@ -587,12 +587,12 @@ impl RenderOnce for StartupPage {
             toggle_menu: self.on_toggle_menu,
         };
 
-        let card_elements: Vec<(&'static str, AnyElement)> = filtered_entries
+        let card_elements: Vec<(String, AnyElement)> = filtered_entries
             .iter()
             .map(|entry| {
                 let is_menu_open = self.open_menu_id.as_ref().is_some_and(|id| id == &entry.id);
                 let elem = render_startup_card(entry, &theme, is_menu_open, &handlers);
-                ("startup_card", elem)
+                (entry.id.clone(), elem)
             })
             .collect();
 
@@ -651,6 +651,29 @@ impl RenderOnce for StartupPage {
                     )),
             );
 
+        let content_el = if card_elements.is_empty() {
+            div()
+                .flex()
+                .items_center()
+                .justify_center()
+                .h(px(160.0))
+                .w_full()
+                .text_sm()
+                .text_color(theme.text_muted)
+                .child(rust_i18n::t!("startup.empty").to_string())
+                .into_any_element()
+        } else {
+            render_animated_grid(
+                "startup_grid",
+                available_w,
+                px(360.0),
+                px(68.0),
+                px(12.0),
+                card_elements,
+            )
+            .into_any_element()
+        };
+
         div()
             .flex()
             .flex_col()
@@ -659,13 +682,6 @@ impl RenderOnce for StartupPage {
             .w_full()
             .child(PageHeader::new(route.title(), route.description()))
             .child(filter_bar)
-            .child(render_animated_grid(
-                "startup_grid",
-                available_w,
-                px(360.0),
-                px(68.0),
-                px(12.0),
-                card_elements,
-            ))
+            .child(content_el)
     }
 }

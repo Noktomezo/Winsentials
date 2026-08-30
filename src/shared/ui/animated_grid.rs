@@ -1,6 +1,6 @@
 use gpui::{
     AnimationExt, AnyElement, ElementId, InteractiveElement, IntoElement, ParentElement, Pixels,
-    Point, SpringAnimation, SpringConfig, Styled, div, point, px,
+    Point, SharedString, SpringAnimation, SpringConfig, Styled, div, point, px,
 };
 
 pub const GRID_LAYOUT_SPRING: SpringConfig = SpringConfig::new(260.0, 26.0, 1.0);
@@ -47,14 +47,15 @@ pub fn compute_responsive_grid_layout(
 }
 
 /// Renders items in an animated flow grid with spring physics for positional transitions.
-pub fn render_animated_grid(
-    grid_id: &'static str,
+pub fn render_animated_grid<I: Into<SharedString>>(
+    grid_id: impl Into<SharedString>,
     available_width: Pixels,
     min_item_width: Pixels,
     item_height: Pixels,
     gap: Pixels,
-    items: Vec<(&'static str, AnyElement)>,
+    items: Vec<(I, AnyElement)>,
 ) -> impl IntoElement {
+    let grid_id_str = grid_id.into();
     let (positions, item_width, total_height) = compute_responsive_grid_layout(
         available_width,
         min_item_width,
@@ -64,24 +65,25 @@ pub fn render_animated_grid(
     );
 
     let mut grid_el = div()
-        .id(ElementId::Name(grid_id.into()))
+        .id(ElementId::Name(grid_id_str.clone()))
         .relative()
         .w_full()
         .h(total_height)
         .with_spring(
-            ElementId::Name(format!("{grid_id}_spring_h").into()),
+            ElementId::Name(format!("{grid_id_str}_spring_h").into()),
             SpringAnimation::new(GRID_LAYOUT_SPRING).to(f32::from(total_height)),
             |grid, h| grid.h(px(h)),
         );
 
     for (i, (card_id, card_el)) in items.into_iter().enumerate() {
+        let card_id_str = card_id.into();
         let pos = positions.get(i).copied().unwrap_or(point(px(0.0), px(0.0)));
         grid_el = grid_el.child(
             div()
                 .absolute()
                 .left(pos.x)
                 .with_spring(
-                    ElementId::Name(format!("{card_id}_grid_x").into()),
+                    ElementId::Name(format!("{card_id_str}_grid_x").into()),
                     SpringAnimation::new(GRID_LAYOUT_SPRING).to(f32::from(pos.x)),
                     |card, x| card.left(px(x)),
                 )
@@ -89,7 +91,7 @@ pub fn render_animated_grid(
                     div()
                         .top(pos.y)
                         .with_spring(
-                            ElementId::Name(format!("{card_id}_grid_y").into()),
+                            ElementId::Name(format!("{card_id_str}_grid_y").into()),
                             SpringAnimation::new(GRID_LAYOUT_SPRING).to(f32::from(pos.y)),
                             |card, y| card.top(px(y)),
                         )
@@ -98,7 +100,7 @@ pub fn render_animated_grid(
                                 .w(item_width)
                                 .h(item_height)
                                 .with_spring(
-                                    ElementId::Name(format!("{card_id}_grid_w").into()),
+                                    ElementId::Name(format!("{card_id_str}_grid_w").into()),
                                     SpringAnimation::new(GRID_LAYOUT_SPRING)
                                         .to(f32::from(item_width)),
                                     |card, w| card.w(px(w)),
