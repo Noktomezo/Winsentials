@@ -224,17 +224,47 @@ pub fn get_file_description(path: &Path) -> Option<String> {
     get_file_metadata(path).1
 }
 
-/// Checks if a string looks like a technical GUID or UUID (e.g. `{8F0D756C-...}` or pure hex).
-fn is_guid_or_hex(s: &str) -> bool {
-    let trimmed = s.trim_matches(|c| c == '{' || c == '}');
-    if trimmed.len() >= 32
-        && trimmed
-            .chars()
-            .all(|c| c.is_ascii_hexdigit() || c == '-' || c == '_')
-    {
-        return true;
+/// Checks if a string looks like a technical GUID, UUID or hex hash (e.g. `308046B0AF4A39CB`, `B55B6E519228D8CADAE7F34C8F656C40`).
+fn is_hex_or_hash_token(token: &str) -> bool {
+    let clean = token
+        .trim_matches(|c| c == '{' || c == '}' || c == '-' || c == '_' || c == '(' || c == ')');
+    if clean.len() >= 8 && clean.chars().all(|c| c.is_ascii_hexdigit() || c == '-') {
+        clean.chars().any(|c| c.is_ascii_digit())
+    } else {
+        false
     }
-    false
+}
+
+/// Splits camelCase or `PascalCase` words into space-separated words.
+fn split_pascal_case_word(word: &str) -> String {
+    let upper_count = word.chars().filter(|c| c.is_uppercase()).count();
+    if word.len() < 12
+        || upper_count < 3
+        || word.chars().all(|c| c.is_uppercase() || !c.is_alphabetic())
+        || word.chars().all(|c| c.is_lowercase() || !c.is_alphabetic())
+    {
+        return word.to_string();
+    }
+
+    let mut result = String::new();
+    let chars: Vec<char> = word.chars().collect();
+    for i in 0..chars.len() {
+        let curr = chars[i];
+        if i > 0 {
+            let prev = chars[i - 1];
+            let next = chars.get(i + 1).copied();
+
+            if (prev.is_lowercase() && curr.is_uppercase())
+                || (prev.is_uppercase()
+                    && curr.is_uppercase()
+                    && next.is_some_and(char::is_lowercase))
+            {
+                result.push(' ');
+            }
+        }
+        result.push(curr);
+    }
+    result
 }
 
 /// Strips Windows GUIDs and SID patterns from names.
@@ -289,7 +319,7 @@ pub fn clean_display_name(raw_name: &str, target_exe: Option<&Path>) -> String {
         || trimmed.contains('{')
         || trimmed.contains("-S-1-")
         || (trimmed.contains('.') && !trimmed.contains(' '))
-        || is_guid_or_hex(trimmed);
+        || is_hex_or_hash_token(trimmed);
 
     if let Some(path) = target_exe {
         if let Some(desc) = get_file_description(path) {
@@ -351,15 +381,29 @@ pub fn clean_display_name(raw_name: &str, target_exe: Option<&Path>) -> String {
         candidate = candidate.replace('_', " ");
     }
 
-    // 6. Clean multiple spaces
+    // 6. Clean multiple spaces, filter out hex hash tokens, and split PascalCase words
     let mut words = Vec::new();
     for w in candidate.split_whitespace() {
-        words.push(w);
+        if is_hex_or_hash_token(w) {
+            continue;
+        }
+        let split_w = split_pascal_case_word(w);
+        for sub_w in split_w.split_whitespace() {
+            words.push(sub_w.to_string());
+        }
     }
+
     let final_name = words.join(" ");
 
     if final_name.is_empty() {
-        trimmed.to_string()
+        if let Some(path) = target_exe {
+            path.file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or(trimmed)
+                .to_string()
+        } else {
+            trimmed.to_string()
+        }
     } else {
         final_name
     }
@@ -408,7 +452,7 @@ mod tests {
                 "MicrosoftEdgeUpdateTaskMachine{8F0D756C-B2D1-4E6D-967E-D1E8F2312674}",
                 None
             ),
-            "MicrosoftEdgeUpdateTaskMachine"
+            "Microsoft Edge Update Task Machine"
         );
     }
 
@@ -417,6 +461,29 @@ mod tests {
         assert_eq!(
             clean_display_name("User_Feed_Synchronization", None),
             "User Feed Synchronization"
+        );
+    }
+
+    #[test]
+    fn test_clean_firefox_hashes() {
+        assert_eq!(
+            clean_display_name("Firefox Background Update 308046B0AF4A39CB", None),
+            "Firefox Background Update"
+        );
+        assert_eq!(
+            clean_display_name("Firefox Default Browser Agent 308046B0AF4A39CB", None),
+            "Firefox Default Browser Agent"
+        );
+    }
+
+    #[test]
+    fn test_clean_edge_autolaunch() {
+        assert_eq!(
+            clean_display_name(
+                "MicrosoftEdgeAutoLaunch_B55B6E519228D8CADAE7F34C8F656C40",
+                None
+            ),
+            "Microsoft Edge Auto Launch"
         );
     }
 }
