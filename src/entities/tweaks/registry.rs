@@ -1,6 +1,7 @@
 use crate::entities::tweaks::context_menu::{
     is_classic_context_menu_applied, is_create_symlink_applied, is_menu_show_delay_disabled,
-    set_classic_context_menu, set_create_symlink, set_menu_show_delay_disabled,
+    is_take_ownership_applied, set_classic_context_menu, set_create_symlink,
+    set_menu_show_delay_disabled, set_take_ownership,
 };
 use crate::entities::tweaks::explorer::{
     is_hide_gallery_applied, is_hide_home_applied, is_hide_linux_applied, is_hide_network_applied,
@@ -112,6 +113,19 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         restart: RestartRequirement::None,
         is_applied: is_create_symlink_applied,
         set_applied: set_create_symlink,
+    },
+    TweakDefinition {
+        id: "take_ownership",
+        category: TweakCategory::ContextMenu,
+        icon: "icons/shield-check.svg",
+        title_key: "tweaks.take_ownership_title",
+        desc_key: "tweaks.take_ownership_desc",
+        min_build: None,
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::None,
+        is_applied: is_take_ownership_applied,
+        set_applied: set_take_ownership,
     },
     TweakDefinition {
         id: "open_to_this_pc",
