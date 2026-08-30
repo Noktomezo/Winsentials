@@ -82,6 +82,38 @@ Function onGUIInit
     System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, *i 1, i 4)'
     ; 2. Parent dialog background (bottom button bar)
     SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
+    
+    ; 3. Dark theme for buttons (IDs 1 = Next/Install, 2 = Cancel, 3 = Back)
+    GetDlgItem $1 $HWNDPARENT 1
+    ${If} $1 != 0
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 2
+    ${If} $1 != 0
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 3
+    ${If} $1 != 0
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+    ${EndIf}
+
+    ; 4. Hide 3D etched dividers on parent dialog
+    GetDlgItem $1 $HWNDPARENT 1034
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 1035
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 1036
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 1037
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
 FunctionEnd
 
 Function onPageShow
@@ -90,25 +122,89 @@ Function onPageShow
     ; 2. Outer parent dialog (buttons area)
     SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
     
-    ; 3. Branding text
+    ; 3. Dark theme for buttons
+    GetDlgItem $1 $HWNDPARENT 1
+    ${If} $1 != 0
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 2
+    ${If} $1 != 0
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 3
+    ${If} $1 != 0
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+    ${EndIf}
+
+    ; 4. Hide 3D etched dividers
+    GetDlgItem $1 $HWNDPARENT 1034
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 1035
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 1036
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 1037
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
+    
+    ; 5. Branding text
     GetDlgItem $1 $HWNDPARENT 1028
     ${If} $1 != 0
         SetCtlColors $1 0x7E8C9A 0x0F151A
     ${EndIf}
 
-    ; 4. Inner dialog & all child controls
+    ; 6. Inner dialog & all child controls
     FindWindow $0 "#32770" "" $HWNDPARENT
     ${If} $0 != 0
         SetCtlColors $0 0xE9EEF1 0x0F151A
         
+        ; Hide inner etched divider lines if any
+        GetDlgItem $1 $0 1034
+        ${If} $1 != 0
+            ShowWindow $1 0
+        ${EndIf}
+        GetDlgItem $1 $0 1035
+        ${If} $1 != 0
+            ShowWindow $1 0
+        ${EndIf}
+        GetDlgItem $1 $0 1036
+        ${If} $1 != 0
+            ShowWindow $1 0
+        ${EndIf}
+        GetDlgItem $1 $0 1037
+        ${If} $1 != 0
+            ShowWindow $1 0
+        ${EndIf}
+
+        ; Browse button on Directory page (ID 1001)
+        GetDlgItem $1 $0 1001
+        ${If} $1 != 0
+            System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+        ${EndIf}
+
         StrCpy $2 1000
-        ${While} $2 <= 1040
+        ${While} $2 <= 1210
             GetDlgItem $1 $0 $2
             ${If} $1 != 0
                 ${If} $2 == 1019
                     ; Edit box for path: bg #1A2228, text #E9EEF1
                     SetCtlColors $1 0xE9EEF1 0x1A2228
-                ${Else}
+                    System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+                ${ElseIf} $2 == 1021
+                    ; Groupbox border - hide 3D rectangle
+                    ShowWindow $1 0
+                ${ElseIf} $2 >= 1200
+                    ; Finish page checkbox (1203) / links
+                    SetCtlColors $1 0xE9EEF1 0x0F151A
+                    System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+                ${ElseIf} $2 != 1001
                     SetCtlColors $1 0xE9EEF1 0x0F151A
                 ${EndIf}
             ${EndIf}
@@ -120,11 +216,71 @@ FunctionEnd
 Function un.customUnGUIInit
     System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, *i 1, i 4)'
     SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
+    
+    GetDlgItem $1 $HWNDPARENT 1
+    ${If} $1 != 0
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 2
+    ${If} $1 != 0
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 3
+    ${If} $1 != 0
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+    ${EndIf}
+
+    GetDlgItem $1 $HWNDPARENT 1034
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 1035
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 1036
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 1037
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
 FunctionEnd
 
 Function un.unPageShow
     System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 20, *i 1, i 4)'
     SetCtlColors $HWNDPARENT 0xE9EEF1 0x0F151A
+    
+    GetDlgItem $1 $HWNDPARENT 1
+    ${If} $1 != 0
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 2
+    ${If} $1 != 0
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 3
+    ${If} $1 != 0
+        System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+    ${EndIf}
+
+    GetDlgItem $1 $HWNDPARENT 1034
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 1035
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 1036
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
+    GetDlgItem $1 $HWNDPARENT 1037
+    ${If} $1 != 0
+        ShowWindow $1 0
+    ${EndIf}
     
     GetDlgItem $1 $HWNDPARENT 1028
     ${If} $1 != 0
@@ -135,13 +291,36 @@ Function un.unPageShow
     ${If} $0 != 0
         SetCtlColors $0 0xE9EEF1 0x0F151A
         
+        GetDlgItem $1 $0 1034
+        ${If} $1 != 0
+            ShowWindow $1 0
+        ${EndIf}
+        GetDlgItem $1 $0 1035
+        ${If} $1 != 0
+            ShowWindow $1 0
+        ${EndIf}
+        GetDlgItem $1 $0 1036
+        ${If} $1 != 0
+            ShowWindow $1 0
+        ${EndIf}
+        GetDlgItem $1 $0 1037
+        ${If} $1 != 0
+            ShowWindow $1 0
+        ${EndIf}
+
         StrCpy $2 1000
-        ${While} $2 <= 1040
+        ${While} $2 <= 1210
             GetDlgItem $1 $0 $2
             ${If} $1 != 0
                 ${If} $2 == 1019
                     SetCtlColors $1 0xE9EEF1 0x1A2228
-                ${Else}
+                    System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+                ${ElseIf} $2 == 1021
+                    ShowWindow $1 0
+                ${ElseIf} $2 >= 1200
+                    SetCtlColors $1 0xE9EEF1 0x0F151A
+                    System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w NULL)'
+                ${ElseIf} $2 != 1001
                     SetCtlColors $1 0xE9EEF1 0x0F151A
                 ${EndIf}
             ${EndIf}
