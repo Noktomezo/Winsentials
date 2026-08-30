@@ -1,6 +1,7 @@
 pub mod folder;
 pub mod icon;
 pub mod registry;
+pub mod search;
 pub mod services;
 pub mod tasks;
 pub mod types;

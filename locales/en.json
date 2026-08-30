@@ -312,6 +312,9 @@
     "empty": "No startup items found in this category",
     "total": "Total",
     "enabled": "Enabled",
-    "unknown_publisher": "Unknown publisher"
+    "disabled": "Disabled",
+    "unknown_publisher": "Unknown publisher",
+    "search_placeholder": "Search...",
+    "badge_tooltip": "%{total} items (%{enabled} enabled, %{disabled} disabled)"
   }
 }

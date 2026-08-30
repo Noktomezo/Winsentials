@@ -7535,6 +7535,7 @@ dependencies = [
  "rust-embed",
  "rust-i18n",
  "serde",
+ "strsim",
  "system_shutdown",
  "toml 1.1.4+spec-1.1.0",
  "tray-icon",

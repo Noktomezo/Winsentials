@@ -3,17 +3,19 @@ use std::time::Duration;
 
 use gpui::prelude::FluentBuilder;
 use gpui::{
-    Animation, AnimationExt, AnyElement, App, ElementId, FontWeight, InteractiveElement,
-    IntoElement, MouseButton, ParentElement, RenderOnce, StatefulInteractiveElement, Styled,
-    Window, deferred, div, ease_in_out, img, px,
+    Animation, AnimationExt, AnyElement, App, ElementId, FocusHandle, FontWeight,
+    InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce,
+    StatefulInteractiveElement, Styled, Window, deferred, div, ease_in_out, img, px,
 };
 
+use crate::entities::startup::search::matches_startup_query;
 use crate::entities::startup::{StartupEntry, StartupSource, StartupStatus};
 use crate::features::navigation::AppRoute;
 use crate::pages::page_header::PageHeader;
 use crate::shared::theme::Theme;
 use crate::shared::ui::TooltipState;
 use crate::shared::ui::icon::Icon;
+use crate::shared::ui::search_input::{SearchChangeHandler, SearchInput};
 use crate::shared::ui::smooth_scroll::SmoothVirtualList;
 use crate::shared::ui::switch::Switch;
 
@@ -39,7 +41,9 @@ struct StartupCardHandlers {
 pub struct StartupPage {
     entries: Vec<StartupEntry>,
     active_filter: Option<StartupSource>,
+    search_query: String,
     open_menu_id: Option<String>,
+    search_focus: Option<FocusHandle>,
     on_toggle: Option<StartupToggleHandler>,
     on_delete: Option<StartupDeleteHandler>,
     on_open_folder: Option<StartupActionHandler>,
@@ -48,6 +52,7 @@ pub struct StartupPage {
     on_hover_tooltip: Option<TooltipHoverHandler>,
     on_toggle_menu: Option<MenuToggleHandler>,
     on_select_filter: Option<FilterSelectHandler>,
+    on_change_search: Option<SearchChangeHandler>,
 }
 
 impl StartupPage {
@@ -55,12 +60,15 @@ impl StartupPage {
     pub fn new(
         entries: Vec<StartupEntry>,
         active_filter: Option<StartupSource>,
+        search_query: impl Into<String>,
         open_menu_id: Option<String>,
     ) -> Self {
         Self {
             entries,
             active_filter,
+            search_query: search_query.into(),
             open_menu_id,
+            search_focus: None,
             on_toggle: None,
             on_delete: None,
             on_open_folder: None,
@@ -69,7 +77,23 @@ impl StartupPage {
             on_hover_tooltip: None,
             on_toggle_menu: None,
             on_select_filter: None,
+            on_change_search: None,
         }
+    }
+
+    #[must_use]
+    pub fn search_focus(mut self, focus_handle: &FocusHandle) -> Self {
+        self.search_focus = Some(focus_handle.clone());
+        self
+    }
+
+    #[must_use]
+    pub fn on_change_search(
+        mut self,
+        handler: impl Fn(String, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_change_search = Some(Arc::new(handler));
+        self
     }
 
     #[must_use]
@@ -148,204 +172,291 @@ impl StartupPage {
 fn render_source_badge(
     entry: &StartupEntry,
     theme: &Theme,
-    tt_handler: Option<TooltipHoverHandler>,
+    on_hover_tt: Option<TooltipHoverHandler>,
 ) -> impl IntoElement {
-    let source = entry.source;
-    let label = source.label();
-    let col = source.color(theme);
+    let source_col = entry.source.color(theme);
+    let tooltip_label = match entry.source {
+        StartupSource::Registry => rust_i18n::t!("startup.source_registry").to_string(),
+        StartupSource::StartupFolder => rust_i18n::t!("startup.source_folder").to_string(),
+        StartupSource::Service => rust_i18n::t!("startup.source_service").to_string(),
+        StartupSource::ScheduledTask => rust_i18n::t!("startup.source_task").to_string(),
+    };
+
+    let tt_h = on_hover_tt.clone();
+    let tt_str = tooltip_label;
 
     div()
         .id(ElementId::Name(format!("{}_src_badge", entry.id).into()))
         .flex()
         .items_center()
-        .justify_center()
+        .gap(px(4.0))
+        .px(px(6.0))
+        .py(px(2.0))
+        .rounded(px(4.0))
+        .bg(source_col.opacity(0.12))
+        .border_1()
+        .border_color(source_col.opacity(0.3))
         .cursor_pointer()
+        .on_mouse_move(move |event, window, cx| {
+            if let Some(ref h) = tt_h {
+                h(
+                    Some(TooltipState {
+                        text: tt_str.clone().into(),
+                        cursor_pos: event.position,
+                    }),
+                    window,
+                    cx,
+                );
+            }
+        })
         .on_hover(move |hovered, window, cx| {
-            if let Some(ref h) = tt_handler {
-                if *hovered {
-                    let mouse_pos = window.mouse_position();
-                    h(
-                        Some(TooltipState {
-                            text: label.clone().into(),
-                            cursor_pos: mouse_pos,
-                        }),
-                        window,
-                        cx,
-                    );
-                } else {
+            if !hovered {
+                if let Some(ref h) = on_hover_tt {
                     h(None, window, cx);
                 }
             }
         })
-        .child(Icon::new(source.icon()).size(px(14.0)).color(col))
+        .child(
+            Icon::new(entry.source.icon())
+                .size(px(11.0))
+                .color(source_col),
+        )
+        .child(
+            div()
+                .text_size(px(10.5))
+                .font_weight(FontWeight::SEMIBOLD)
+                .text_color(source_col)
+                .child(entry.source.label()),
+        )
 }
 
 fn render_scope_badge(
     entry: &StartupEntry,
     theme: &Theme,
-    tt_handler: Option<TooltipHoverHandler>,
+    on_hover_tt: Option<TooltipHoverHandler>,
 ) -> impl IntoElement {
-    let scope = entry.scope;
-    let label = scope.label();
-    let col = theme.text_muted;
+    let tooltip_label = match entry.scope {
+        crate::entities::startup::StartupScope::CurrentUser => {
+            rust_i18n::t!("startup.scope_current_user").to_string()
+        }
+        crate::entities::startup::StartupScope::AllUsers => {
+            rust_i18n::t!("startup.scope_all_users").to_string()
+        }
+    };
+
+    let tt_h = on_hover_tt.clone();
+    let tt_str = tooltip_label;
 
     div()
         .id(ElementId::Name(format!("{}_scope_badge", entry.id).into()))
         .flex()
         .items_center()
         .justify_center()
+        .size(px(18.0))
+        .rounded(px(4.0))
+        .bg(theme.input_bg)
+        .border_1()
+        .border_color(theme.input_border)
         .cursor_pointer()
+        .on_mouse_move(move |event, window, cx| {
+            if let Some(ref h) = tt_h {
+                h(
+                    Some(TooltipState {
+                        text: tt_str.clone().into(),
+                        cursor_pos: event.position,
+                    }),
+                    window,
+                    cx,
+                );
+            }
+        })
         .on_hover(move |hovered, window, cx| {
-            if let Some(ref h) = tt_handler {
-                if *hovered {
-                    let mouse_pos = window.mouse_position();
-                    h(
-                        Some(TooltipState {
-                            text: label.clone().into(),
-                            cursor_pos: mouse_pos,
-                        }),
-                        window,
-                        cx,
-                    );
-                } else {
+            if !hovered {
+                if let Some(ref h) = on_hover_tt {
                     h(None, window, cx);
                 }
             }
         })
-        .child(Icon::new(scope.icon()).size(px(14.0)).color(col))
+        .child(
+            Icon::new(entry.scope.icon())
+                .size(px(11.0))
+                .color(theme.text_muted),
+        )
 }
 
-#[allow(clippy::too_many_arguments)]
-fn render_menu_row(
-    id: String,
-    icon: &'static str,
-    label: String,
-    is_danger: bool,
-    theme: &Theme,
-    entry: StartupEntry,
-    action: Option<StartupActionHandler>,
-    toggle_menu: Option<MenuToggleHandler>,
-) -> impl IntoElement {
-    let text_col = if is_danger {
-        theme.accent_red
-    } else {
-        theme.text_primary
-    };
-    let icon_col = if is_danger {
-        theme.accent_red
-    } else {
-        theme.text_muted
-    };
-    let hover_bg = if is_danger {
-        theme.accent_red.opacity(0.12)
-    } else {
-        theme.button_hover
-    };
-
-    div()
-        .id(ElementId::Name(id.into()))
-        .flex()
-        .items_center()
-        .gap(px(8.0))
-        .px(px(8.0))
-        .py(px(6.0))
-        .rounded_md()
-        .cursor_pointer()
-        .hover(move |s| s.bg(hover_bg))
-        .text_xs()
-        .text_color(text_col)
-        .on_click(move |_, window, cx| {
-            if let Some(ref h) = action {
-                h(&entry, window, cx);
-            }
-            if let Some(ref close) = toggle_menu {
-                close(None, window, cx);
-            }
-        })
-        .child(Icon::new(icon).size(px(14.0)).color(icon_col))
-        .child(label)
-}
-
+#[allow(clippy::too_many_lines)]
 fn render_action_menu(
     entry: &StartupEntry,
     theme: &Theme,
     handlers: &StartupCardHandlers,
 ) -> impl IntoElement {
+    let entry_folder = entry.clone();
+    let entry_src = entry.clone();
+    let entry_copy = entry.clone();
+    let entry_del = entry.clone();
+
+    let on_folder = handlers.open_folder.clone();
+    let on_source = handlers.open_source.clone();
+    let on_copy = handlers.copy_path.clone();
+    let on_del = handlers.delete.clone();
+    let close_fn = handlers.toggle_menu.clone();
+
+    let close_fn_click = close_fn.clone();
     let entry_id = entry.id.clone();
-    let toggle_close = handlers.toggle_menu.clone();
 
-    let folder_row = render_menu_row(
-        format!("{entry_id}_act_folder"),
-        "icons/folder.svg",
-        rust_i18n::t!("startup.action_open_folder").to_string(),
-        false,
-        theme,
-        entry.clone(),
-        handlers.open_folder.clone(),
-        handlers.toggle_menu.clone(),
-    );
-
-    let copy_row = render_menu_row(
-        format!("{entry_id}_act_copy"),
-        "icons/copy.svg",
-        rust_i18n::t!("startup.action_copy_path").to_string(),
-        false,
-        theme,
-        entry.clone(),
-        handlers.copy_path.clone(),
-        handlers.toggle_menu.clone(),
-    );
-
-    let src_row = render_menu_row(
-        format!("{entry_id}_act_src"),
-        "icons/external-link.svg",
-        rust_i18n::t!("startup.action_open_source").to_string(),
-        false,
-        theme,
-        entry.clone(),
-        handlers.open_source.clone(),
-        handlers.toggle_menu.clone(),
-    );
-
-    let del_row = render_menu_row(
-        format!("{entry_id}_act_del"),
-        "icons/trash-2.svg",
-        rust_i18n::t!("startup.action_delete").to_string(),
-        true,
-        theme,
-        entry.clone(),
-        handlers.delete.clone(),
-        handlers.toggle_menu.clone(),
-    );
-
-    let mut box_el = div()
-        .id(ElementId::Name(
-            format!("{entry_id}_action_menu_box").into(),
-        ))
+    let box_el = div()
+        .id(ElementId::Name(format!("{}_menu_popover", entry.id).into()))
         .absolute()
         .top_full()
         .right_0()
-        .w(px(220.0))
+        .mt(px(4.0))
+        .w(px(210.0))
+        .p(px(4.0))
+        .rounded_lg()
         .bg(theme.card_bg)
         .border_1()
         .border_color(theme.card_border)
-        .rounded_lg()
-        .shadow_lg()
-        .p(px(4.0))
-        .gap(px(2.0))
+        .shadow_md()
         .flex()
         .flex_col()
-        .child(folder_row)
-        .child(copy_row)
-        .child(src_row)
-        .child(div().h(px(1.0)).w_full().bg(theme.main_border).my(px(2.0)))
-        .child(del_row);
+        .gap(px(2.0))
+        .on_mouse_down_out(move |_, window, cx| {
+            if let Some(ref h) = close_fn {
+                h(None, window, cx);
+            }
+        })
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(8.0))
+                .px(px(8.0))
+                .py(px(6.0))
+                .rounded_md()
+                .hover(move |s| s.bg(theme.button_hover))
+                .cursor_pointer()
+                .on_mouse_down(MouseButton::Left, move |_, window, cx| {
+                    if let Some(ref h) = on_folder {
+                        h(&entry_folder, window, cx);
+                    }
+                    if let Some(ref h) = close_fn_click {
+                        h(None, window, cx);
+                    }
+                    cx.stop_propagation();
+                })
+                .child(
+                    Icon::new("icons/folder-open.svg")
+                        .size(px(14.0))
+                        .color(theme.text_muted),
+                )
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(theme.text_primary)
+                        .child(rust_i18n::t!("startup.action_open_folder").to_string()),
+                ),
+        );
 
-    if let Some(close_fn) = toggle_close {
-        box_el = box_el.on_mouse_down_out(move |_, window, cx| {
-            close_fn(None, window, cx);
-        });
-    }
+    let close_fn_src = handlers.toggle_menu.clone();
+    let box_el = box_el.child(
+        div()
+            .flex()
+            .items_center()
+            .gap(px(8.0))
+            .px(px(8.0))
+            .py(px(6.0))
+            .rounded_md()
+            .hover(move |s| s.bg(theme.button_hover))
+            .cursor_pointer()
+            .on_mouse_down(MouseButton::Left, move |_, window, cx| {
+                if let Some(ref h) = on_source {
+                    h(&entry_src, window, cx);
+                }
+                if let Some(ref h) = close_fn_src {
+                    h(None, window, cx);
+                }
+                cx.stop_propagation();
+            })
+            .child(
+                Icon::new("icons/external-link.svg")
+                    .size(px(14.0))
+                    .color(theme.text_muted),
+            )
+            .child(
+                div()
+                    .text_xs()
+                    .text_color(theme.text_primary)
+                    .child(rust_i18n::t!("startup.action_open_source").to_string()),
+            ),
+    );
+
+    let close_fn_copy = handlers.toggle_menu.clone();
+    let box_el = box_el.child(
+        div()
+            .flex()
+            .items_center()
+            .gap(px(8.0))
+            .px(px(8.0))
+            .py(px(6.0))
+            .rounded_md()
+            .hover(move |s| s.bg(theme.button_hover))
+            .cursor_pointer()
+            .on_mouse_down(MouseButton::Left, move |_, window, cx| {
+                if let Some(ref h) = on_copy {
+                    h(&entry_copy, window, cx);
+                }
+                if let Some(ref h) = close_fn_copy {
+                    h(None, window, cx);
+                }
+                cx.stop_propagation();
+            })
+            .child(
+                Icon::new("icons/copy.svg")
+                    .size(px(14.0))
+                    .color(theme.text_muted),
+            )
+            .child(
+                div()
+                    .text_xs()
+                    .text_color(theme.text_primary)
+                    .child(rust_i18n::t!("startup.action_copy_path").to_string()),
+            ),
+    );
+
+    let close_fn_del = handlers.toggle_menu.clone();
+    let del_color = theme.accent_red;
+    let box_el = box_el.child(
+        div()
+            .flex()
+            .items_center()
+            .gap(px(8.0))
+            .px(px(8.0))
+            .py(px(6.0))
+            .rounded_md()
+            .hover(move |s| s.bg(theme.button_hover))
+            .cursor_pointer()
+            .on_mouse_down(MouseButton::Left, move |_, window, cx| {
+                if let Some(ref h) = on_del {
+                    h(&entry_del, window, cx);
+                }
+                if let Some(ref h) = close_fn_del {
+                    h(None, window, cx);
+                }
+                cx.stop_propagation();
+            })
+            .child(
+                Icon::new("icons/trash-2.svg")
+                    .size(px(14.0))
+                    .color(del_color),
+            )
+            .child(
+                div()
+                    .text_xs()
+                    .font_weight(FontWeight::MEDIUM)
+                    .text_color(del_color)
+                    .child(rust_i18n::t!("startup.action_delete").to_string()),
+            ),
+    );
 
     box_el.with_animation(
         ElementId::Name(format!("{entry_id}_menu_enter").into()),
@@ -605,16 +716,18 @@ impl RenderOnce for StartupPage {
             .iter()
             .filter(|e| e.status == StartupStatus::Enabled)
             .count();
+        let disabled_count = total_count.saturating_sub(enabled_count);
 
         let filtered_entries: Vec<StartupEntry> = self
             .entries
             .into_iter()
             .filter(|e| {
                 if let Some(source) = self.active_filter {
-                    e.source == source
-                } else {
-                    true
+                    if e.source != source {
+                        return false;
+                    }
                 }
+                matches_startup_query(e, &self.search_query)
             })
             .collect();
 
@@ -624,15 +737,81 @@ impl RenderOnce for StartupPage {
             open_folder: self.on_open_folder,
             open_source: self.on_open_source,
             copy_path: self.on_copy_path,
-            hover_tt: self.on_hover_tooltip,
+            hover_tt: self.on_hover_tooltip.clone(),
             toggle_menu: self.on_toggle_menu,
         };
+
+        let tt_handler = self.on_hover_tooltip.clone();
+        let tooltip_msg = rust_i18n::t!(
+            "startup.badge_tooltip",
+            total = total_count,
+            enabled = enabled_count,
+            disabled = disabled_count
+        )
+        .to_string();
+
+        let count_badge = div()
+            .id(ElementId::Name("startup_count_badge".into()))
+            .flex()
+            .items_center()
+            .justify_center()
+            .px(px(8.0))
+            .py(px(2.0))
+            .rounded_full()
+            .bg(theme.button_selected)
+            .border_1()
+            .border_color(theme.card_border)
+            .text_size(px(12.0))
+            .font_weight(FontWeight::BOLD)
+            .text_color(theme.text_primary)
+            .cursor_pointer()
+            .hover(move |s| s.bg(theme.button_hover))
+            .on_mouse_move({
+                let tt_h = tt_handler.clone();
+                let tt_text = tooltip_msg.clone();
+                move |event, window, cx| {
+                    if let Some(ref h) = tt_h {
+                        h(
+                            Some(TooltipState {
+                                text: tt_text.clone().into(),
+                                cursor_pos: event.position,
+                            }),
+                            window,
+                            cx,
+                        );
+                    }
+                }
+            })
+            .on_hover({
+                let tt_h = tt_handler.clone();
+                move |hovered, window, cx| {
+                    if !hovered {
+                        if let Some(ref h) = tt_h {
+                            h(None, window, cx);
+                        }
+                    }
+                }
+            })
+            .child(format!("{total_count}"));
+
+        let mut search_input =
+            SearchInput::new("startup_search", &self.search_query).width(px(220.0));
+        if let Some(ref f) = self.search_focus {
+            search_input = search_input.track_focus(f);
+        }
+        if let Some(ref h) = self.on_change_search {
+            let h_clone = h.clone();
+            search_input = search_input.on_change(move |q, window, cx| {
+                h_clone(q, window, cx);
+            });
+        }
 
         let filter_bar = div()
             .flex()
             .items_center()
             .justify_between()
             .w_full()
+            .child(search_input)
             .child(
                 div()
                     .flex()
@@ -668,19 +847,6 @@ impl RenderOnce for StartupPage {
                         &theme,
                         self.on_select_filter,
                     )),
-            )
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(8.0))
-                    .text_xs()
-                    .text_color(theme.text_muted)
-                    .child(format!(
-                        "{}: {total_count} • {}: {enabled_count}",
-                        rust_i18n::t!("startup.total"),
-                        rust_i18n::t!("startup.enabled")
-                    )),
             );
 
         let total_items = filtered_entries.len();
@@ -710,7 +876,7 @@ impl RenderOnce for StartupPage {
                 .flex_col()
                 .gap(px(16.0))
                 .w_full()
-                .child(PageHeader::new(route.title(), route.description()))
+                .child(PageHeader::new(route.title(), route.description()).badge(count_badge))
                 .child(filter_bar),
         )
     }

@@ -81,6 +81,8 @@ pub fn render_route(
     discord_rpc: crate::features::discord_rpc::DiscordRpcActivity,
     startup_entries: &[crate::entities::startup::StartupEntry],
     startup_filter: Option<crate::entities::startup::StartupSource>,
+    startup_search_query: &str,
+    startup_search_focus: &gpui::FocusHandle,
     startup_open_menu_id: Option<&str>,
     on_navigate: impl Fn(AppRoute, &mut Window, &mut App) + Send + Sync + 'static,
     on_hover_telemetry_card: impl Fn(SharedString, bool, &mut Window, &mut App) + Send + Sync + 'static,
@@ -114,6 +116,7 @@ pub fn render_route(
         &mut Window,
         &mut App,
     ) + 'static,
+    on_change_startup_search: impl Fn(String, &mut Window, &mut App) + 'static,
 ) -> AnyElement {
     let on_nav_arc = Arc::new(on_navigate);
     let on_nav_dash = on_nav_arc.clone();
@@ -303,8 +306,11 @@ pub fn render_route(
         AppRoute::Startup => StartupPage::new(
             startup_entries.to_vec(),
             startup_filter,
+            startup_search_query,
             startup_open_menu_id.map(ToString::to_string),
         )
+        .search_focus(startup_search_focus)
+        .on_change_search(on_change_startup_search)
         .on_toggle(on_toggle_startup)
         .on_delete(on_delete_startup)
         .on_open_folder(on_open_startup_folder)

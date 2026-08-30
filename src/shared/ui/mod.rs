@@ -4,6 +4,7 @@ pub mod dropdown;
 pub mod group_card;
 pub mod icon;
 pub mod icon_button;
+pub mod search_input;
 pub mod smooth_scroll;
 pub mod switch;
 pub mod toast;
@@ -23,6 +24,8 @@ pub use group_card::GroupCard;
 pub use icon::Icon;
 #[allow(unused_imports)]
 pub use icon_button::IconButton;
+#[allow(unused_imports)]
+pub use search_input::SearchInput;
 #[allow(unused_imports)]
 pub use smooth_scroll::SmoothScroll;
 #[allow(unused_imports)]

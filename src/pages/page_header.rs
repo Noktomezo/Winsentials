@@ -1,5 +1,6 @@
 use gpui::{
-    App, FontWeight, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px,
+    AnyElement, App, FontWeight, IntoElement, ParentElement, RenderOnce, SharedString, Styled,
+    Window, div, px,
 };
 
 use crate::shared::theme::Theme;
@@ -8,6 +9,7 @@ use crate::shared::theme::Theme;
 pub struct PageHeader {
     title: SharedString,
     description: SharedString,
+    badge: Option<AnyElement>,
 }
 
 impl PageHeader {
@@ -16,7 +18,14 @@ impl PageHeader {
         Self {
             title: title.into(),
             description: description.into(),
+            badge: None,
         }
+    }
+
+    #[must_use]
+    pub fn badge(mut self, badge: impl IntoElement) -> Self {
+        self.badge = Some(badge.into_any_element());
+        self
     }
 }
 
@@ -31,11 +40,18 @@ impl RenderOnce for PageHeader {
             .w_full()
             .child(
                 div()
-                    .text_size(px(20.0))
-                    .line_height(px(24.0))
-                    .font_weight(FontWeight::BOLD)
-                    .text_color(theme.text_primary)
-                    .child(self.title),
+                    .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .child(
+                        div()
+                            .text_size(px(20.0))
+                            .line_height(px(24.0))
+                            .font_weight(FontWeight::BOLD)
+                            .text_color(theme.text_primary)
+                            .child(self.title),
+                    )
+                    .children(self.badge),
             )
             .child(
                 div()

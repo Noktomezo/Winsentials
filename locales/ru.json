@@ -312,6 +312,9 @@
     "empty": "Нет элементов автозагрузки в выбранной категории",
     "total": "Всего",
     "enabled": "Включено",
-    "unknown_publisher": "Неизвестный издатель"
+    "disabled": "Отключено",
+    "unknown_publisher": "Неизвестный издатель",
+    "search_placeholder": "Поиск...",
+    "badge_tooltip": "%{total} элементов (%{enabled} включено, %{disabled} отключено)"
   }
 }

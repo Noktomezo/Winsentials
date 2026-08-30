@@ -61,6 +61,7 @@ impl StartupScope {
     }
 
     #[must_use]
+    #[allow(dead_code)]
     pub fn label(self) -> String {
         match self {
             Self::CurrentUser => rust_i18n::t!("startup.scope_current_user").to_string(),

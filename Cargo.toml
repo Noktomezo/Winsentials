@@ -30,6 +30,7 @@ discord-rich-presence = "0.2.3"
 tray-icon = "0.19"
 system_shutdown = "4"
 image = { version = "0.25", default-features = false, features = ["ico", "png"] }
+strsim = "0.11"
 windows-sys = { version = "0.59", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",

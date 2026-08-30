@@ -45,6 +45,8 @@ pub struct AppView {
     toast_stack_expanded: bool,
     startup_entries: Vec<crate::entities::startup::StartupEntry>,
     startup_filter: Option<crate::entities::startup::StartupSource>,
+    startup_search_query: String,
+    startup_search_focus: Option<gpui::FocusHandle>,
     startup_open_menu_id: Option<String>,
 }
 
@@ -102,6 +104,8 @@ impl AppView {
             toast_stack_expanded: false,
             startup_entries,
             startup_filter: None,
+            startup_search_query: String::new(),
+            startup_search_focus: None,
             startup_open_menu_id: None,
         }
     }
@@ -337,6 +341,11 @@ impl AppView {
         cx: &mut Context<Self>,
     ) {
         self.startup_filter = filter;
+        cx.notify();
+    }
+
+    pub fn set_startup_search_query(&mut self, query: String, cx: &mut Context<Self>) {
+        self.startup_search_query = query;
         cx.notify();
     }
 
@@ -1006,12 +1015,20 @@ impl Render for AppView {
             },
         );
 
+        let on_change_startup_search = cx.listener(|this, query: &String, _window, cx| {
+            this.set_startup_search_query(query.clone(), cx);
+        });
+
         let minimize_to_tray = self.config.minimize_to_tray;
         let autostart = self.config.autostart;
         let autostart_to_tray = self.config.autostart_to_tray;
         let discord_rpc = self.config.discord_rpc;
         let startup_filter = self.startup_filter;
         let startup_open_menu_id = self.startup_open_menu_id.as_deref();
+        let startup_search_focus = self
+            .startup_search_focus
+            .get_or_insert_with(|| cx.focus_handle())
+            .clone();
 
         let main_panel = div()
             .flex()
@@ -1044,6 +1061,8 @@ impl Render for AppView {
                 discord_rpc,
                 &self.startup_entries,
                 startup_filter,
+                &self.startup_search_query,
+                &startup_search_focus,
                 startup_open_menu_id,
                 move |target_route, window, cx| {
                     on_navigate_page(&target_route, window, cx);
@@ -1119,6 +1138,9 @@ impl Render for AppView {
                 },
                 move |filter, window, cx| {
                     on_select_startup_filter(&filter, window, cx);
+                },
+                move |q, window, cx| {
+                    on_change_startup_search(&q, window, cx);
                 },
             ));
 
