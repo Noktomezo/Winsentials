@@ -42,7 +42,7 @@ fn max_allowed_distance(query_len: usize) -> usize {
     }
 }
 
-/// Checks if a startup entry matches the search query.
+/// Checks if a startup entry matches the search query strictly by its name / display name.
 #[must_use]
 pub fn matches_startup_query(entry: &StartupEntry, query: &str) -> bool {
     let q = query.trim().to_lowercase();
@@ -57,48 +57,21 @@ pub fn matches_startup_query(entry: &StartupEntry, query: &str) -> bool {
 
     let display_name = entry.display_name.to_lowercase();
     let name = entry.name.to_lowercase();
-    let publisher = entry.publisher.as_deref().unwrap_or("").to_lowercase();
-    let command = entry.command.as_deref().unwrap_or("").to_lowercase();
-    let target_path = entry.target_path.as_deref().unwrap_or("").to_lowercase();
-    let location_label = entry.location_label.to_lowercase();
 
-    // 1. Direct whole-query substring match in any field
-    if display_name.contains(&q)
-        || name.contains(&q)
-        || publisher.contains(&q)
-        || command.contains(&q)
-        || target_path.contains(&q)
-        || location_label.contains(&q)
-    {
+    // 1. Direct whole-query substring match in names
+    if display_name.contains(&q) || name.contains(&q) {
         return true;
     }
 
-    // Extract word tokens for fuzzy matching
+    // Extract word tokens from names for fuzzy matching
     let mut candidate_tokens: Vec<String> = Vec::new();
     candidate_tokens.extend(extract_word_tokens(&entry.display_name));
     candidate_tokens.extend(extract_word_tokens(&entry.name));
-    if let Some(ref publ) = entry.publisher {
-        candidate_tokens.extend(extract_word_tokens(publ));
-    }
-    if let Some(ref target) = entry.target_path {
-        if let Some(file_name) = std::path::Path::new(target)
-            .file_name()
-            .and_then(|n| n.to_str())
-        {
-            candidate_tokens.extend(extract_word_tokens(file_name));
-        }
-    }
 
-    // 2. All query words must match either as substring or fuzzy match
+    // 2. All query words must match either as substring or fuzzy match against names
     q_words.iter().all(|qw| {
-        // Direct substring in any full field
-        if display_name.contains(qw)
-            || name.contains(qw)
-            || publisher.contains(qw)
-            || command.contains(qw)
-            || target_path.contains(qw)
-            || location_label.contains(qw)
-        {
+        // Direct substring in names
+        if display_name.contains(qw) || name.contains(qw) {
             return true;
         }
 
@@ -150,10 +123,17 @@ mod tests {
     }
 
     #[test]
-    fn test_exact_match() {
-        let entry = make_test_entry("Notion", Some("Notion Labs"), None);
-        assert!(matches_startup_query(&entry, "notion"));
-        assert!(matches_startup_query(&entry, "labs"));
+    fn test_name_only_match() {
+        let entry = make_test_entry(
+            "Discord",
+            Some("Discord Inc."),
+            Some("C:\\Discord\\Update.exe"),
+        );
+        assert!(matches_startup_query(&entry, "discord"));
+        assert!(matches_startup_query(&entry, "discrod")); // Levenshtein typo
+        // Searching publisher or path should NOT match
+        assert!(!matches_startup_query(&entry, "Update"));
+        assert!(!matches_startup_query(&entry, "Inc"));
     }
 
     #[test]
