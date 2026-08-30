@@ -351,152 +351,23 @@ fn package_portable_zip(binary_path: &Path, zip_path: &Path) -> Result<(), Strin
     Ok(())
 }
 
-fn convert_png_to_bmp_on_the_fly(
-    src_png: &Path,
-    dst_bmp: &Path,
-    bg_color: [u8; 3],
-) -> Result<(), String> {
-    if !src_png.exists() {
-        return Ok(());
+fn build_installer(_version: &str, output_path: &Path) -> Result<(), String> {
+    println!("=== Building Native GPUI Installer ===");
+    run_cargo(&["build", "--release", "--bin", "winsentials-setup"])?;
+
+    let release_dir = Path::new("target").join("release");
+    let setup_raw = release_dir.join(format!("winsentials-setup{}", env::consts::EXE_SUFFIX));
+    if !setup_raw.exists() {
+        return Err(format!("Setup binary not found at {}", setup_raw.display()));
     }
 
-    let img = image::open(src_png)
-        .map_err(|e| format!("Failed to open PNG {}: {e}", src_png.display()))?;
-    let rgba = img.to_rgba8();
-    let (width, height) = rgba.dimensions();
-    let mut rgb_img = image::RgbImage::new(width, height);
+    let _ = fs::copy(&setup_raw, output_path);
 
-    for (x, y, pixel) in rgba.enumerate_pixels() {
-        let [r, g, b, a] = pixel.0;
-        let alpha = f32::from(a) / 255.0;
-        let inv_alpha = 1.0 - alpha;
-
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let final_r = (f32::from(r) * alpha + f32::from(bg_color[0]) * inv_alpha).round() as u8;
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let final_g = (f32::from(g) * alpha + f32::from(bg_color[1]) * inv_alpha).round() as u8;
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let final_b = (f32::from(b) * alpha + f32::from(bg_color[2]) * inv_alpha).round() as u8;
-
-        rgb_img.put_pixel(x, y, image::Rgb([final_r, final_g, final_b]));
+    println!("=== Compressing installer with UPX ===");
+    if let Err(e) = run_external("upx", &["--best", "--lzma", &output_path.to_string_lossy()]) {
+        eprintln!("Warning: UPX compression skipped or failed: {e}");
     }
 
-    rgb_img
-        .save_with_format(dst_bmp, image::ImageFormat::Bmp)
-        .map_err(|e| format!("Failed to save BMP {}: {e}", dst_bmp.display()))?;
-
-    Ok(())
-}
-
-fn convert_png_to_bmp_resized(
-    src_png: &Path,
-    dst_bmp: &Path,
-    target_width: u32,
-    target_height: u32,
-    bg_color: [u8; 3],
-) -> Result<(), String> {
-    if !src_png.exists() {
-        return Ok(());
-    }
-
-    let img = image::open(src_png)
-        .map_err(|e| format!("Failed to open PNG {}: {e}", src_png.display()))?;
-    let resized = img.resize_exact(
-        target_width,
-        target_height,
-        image::imageops::FilterType::Lanczos3,
-    );
-    let rgba = resized.to_rgba8();
-    let (width, height) = rgba.dimensions();
-    let mut rgb_img = image::RgbImage::new(width, height);
-
-    for (x, y, pixel) in rgba.enumerate_pixels() {
-        let [r, g, b, a] = pixel.0;
-        let alpha = f32::from(a) / 255.0;
-        let inv_alpha = 1.0 - alpha;
-
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let final_r = (f32::from(r) * alpha + f32::from(bg_color[0]) * inv_alpha).round() as u8;
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let final_g = (f32::from(g) * alpha + f32::from(bg_color[1]) * inv_alpha).round() as u8;
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let final_b = (f32::from(b) * alpha + f32::from(bg_color[2]) * inv_alpha).round() as u8;
-
-        rgb_img.put_pixel(x, y, image::Rgb([final_r, final_g, final_b]));
-    }
-
-    rgb_img
-        .save_with_format(dst_bmp, image::ImageFormat::Bmp)
-        .map_err(|e| format!("Failed to save BMP {}: {e}", dst_bmp.display()))?;
-
-    Ok(())
-}
-
-fn prepare_installer_bmps() -> Result<(), String> {
-    let assets = Path::new("assets");
-    let logo_png = assets.join("app-logo.png");
-    let small_bmp = assets.join("app-installer-small.bmp");
-    let header_png = assets.join("app-installer-header.png");
-    let header_bmp = assets.join("app-installer-header.bmp");
-    let sidebar_png = assets.join("app-installer-sidebar.png");
-    let sidebar_bmp = assets.join("app-installer-sidebar.bmp");
-
-    // 1. WizardSmallImage (58x58 crisp square app logo)
-    convert_png_to_bmp_resized(&logo_png, &small_bmp, 58, 58, [15, 21, 26])?;
-    // 2. Header banner for NSIS
-    convert_png_to_bmp_on_the_fly(&header_png, &header_bmp, [15, 21, 26])?;
-    // 3. WizardImage sidebar
-    convert_png_to_bmp_on_the_fly(&sidebar_png, &sidebar_bmp, [15, 21, 26])?;
-
-    Ok(())
-}
-
-fn build_installer(version: &str, output_path: &Path) -> Result<(), String> {
-    prepare_installer_bmps()?;
-
-    let iss_script = Path::new("tooling").join("packaging").join("installer.iss");
-    if iss_script.exists() {
-        let version_flag = format!("/DMyAppVersion={version}");
-        let out_dir_flag = format!(
-            "/DMyOutputDir=..\\..\\{}",
-            output_path
-                .parent()
-                .unwrap_or(Path::new("."))
-                .to_string_lossy()
-        );
-        let file_stem = output_path
-            .file_stem()
-            .unwrap_or_default()
-            .to_string_lossy();
-        let out_name_flag = format!("/DMyOutputBaseFilename={file_stem}");
-
-        println!("=== Building Inno Setup installer ===");
-        if let Ok(()) = run_external(
-            "iscc",
-            &[
-                &version_flag,
-                &out_dir_flag,
-                &out_name_flag,
-                "/Q",
-                &iss_script.to_string_lossy(),
-            ],
-        ) {
-            return Ok(());
-        }
-    }
-
-    let nsi_script = Path::new("tooling").join("packaging").join("installer.nsi");
-    if nsi_script.exists() {
-        let version_flag = format!("-DVERSION={version}");
-        let out_flag = format!("-DOUTFILE=..\\..\\{}", output_path.to_string_lossy());
-
-        println!("=== Building NSIS installer (fallback) ===");
-        let makensis = "makensis";
-        run_external(
-            makensis,
-            &[&version_flag, &out_flag, &nsi_script.to_string_lossy()],
-        )?;
-    }
     Ok(())
 }
 

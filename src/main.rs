@@ -1,22 +1,14 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
-mod app;
-mod entities;
-mod features;
-mod pages;
-mod shared;
-mod widgets;
-
-rust_i18n::i18n!("locales", fallback = "en");
-
 use gpui::{
     App, AppContext, Application, Bounds, TitlebarOptions, WindowBackgroundAppearance,
     WindowBounds, WindowOptions, point, px, size,
 };
 
-use app::AppView;
-use shared::assets::EmbeddedAssetSource;
-use shared::theme::Theme;
+use winsentials::app::AppView;
+use winsentials::features;
+use winsentials::shared::assets::EmbeddedAssetSource;
+use winsentials::shared::theme::Theme;
 
 fn main() {
     let Some(_single_instance) = features::single_instance::try_acquire_single_instance() else {
