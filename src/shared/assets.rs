@@ -3,12 +3,12 @@ use rust_embed::Embed;
 use std::borrow::Cow;
 
 #[derive(Embed)]
-#[folder = "assets/icons/"]
-#[prefix = "icons/"]
-#[include = "*.svg"]
-#[include = "**/*.svg"]
-#[include = "blank.ico"]
-#[include = "flags/{ru,us}.png"]
+#[folder = "assets/"]
+#[include = "icons/*.svg"]
+#[include = "icons/**/*.svg"]
+#[include = "icons/blank.ico"]
+#[include = "icons/flags/{ru,us}.png"]
+#[include = "app-logo.png"]
 pub struct EmbeddedAssetSource;
 
 impl AssetSource for EmbeddedAssetSource {

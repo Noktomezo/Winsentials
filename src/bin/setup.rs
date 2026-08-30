@@ -2,7 +2,8 @@
 #![allow(
     clippy::struct_excessive_bools,
     clippy::too_many_lines,
-    clippy::unnecessary_wraps
+    clippy::unnecessary_wraps,
+    clippy::unused_self
 )]
 
 use std::path::{Path, PathBuf};
@@ -11,10 +12,10 @@ use gpui::{
     App, AppContext, Application, Bounds, Context, Div, FontWeight, InteractiveElement,
     IntoElement, MouseButton, MouseDownEvent, ParentElement, Render, SharedString, Styled,
     TitlebarOptions, WeakEntity, WindowBackgroundAppearance, WindowBounds, WindowOptions, div, img,
-    point, px, size, svg,
+    point, px, rgb, rgba, size, svg,
 };
 use winsentials::shared::assets::EmbeddedAssetSource;
-use winsentials::shared::theme::Theme;
+use winsentials::shared::theme::{Theme, arclate};
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -42,7 +43,6 @@ struct SetupView {
     launch_after: bool,
     status_text: SharedString,
     error_text: Option<SharedString>,
-    theme: Theme,
     installing: bool,
 }
 
@@ -65,7 +65,6 @@ impl SetupView {
             launch_after: true,
             status_text: SharedString::from("Подготовка к установке..."),
             error_text: None,
-            theme: Theme::dark(),
             installing: false,
         }
     }
@@ -344,8 +343,6 @@ fn unregister_uninstall_registry() {
 
 impl Render for SetupView {
     fn render(&mut self, _window: &mut gpui::Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let theme = &self.theme;
-
         let content = match self.step {
             SetupStep::Welcome => self.render_welcome(cx),
             SetupStep::Installing => self.render_installing(cx),
@@ -360,17 +357,20 @@ impl Render for SetupView {
             .flex()
             .flex_col()
             .size_full()
-            .bg(theme.window_bg)
-            .text_color(theme.text_primary)
+            .bg(rgb(arclate::BG2_DARK))
+            .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
             .font_family("IBM Plex Sans")
+            .border_1()
+            .border_color(rgb(arclate::BORDER_MAIN_DARK))
+            .rounded(px(10.0))
+            .overflow_hidden()
             .child(self.render_titlebar(cx))
-            .child(div().flex_1().flex().flex_col().p(px(24.0)).child(content))
+            .child(div().flex_1().flex().flex_col().p(px(18.0)).child(content))
     }
 }
 
 impl SetupView {
     fn render_titlebar(&self, _cx: &mut Context<Self>) -> Div {
-        let theme = &self.theme;
         let is_uninst = matches!(
             self.step,
             SetupStep::UninstallConfirm | SetupStep::Uninstalling | SetupStep::Uninstalled
@@ -386,11 +386,11 @@ impl SetupView {
             .flex()
             .items_center()
             .justify_between()
-            .h(px(40.0))
-            .px(px(16.0))
-            .bg(theme.window_bg)
+            .h(px(36.0))
+            .px(px(12.0))
+            .bg(rgb(arclate::BG_DARK))
             .border_b_1()
-            .border_color(theme.card_border)
+            .border_color(rgb(arclate::BORDER_MAIN_DARK))
             .on_mouse_down(MouseButton::Left, |_ev, window, _cx| {
                 window.start_window_move();
             })
@@ -398,13 +398,13 @@ impl SetupView {
                 div()
                     .flex()
                     .items_center()
-                    .gap(px(10.0))
-                    .child(img("assets/app-logo.png").size(px(20.0)).rounded(px(4.0)))
+                    .gap(px(8.0))
+                    .child(img("app-logo.png").size(px(16.0)).rounded(px(3.0)))
                     .child(
                         div()
-                            .text_size(px(13.0))
+                            .text_size(px(12.0))
                             .font_weight(FontWeight::MEDIUM)
-                            .text_color(theme.text_primary)
+                            .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                             .child(title_str),
                     ),
             )
@@ -412,24 +412,24 @@ impl SetupView {
                 div()
                     .flex()
                     .items_center()
-                    .gap(px(6.0))
+                    .gap(px(4.0))
                     .child(
                         div()
                             .id("minimize-btn")
                             .flex()
                             .items_center()
                             .justify_center()
-                            .size(px(28.0))
-                            .rounded(px(6.0))
-                            .hover(|s| s.bg(theme.input_bg))
+                            .size(px(24.0))
+                            .rounded(px(4.0))
+                            .hover(|s| s.bg(rgb(arclate::BG3_DARK)))
                             .on_mouse_down(MouseButton::Left, |_ev, window, _cx| {
                                 window.minimize_window();
                             })
                             .child(
                                 svg()
-                                    .path("assets/icons/minus.svg")
-                                    .size(px(13.0))
-                                    .text_color(theme.text_muted),
+                                    .path("icons/minus.svg")
+                                    .size(px(12.0))
+                                    .text_color(rgb(arclate::TEXT_MUTED_DARK)),
                             ),
                     )
                     .child(
@@ -438,27 +438,26 @@ impl SetupView {
                             .flex()
                             .items_center()
                             .justify_center()
-                            .size(px(28.0))
-                            .rounded(px(6.0))
+                            .size(px(24.0))
+                            .rounded(px(4.0))
                             .hover(|s| {
-                                s.bg(theme.accent_red.opacity(0.85))
-                                    .text_color(theme.text_primary)
+                                s.bg(rgb(arclate::RED_DARK))
+                                    .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                             })
                             .on_mouse_down(MouseButton::Left, |_ev, _window, cx| {
                                 cx.quit();
                             })
                             .child(
                                 svg()
-                                    .path("assets/icons/x.svg")
-                                    .size(px(13.0))
-                                    .text_color(theme.text_muted),
+                                    .path("icons/x.svg")
+                                    .size(px(12.0))
+                                    .text_color(rgb(arclate::TEXT_MUTED_DARK)),
                             ),
                     ),
             )
     }
 
     fn render_welcome(&self, cx: &mut Context<Self>) -> Div {
-        let theme = &self.theme;
         let dir_str = self.install_dir.to_string_lossy().to_string();
 
         div()
@@ -470,28 +469,24 @@ impl SetupView {
                 div()
                     .flex()
                     .flex_col()
-                    .gap(px(20.0))
+                    .gap(px(14.0))
                     .child(
                         // Header Section
                         div()
                             .flex()
                             .items_center()
-                            .gap(px(18.0))
+                            .gap(px(14.0))
                             .child(
                                 div()
                                     .flex()
                                     .items_center()
                                     .justify_center()
-                                    .size(px(64.0))
-                                    .rounded(px(16.0))
-                                    .bg(theme.card_bg)
+                                    .size(px(48.0))
+                                    .rounded(px(12.0))
+                                    .bg(rgb(arclate::BG_DARK))
                                     .border_1()
-                                    .border_color(theme.card_border)
-                                    .child(
-                                        img("assets/app-logo.png")
-                                            .size(px(48.0))
-                                            .rounded(px(10.0)),
-                                    ),
+                                    .border_color(rgb(arclate::BORDER_CARD_DARK))
+                                    .child(img("app-logo.png").size(px(36.0)).rounded(px(8.0))),
                             )
                             .child(
                                 div()
@@ -502,33 +497,33 @@ impl SetupView {
                                         div()
                                             .flex()
                                             .items_center()
-                                            .gap(px(10.0))
+                                            .gap(px(8.0))
                                             .child(
                                                 div()
-                                                    .text_size(px(22.0))
+                                                    .text_size(px(18.0))
                                                     .font_weight(FontWeight::BOLD)
-                                                    .text_color(theme.text_primary)
+                                                    .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                                                     .child("Winsentials"),
                                             )
                                             .child(
                                                 div()
                                                     .px(px(6.0))
-                                                    .py(px(2.0))
-                                                    .rounded(px(6.0))
-                                                    .bg(theme.accent_blue.opacity(0.15))
+                                                    .py(px(1.0))
+                                                    .rounded(px(4.0))
+                                                    .bg(rgba(0x70A2_D726))
                                                     .border_1()
-                                                    .border_color(theme.accent_blue.opacity(0.3))
-                                                    .text_size(px(11.0))
+                                                    .border_color(rgba(0x70A2_D74D))
+                                                    .text_size(px(10.0))
                                                     .font_weight(FontWeight::MEDIUM)
-                                                    .text_color(theme.accent_blue)
+                                                    .text_color(rgb(arclate::BLUE_DARK))
                                                     .child(format!("v{APP_VERSION}")),
                                             ),
                                     )
                                     .child(
                                         div()
-                                            .text_size(px(13.0))
-                                            .text_color(theme.text_muted)
-                                            .child("Your Windows Perfected — Умная оптимизация и твики"),
+                                            .text_size(px(12.0))
+                                            .text_color(rgb(arclate::TEXT_MUTED_DARK))
+                                            .child("Умная оптимизация, телеметрия и твики Windows"),
                                     ),
                             ),
                     )
@@ -537,34 +532,34 @@ impl SetupView {
                         div()
                             .flex()
                             .flex_col()
-                            .gap(px(8.0))
+                            .gap(px(6.0))
                             .child(
                                 div()
-                                    .text_size(px(12.0))
+                                    .text_size(px(11.0))
                                     .font_weight(FontWeight::MEDIUM)
-                                    .text_color(theme.text_muted)
+                                    .text_color(rgb(arclate::TEXT_MUTED_DARK))
                                     .child("Папка установки:"),
                             )
                             .child(
                                 div()
                                     .flex()
                                     .items_center()
-                                    .gap(px(8.0))
+                                    .gap(px(6.0))
                                     .child(
                                         div()
                                             .flex_1()
-                                            .h(px(38.0))
-                                            .px(px(12.0))
+                                            .h(px(32.0))
+                                            .px(px(10.0))
                                             .flex()
                                             .items_center()
-                                            .bg(theme.input_bg)
+                                            .bg(rgb(arclate::BG3_DARK))
                                             .border_1()
-                                            .border_color(theme.card_border)
-                                            .rounded(px(8.0))
+                                            .border_color(rgb(arclate::BORDER_INPUT_DARK))
+                                            .rounded(px(6.0))
                                             .child(
                                                 div()
-                                                    .text_size(px(13.0))
-                                                    .text_color(theme.text_primary)
+                                                    .text_size(px(12.0))
+                                                    .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                                                     .overflow_hidden()
                                                     .child(dir_str),
                                             ),
@@ -575,20 +570,26 @@ impl SetupView {
                                             .flex()
                                             .items_center()
                                             .justify_center()
-                                            .h(px(38.0))
-                                            .px(px(16.0))
-                                            .bg(theme.card_bg)
+                                            .h(px(32.0))
+                                            .px(px(12.0))
+                                            .bg(rgb(arclate::BG_DARK))
                                             .border_1()
-                                            .border_color(theme.card_border)
-                                            .rounded(px(8.0))
-                                            .text_size(px(13.0))
+                                            .border_color(rgb(arclate::BORDER_CARD_DARK))
+                                            .rounded(px(6.0))
+                                            .text_size(px(12.0))
                                             .font_weight(FontWeight::MEDIUM)
-                                            .text_color(theme.text_primary)
+                                            .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                                             .cursor_pointer()
-                                            .hover(|s| s.bg(theme.input_bg).border_color(theme.accent_blue))
-                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _ev, _window, cx| {
-                                                this.select_directory(cx);
-                                            }))
+                                            .hover(|s| {
+                                                s.bg(rgb(arclate::BG3_DARK))
+                                                    .border_color(rgb(arclate::BLUE_DARK))
+                                            })
+                                            .on_mouse_down(
+                                                MouseButton::Left,
+                                                cx.listener(|this, _ev, _window, cx| {
+                                                    this.select_directory(cx);
+                                                }),
+                                            )
                                             .child("Обзор..."),
                                     ),
                             ),
@@ -598,12 +599,12 @@ impl SetupView {
                         div()
                             .flex()
                             .flex_col()
-                            .gap(px(10.0))
-                            .p(px(14.0))
-                            .rounded(px(10.0))
-                            .bg(theme.card_bg)
+                            .gap(px(8.0))
+                            .p(px(10.0))
+                            .rounded(px(8.0))
+                            .bg(rgb(arclate::BG_DARK))
                             .border_1()
-                            .border_color(theme.card_border)
+                            .border_color(rgb(arclate::BORDER_CARD_DARK))
                             .child(self.render_checkbox(
                                 "opt-desktop",
                                 "Создать ярлык на рабочем столе",
@@ -639,27 +640,27 @@ impl SetupView {
                     .flex()
                     .items_center()
                     .justify_end()
-                    .gap(px(12.0))
-                    .pt(px(16.0))
+                    .gap(px(10.0))
+                    .pt(px(12.0))
                     .border_t_1()
-                    .border_color(theme.card_border)
+                    .border_color(rgb(arclate::BORDER_MAIN_DARK))
                     .child(
                         div()
                             .id("cancel-btn")
                             .flex()
                             .items_center()
                             .justify_center()
-                            .h(px(38.0))
-                            .px(px(20.0))
-                            .rounded(px(8.0))
-                            .bg(theme.card_bg)
+                            .h(px(32.0))
+                            .px(px(16.0))
+                            .rounded(px(6.0))
+                            .bg(rgb(arclate::BG_DARK))
                             .border_1()
-                            .border_color(theme.card_border)
-                            .text_size(px(13.0))
+                            .border_color(rgb(arclate::BORDER_CARD_DARK))
+                            .text_size(px(12.0))
                             .font_weight(FontWeight::MEDIUM)
-                            .text_color(theme.text_primary)
+                            .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                             .cursor_pointer()
-                            .hover(|s| s.bg(theme.input_bg))
+                            .hover(|s| s.bg(rgb(arclate::BG3_DARK)))
                             .on_mouse_down(MouseButton::Left, |_ev, _window, cx| {
                                 cx.quit();
                             })
@@ -671,18 +672,21 @@ impl SetupView {
                             .flex()
                             .items_center()
                             .justify_center()
-                            .h(px(38.0))
-                            .px(px(28.0))
-                            .rounded(px(8.0))
-                            .bg(theme.accent_blue)
-                            .text_size(px(13.0))
+                            .h(px(32.0))
+                            .px(px(22.0))
+                            .rounded(px(6.0))
+                            .bg(rgb(arclate::BLUE_DARK))
+                            .text_size(px(12.0))
                             .font_weight(FontWeight::BOLD)
-                            .text_color(theme.main_bg)
+                            .text_color(rgb(arclate::BG_DARK))
                             .cursor_pointer()
-                            .hover(|s| s.bg(theme.accent_blue.opacity(0.85)))
-                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _ev, _window, cx| {
-                                this.start_installation(cx);
-                            }))
+                            .hover(|s| s.bg(rgba(0x70A2_D7D9)))
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|this, _ev, _window, cx| {
+                                    this.start_installation(cx);
+                                }),
+                            )
                             .child("Установить"),
                     ),
             )
@@ -695,13 +699,11 @@ impl SetupView {
         checked: bool,
         on_click: impl Fn(&MouseDownEvent, &mut gpui::Window, &mut App) + 'static,
     ) -> gpui::Stateful<Div> {
-        let theme = &self.theme;
-
         div()
             .id(id)
             .flex()
             .items_center()
-            .gap(px(10.0))
+            .gap(px(8.0))
             .cursor_pointer()
             .on_mouse_down(MouseButton::Left, on_click)
             .child(
@@ -709,78 +711,75 @@ impl SetupView {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .size(px(18.0))
+                    .size(px(16.0))
                     .rounded(px(4.0))
                     .border_1()
                     .border_color(if checked {
-                        theme.accent_blue
+                        rgb(arclate::BLUE_DARK)
                     } else {
-                        theme.card_border
+                        rgb(arclate::BORDER_CARD_DARK)
                     })
                     .bg(if checked {
-                        theme.accent_blue
+                        rgb(arclate::BLUE_DARK)
                     } else {
-                        theme.input_bg
+                        rgb(arclate::BG3_DARK)
                     })
                     .child(if checked {
                         svg()
-                            .path("assets/icons/check.svg")
-                            .size(px(12.0))
-                            .text_color(theme.main_bg)
+                            .path("icons/check.svg")
+                            .size(px(11.0))
+                            .text_color(rgb(arclate::BG_DARK))
                     } else {
                         svg()
                     }),
             )
             .child(
                 div()
-                    .text_size(px(13.0))
-                    .text_color(theme.text_primary)
+                    .text_size(px(12.0))
+                    .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                     .child(label),
             )
     }
 
     fn render_installing(&self, _cx: &mut Context<Self>) -> Div {
-        let theme = &self.theme;
-
         div()
             .flex()
             .flex_col()
             .items_center()
             .justify_center()
             .size_full()
-            .gap(px(20.0))
+            .gap(px(14.0))
             .child(
                 div()
                     .flex()
                     .items_center()
                     .justify_center()
-                    .size(px(64.0))
+                    .size(px(48.0))
                     .rounded_full()
-                    .bg(theme.accent_blue.opacity(0.12))
+                    .bg(rgba(0x70A2_D71F))
                     .child(
                         svg()
-                            .path("assets/icons/loader.svg")
-                            .size(px(32.0))
-                            .text_color(theme.accent_blue),
+                            .path("icons/loader.svg")
+                            .size(px(24.0))
+                            .text_color(rgb(arclate::BLUE_DARK)),
                     ),
             )
             .child(
                 div()
-                    .text_size(px(18.0))
+                    .text_size(px(16.0))
                     .font_weight(FontWeight::BOLD)
-                    .text_color(theme.text_primary)
+                    .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                     .child("Идет установка Winsentials..."),
             )
             .child(
                 div()
-                    .text_size(px(13.0))
-                    .text_color(theme.text_muted)
+                    .text_size(px(12.0))
+                    .text_color(rgb(arclate::TEXT_MUTED_DARK))
                     .child(self.status_text.clone()),
             )
     }
 
     fn render_finished(&self, _cx: &mut Context<Self>) -> Div {
-        let theme = &self.theme;
         let launch_after = self.launch_after;
 
         div()
@@ -794,36 +793,36 @@ impl SetupView {
                     .flex_col()
                     .items_center()
                     .justify_center()
-                    .pt(px(40.0))
-                    .gap(px(16.0))
+                    .pt(px(28.0))
+                    .gap(px(12.0))
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .justify_center()
-                            .size(px(64.0))
+                            .size(px(48.0))
                             .rounded_full()
-                            .bg(theme.accent_green.opacity(0.15))
+                            .bg(rgba(0x70D7_9526))
                             .border_1()
-                            .border_color(theme.accent_green.opacity(0.3))
+                            .border_color(rgba(0x70D7_954D))
                             .child(
                                 svg()
-                                    .path("assets/icons/check-circle.svg")
-                                    .size(px(34.0))
-                                    .text_color(theme.accent_green),
+                                    .path("icons/check-circle.svg")
+                                    .size(px(26.0))
+                                    .text_color(rgb(arclate::GREEN_DARK)),
                             ),
                     )
                     .child(
                         div()
-                            .text_size(px(20.0))
+                            .text_size(px(17.0))
                             .font_weight(FontWeight::BOLD)
-                            .text_color(theme.text_primary)
+                            .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                             .child("Установка завершена!"),
                     )
                     .child(
                         div()
-                            .text_size(px(13.0))
-                            .text_color(theme.text_muted)
+                            .text_size(px(12.0))
+                            .text_color(rgb(arclate::TEXT_MUTED_DARK))
                             .child("Winsentials успешно установлен и готов к работе."),
                     ),
             )
@@ -832,24 +831,24 @@ impl SetupView {
                     .flex()
                     .items_center()
                     .justify_end()
-                    .pt(px(16.0))
+                    .pt(px(12.0))
                     .border_t_1()
-                    .border_color(theme.card_border)
+                    .border_color(rgb(arclate::BORDER_MAIN_DARK))
                     .child(
                         div()
                             .id("finish-btn")
                             .flex()
                             .items_center()
                             .justify_center()
-                            .h(px(38.0))
-                            .px(px(28.0))
-                            .rounded(px(8.0))
-                            .bg(theme.accent_blue)
-                            .text_size(px(13.0))
+                            .h(px(32.0))
+                            .px(px(22.0))
+                            .rounded(px(6.0))
+                            .bg(rgb(arclate::BLUE_DARK))
+                            .text_size(px(12.0))
                             .font_weight(FontWeight::BOLD)
-                            .text_color(theme.main_bg)
+                            .text_color(rgb(arclate::BG_DARK))
                             .cursor_pointer()
-                            .hover(|s| s.bg(theme.accent_blue.opacity(0.85)))
+                            .hover(|s| s.bg(rgba(0x70A2_D7D9)))
                             .on_mouse_down(MouseButton::Left, move |_ev, _window, cx| {
                                 if launch_after {
                                     let exe = std::env::var("ProgramFiles").map_or_else(
@@ -880,7 +879,6 @@ impl SetupView {
     }
 
     fn render_error(&self, _cx: &mut Context<Self>) -> Div {
-        let theme = &self.theme;
         let err_msg = self
             .error_text
             .clone()
@@ -897,37 +895,37 @@ impl SetupView {
                     .flex_col()
                     .items_center()
                     .justify_center()
-                    .pt(px(30.0))
-                    .gap(px(14.0))
+                    .pt(px(20.0))
+                    .gap(px(10.0))
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .justify_center()
-                            .size(px(64.0))
+                            .size(px(48.0))
                             .rounded_full()
-                            .bg(theme.accent_red.opacity(0.15))
+                            .bg(rgba(0xD770_7026))
                             .border_1()
-                            .border_color(theme.accent_red.opacity(0.3))
+                            .border_color(rgba(0xD770_704D))
                             .child(
                                 svg()
-                                    .path("assets/icons/alert-triangle.svg")
-                                    .size(px(34.0))
-                                    .text_color(theme.accent_red),
+                                    .path("icons/alert-triangle.svg")
+                                    .size(px(26.0))
+                                    .text_color(rgb(arclate::RED_DARK)),
                             ),
                     )
                     .child(
                         div()
-                            .text_size(px(18.0))
+                            .text_size(px(16.0))
                             .font_weight(FontWeight::BOLD)
-                            .text_color(theme.accent_red)
+                            .text_color(rgb(arclate::RED_DARK))
                             .child("Ошибка установки"),
                     )
                     .child(
                         div()
-                            .max_w(px(460.0))
-                            .text_size(px(13.0))
-                            .text_color(theme.text_muted)
+                            .max_w(px(420.0))
+                            .text_size(px(12.0))
+                            .text_color(rgb(arclate::TEXT_MUTED_DARK))
                             .child(err_msg),
                     ),
             )
@@ -936,26 +934,26 @@ impl SetupView {
                     .flex()
                     .items_center()
                     .justify_end()
-                    .pt(px(16.0))
+                    .pt(px(12.0))
                     .border_t_1()
-                    .border_color(theme.card_border)
+                    .border_color(rgb(arclate::BORDER_MAIN_DARK))
                     .child(
                         div()
                             .id("error-close-btn")
                             .flex()
                             .items_center()
                             .justify_center()
-                            .h(px(38.0))
-                            .px(px(24.0))
-                            .rounded(px(8.0))
-                            .bg(theme.card_bg)
+                            .h(px(32.0))
+                            .px(px(18.0))
+                            .rounded(px(6.0))
+                            .bg(rgb(arclate::BG_DARK))
                             .border_1()
-                            .border_color(theme.card_border)
-                            .text_size(px(13.0))
+                            .border_color(rgb(arclate::BORDER_CARD_DARK))
+                            .text_size(px(12.0))
                             .font_weight(FontWeight::MEDIUM)
-                            .text_color(theme.text_primary)
+                            .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                             .cursor_pointer()
-                            .hover(|s| s.bg(theme.input_bg))
+                            .hover(|s| s.bg(rgb(arclate::BG3_DARK)))
                             .on_mouse_down(MouseButton::Left, |_ev, _window, cx| {
                                 cx.quit();
                             })
@@ -965,8 +963,6 @@ impl SetupView {
     }
 
     fn render_uninstall_confirm(&self, cx: &mut Context<Self>) -> Div {
-        let theme = &self.theme;
-
         div()
             .flex()
             .flex_col()
@@ -978,38 +974,38 @@ impl SetupView {
                     .flex_col()
                     .items_center()
                     .justify_center()
-                    .pt(px(30.0))
-                    .gap(px(16.0))
+                    .pt(px(24.0))
+                    .gap(px(12.0))
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .justify_center()
-                            .size(px(64.0))
+                            .size(px(48.0))
                             .rounded_full()
-                            .bg(theme.accent_red.opacity(0.12))
+                            .bg(rgba(0xD770_701F))
                             .border_1()
-                            .border_color(theme.accent_red.opacity(0.3))
+                            .border_color(rgba(0xD770_704D))
                             .child(
                                 svg()
-                                    .path("assets/icons/trash-2.svg")
-                                    .size(px(32.0))
-                                    .text_color(theme.accent_red),
+                                    .path("icons/trash-2.svg")
+                                    .size(px(24.0))
+                                    .text_color(rgb(arclate::RED_DARK)),
                             ),
                     )
                     .child(
                         div()
-                            .text_size(px(20.0))
+                            .text_size(px(17.0))
                             .font_weight(FontWeight::BOLD)
-                            .text_color(theme.text_primary)
+                            .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                             .child("Удаление Winsentials"),
                     )
                     .child(
                         div()
-                            .max_w(px(460.0))
-                            .text_size(px(13.0))
-                            .text_color(theme.text_muted)
-                            .child("Вы действительно хотите удалить Winsentials и все связанные ярлыки с вашего компьютера?"),
+                            .max_w(px(420.0))
+                            .text_size(px(12.0))
+                            .text_color(rgb(arclate::TEXT_MUTED_DARK))
+                            .child("Вы действительно хотите удалить Winsentials и все связанные ярлыки?"),
                     ),
             )
             .child(
@@ -1017,27 +1013,27 @@ impl SetupView {
                     .flex()
                     .items_center()
                     .justify_end()
-                    .gap(px(12.0))
-                    .pt(px(16.0))
+                    .gap(px(10.0))
+                    .pt(px(12.0))
                     .border_t_1()
-                    .border_color(theme.card_border)
+                    .border_color(rgb(arclate::BORDER_MAIN_DARK))
                     .child(
                         div()
                             .id("uninst-cancel-btn")
                             .flex()
                             .items_center()
                             .justify_center()
-                            .h(px(38.0))
-                            .px(px(20.0))
-                            .rounded(px(8.0))
-                            .bg(theme.card_bg)
+                            .h(px(32.0))
+                            .px(px(16.0))
+                            .rounded(px(6.0))
+                            .bg(rgb(arclate::BG_DARK))
                             .border_1()
-                            .border_color(theme.card_border)
-                            .text_size(px(13.0))
+                            .border_color(rgb(arclate::BORDER_CARD_DARK))
+                            .text_size(px(12.0))
                             .font_weight(FontWeight::MEDIUM)
-                            .text_color(theme.text_primary)
+                            .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                             .cursor_pointer()
-                            .hover(|s| s.bg(theme.input_bg))
+                            .hover(|s| s.bg(rgb(arclate::BG3_DARK)))
                             .on_mouse_down(MouseButton::Left, |_ev, _window, cx| {
                                 cx.quit();
                             })
@@ -1049,60 +1045,59 @@ impl SetupView {
                             .flex()
                             .items_center()
                             .justify_center()
-                            .h(px(38.0))
-                            .px(px(24.0))
-                            .rounded(px(8.0))
-                            .bg(theme.accent_red)
-                            .text_size(px(13.0))
+                            .h(px(32.0))
+                            .px(px(18.0))
+                            .rounded(px(6.0))
+                            .bg(rgb(arclate::RED_DARK))
+                            .text_size(px(12.0))
                             .font_weight(FontWeight::BOLD)
-                            .text_color(theme.text_primary)
+                            .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                             .cursor_pointer()
-                            .hover(|s| s.bg(theme.accent_red.opacity(0.85)))
-                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _ev, _window, cx| {
-                                this.start_uninstallation(cx);
-                            }))
+                            .hover(|s| s.bg(rgba(0xD770_70D9)))
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|this, _ev, _window, cx| {
+                                    this.start_uninstallation(cx);
+                                }),
+                            )
                             .child("Удалить"),
                     ),
             )
     }
 
     fn render_uninstalling(&self, _cx: &mut Context<Self>) -> Div {
-        let theme = &self.theme;
-
         div()
             .flex()
             .flex_col()
             .items_center()
             .justify_center()
             .size_full()
-            .gap(px(20.0))
+            .gap(px(14.0))
             .child(
                 div()
                     .flex()
                     .items_center()
                     .justify_center()
-                    .size(px(64.0))
+                    .size(px(48.0))
                     .rounded_full()
-                    .bg(theme.accent_red.opacity(0.12))
+                    .bg(rgba(0xD770_701F))
                     .child(
                         svg()
-                            .path("assets/icons/loader.svg")
-                            .size(px(32.0))
-                            .text_color(theme.accent_red),
+                            .path("icons/loader.svg")
+                            .size(px(24.0))
+                            .text_color(rgb(arclate::RED_DARK)),
                     ),
             )
             .child(
                 div()
-                    .text_size(px(18.0))
+                    .text_size(px(16.0))
                     .font_weight(FontWeight::BOLD)
-                    .text_color(theme.text_primary)
+                    .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                     .child("Идет удаление Winsentials..."),
             )
     }
 
     fn render_uninstalled(&self, _cx: &mut Context<Self>) -> Div {
-        let theme = &self.theme;
-
         div()
             .flex()
             .flex_col()
@@ -1114,36 +1109,36 @@ impl SetupView {
                     .flex_col()
                     .items_center()
                     .justify_center()
-                    .pt(px(40.0))
-                    .gap(px(16.0))
+                    .pt(px(28.0))
+                    .gap(px(12.0))
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .justify_center()
-                            .size(px(64.0))
+                            .size(px(48.0))
                             .rounded_full()
-                            .bg(theme.accent_blue.opacity(0.15))
+                            .bg(rgba(0x70A2_D726))
                             .border_1()
-                            .border_color(theme.accent_blue.opacity(0.3))
+                            .border_color(rgba(0x70A2_D74D))
                             .child(
                                 svg()
-                                    .path("assets/icons/check-circle.svg")
-                                    .size(px(34.0))
-                                    .text_color(theme.accent_blue),
+                                    .path("icons/check-circle.svg")
+                                    .size(px(26.0))
+                                    .text_color(rgb(arclate::BLUE_DARK)),
                             ),
                     )
                     .child(
                         div()
-                            .text_size(px(20.0))
+                            .text_size(px(17.0))
                             .font_weight(FontWeight::BOLD)
-                            .text_color(theme.text_primary)
+                            .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                             .child("Winsentials удален"),
                     )
                     .child(
                         div()
-                            .text_size(px(13.0))
-                            .text_color(theme.text_muted)
+                            .text_size(px(12.0))
+                            .text_color(rgb(arclate::TEXT_MUTED_DARK))
                             .child("Программа была успешно удалена с вашего компьютера."),
                     ),
             )
@@ -1152,26 +1147,26 @@ impl SetupView {
                     .flex()
                     .items_center()
                     .justify_end()
-                    .pt(px(16.0))
+                    .pt(px(12.0))
                     .border_t_1()
-                    .border_color(theme.card_border)
+                    .border_color(rgb(arclate::BORDER_MAIN_DARK))
                     .child(
                         div()
                             .id("uninst-close-btn")
                             .flex()
                             .items_center()
                             .justify_center()
-                            .h(px(38.0))
-                            .px(px(24.0))
-                            .rounded(px(8.0))
-                            .bg(theme.card_bg)
+                            .h(px(32.0))
+                            .px(px(18.0))
+                            .rounded(px(6.0))
+                            .bg(rgb(arclate::BG_DARK))
                             .border_1()
-                            .border_color(theme.card_border)
-                            .text_size(px(13.0))
+                            .border_color(rgb(arclate::BORDER_CARD_DARK))
+                            .text_size(px(12.0))
                             .font_weight(FontWeight::MEDIUM)
-                            .text_color(theme.text_primary)
+                            .text_color(rgb(arclate::TEXT_PRIMARY_DARK))
                             .cursor_pointer()
-                            .hover(|s| s.bg(theme.input_bg))
+                            .hover(|s| s.bg(rgb(arclate::BG3_DARK)))
                             .on_mouse_down(MouseButton::Left, |_ev, _window, cx| {
                                 cx.quit();
                             })
@@ -1222,7 +1217,7 @@ fn main() {
             cx.set_global(Theme::dark());
 
             let window_bounds =
-                WindowBounds::Windowed(Bounds::centered(None, size(px(620.0), px(440.0)), cx));
+                WindowBounds::Windowed(Bounds::centered(None, size(px(520.0), px(350.0)), cx));
 
             let window_options = WindowOptions {
                 window_bounds: Some(window_bounds),
