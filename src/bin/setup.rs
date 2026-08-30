@@ -427,12 +427,18 @@ impl SetupView {
                     .flex()
                     .items_center()
                     .gap(px(8.0))
-                    .pl(px(8.0))
                     .window_control_area(WindowControlArea::Drag)
                     .on_mouse_down(MouseButton::Left, |_ev, window, _cx| {
                         window.start_window_move();
                     })
-                    .child(img("app-logo.png").size(px(18.0)).rounded(px(4.0)))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .size(px(32.0))
+                            .child(img("app-logo.png").size(px(20.0)).rounded(px(4.0))),
+                    )
                     .child(
                         div()
                             .text_size(px(12.5))
