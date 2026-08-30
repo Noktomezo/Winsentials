@@ -56,7 +56,7 @@ InstallDirRegKey HKLM "Software\Winsentials" "InstallDir"
 
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW onPageShow
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Winsentials.exe"
-!define MUI_FINISHPAGE_RUN_TEXT "Р—Р°РїСѓСЃС‚РёС‚СЊ Winsentials"
+!define MUI_FINISHPAGE_RUN_TEXT $(FinishRunText)
 !insertmacro MUI_PAGE_FINISH
 
 ; Uninstaller Pages
@@ -75,6 +75,14 @@ InstallDirRegKey HKLM "Software\Winsentials" "InstallDir"
 ; Languages
 !insertmacro MUI_LANGUAGE "Russian"
 !insertmacro MUI_LANGUAGE "English"
+
+; Localized Strings
+LangString CloseProcMsg ${LANG_RUSSIAN} "РџСЂРѕРІРµСЂРєР° Рё Р·Р°РІРµСЂС€РµРЅРёРµ Р·Р°РїСѓС‰РµРЅРЅС‹С… РїСЂРѕС†РµСЃСЃРѕРІ Winsentials..."
+LangString CloseProcMsg ${LANG_ENGLISH} "Checking and terminating running Winsentials processes..."
+LangString UninstallCloseMsg ${LANG_RUSSIAN} "Р—Р°РІРµСЂС€РµРЅРёРµ РїСЂРѕС†РµСЃСЃРѕРІ Winsentials..."
+LangString UninstallCloseMsg ${LANG_ENGLISH} "Terminating Winsentials processes..."
+LangString FinishRunText ${LANG_RUSSIAN} "Р—Р°РїСѓСЃС‚РёС‚СЊ Winsentials"
+LangString FinishRunText ${LANG_ENGLISH} "Launch Winsentials"
 
 ; Dark Theme Initialization
 Function .onInit
@@ -211,20 +219,27 @@ Function onPageShow
         ${While} $2 <= 1210
             GetDlgItem $1 $0 $2
             ${If} $1 != 0
-                System::Call 'uxtheme::#133(p $1, i 1)'
-                System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
-                
                 ${If} $2 == 1019
                     ; Edit box for path: bg #1A2228, text #E9EEF1
+                    System::Call 'uxtheme::#133(p $1, i 1)'
+                    System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
+                    SetCtlColors $1 0xE9EEF1 0x1A2228
+                ${ElseIf} $2 == 1016
+                    ; InstFiles detail log listbox
+                    System::Call 'uxtheme::#133(p $1, i 1)'
+                    System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
                     SetCtlColors $1 0xE9EEF1 0x1A2228
                 ${ElseIf} $2 == 1021
                     ; Groupbox border - hide 3D rectangle
                     ShowWindow $1 0
-                ${ElseIf} $2 >= 1200
-                    ; Finish page checkbox (1203) / links
-                    SetCtlColors $1 0xE9EEF1 0x0F151A
+                ${ElseIf} $2 == 1203
+                    ; Finish page checkbox (1203)
+                    System::Call 'uxtheme::#133(p $1, i 1)'
+                    System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
+                    SetCtlColors $1 0xE9EEF1 "transparent"
                 ${ElseIf} $2 != 1001
-                    SetCtlColors $1 0xE9EEF1 0x0F151A
+                    ; Static labels (1000..1018, 1200, 1201, 1202) -> set transparent with text color
+                    SetCtlColors $1 0xE9EEF1 "transparent"
                 ${EndIf}
             ${EndIf}
             IntOp $2 $2 + 1
@@ -339,17 +354,22 @@ Function un.unPageShow
         ${While} $2 <= 1210
             GetDlgItem $1 $0 $2
             ${If} $1 != 0
-                System::Call 'uxtheme::#133(p $1, i 1)'
-                System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
-                
                 ${If} $2 == 1019
+                    System::Call 'uxtheme::#133(p $1, i 1)'
+                    System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
+                    SetCtlColors $1 0xE9EEF1 0x1A2228
+                ${ElseIf} $2 == 1016
+                    System::Call 'uxtheme::#133(p $1, i 1)'
+                    System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
                     SetCtlColors $1 0xE9EEF1 0x1A2228
                 ${ElseIf} $2 == 1021
                     ShowWindow $1 0
-                ${ElseIf} $2 >= 1200
-                    SetCtlColors $1 0xE9EEF1 0x0F151A
+                ${ElseIf} $2 == 1203
+                    System::Call 'uxtheme::#133(p $1, i 1)'
+                    System::Call 'uxtheme::SetWindowTheme(p $1, w "DarkMode_Explorer", w "")'
+                    SetCtlColors $1 0xE9EEF1 "transparent"
                 ${ElseIf} $2 != 1001
-                    SetCtlColors $1 0xE9EEF1 0x0F151A
+                    SetCtlColors $1 0xE9EEF1 "transparent"
                 ${EndIf}
             ${EndIf}
             IntOp $2 $2 + 1
@@ -362,7 +382,7 @@ Section "Winsentials" SecMain
     SetOutPath "$INSTDIR"
 
     ; Close running instances if any
-    DetailPrint "РџСЂРѕРІРµСЂРєР° Рё Р·Р°РІРµСЂС€РµРЅРёРµ Р·Р°РїСѓС‰РµРЅРЅС‹С… РїСЂРѕС†РµСЃСЃРѕРІ Winsentials..."
+    DetailPrint $(CloseProcMsg)
     nsExec::Exec 'taskkill /F /IM Winsentials.exe /T'
 
     File "/oname=Winsentials.exe" "${BINARY_PATH}"
@@ -394,7 +414,7 @@ Section "Winsentials" SecMain
 SectionEnd
 
 Section "Uninstall"
-    DetailPrint "Р—Р°РІРµСЂС€РµРЅРёРµ РїСЂРѕС†РµСЃСЃРѕРІ Winsentials..."
+    DetailPrint $(UninstallCloseMsg)
     nsExec::Exec 'taskkill /F /IM Winsentials.exe /T'
 
     Delete "$DESKTOP\Winsentials.lnk"
