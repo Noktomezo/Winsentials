@@ -11,9 +11,7 @@ use crate::features::navigation::AppRoute;
 use crate::pages::page_header::PageHeader;
 use crate::shared::theme::Theme;
 use crate::shared::ui::TooltipState;
-use crate::shared::ui::animated_grid::{VirtualGridConfig, render_virtual_animated_grid};
 use crate::shared::ui::icon::Icon;
-use crate::shared::ui::smooth_scroll::SmoothScroll;
 use crate::shared::ui::switch::Switch;
 
 pub type StartupToggleHandler = Arc<dyn Fn(&StartupEntry, &mut Window, &mut App) + 'static>;
@@ -39,7 +37,6 @@ pub struct StartupPage {
     entries: Vec<StartupEntry>,
     active_filter: Option<StartupSource>,
     open_menu_id: Option<String>,
-    sidebar_expanded: bool,
     on_toggle: Option<StartupToggleHandler>,
     on_delete: Option<StartupDeleteHandler>,
     on_open_folder: Option<StartupActionHandler>,
@@ -56,13 +53,11 @@ impl StartupPage {
         entries: Vec<StartupEntry>,
         active_filter: Option<StartupSource>,
         open_menu_id: Option<String>,
-        sidebar_expanded: bool,
     ) -> Self {
         Self {
             entries,
             active_filter,
             open_menu_id,
-            sidebar_expanded,
             on_toggle: None,
             on_delete: None,
             on_open_folder: None,
@@ -396,12 +391,14 @@ fn render_startup_card(
     div()
         .id(ElementId::Name(format!("{}_card", entry.id).into()))
         .relative()
+        .w_full()
         .flex()
         .items_center()
         .justify_between()
         .gap(px(12.0))
-        .h(px(68.0))
-        .p(px(14.0))
+        .h(px(58.0))
+        .px(px(16.0))
+        .py(px(10.0))
         .rounded(px(10.0))
         .border_1()
         .border_color(theme.card_border)
@@ -547,7 +544,7 @@ fn render_filter_pill(
 
 impl RenderOnce for StartupPage {
     #[allow(clippy::too_many_lines)]
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
         let route = AppRoute::Startup;
 
@@ -569,13 +566,6 @@ impl RenderOnce for StartupPage {
                 }
             })
             .collect();
-
-        let sidebar_w = if self.sidebar_expanded {
-            px(200.0)
-        } else {
-            px(40.0)
-        };
-        let available_w = (window.viewport_size().width - sidebar_w - px(32.0)).max(px(320.0));
 
         let handlers = StartupCardHandlers {
             toggle: self.on_toggle,
@@ -641,9 +631,6 @@ impl RenderOnce for StartupPage {
                         rust_i18n::t!("startup.enabled")
                     )),
             );
-
-        let (scroll_y, viewport_h) = SmoothScroll::get_scroll_offset(route.id(), window, cx);
-
         let content_el = if filtered_entries.is_empty() {
             div()
                 .flex()
@@ -656,20 +643,16 @@ impl RenderOnce for StartupPage {
                 .child(rust_i18n::t!("startup.empty").to_string())
                 .into_any_element()
         } else {
-            let config = VirtualGridConfig::new(
-                available_w,
-                px(360.0),
-                px(68.0),
-                px(12.0),
-                scroll_y,
-                viewport_h,
-            );
-            render_virtual_animated_grid("startup_grid", config, &filtered_entries, |_i, entry| {
-                let is_menu_open = self.open_menu_id.as_ref().is_some_and(|id| id == &entry.id);
-                let elem = render_startup_card(entry, &theme, is_menu_open, &handlers);
-                (entry.id.clone(), elem)
-            })
-            .into_any_element()
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(8.0))
+                .w_full()
+                .children(filtered_entries.iter().map(|entry| {
+                    let is_menu_open = self.open_menu_id.as_ref().is_some_and(|id| id == &entry.id);
+                    render_startup_card(entry, &theme, is_menu_open, &handlers)
+                }))
+                .into_any_element()
         };
 
         div()

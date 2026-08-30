@@ -26,24 +26,6 @@ impl SmoothScroll {
             child: child.into_any_element(),
         }
     }
-
-    #[must_use]
-    pub fn get_scroll_offset(
-        id: &'static str,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> (Pixels, Pixels) {
-        let state = window.use_keyed_state((id, 0usize), cx, |_, _| SmoothScrollState::default());
-        let read = state.read(cx);
-        let offset_y = (-read.handle.offset().y).max(px(0.0));
-        let bounds_h = read.handle.bounds().size.height;
-        let viewport_h = if bounds_h > px(0.0) {
-            bounds_h
-        } else {
-            window.viewport_size().height
-        };
-        (offset_y, viewport_h)
-    }
 }
 
 struct SmoothScrollState {

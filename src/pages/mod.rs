@@ -304,7 +304,6 @@ pub fn render_route(
             startup_entries.to_vec(),
             startup_filter,
             startup_open_menu_id.map(ToString::to_string),
-            sidebar_expanded,
         )
         .on_toggle(on_toggle_startup)
         .on_delete(on_delete_startup)

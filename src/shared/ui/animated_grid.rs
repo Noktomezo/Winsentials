@@ -5,37 +5,6 @@ use gpui::{
 
 pub const GRID_LAYOUT_SPRING: SpringConfig = SpringConfig::new(260.0, 26.0, 1.0);
 
-#[derive(Clone, Copy, Debug)]
-pub struct VirtualGridConfig {
-    pub available_width: Pixels,
-    pub min_item_width: Pixels,
-    pub item_height: Pixels,
-    pub gap: Pixels,
-    pub scroll_y: Pixels,
-    pub viewport_height: Pixels,
-}
-
-impl VirtualGridConfig {
-    #[must_use]
-    pub const fn new(
-        available_width: Pixels,
-        min_item_width: Pixels,
-        item_height: Pixels,
-        gap: Pixels,
-        scroll_y: Pixels,
-        viewport_height: Pixels,
-    ) -> Self {
-        Self {
-            available_width,
-            min_item_width,
-            item_height,
-            gap,
-            scroll_y,
-            viewport_height,
-        }
-    }
-}
-
 /// Calculates responsive grid positions, actual item width and total container height.
 /// Distributes items evenly into `cols` columns where each column expands to fill available width.
 #[must_use]
@@ -130,85 +99,6 @@ pub fn render_animated_grid<I: Into<SharedString>>(
                             div()
                                 .w(item_width)
                                 .h(item_height)
-                                .with_spring(
-                                    ElementId::Name(format!("{card_id_str}_grid_w").into()),
-                                    SpringAnimation::new(GRID_LAYOUT_SPRING)
-                                        .to(f32::from(item_width)),
-                                    |card, w| card.w(px(w)),
-                                )
-                                .child(card_el),
-                        ),
-                ),
-        );
-    }
-
-    grid_el
-}
-
-/// Renders items in a virtualized animated flow grid with spring physics for positional transitions.
-/// Only items within the visible viewport (plus overscan buffer) are instantiated and animated,
-/// while maintaining the full container height for accurate scrollbars and smooth scrolling.
-pub fn render_virtual_animated_grid<T, I: Into<SharedString>>(
-    grid_id: impl Into<SharedString>,
-    config: VirtualGridConfig,
-    items: &[T],
-    mut render_item: impl FnMut(usize, &T) -> (I, AnyElement),
-) -> impl IntoElement {
-    let grid_id_str = grid_id.into();
-    let (positions, item_width, total_height) = compute_responsive_grid_layout(
-        config.available_width,
-        config.min_item_width,
-        config.item_height,
-        config.gap,
-        items.len(),
-    );
-
-    let mut grid_el = div()
-        .id(ElementId::Name(grid_id_str.clone()))
-        .relative()
-        .w_full()
-        .h(total_height)
-        .with_spring(
-            ElementId::Name(format!("{grid_id_str}_spring_h").into()),
-            SpringAnimation::new(GRID_LAYOUT_SPRING).to(f32::from(total_height)),
-            |grid, h| grid.h(px(h)),
-        );
-
-    // Overscan buffer (3 rows above and below) for seamless scrolling
-    let overscan = config.item_height * 3.0 + config.gap * 3.0;
-    let min_y = (config.scroll_y - overscan).max(px(0.0));
-    let max_y = config.scroll_y + config.viewport_height + overscan;
-
-    for (i, item) in items.iter().enumerate() {
-        let pos = positions.get(i).copied().unwrap_or(point(px(0.0), px(0.0)));
-        if pos.y + config.item_height < min_y || pos.y > max_y {
-            continue;
-        }
-
-        let (card_id, card_el) = render_item(i, item);
-        let card_id_str = card_id.into();
-
-        grid_el = grid_el.child(
-            div()
-                .absolute()
-                .left(pos.x)
-                .with_spring(
-                    ElementId::Name(format!("{card_id_str}_grid_x").into()),
-                    SpringAnimation::new(GRID_LAYOUT_SPRING).to(f32::from(pos.x)),
-                    |card, x| card.left(px(x)),
-                )
-                .child(
-                    div()
-                        .top(pos.y)
-                        .with_spring(
-                            ElementId::Name(format!("{card_id_str}_grid_y").into()),
-                            SpringAnimation::new(GRID_LAYOUT_SPRING).to(f32::from(pos.y)),
-                            |card, y| card.top(px(y)),
-                        )
-                        .child(
-                            div()
-                                .w(item_width)
-                                .h(config.item_height)
                                 .with_spring(
                                     ElementId::Name(format!("{card_id_str}_grid_w").into()),
                                     SpringAnimation::new(GRID_LAYOUT_SPRING)
