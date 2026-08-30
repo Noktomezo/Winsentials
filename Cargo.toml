@@ -34,6 +34,7 @@ windows-sys = { version = "0.59", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Shell",
+    "Win32_Graphics_Gdi",
     "Win32_System_SystemInformation",
     "Win32_System_ProcessStatus",
     "Win32_System_Threading",

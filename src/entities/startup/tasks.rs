@@ -166,6 +166,7 @@ fn parse_task_file(root: &Path, file_path: &Path) -> Option<StartupEntry> {
         status,
         command: Some(full_command),
         target_path: target_str,
+        icon_path: None,
         location_label: "Task Scheduler".to_string(),
         raw_id: task_tn,
     })

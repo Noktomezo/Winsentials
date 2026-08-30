@@ -120,6 +120,7 @@ pub fn scan_services_startup() -> Vec<StartupEntry> {
             status,
             command: Some(image_path),
             target_path: target_str,
+            icon_path: None,
             location_label: "HKLM\\...\\Services".to_string(),
             raw_id: service_name,
         });

@@ -51,6 +51,7 @@ fn scan_key_values(
                 status: StartupStatus::Enabled,
                 command: Some(cmd),
                 target_path: target_str,
+                icon_path: None,
                 location_label: label.to_string(),
                 raw_id: format!("{prefix}|{key_path}|{name}"),
             });
@@ -119,6 +120,7 @@ pub fn scan_registry_startup() -> Vec<StartupEntry> {
                             status: StartupStatus::Disabled,
                             command: Some(cmd.to_string()),
                             target_path: target_str,
+                            icon_path: None,
                             location_label: format!("{hive}\\...\\Disabled"),
                             raw_id: format!("DISABLED|{name}|{stored_val}"),
                         });

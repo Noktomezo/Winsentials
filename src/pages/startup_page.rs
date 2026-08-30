@@ -4,8 +4,8 @@ use std::time::Duration;
 use gpui::prelude::FluentBuilder;
 use gpui::{
     Animation, AnimationExt, AnyElement, App, ElementId, FontWeight, InteractiveElement,
-    IntoElement, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, deferred,
-    div, ease_in_out, px,
+    IntoElement, MouseButton, ParentElement, RenderOnce, StatefulInteractiveElement, Styled,
+    Window, deferred, div, ease_in_out, img, px,
 };
 
 use crate::entities::startup::{StartupEntry, StartupSource, StartupStatus};
@@ -400,7 +400,7 @@ fn render_startup_card(
         .bg(menu_btn_bg)
         .cursor_pointer()
         .hover(move |s| s.bg(theme.button_hover))
-        .on_click(move |_, window, cx| {
+        .on_mouse_down(MouseButton::Left, move |_, window, cx| {
             if let Some(ref h) = on_toggle_menu_btn {
                 if is_menu_open {
                     h(None, window, cx);
@@ -408,6 +408,7 @@ fn render_startup_card(
                     h(Some(menu_toggle_id.clone()), window, cx);
                 }
             }
+            cx.stop_propagation();
         })
         .child(
             Icon::new("icons/ellipsis-vertical.svg")
@@ -422,6 +423,34 @@ fn render_startup_card(
 
     let tt_h1 = handlers.hover_tt.clone();
     let tt_h2 = handlers.hover_tt.clone();
+
+    let app_icon_el = if let Some(ref icon_file) = entry.icon_path {
+        div()
+            .flex()
+            .items_center()
+            .justify_center()
+            .size(px(38.0))
+            .rounded_lg()
+            .bg(theme.input_bg)
+            .border_1()
+            .border_color(theme.input_border)
+            .flex_none()
+            .child(img(icon_file.clone()).size(px(24.0)).rounded(px(4.0)))
+    } else {
+        div()
+            .flex()
+            .items_center()
+            .justify_center()
+            .size(px(38.0))
+            .rounded_lg()
+            .bg(source_col.opacity(0.12))
+            .flex_none()
+            .child(
+                Icon::new(entry.source.icon())
+                    .size(px(20.0))
+                    .color(source_col),
+            )
+    };
 
     div()
         .id(ElementId::Name(format!("{}_card", entry.id).into()))
@@ -446,21 +475,7 @@ fn render_startup_card(
                 .gap(px(12.0))
                 .flex_1()
                 .min_w(px(0.0))
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .size(px(38.0))
-                        .rounded_lg()
-                        .bg(source_col.opacity(0.12))
-                        .flex_none()
-                        .child(
-                            Icon::new(entry.source.icon())
-                                .size(px(20.0))
-                                .color(source_col),
-                        ),
-                )
+                .child(app_icon_el)
                 .child(
                     div()
                         .flex()

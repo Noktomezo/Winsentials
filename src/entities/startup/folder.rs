@@ -92,6 +92,7 @@ fn scan_dir(dir: &Path, scope: StartupScope, entries: &mut Vec<StartupEntry>) {
             status,
             command: Some(path_str.clone()),
             target_path: Some(path_str.clone()),
+            icon_path: None,
             location_label,
             raw_id: path_str,
         });

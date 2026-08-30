@@ -1,4 +1,5 @@
 pub mod folder;
+pub mod icon;
 pub mod registry;
 pub mod services;
 pub mod tasks;
@@ -30,6 +31,12 @@ pub fn fetch_all_startup_entries() -> Vec<StartupEntry> {
 
     // 4. Custom services (Службы)
     all.extend(services::scan_services_startup());
+
+    // 5. Resolve application icons
+    for entry in &mut all {
+        entry.icon_path =
+            icon::resolve_entry_icon(entry.target_path.as_deref(), entry.command.as_deref());
+    }
 
     // Sort: StartupFolder -> ScheduledTask -> Registry -> Service, then alphabetically by display_name
     all.sort_by(|a, b| {
