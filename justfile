@@ -1,4 +1,4 @@
-# NativeRezka Justfile
+# Winsentials Justfile
 
 # List available recipes
 default:
@@ -8,7 +8,7 @@ default:
 gate:
     cargo run --package xtask -- gate
 
-# Check project compilation
+# Check project compilation across all workspace crates
 check:
     cargo run --package xtask -- check
 
@@ -16,15 +16,15 @@ check:
 clippy:
     cargo run --package xtask -- clippy
 
-# Format all code
+# Format all workspace code
 fmt:
     cargo run --package xtask -- fmt
 
-# Check code formatting
+# Check workspace code formatting
 fmt-check:
     cargo run --package xtask -- fmt-check
 
-# Run all tests
+# Run all workspace unit tests
 test:
     cargo run --package xtask -- test
 
@@ -40,17 +40,17 @@ unpatch:
 diff:
     cargo run --package xtask -- diff
 
-# Build optimized release binary and compress with UPX via xtask
+# Build release binaries (Winsentials & Installer), compress with UPX and package
 build:
     cargo run --package xtask --release -- build
 
 # Run development server with watchexec auto-reload on file change
 dev *ARGS: patch
-    watchexec -r -e rs,hlsl,toml,json -- cargo run -- {{ARGS}}
+    watchexec -r -e rs,hlsl,toml,json -- cargo run --package winsentials -- {{ARGS}}
 
-# Run native_rezka application
+# Run Winsentials application
 run *ARGS:
-    cargo run --package xtask -- run {{ARGS}}
+    cargo run --package winsentials -- {{ARGS}}
 
 # Run custom xtask command
 xtask *ARGS:
