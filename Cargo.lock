@@ -7545,6 +7545,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "winsentials-installer"
+version = "0.1.0"
+dependencies = [
+ "gpui",
+ "gpui_platform",
+ "rfd",
+ "rust-i18n",
+ "windows-registry",
+ "winsentials",
+]
+
+[[package]]
 name = "wio"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -1,0 +1,9 @@
+/target
+.firecrawl/
+codedb.snapshot
+.symdex/
+.codegraph/
+.idea/
+.vscode/
+*.exe
+*.zip

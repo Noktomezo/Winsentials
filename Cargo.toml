@@ -1,5 +1,12 @@
-[package]
-name = "winsentials"
+[workspace]
+members = [
+    "crates/app",
+    "crates/installer",
+    "crates/xtask",
+]
+resolver = "2"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
@@ -7,21 +14,8 @@ authors = ["Noktomezo <https://github.com/Noktomezo>"]
 repository = "https://github.com/Noktomezo/Winsentials"
 homepage = "https://github.com/Noktomezo/Winsentials"
 
-[[bin]]
-name = "Winsentials"
-path = "src/main.rs"
-
-[[bin]]
-name = "winsentials-setup"
-path = "src/bin/setup.rs"
-
-[workspace]
-members = [
-    ".",
-    "tooling/xtask",
-]
-
-[dependencies]
+[workspace.dependencies]
+winsentials = { path = "crates/app" }
 gpui = { git = "https://github.com/zed-industries/zed", branch = "main" }
 gpui_platform = { git = "https://github.com/zed-industries/zed", branch = "main" }
 rfd = "0.17.2"
@@ -50,18 +44,14 @@ windows-sys = { version = "0.59", features = [
     "Win32_NetworkManagement_IpHelper",
     "Win32_NetworkManagement_Ndis",
 ] }
-
-[build-dependencies]
 winres = "0.1"
-image = { version = "0.25", default-features = false, features = ["ico", "png"] }
+clap = { version = "4.5", features = ["derive"] }
+zip = { version = "2.2", default-features = false, features = ["deflate"] }
 
-[dev-dependencies]
-gpui = { git = "https://github.com/zed-industries/zed", branch = "main", features = ["test-support"] }
-
-[lints.rust]
+[workspace.lints.rust]
 unsafe_code = "warn"
 
-[lints.clippy]
+[workspace.lints.clippy]
 all = { level = "warn", priority = -2 }
 pedantic = { level = "warn", priority = -1 }
 missing_errors_doc = "allow"
