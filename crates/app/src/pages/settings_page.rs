@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use gpui::{App, FontWeight, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
+use gpui::{
+    App, Div, FontWeight, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window,
+    div, px,
+};
 
 use crate::features::discord_rpc::DiscordRpcActivity;
 use crate::features::navigation::AppRoute;
@@ -259,27 +262,11 @@ impl RenderOnce for SettingsPage {
         let on_close_disc = self.on_close_dropdowns;
 
         // 1. Language Row (Text stack exactly matched to 32px height of select trigger)
-        let lang_text = div()
-            .flex()
-            .flex_col()
-            .justify_between()
-            .h(px(32.0))
-            .child(
-                div()
-                    .text_size(px(13.5))
-                    .line_height(px(16.0))
-                    .font_weight(FontWeight::MEDIUM)
-                    .text_color(theme.text_primary)
-                    .child(rust_i18n::t!("settings.language_title").to_string()),
-            )
-            .child(
-                div()
-                    .text_size(px(11.5))
-                    .line_height(px(14.0))
-                    .font_weight(FontWeight::NORMAL)
-                    .text_color(theme.text_muted)
-                    .child(rust_i18n::t!("settings.language_desc").to_string()),
-            );
+        let lang_text = settings_row_text(
+            rust_i18n::t!("settings.language_title"),
+            rust_i18n::t!("settings.language_desc"),
+            &theme,
+        );
 
         let (lang_current_label, lang_icon) = match current_locale {
             "ru" => ("Русский".to_string(), "icons/flags/ru.png"),
@@ -309,14 +296,10 @@ impl RenderOnce for SettingsPage {
         let language_dropdown =
             Dropdown::new("lang_select", lang_current_label, effective_lang_code)
                 .icon(lang_icon)
-                .options(vec![
-                    (
-                        "system",
-                        Box::leak(sys_lang_label.into_boxed_str()),
-                        Some("icons/languages.svg"),
-                    ),
-                    ("ru", "Русский", Some("icons/flags/ru.png")),
-                    ("en", "English", Some("icons/flags/us.png")),
+                .localized_options(vec![
+                    ("system", sys_lang_label.into(), Some("icons/languages.svg")),
+                    ("ru", "Русский".into(), Some("icons/flags/ru.png")),
+                    ("en", "English".into(), Some("icons/flags/us.png")),
                 ])
                 .open(open_dropdown == Some("language"))
                 .closing(closing_dropdown == Some("language"))
@@ -355,36 +338,14 @@ impl RenderOnce for SettingsPage {
                     }
                 });
 
-        let language_row = div()
-            .flex()
-            .items_center()
-            .justify_between()
-            .w_full()
-            .child(lang_text)
-            .child(language_dropdown);
+        let language_row = settings_row(lang_text, language_dropdown);
 
         // 2. Theme Row (Text stack exactly matched to 32px height of select trigger)
-        let theme_text = div()
-            .flex()
-            .flex_col()
-            .justify_between()
-            .h(px(32.0))
-            .child(
-                div()
-                    .text_size(px(13.5))
-                    .line_height(px(16.0))
-                    .font_weight(FontWeight::MEDIUM)
-                    .text_color(theme.text_primary)
-                    .child(rust_i18n::t!("settings.theme_title").to_string()),
-            )
-            .child(
-                div()
-                    .text_size(px(11.5))
-                    .line_height(px(14.0))
-                    .font_weight(FontWeight::NORMAL)
-                    .text_color(theme.text_muted)
-                    .child(rust_i18n::t!("settings.theme_desc").to_string()),
-            );
+        let theme_text = settings_row_text(
+            rust_i18n::t!("settings.theme_title"),
+            rust_i18n::t!("settings.theme_desc"),
+            &theme,
+        );
 
         let (theme_current_code, theme_current_label, theme_icon) = match theme.mode {
             ThemeMode::System => (
@@ -425,22 +386,10 @@ impl RenderOnce for SettingsPage {
         let theme_dropdown =
             Dropdown::new("theme_select", theme_current_label, effective_theme_code)
                 .icon(theme_icon)
-                .options(vec![
-                    (
-                        "system",
-                        Box::leak(sys_th_label.into_boxed_str()),
-                        Some("icons/monitor.svg"),
-                    ),
-                    (
-                        "dark",
-                        Box::leak(dark_label.into_boxed_str()),
-                        Some("icons/moon.svg"),
-                    ),
-                    (
-                        "light",
-                        Box::leak(light_label.into_boxed_str()),
-                        Some("icons/sun.svg"),
-                    ),
+                .localized_options(vec![
+                    ("system", sys_th_label.into(), Some("icons/monitor.svg")),
+                    ("dark", dark_label.into(), Some("icons/moon.svg")),
+                    ("light", light_label.into(), Some("icons/sun.svg")),
                 ])
                 .open(open_dropdown == Some("theme"))
                 .closing(closing_dropdown == Some("theme"))
@@ -479,36 +428,14 @@ impl RenderOnce for SettingsPage {
                     }
                 });
 
-        let theme_row = div()
-            .flex()
-            .items_center()
-            .justify_between()
-            .w_full()
-            .child(theme_text)
-            .child(theme_dropdown);
+        let theme_row = settings_row(theme_text, theme_dropdown);
 
         // 3. Palette Row (Text stack exactly matched to 32px height of select trigger)
-        let pal_text = div()
-            .flex()
-            .flex_col()
-            .justify_between()
-            .h(px(32.0))
-            .child(
-                div()
-                    .text_size(px(13.5))
-                    .line_height(px(16.0))
-                    .font_weight(FontWeight::MEDIUM)
-                    .text_color(theme.text_primary)
-                    .child(rust_i18n::t!("settings.palette_title").to_string()),
-            )
-            .child(
-                div()
-                    .text_size(px(11.5))
-                    .line_height(px(14.0))
-                    .font_weight(FontWeight::NORMAL)
-                    .text_color(theme.text_muted)
-                    .child(rust_i18n::t!("settings.palette_desc").to_string()),
-            );
+        let pal_text = settings_row_text(
+            rust_i18n::t!("settings.palette_title"),
+            rust_i18n::t!("settings.palette_desc"),
+            &theme,
+        );
 
         let (pal_current_code, pal_current_label, pal_icon) = match theme.palette {
             ThemePalette::Arclate => (
@@ -542,17 +469,9 @@ impl RenderOnce for SettingsPage {
         let palette_dropdown =
             Dropdown::new("palette_select", pal_current_label, effective_pal_code)
                 .icon(pal_icon)
-                .options(vec![
-                    (
-                        "arclate",
-                        Box::leak(arclate_label.into_boxed_str()),
-                        Some("icons/palette.svg"),
-                    ),
-                    (
-                        "flexoki",
-                        Box::leak(flexoki_label.into_boxed_str()),
-                        Some("icons/palette.svg"),
-                    ),
+                .localized_options(vec![
+                    ("arclate", arclate_label.into(), Some("icons/palette.svg")),
+                    ("flexoki", flexoki_label.into(), Some("icons/palette.svg")),
                 ])
                 .open(open_dropdown == Some("palette"))
                 .closing(closing_dropdown == Some("palette"))
@@ -590,36 +509,14 @@ impl RenderOnce for SettingsPage {
                     }
                 });
 
-        let palette_row = div()
-            .flex()
-            .items_center()
-            .justify_between()
-            .w_full()
-            .child(pal_text)
-            .child(palette_dropdown);
+        let palette_row = settings_row(pal_text, palette_dropdown);
 
         // 4. Transparency Row (Text stack exactly matched to 32px height of Switch)
-        let trans_text = div()
-            .flex()
-            .flex_col()
-            .justify_between()
-            .h(px(32.0))
-            .child(
-                div()
-                    .text_size(px(13.5))
-                    .line_height(px(16.0))
-                    .font_weight(FontWeight::MEDIUM)
-                    .text_color(theme.text_primary)
-                    .child(rust_i18n::t!("settings.transparency_title").to_string()),
-            )
-            .child(
-                div()
-                    .text_size(px(11.5))
-                    .line_height(px(14.0))
-                    .font_weight(FontWeight::NORMAL)
-                    .text_color(theme.text_muted)
-                    .child(rust_i18n::t!("settings.transparency_desc").to_string()),
-            );
+        let trans_text = settings_row_text(
+            rust_i18n::t!("settings.transparency_title"),
+            rust_i18n::t!("settings.transparency_desc"),
+            &theme,
+        );
 
         let switch_el = Switch::new("transparency_switch", theme.transparency).on_toggle(
             move |new_val, window, cx| {
@@ -629,13 +526,7 @@ impl RenderOnce for SettingsPage {
             },
         );
 
-        let transparency_row = div()
-            .flex()
-            .items_center()
-            .justify_between()
-            .w_full()
-            .child(trans_text)
-            .child(switch_el);
+        let transparency_row = settings_row(trans_text, switch_el);
 
         let appearance_card = GroupCard::new(
             "icons/palette.svg",
@@ -650,27 +541,11 @@ impl RenderOnce for SettingsPage {
 
         // --- BEHAVIOR CARD ---
         // 1. Minimize to tray row
-        let min_tray_text = div()
-            .flex()
-            .flex_col()
-            .justify_between()
-            .h(px(32.0))
-            .child(
-                div()
-                    .text_size(px(13.5))
-                    .line_height(px(16.0))
-                    .font_weight(FontWeight::MEDIUM)
-                    .text_color(theme.text_primary)
-                    .child(rust_i18n::t!("settings.minimize_to_tray_title").to_string()),
-            )
-            .child(
-                div()
-                    .text_size(px(11.5))
-                    .line_height(px(14.0))
-                    .font_weight(FontWeight::NORMAL)
-                    .text_color(theme.text_muted)
-                    .child(rust_i18n::t!("settings.minimize_to_tray_desc").to_string()),
-            );
+        let min_tray_text = settings_row_text(
+            rust_i18n::t!("settings.minimize_to_tray_title"),
+            rust_i18n::t!("settings.minimize_to_tray_desc"),
+            &theme,
+        );
 
         let min_tray_switch = Switch::new("min_tray_switch", minimize_to_tray).on_toggle(
             move |new_val, window, cx| {
@@ -680,36 +555,14 @@ impl RenderOnce for SettingsPage {
             },
         );
 
-        let min_tray_row = div()
-            .flex()
-            .items_center()
-            .justify_between()
-            .w_full()
-            .child(min_tray_text)
-            .child(min_tray_switch);
+        let min_tray_row = settings_row(min_tray_text, min_tray_switch);
 
         // 2. Autostart on logon row
-        let autostart_text = div()
-            .flex()
-            .flex_col()
-            .justify_between()
-            .h(px(32.0))
-            .child(
-                div()
-                    .text_size(px(13.5))
-                    .line_height(px(16.0))
-                    .font_weight(FontWeight::MEDIUM)
-                    .text_color(theme.text_primary)
-                    .child(rust_i18n::t!("settings.autostart_title").to_string()),
-            )
-            .child(
-                div()
-                    .text_size(px(11.5))
-                    .line_height(px(14.0))
-                    .font_weight(FontWeight::NORMAL)
-                    .text_color(theme.text_muted)
-                    .child(rust_i18n::t!("settings.autostart_desc").to_string()),
-            );
+        let autostart_text = settings_row_text(
+            rust_i18n::t!("settings.autostart_title"),
+            rust_i18n::t!("settings.autostart_desc"),
+            &theme,
+        );
 
         let autostart_switch =
             Switch::new("autostart_switch", autostart).on_toggle(move |new_val, window, cx| {
@@ -718,37 +571,15 @@ impl RenderOnce for SettingsPage {
                 }
             });
 
-        let autostart_row = div()
-            .flex()
-            .items_center()
-            .justify_between()
-            .w_full()
-            .child(autostart_text)
-            .child(autostart_switch);
+        let autostart_row = settings_row(autostart_text, autostart_switch);
 
         // 3. Autostart to tray row (shown conditionally when autostart is enabled)
         let autostart_to_tray_row = if autostart {
-            let autostart_tray_text = div()
-                .flex()
-                .flex_col()
-                .justify_between()
-                .h(px(32.0))
-                .child(
-                    div()
-                        .text_size(px(13.5))
-                        .line_height(px(16.0))
-                        .font_weight(FontWeight::MEDIUM)
-                        .text_color(theme.text_primary)
-                        .child(rust_i18n::t!("settings.autostart_to_tray_title").to_string()),
-                )
-                .child(
-                    div()
-                        .text_size(px(11.5))
-                        .line_height(px(14.0))
-                        .font_weight(FontWeight::NORMAL)
-                        .text_color(theme.text_muted)
-                        .child(rust_i18n::t!("settings.autostart_to_tray_desc").to_string()),
-                );
+            let autostart_tray_text = settings_row_text(
+                rust_i18n::t!("settings.autostart_to_tray_title"),
+                rust_i18n::t!("settings.autostart_to_tray_desc"),
+                &theme,
+            );
 
             let autostart_tray_switch = Switch::new("autostart_tray_switch", autostart_to_tray)
                 .on_toggle(move |new_val, window, cx| {
@@ -757,41 +588,17 @@ impl RenderOnce for SettingsPage {
                     }
                 });
 
-            Some(
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .w_full()
-                    .child(autostart_tray_text)
-                    .child(autostart_tray_switch),
-            )
+            Some(settings_row(autostart_tray_text, autostart_tray_switch))
         } else {
             None
         };
 
         // 4. Discord Rich Presence row
-        let discord_text = div()
-            .flex()
-            .flex_col()
-            .justify_between()
-            .h(px(32.0))
-            .child(
-                div()
-                    .text_size(px(13.5))
-                    .line_height(px(16.0))
-                    .font_weight(FontWeight::MEDIUM)
-                    .text_color(theme.text_primary)
-                    .child(rust_i18n::t!("settings.discord_rpc_title").to_string()),
-            )
-            .child(
-                div()
-                    .text_size(px(11.5))
-                    .line_height(px(14.0))
-                    .font_weight(FontWeight::NORMAL)
-                    .text_color(theme.text_muted)
-                    .child(rust_i18n::t!("settings.discord_rpc_desc").to_string()),
-            );
+        let discord_text = settings_row_text(
+            rust_i18n::t!("settings.discord_rpc_title"),
+            rust_i18n::t!("settings.discord_rpc_desc"),
+            &theme,
+        );
 
         let is_discord_morphing = pending_selection.map(|(d, _)| d) == Some("discord");
         let effective_discord_code = if let Some(("discord", val)) = pending_selection {
@@ -823,30 +630,30 @@ impl RenderOnce for SettingsPage {
             effective_discord_code,
         )
         .icon(discord_icon)
-        .options(vec![
+        .localized_options(vec![
             (
                 "disabled",
-                Box::leak(disc_dis_label.into_boxed_str()),
+                disc_dis_label.into(),
                 Some(DiscordRpcActivity::Disabled.icon()),
             ),
             (
                 "playing",
-                Box::leak(disc_play_label.into_boxed_str()),
+                disc_play_label.into(),
                 Some(DiscordRpcActivity::Playing.icon()),
             ),
             (
                 "listening",
-                Box::leak(disc_list_label.into_boxed_str()),
+                disc_list_label.into(),
                 Some(DiscordRpcActivity::Listening.icon()),
             ),
             (
                 "watching",
-                Box::leak(disc_watch_label.into_boxed_str()),
+                disc_watch_label.into(),
                 Some(DiscordRpcActivity::Watching.icon()),
             ),
             (
                 "competing",
-                Box::leak(disc_comp_label.into_boxed_str()),
+                disc_comp_label.into(),
                 Some(DiscordRpcActivity::Competing.icon()),
             ),
         ])
@@ -889,13 +696,7 @@ impl RenderOnce for SettingsPage {
             }
         });
 
-        let discord_row = div()
-            .flex()
-            .items_center()
-            .justify_between()
-            .w_full()
-            .child(discord_text)
-            .child(discord_dropdown);
+        let discord_row = settings_row(discord_text, discord_dropdown);
 
         let mut behavior_card = GroupCard::new(
             "icons/sliders-horizontal.svg",
@@ -922,4 +723,42 @@ impl RenderOnce for SettingsPage {
             .child(appearance_card)
             .child(behavior_card)
     }
+}
+
+fn settings_row_text(
+    title: impl Into<SharedString>,
+    desc: impl Into<SharedString>,
+    theme: &Theme,
+) -> Div {
+    div()
+        .flex()
+        .flex_col()
+        .justify_between()
+        .h(px(32.0))
+        .child(
+            div()
+                .text_size(px(13.5))
+                .line_height(px(16.0))
+                .font_weight(FontWeight::MEDIUM)
+                .text_color(theme.text_primary)
+                .child(title.into()),
+        )
+        .child(
+            div()
+                .text_size(px(11.5))
+                .line_height(px(14.0))
+                .font_weight(FontWeight::NORMAL)
+                .text_color(theme.text_muted)
+                .child(desc.into()),
+        )
+}
+
+fn settings_row(left: impl IntoElement, right: impl IntoElement) -> Div {
+    div()
+        .flex()
+        .items_center()
+        .justify_between()
+        .w_full()
+        .child(left)
+        .child(right)
 }

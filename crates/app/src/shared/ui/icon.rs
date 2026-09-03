@@ -1,6 +1,6 @@
 use gpui::{
     App, Hsla, IntoElement, ParentElement, Pixels, RenderOnce, SharedString, Styled, Window, div,
-    px, svg,
+    img, px, svg,
 };
 
 #[derive(IntoElement)]
@@ -34,11 +34,20 @@ impl Icon {
 
 impl RenderOnce for Icon {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let mut icon_svg = svg().path(self.path).size(self.size).flex_none();
+        let is_raster = self.path.ends_with(".png");
 
-        if let Some(color) = self.color {
-            icon_svg = icon_svg.text_color(color);
-        }
+        let icon_el = if is_raster {
+            img(self.path)
+                .size(self.size)
+                .flex_none()
+                .into_any_element()
+        } else {
+            let mut icon_svg = svg().path(self.path).size(self.size).flex_none();
+            if let Some(color) = self.color {
+                icon_svg = icon_svg.text_color(color);
+            }
+            icon_svg.into_any_element()
+        };
 
         div()
             .flex()
@@ -46,6 +55,6 @@ impl RenderOnce for Icon {
             .justify_center()
             .size(self.size)
             .flex_none()
-            .child(icon_svg)
+            .child(icon_el)
     }
 }

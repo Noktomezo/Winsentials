@@ -55,12 +55,27 @@ fn scan_dir(dir: &Path, scope: StartupScope, entries: &mut Vec<StartupEntry>) {
         };
 
         let path_str = path.to_string_lossy().to_string();
-        let target_exe = extract_clean_exe_path(&path_str);
+        let clean_path_obj = Path::new(clean_name);
+        let is_lnk = clean_path_obj
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("lnk"));
+        let resolved_target = if is_lnk {
+            super::icon::resolve_shortcut(&path)
+        } else {
+            None
+        };
+        let target_exe = if let Some(resolved) = resolved_target {
+            Some(resolved)
+        } else if is_disabled {
+            Some(path.clone())
+        } else {
+            extract_clean_exe_path(&path_str)
+        };
         let (publisher, _) = target_exe
             .as_deref()
             .map_or((None, None), get_file_metadata);
 
-        let stem = Path::new(clean_name)
+        let stem = clean_path_obj
             .file_stem()
             .and_then(|s| s.to_str())
             .unwrap_or(clean_name);
@@ -77,6 +92,11 @@ fn scan_dir(dir: &Path, scope: StartupScope, entries: &mut Vec<StartupEntry>) {
             StartupScope::AllUsers => "shell:common startup".to_string(),
         };
 
+        let target_path_str = target_exe
+            .as_ref()
+            .map(|p| p.to_string_lossy().to_string())
+            .or(Some(path_str.clone()));
+
         entries.push(StartupEntry {
             id: format!(
                 "folder_{}_{clean_name}",
@@ -92,7 +112,7 @@ fn scan_dir(dir: &Path, scope: StartupScope, entries: &mut Vec<StartupEntry>) {
             scope,
             status,
             command: Some(path_str.clone()),
-            target_path: Some(path_str.clone()),
+            target_path: target_path_str,
             icon_path: None,
             location_label,
             raw_id: path_str,

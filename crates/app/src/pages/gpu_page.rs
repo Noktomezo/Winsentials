@@ -10,8 +10,8 @@ use crate::entities::hardware::GpuInfo;
 use crate::shared::theme::Theme;
 use crate::shared::ui::{Dropdown, GroupCard, Icon};
 
-use super::cpu_page::{HistoryGraphPalette, render_stepped_history_graph};
 use super::page_header::PageHeader;
+use crate::shared::ui::history_graph::{HistoryGraphPalette, render_stepped_history_graph};
 
 fn semantic_percent_color(pct: f32, theme: &Theme) -> Rgba {
     if pct > 85.0 {

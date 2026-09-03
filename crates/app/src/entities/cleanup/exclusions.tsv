@@ -1,0 +1,73 @@
+# Derived from Winapp2.ini ExcludeKey entries (CC BY-SA 4.0).
+Amazon Kindle for PC	PATH|%LocalAppData%\Amazon\Kindle\Cache\plugins\*\|*.db
+Amazon Prime Video	FILE|%LocalAppData%\Packages\AmazonVideo.PrimeVideo_pwbj9vvecjh7j\AC\INetCookies\ESE\|container.dat
+ASUS	FILE|%ProgramData%\ASUS\*\|install.log
+BlackBeltPrivacy DarkNet	FILE|%LocalAppData%\BlackBeltPrivacy\Docs\|readme.pdf
+Cortana	FILE|%LocalAppData%\Packages\Microsoft.Cortana_8wekyb3d8bbwe\LocalState\DeviceSearchCache\|SettingsCache.txt
+CyberLink PhotoDirector	PATH|%UserProfile%\Pictures\PhotoDirector\*\*\|*.phd
+EaseUS Data Recovery Wizard	FILE|%ProgramFiles%\EaseUS\EaseUS Data Recovery Wizard\|install.log
+Everything	FILE|%AppData%\Everything\|Filters.csv
+Everything	FILE|%ProgramFiles%\Everything\|Filters.csv
+Farming Simulator Old AutoSaves	PATH|%UserProfile%\Documents\My Games\FarmingSimulator*\savegame1\|*
+Farming Simulator Old AutoSaves	PATH|%UserProfile%\Documents\My Games\FarmingSimulator*\savegameBackup\|*
+iMobie	FILE|%AppData%\iMobie\*\iMobieConfig\|ConfigReg.ini
+Jagex Launcher	PATH|%UserProfile%\jagexcache\jagexlauncher\|*
+JDownloader	FILE|%LocalAppData%\JDownloader 2.0\.install4j\|files.log
+JDownloader	PATH|%LocalAppData%\JDownloader*2*\cfg\|subconf_*.ejs
+JDownloader	PATH|%ProgramFiles%\JDownloader*2*\cfg\|subconf_*.ejs
+Kamo	FILE|%ProgramFiles%\Kamo\|install.log
+MailWasher Pro	FILE|%AppData%\Firetrust\MailWasher\cache\|MWP.db3
+MailWasher Pro	FILE|%AppData%\Firetrust\MailWasher\cache\|mwp_conv.dat
+MailWasher Pro	FILE|%AppData%\Firetrust\MailWasher\cache\|mwp_exw.dat
+MailWasher Pro	FILE|%AppData%\Firetrust\MailWasher\cache\|mwp_inw.dat
+MailWasher Pro	FILE|%AppData%\Firetrust\MailWasher\cache\|mwp_pmap.dat
+Microsoft Flight Simulator X	FILE|%ProgramFiles%\Microsoft Games\Microsoft Flight Simulator X\|kiosk.rtf
+Microsoft Flight Simulator X	PATH|%ProgramFiles%\Microsoft Games\Microsoft Flight Simulator X\|readme.*
+Microsoft Office Unsaved Files	FILE|%AppData%\Microsoft\Word\|listgal.dat
+Microsoft Office Unsaved Files	PATH|%AppData%\Microsoft\Excel\XLSTART\|*
+Microsoft Office Unsaved Files	PATH|%AppData%\Microsoft\PowerPoint\|PPT*.pcb
+Microsoft Office Unsaved Files	PATH|%AppData%\Microsoft\Word\STARTUP\|*
+Microsoft Visual Studio Installation Packages	PATH|%ProgramData%\Microsoft\VisualStudio\Packages\_Instances\|*
+Microsoft Whiteboard	FILE|%LocalAppData%\Packages\Microsoft.Whiteboard_8wekyb3d8bbwe\LocalCache\|.msalcache.bin3
+Movavi Video Converter	PATH|%LocalAppData%\Movavi\*Video Converter*\Cache\videoconverter*\MSparkle\*\|MovaviVideoConverterSetup*.exe
+Multi-Edit 2008	FILE|%AppData%\Multi Edit Software\Multi-Edit\11\Config.04\|EVOLVE.LOG
+Multi-Edit 2008	FILE|%AppData%\Multi Edit Software\Multi-Edit\11\Config.04\|FILEPANE.LOG
+Multi-Edit 2008	FILE|%AppData%\Multi Edit Software\Multi-Edit\11\Config.04\|INSTALL.LOG
+Multi-Edit 2008	FILE|%AppData%\Multi Edit Software\Multi-Edit\11\Config.04\|POLYSTYLE.LOG
+Multi-Edit 2008	FILE|%AppData%\Multi Edit Software\Multi-Edit\11\Config.04\|TMPLPANE.LOG
+Multi-Edit 2008	FILE|%AppData%\Multi Edit Software\Multi-Edit\11\Config.04\|WINLIST.LOG
+Netflix	FILE|%LocalAppData%\Packages\4DF9E0F8.Netflix_mcm4njqhnhss8\AC\Microsoft\Internet Explorer\DOMStore\*\|www.netflix[1].xml
+OBS Studio	FILE|%AppData%\obs-studio\plugin_config\obs-browser\|LocalPrefs.json
+OE Classic	PATH|%LocalAppData%\OEClassic\Prg\Res\|dict-*.aff
+OE Classic	PATH|%LocalAppData%\OEClassic\Prg\Res\|dict-*.dic
+OE Classic	PATH|%LocalAppData%\OEClassic\Prg\Res\|dict-*.license
+Oxygen 14	FILE|%ProgramFiles%\Oxygen XML Editor 14\.install4j\|files.log
+Pet Pals: Animal Doctor	PATH|%ProgramFiles%\Legacy Interactive\Pet Pals Animal Doctor\jre\bin\|*
+Pet Pals: Animal Doctor	PATH|%ProgramFiles%\Legacy Interactive\Pet Pals Animal Doctor\jre\lib\|*
+Proteus	FILE|%UserProfile%\Documents\Proteus\logs\|rng.txt
+R-Wipe & Clean	PATH|%AppData%\R-TT\RWC\WL\|*
+RealPlayer	PATH|%AppData%\Real\RealPlayer\WatchFolders\|*scan.out
+Realtek	FILE|%ProgramFiles%\Realtek\*\|InstCtrl.txt
+Realtek	FILE|%ProgramFiles%\Realtek\*\|setupctrl.txt
+Samsung Magician	FILE|%AppData%\Samsung Magician\|Local State
+Samsung Magician	FILE|%AppData%\Samsung Magician\|Preferences
+Santa's Rampage	FILE|%ProgramFiles%\*Santa* Rampage\UDKGame\CookedPC\|Manifest.txt
+Santa's Rampage	PATH|%ProgramFiles%\*Santa* Rampage\Binaries\Win32\|*
+Santa's Rampage	PATH|%ProgramFiles%\*Santa* Rampage\Binaries\Win64\|*
+Santa's Rampage	PATH|%ProgramFiles%\*Santa* Rampage\UDKGame\Script\|*
+Spotify	PATH|%LocalAppData%\Spotify\Storage\*\|*
+Spybot Search and Destroy	FILE|%ProgramFiles%\Spybot - Search & Destroy 2\Updates\Downloads\|updates.uid
+Steam Games	PATH|%ProgramFiles%\Steam\steamapps\common\Supreme Ruler 1936\Cache\|*
+Steam Games	PATH|%ProgramFiles%\Steam\steamapps\common\Supreme Ruler Cold War\Cache\|*
+Steam Games	PATH|%ProgramFiles%\Steam\steamapps\common\Supreme Ruler Ultimate\Cache\|*
+The Sims 3 DCBackup	FILE|%UserProfile%\Documents\electronic arts\The sims 3\DCBackup\|ccmerged.package
+TVersity	FILE|%ProgramFiles%\TVersity Codec Pack\|uninst.exe
+TVersity	FILE|%ProgramFiles%\TVersity\Media Server\|HOWTO Share Media.txt
+TVersity	FILE|%ProgramFiles%\TVersity\Media Server\|version.txt
+Universal Windows Platform	FILE|%LocalAppData%\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalState\|pinning.db
+Universal Windows Platform	FILE|%LocalAppData%\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalState\|settings.json
+Warcraft III	PATH|%ProgramFiles%\Warcraft III\|CustomKey*.txt
+Windows Power Efficiency Diagnostics	FILE|%ProgramData%\Microsoft\Windows\Power Efficiency Diagnostics\|energy-report-latest.xml
+Windows Search	FILE|%LocalAppData%\Packages\Microsoft.Windows.Search_cw5n1h2txyewy\LocalState\DeviceSearchCache\|SettingsCache.txt
+Windows Subsystems	PATH|%LocalAppData%\Packages\Microsoft.Windows.CloudExperienceHost_cw5n1h2txyewy\AC\TokenBroker\Accounts\|*.tbacct*
+WolfQuest	FILE|%ProgramFiles%\WolfQuest\|Help.txt

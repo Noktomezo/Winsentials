@@ -40,7 +40,7 @@ unpatch:
 diff:
     cargo run --package xtask -- diff
 
-# Build release binaries (Winsentials & Installer), compress with UPX and package
+# Build the release executable, portable ZIP and Inno Setup installer
 build:
     cargo run --package xtask --release -- build
 

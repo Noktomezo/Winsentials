@@ -70,31 +70,23 @@ impl RenderOnce for WindowControls {
         let hovered_control = self.hovered_control;
         let on_hover = self.on_hover_control;
         let on_hover_min = on_hover.clone();
-        let on_hover_zoom = on_hover.clone();
         let on_hover_close = on_hover;
 
         let tooltip_handler = self.on_hover_tooltip;
         let on_close_btn = self.on_close;
         let tt_min_hov = tooltip_handler.clone();
         let tt_min_move = tooltip_handler.clone();
-        let tt_zoom_hov = tooltip_handler.clone();
-        let tt_zoom_move = tooltip_handler.clone();
         let tt_close_hov = tooltip_handler.clone();
         let tt_close_move = tooltip_handler;
 
         let is_min_hovered = hovered_control == Some("min");
-        let is_zoom_hovered = hovered_control == Some("zoom");
         let is_close_hovered = hovered_control == Some("close");
 
         let min_target: f32 = if is_min_hovered { 0.5 } else { 0.0 };
-        let zoom_target: f32 = if is_zoom_hovered { 0.5 } else { 0.0 };
         let close_target: f32 = if is_close_hovered { 0.5 } else { 0.0 };
 
         let min_spring = SpringAnimation::new(SpringConfig::new(350.0, 28.0, 1.0))
             .to(min_target)
-            .with_epsilon(0.005);
-        let zoom_spring = SpringAnimation::new(SpringConfig::new(350.0, 28.0, 1.0))
-            .to(zoom_target)
             .with_epsilon(0.005);
         let close_spring = SpringAnimation::new(SpringConfig::new(350.0, 28.0, 1.0))
             .to(close_target)
@@ -105,7 +97,6 @@ impl RenderOnce for WindowControls {
         let red_hover_bg = theme.accent_red;
 
         let min_text_color = lerp_item_text(&theme_ref, min_target);
-        let zoom_text_color = lerp_item_text(&theme_ref, zoom_target);
         let close_text_color = if close_target > 0.0 {
             theme_ref.accent_red
         } else {
@@ -170,62 +161,6 @@ impl RenderOnce for WindowControls {
                         Icon::new("icons/minus.svg")
                             .size(px(14.0))
                             .color(min_text_color),
-                    ),
-            )
-            .child(
-                div()
-                    .id("win_zoom")
-                    .window_control_area(WindowControlArea::Max)
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .size(px(32.0))
-                    .rounded(px(6.0))
-                    .cursor_pointer()
-                    .active(move |s| s.bg(theme.accent_active_bg))
-                    .on_hover(move |&hov, window, cx| {
-                        if let Some(ref h) = on_hover_zoom {
-                            h("zoom", &hov, window, cx);
-                        }
-                        if let Some(ref th) = tt_zoom_hov {
-                            if hov {
-                                let pos = window.mouse_position();
-                                th(
-                                    Some(TooltipState {
-                                        text: rust_i18n::t!("titlebar.maximize").to_string().into(),
-                                        cursor_pos: pos,
-                                    }),
-                                    window,
-                                    cx,
-                                );
-                            } else {
-                                th(None, window, cx);
-                            }
-                        }
-                    })
-                    .on_mouse_move(move |event, window, cx| {
-                        if let Some(ref th) = tt_zoom_move {
-                            th(
-                                Some(TooltipState {
-                                    text: rust_i18n::t!("titlebar.maximize").to_string().into(),
-                                    cursor_pos: event.position,
-                                }),
-                                window,
-                                cx,
-                            );
-                        }
-                    })
-                    .on_click(|_, window, _| {
-                        window.zoom_window();
-                    })
-                    .with_spring("win_zoom_spring", zoom_spring, move |btn, val| {
-                        let bg = lerp_item_bg(accent_blue, val);
-                        btn.bg(bg)
-                    })
-                    .child(
-                        Icon::new("icons/square.svg")
-                            .size(px(12.0))
-                            .color(zoom_text_color),
                     ),
             )
             .child(

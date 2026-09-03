@@ -17,7 +17,7 @@ path = "src/main.rs"
 
 [dependencies]
 gpui = { workspace = true }
-gpui_platform = { workspace = true }
+gpui_windows = { workspace = true }
 rfd = { workspace = true }
 rust-i18n = { workspace = true }
 rust-embed = { workspace = true }
@@ -29,6 +29,8 @@ tray-icon = { workspace = true }
 system_shutdown = { workspace = true }
 image = { workspace = true }
 strsim = { workspace = true }
+glob = { workspace = true }
+thiserror = { workspace = true }
 windows-sys = { workspace = true }
 
 [build-dependencies]
@@ -36,7 +38,7 @@ winres = { workspace = true }
 image = { workspace = true }
 
 [dev-dependencies]
-gpui = { git = "https://github.com/zed-industries/zed", branch = "main", features = ["test-support"] }
+gpui = { git = "https://github.com/zed-industries/zed", branch = "main", default-features = false, features = ["test-support"] }
 
 [lints]
 workspace = true

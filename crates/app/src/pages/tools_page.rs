@@ -9,7 +9,6 @@ use gpui::{
 use crate::features::navigation::AppRoute;
 use crate::pages::page_header::PageHeader;
 use crate::shared::theme::Theme;
-use crate::shared::ui::animated_grid::render_animated_grid;
 use crate::shared::ui::icon::Icon;
 use crate::widgets::sidebar::lerp_rgba;
 
@@ -22,101 +21,25 @@ pub struct ToolItem {
     pub icon: &'static str,
     pub title_key: &'static str,
     pub desc_key: &'static str,
-    pub command: &'static str,
+    pub route: AppRoute,
 }
 
-pub const SYSTEM_TOOLS: [ToolItem; 11] = [
+pub const SYSTEM_TOOLS: [ToolItem; 2] = [
     ToolItem {
         id: "startup",
         icon: "icons/rocket.svg",
         title_key: "tools.startup_title",
         desc_key: "tools.startup_desc",
-        command: "ms-settings:startupapps",
+        route: AppRoute::Startup,
     },
     ToolItem {
-        id: "cleanmgr",
-        icon: "icons/trash-2.svg",
-        title_key: "tools.cleanmgr_title",
-        desc_key: "tools.cleanmgr_desc",
-        command: "cleanmgr.exe",
-    },
-    ToolItem {
-        id: "taskmgr",
-        icon: "icons/activity.svg",
-        title_key: "tools.taskmgr_title",
-        desc_key: "tools.taskmgr_desc",
-        command: "taskmgr.exe",
-    },
-    ToolItem {
-        id: "resmon",
-        icon: "icons/gauge.svg",
-        title_key: "tools.resmon_title",
-        desc_key: "tools.resmon_desc",
-        command: "resmon.exe",
-    },
-    ToolItem {
-        id: "regedit",
-        icon: "icons/binary.svg",
-        title_key: "tools.regedit_title",
-        desc_key: "tools.regedit_desc",
-        command: "regedit.exe",
-    },
-    ToolItem {
-        id: "services",
-        icon: "icons/cog.svg",
-        title_key: "tools.services_title",
-        desc_key: "tools.services_desc",
-        command: "services.msc",
-    },
-    ToolItem {
-        id: "devmgmt",
-        icon: "icons/cpu.svg",
-        title_key: "tools.devmgmt_title",
-        desc_key: "tools.devmgmt_desc",
-        command: "devmgmt.msc",
-    },
-    ToolItem {
-        id: "compmgmt",
-        icon: "icons/monitor.svg",
-        title_key: "tools.compmgmt_title",
-        desc_key: "tools.compmgmt_desc",
-        command: "compmgmt.msc",
-    },
-    ToolItem {
-        id: "ncpa",
-        icon: "icons/network.svg",
-        title_key: "tools.ncpa_title",
-        desc_key: "tools.ncpa_desc",
-        command: "ncpa.cpl",
-    },
-    ToolItem {
-        id: "power",
-        icon: "icons/zap.svg",
-        title_key: "tools.power_title",
-        desc_key: "tools.power_desc",
-        command: "powercfg.cpl",
-    },
-    ToolItem {
-        id: "dxdiag",
-        icon: "icons/gamepad.svg",
-        title_key: "tools.dxdiag_title",
-        desc_key: "tools.dxdiag_desc",
-        command: "dxdiag.exe",
+        id: "cleanup",
+        icon: "icons/broom.svg",
+        title_key: "cleanup.title",
+        desc_key: "cleanup.desc",
+        route: AppRoute::Cleanup,
     },
 ];
-
-pub fn launch_system_tool(cmd: &str) {
-    #[cfg(target_os = "windows")]
-    {
-        let _ = std::process::Command::new("cmd")
-            .args(["/c", "start", "", cmd])
-            .spawn();
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        let _ = cmd;
-    }
-}
 
 fn render_tool_chevron(
     card_id: &'static str,
@@ -176,7 +99,7 @@ fn render_tool_card(
     let card_bg = theme.card_bg;
     let input_bg = theme.input_bg;
     let card_border = theme.card_border;
-    let input_border = theme.accent_blue;
+    let input_border = theme.input_border;
 
     let id_str: SharedString = card_id.into();
 
@@ -186,11 +109,11 @@ fn render_tool_card(
         .flex()
         .items_center()
         .justify_between()
-        .gap(px(12.0))
+        .gap(px(10.0))
         .rounded(px(10.0))
         .border_1()
-        .p(px(14.0))
-        .h(px(68.0))
+        .p(px(16.0))
+        .h(px(64.0))
         .w_full()
         .on_hover(move |&hovered, window, cx| {
             if let Some(ref h) = on_hover {
@@ -198,12 +121,8 @@ fn render_tool_card(
             }
         })
         .on_click(move |_ev, window, cx| {
-            if tool.id == "startup" {
-                if let Some(ref nav) = on_nav {
-                    nav(AppRoute::Startup, window, cx);
-                }
-            } else {
-                launch_system_tool(tool.command);
+            if let Some(ref nav) = on_nav {
+                nav(tool.route, window, cx);
             }
         })
         .with_spring(
@@ -220,7 +139,7 @@ fn render_tool_card(
             div()
                 .flex()
                 .items_center()
-                .gap(px(12.0))
+                .gap(px(10.0))
                 .flex_1()
                 .min_w(px(0.0))
                 .child(
@@ -228,22 +147,26 @@ fn render_tool_card(
                         .flex()
                         .items_center()
                         .justify_center()
-                        .size(px(36.0))
-                        .rounded_lg()
-                        .bg(theme.accent_blue.opacity(0.12))
+                        .size(px(32.0))
+                        .rounded(px(6.0))
+                        .bg(theme.input_bg)
+                        .border_1()
+                        .border_color(theme.card_border)
                         .flex_none()
-                        .child(Icon::new(tool.icon).size(px(20.0)).color(theme.accent_blue)),
+                        .child(Icon::new(tool.icon).size(px(16.0)).color(theme.accent_blue)),
                 )
                 .child(
                     div()
                         .flex()
                         .flex_col()
-                        .gap(px(2.0))
+                        .justify_between()
+                        .h(px(32.0))
                         .flex_1()
                         .min_w(px(0.0))
                         .child(
                             div()
-                                .text_sm()
+                                .text_size(px(13.0))
+                                .line_height(px(16.0))
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(theme.text_primary)
                                 .text_ellipsis()
@@ -254,7 +177,7 @@ fn render_tool_card(
                         .child(
                             div()
                                 .text_size(px(11.5))
-                                .line_height(px(15.0))
+                                .line_height(px(14.0))
                                 .font_weight(FontWeight::NORMAL)
                                 .text_color(theme.text_muted)
                                 .text_ellipsis()
@@ -273,17 +196,15 @@ pub type ToolNavigateHandler = Arc<dyn Fn(AppRoute, &mut Window, &mut App) + Sen
 #[derive(IntoElement)]
 pub struct ToolsPage {
     hovered_card: Option<SharedString>,
-    sidebar_expanded: bool,
     on_hover_card: Option<ToolHoverHandler>,
     on_navigate: Option<ToolNavigateHandler>,
 }
 
 impl ToolsPage {
     #[must_use]
-    pub fn new(hovered_card: Option<SharedString>, sidebar_expanded: bool) -> Self {
+    pub fn new(hovered_card: Option<SharedString>) -> Self {
         Self {
             hovered_card,
-            sidebar_expanded,
             on_hover_card: None,
             on_navigate: None,
         }
@@ -309,19 +230,12 @@ impl ToolsPage {
 }
 
 impl RenderOnce for ToolsPage {
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
         let route = AppRoute::Tools;
         let on_hover = self.on_hover_card;
         let on_nav = self.on_navigate;
         let hovered_card = self.hovered_card;
-
-        let sidebar_w = if self.sidebar_expanded {
-            px(200.0)
-        } else {
-            px(40.0)
-        };
-        let available_w = (window.viewport_size().width - sidebar_w - px(32.0)).max(px(320.0));
 
         let card_elements: Vec<(&'static str, AnyElement)> = SYSTEM_TOOLS
             .iter()
@@ -341,13 +255,12 @@ impl RenderOnce for ToolsPage {
             .p(px(16.0))
             .w_full()
             .child(PageHeader::new(route.title(), route.description()))
-            .child(render_animated_grid(
-                "tools_grid",
-                available_w,
-                px(360.0),
-                px(68.0),
-                px(12.0),
-                card_elements,
-            ))
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(8.0))
+                    .children(card_elements.into_iter().map(|(_, card)| card)),
+            )
     }
 }

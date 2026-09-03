@@ -114,9 +114,39 @@ pub fn format_motherboard(raw_mfg: &str, raw_product: &str) -> String {
     }
 }
 
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
+static SYSTEM_INFO_CACHE: Mutex<Option<(Instant, SystemInfo)>> = Mutex::new(None);
+const SYSTEM_INFO_TTL: Duration = Duration::from_secs(5);
+
 impl SystemInfo {
     #[must_use]
     pub fn fetch() -> Self {
+        let now = Instant::now();
+        if let Ok(guard) = SYSTEM_INFO_CACHE.lock() {
+            if let Some((cached_at, ref info)) = *guard {
+                if now.duration_since(cached_at) < SYSTEM_INFO_TTL {
+                    return info.clone();
+                }
+            }
+        }
+
+        let info = Self::fetch_live();
+        if let Ok(mut guard) = SYSTEM_INFO_CACHE.lock() {
+            *guard = Some((now, info.clone()));
+        }
+        info
+    }
+
+    pub fn invalidate_cache() {
+        if let Ok(mut guard) = SYSTEM_INFO_CACHE.lock() {
+            *guard = None;
+        }
+    }
+
+    #[must_use]
+    fn fetch_live() -> Self {
         let username = std::env::var("USERNAME").unwrap_or_else(|_| "User".to_string());
         let computer_name =
             std::env::var("COMPUTERNAME").unwrap_or_else(|_| "DESKTOP-PC".to_string());

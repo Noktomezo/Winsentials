@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+use crate::entities::tweaks::input::SnapKeyPreset;
 use crate::features::discord_rpc::DiscordRpcActivity;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -14,6 +15,8 @@ pub struct AppConfig {
     pub autostart_to_tray: bool,
     #[serde(default)]
     pub discord_rpc: DiscordRpcActivity,
+    #[serde(default)]
+    pub snapkey: SnapKeyPreset,
 }
 
 #[must_use]

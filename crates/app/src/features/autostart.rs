@@ -26,7 +26,7 @@ pub fn set_autostart(enabled: bool, start_to_tray: bool) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
         key.set_string(APP_RUN_NAME, &cmd)
             .map_err(|e| e.to_string())?;
-    } else if let Ok(key) = windows_registry::CURRENT_USER.open(REG_RUN) {
+    } else if let Ok(key) = windows_registry::CURRENT_USER.create(REG_RUN) {
         let _ = key.remove_value(APP_RUN_NAME);
     }
     Ok(())

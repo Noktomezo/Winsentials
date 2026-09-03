@@ -226,7 +226,7 @@ impl RenderOnce for Titlebar {
                             .current(true),
                     )
             }
-            AppRoute::Startup => {
+            AppRoute::Startup | AppRoute::Cleanup => {
                 let on_nav_tools = self.on_navigate.clone();
                 let mut tools_item = BreadcrumbItem::new("tools", rust_i18n::t!("nav.tools"))
                     .hovered(hovered_breadcrumb == Some("tools"))
@@ -332,13 +332,13 @@ impl RenderOnce for Titlebar {
             .py(px(4.0))
             .bg(theme.titlebar_bg)
             .w_full()
-            // Left container (104px wide matching right window controls width)
+            // Left container matches the two window controls on the right.
             .child(
                 div()
                     .flex()
                     .items_center()
                     .justify_start()
-                    .w(px(104.0))
+                    .w(px(68.0))
                     .h_full()
                     .child(sidebar_toggle_btn)
                     .child(
@@ -378,13 +378,13 @@ impl RenderOnce for Titlebar {
                             }),
                     ),
             )
-            // Right container (104px wide containing window controls)
+            // Right container contains minimize and close controls.
             .child(
                 div()
                     .flex()
                     .items_center()
                     .justify_end()
-                    .w(px(104.0))
+                    .w(px(68.0))
                     .h_full()
                     .child(win_controls),
             )

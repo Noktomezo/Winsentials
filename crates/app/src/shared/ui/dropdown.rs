@@ -3,9 +3,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{
-    Animation, AnimationExt, App, ElementId, InteractiveElement, IntoElement, ParentElement,
-    RenderOnce, Rgba, SharedString, SpringAnimation, SpringConfig, StatefulInteractiveElement,
-    Styled, Transformation, Window, deferred, div, ease_in_out, img, px, radians, svg,
+    Animation, AnimationExt, App, ElementId, InteractiveElement, IntoElement, MouseButton,
+    ParentElement, RenderOnce, Rgba, SharedString, SpringAnimation, SpringConfig,
+    StatefulInteractiveElement, Styled, Transformation, Window, deferred, div, ease_in_out, img,
+    px, radians, svg,
 };
 
 use crate::shared::theme::Theme;
@@ -22,17 +23,21 @@ pub type DropdownOptionHoverHandler = Arc<dyn Fn(&str, &bool, &mut Window, &mut 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DropdownItem {
     pub value: &'static str,
-    pub label: &'static str,
+    pub label: SharedString,
     pub icon: Option<&'static str>,
     pub deletable: bool,
 }
 
 impl DropdownItem {
     #[must_use]
-    pub const fn new(value: &'static str, label: &'static str, icon: Option<&'static str>) -> Self {
+    pub fn new(
+        value: &'static str,
+        label: impl Into<SharedString>,
+        icon: Option<&'static str>,
+    ) -> Self {
         Self {
             value,
-            label,
+            label: label.into(),
             icon,
             deletable: false,
         }
@@ -59,6 +64,7 @@ pub struct Dropdown {
     morphing: bool,
     hovered: bool,
     upward: bool,
+    width: Option<gpui::Pixels>,
     hovered_option: Option<&'static str>,
     on_toggle: Option<DropdownToggleHandler>,
     on_select: Option<DropdownSelectHandler>,
@@ -86,6 +92,7 @@ impl Dropdown {
             morphing: false,
             hovered: false,
             upward: false,
+            width: None,
             hovered_option: None,
             on_toggle: None,
             on_select: None,
@@ -94,6 +101,12 @@ impl Dropdown {
             on_hover_trigger: None,
             on_hover_option: None,
         }
+    }
+
+    #[must_use]
+    pub fn width(mut self, width: gpui::Pixels) -> Self {
+        self.width = Some(width);
+        self
     }
 
     #[must_use]
@@ -110,6 +123,18 @@ impl Dropdown {
         self.items = options
             .into_iter()
             .map(|(val, lbl, ico)| DropdownItem::new(val, lbl, ico))
+            .collect();
+        self
+    }
+
+    #[must_use]
+    pub fn localized_options(
+        mut self,
+        options: Vec<(&'static str, SharedString, Option<&'static str>)>,
+    ) -> Self {
+        self.items = options
+            .into_iter()
+            .map(|(value, label, icon)| DropdownItem::new(value, label, icon))
             .collect();
         self
     }
@@ -207,15 +232,23 @@ pub fn render_dropdown_icon(icon_path: &str, current_color: Rgba) -> gpui::AnyEl
         .extension()
         .is_some_and(|ext| ext.eq_ignore_ascii_case("png"))
     {
-        img(icon_path.to_string())
-            .w(px(16.0))
-            .h(px(11.0))
-            .rounded(px(2.0))
+        div()
+            .flex_none()
+            .child(
+                img(icon_path.to_string())
+                    .w(px(16.0))
+                    .h(px(11.0))
+                    .rounded(px(2.0)),
+            )
             .into_any_element()
     } else {
-        Icon::new(icon_path.to_string())
-            .size(px(14.0))
-            .color(current_color)
+        div()
+            .flex_none()
+            .child(
+                Icon::new(icon_path.to_string())
+                    .size(px(14.0))
+                    .color(current_color),
+            )
             .into_any_element()
     }
 }
@@ -236,7 +269,12 @@ impl RenderOnce for Dropdown {
         let on_hover = self.on_hover_trigger;
         let on_hover_opt = self.on_hover_option;
         let selected_value = self.selected_value;
-        let dropdown_id_str = format!("{:?}", self.id);
+        let dropdown_id_str = format!("{:?}", self.id)
+            .replace("Name(\"", "")
+            .replace("\")", "")
+            .replace('"', "")
+            .replace(' ', "_");
+        let trigger_width = self.width.unwrap_or(px(150.0));
 
         let icon_el = self
             .icon
@@ -279,6 +317,21 @@ impl RenderOnce for Dropdown {
                 .into_any_element()
         };
 
+        let chevron_box = div()
+            .id(ElementId::Name(
+                format!("{dropdown_id_str}_chevron_box").into(),
+            ))
+            .debug_selector({
+                let id_clone = dropdown_id_str.clone();
+                move || format!("{id_clone}_chevron_box")
+            })
+            .flex_none()
+            .size(px(14.0))
+            .flex()
+            .items_center()
+            .justify_center()
+            .child(chevron_el);
+
         // Spring-driven trigger border animation
         let trigger_target: f32 = if is_open {
             1.0
@@ -298,13 +351,29 @@ impl RenderOnce for Dropdown {
 
         // Pure fade morph animation for trigger icon & text ONLY when active selection change happens
         let base_left_stack = div()
+            .id(ElementId::Name(
+                format!("{dropdown_id_str}_label_stack").into(),
+            ))
+            .debug_selector({
+                let id_clone = dropdown_id_str.clone();
+                move || format!("{id_clone}_label_stack")
+            })
             .flex()
             .items_center()
             .gap(px(8.0))
             .overflow_hidden()
+            .flex_1()
+            .min_w(px(0.0))
             .children(icon_el)
             .child(
                 div()
+                    .id(ElementId::Name(
+                        format!("{dropdown_id_str}_label_text").into(),
+                    ))
+                    .debug_selector({
+                        let id_clone = dropdown_id_str.clone();
+                        move || format!("{id_clone}_label_text")
+                    })
                     .text_size(px(13.0))
                     .font_weight(gpui::FontWeight::MEDIUM)
                     .text_color(theme.text_primary)
@@ -327,12 +396,16 @@ impl RenderOnce for Dropdown {
 
         let trigger = div()
             .id(self.id)
+            .debug_selector({
+                let id_clone = dropdown_id_str.clone();
+                move || format!("{id_clone}_trigger")
+            })
             .flex()
             .items_center()
             .justify_between()
             .gap(px(8.0))
             .h(px(32.0))
-            .w(px(150.0))
+            .w(trigger_width)
             .px(px(10.0))
             .rounded(px(6.0))
             .border_1()
@@ -344,6 +417,7 @@ impl RenderOnce for Dropdown {
                 }
             })
             .on_click(move |_, window, cx| {
+                cx.stop_propagation();
                 if let Some(ref h) = on_toggle {
                     h(window, cx);
                 }
@@ -364,12 +438,16 @@ impl RenderOnce for Dropdown {
                 },
             )
             .child(left_morph_stack)
-            .child(chevron_el);
+            .child(chevron_box);
 
         let mut root_container = div()
             .id(ElementId::Name(format!("{dropdown_id_str}_root").into()))
+            .debug_selector({
+                let id_clone = dropdown_id_str.clone();
+                move || format!("{id_clone}_root")
+            })
             .relative()
-            .w(px(150.0))
+            .w(trigger_width)
             .child(trigger);
 
         if is_open || is_closing {
@@ -412,6 +490,8 @@ impl RenderOnce for Dropdown {
                     .items_center()
                     .gap(px(8.0))
                     .overflow_hidden()
+                    .flex_1()
+                    .min_w(px(0.0))
                     .children(opt_icon_el)
                     .child(
                         div()
@@ -431,11 +511,16 @@ impl RenderOnce for Dropdown {
                 // Right element: 14px wide to match chevron alignment perfectly with 10px padding
                 let right_el = if is_selected {
                     div()
+                        .id(ElementId::Name(format!("{opt_id}_right_el").into()))
+                        .debug_selector({
+                            let id_clone = opt_id.clone();
+                            move || format!("{id_clone}_right_el")
+                        })
+                        .flex_none()
                         .flex()
                         .items_center()
                         .justify_center()
-                        .w(px(14.0))
-                        .h(px(18.0))
+                        .size(px(14.0))
                         .child(
                             Icon::new("icons/check.svg")
                                 .size(px(14.0))
@@ -446,15 +531,23 @@ impl RenderOnce for Dropdown {
                     let del_cb = delete_handler;
                     div()
                         .id(ElementId::Name(format!("{opt_id}_del_btn").into()))
+                        .debug_selector({
+                            let id_clone = opt_id.clone();
+                            move || format!("{id_clone}_del_btn")
+                        })
+                        .flex_none()
                         .flex()
                         .items_center()
                         .justify_center()
-                        .w(px(14.0))
-                        .h(px(18.0))
+                        .size(px(14.0))
                         .rounded(px(3.0))
                         .cursor_pointer()
                         .hover(|s| s.bg(theme.accent_hover_bg))
+                        .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                            cx.stop_propagation();
+                        })
                         .on_click(move |_, window, cx| {
+                            cx.stop_propagation();
                             if let Some(ref h) = del_cb {
                                 h(val, window, cx);
                             }
@@ -466,7 +559,7 @@ impl RenderOnce for Dropdown {
                         )
                         .into_any_element()
                 } else {
-                    div().w(px(14.0)).h(px(18.0)).into_any_element()
+                    div().flex_none().size(px(14.0)).into_any_element()
                 };
 
                 let accent_blue = theme.accent_blue;
@@ -474,12 +567,23 @@ impl RenderOnce for Dropdown {
 
                 let mut option_row = div()
                     .id(ElementId::Name(opt_id.clone().into()))
+                    .debug_selector({
+                        let id_clone = opt_id.clone();
+                        move || id_clone
+                    })
                     .flex()
                     .items_center()
                     .justify_between()
+                    .gap(px(8.0))
                     .h(px(32.0))
                     .w_full()
-                    .px(px(10.0));
+                    .px(px(10.0))
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
+                    })
+                    .on_mouse_up(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
+                    });
 
                 if total_items == 1 {
                     option_row = option_row.rounded(px(5.0));
@@ -494,13 +598,24 @@ impl RenderOnce for Dropdown {
                     .flex()
                     .items_center()
                     .flex_1()
+                    .min_w(px(0.0))
                     .h_full()
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
+                    })
                     .child(left_stack);
 
                 if is_selected {
-                    sel_area = sel_area.cursor_default();
+                    let close_cb = on_close.clone();
+                    sel_area = sel_area.cursor_default().on_click(move |_, window, cx| {
+                        cx.stop_propagation();
+                        if let Some(ref h) = close_cb {
+                            h(window, cx);
+                        }
+                    });
                 } else {
                     sel_area = sel_area.cursor_pointer().on_click(move |_, window, cx| {
+                        cx.stop_propagation();
                         if let Some(ref h) = select_handler_cb {
                             h(val, window, cx);
                         }
@@ -534,15 +649,31 @@ impl RenderOnce for Dropdown {
                     .id(ElementId::Name(
                         format!("{dropdown_id_str}_menu_box").into(),
                     ))
+                    .debug_selector({
+                        let id_clone = dropdown_id_str.clone();
+                        move || format!("{id_clone}_menu_box")
+                    })
                     .absolute()
                     .left_0()
-                    .w(px(150.0))
+                    .w(trigger_width)
                     .rounded(px(6.0))
                     .overflow_hidden()
                     .bg(theme.input_bg)
                     .border_1()
                     .border_color(theme.input_border)
-                    .shadow_lg();
+                    .shadow_lg()
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
+                    })
+                    .on_mouse_down(MouseButton::Right, |_, _, cx| {
+                        cx.stop_propagation();
+                    })
+                    .on_mouse_up(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
+                    })
+                    .on_click(|_, _, cx| {
+                        cx.stop_propagation();
+                    });
 
                 // on_mouse_down_out on menu_box ensures clicking outside dismisses without intercepting option clicks inside!
                 if let Some(ref close_fn) = on_close {
@@ -584,15 +715,28 @@ impl RenderOnce for Dropdown {
                     .id(ElementId::Name(
                         format!("{dropdown_id_str}_menu_box_close").into(),
                     ))
+                    .debug_selector({
+                        let id_clone = dropdown_id_str.clone();
+                        move || format!("{id_clone}_menu_box_close")
+                    })
                     .absolute()
                     .left_0()
-                    .w(px(150.0))
+                    .w(trigger_width)
                     .rounded(px(6.0))
                     .overflow_hidden()
                     .bg(theme.input_bg)
                     .border_1()
                     .border_color(theme.input_border)
-                    .shadow_lg();
+                    .shadow_lg()
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
+                    })
+                    .on_mouse_down(MouseButton::Right, |_, _, cx| {
+                        cx.stop_propagation();
+                    })
+                    .on_click(|_, _, cx| {
+                        cx.stop_propagation();
+                    });
 
                 if opens_upwards {
                     box_el
@@ -628,5 +772,128 @@ impl RenderOnce for Dropdown {
         }
 
         root_container
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gpui::{Context, Render, TestAppContext, VisualTestContext, size};
+
+    struct TestDropdownView {
+        open: bool,
+        current_label: SharedString,
+        width: Option<gpui::Pixels>,
+    }
+
+    impl Render for TestDropdownView {
+        fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+            let mut dd = Dropdown::new("test_dd", self.current_label.clone(), "standard")
+                .icon("icons/shield-check.svg")
+                .options(vec![
+                    ("standard", "Стандарт", Some("icons/shield-check.svg")),
+                    ("mild", "Мягкий", Some("icons/feather.svg")),
+                    ("aggressive", "Агрессивный", Some("icons/flame.svg")),
+                ])
+                .open(self.open);
+
+            if let Some(w) = self.width {
+                dd = dd.width(w);
+            }
+
+            div().size_full().p(px(20.0)).child(dd)
+        }
+    }
+
+    #[gpui::test]
+    fn dropdown_chevron_and_trigger_maintain_geometry_under_various_languages(
+        cx: &mut TestAppContext,
+    ) {
+        // Test labels across Russian, English, and extra long labels
+        let test_cases = [
+            // Russian CTF presets
+            ("Стандарт", px(150.0)),
+            ("Мягкий", px(150.0)),
+            ("Агрессивный", px(150.0)),
+            // English CTF presets
+            ("Standard", px(150.0)),
+            ("Mild", px(150.0)),
+            ("Aggressive", px(150.0)),
+            // Russian Keyboard repeat presets
+            ("Сверхбыстрый", px(150.0)),
+            // Long edge-case text to verify flex_none prevents chevron shrink
+            (
+                "ОченьДлинныйТекстДляПроверкиОверфлоуБезСжатияШеврона",
+                px(150.0),
+            ),
+            // Custom wider dropdown
+            ("Wide Preset Mode", px(180.0)),
+        ];
+
+        for (label, expected_width) in test_cases {
+            let window = cx.open_window(size(px(600.0), px(400.0)), move |_, _| TestDropdownView {
+                open: false,
+                current_label: label.into(),
+                width: if expected_width != px(150.0) {
+                    Some(expected_width)
+                } else {
+                    None
+                },
+            });
+            let mut cx = VisualTestContext::from_window(window.into(), cx);
+
+            let trigger_bounds = cx
+                .debug_bounds("test_dd_trigger")
+                .expect("trigger must be rendered");
+            let chevron_bounds = cx
+                .debug_bounds("test_dd_chevron_box")
+                .expect("chevron must be rendered");
+
+            // 1. Trigger maintains exact expected width
+            assert_eq!(trigger_bounds.size.width, expected_width);
+
+            // 2. Chevron is NEVER squished or shrunk below 14x14px regardless of text length
+            assert_eq!(chevron_bounds.size.width, px(14.0));
+            assert_eq!(chevron_bounds.size.height, px(14.0));
+
+            // 3. Chevron stays strictly inside trigger bounds (no overflow)
+            assert!(chevron_bounds.right() <= trigger_bounds.right());
+            assert!(chevron_bounds.left() >= trigger_bounds.left());
+        }
+    }
+
+    #[gpui::test]
+    fn dropdown_menu_box_matches_width_and_options_do_not_overflow(cx: &mut TestAppContext) {
+        let window = cx.open_window(size(px(600.0), px(400.0)), |_, _| TestDropdownView {
+            open: true,
+            current_label: "Стандарт".into(),
+            width: None,
+        });
+        let mut cx = VisualTestContext::from_window(window.into(), cx);
+
+        let trigger_bounds = cx.debug_bounds("test_dd_trigger").unwrap();
+        let menu_bounds = cx.debug_bounds("test_dd_menu_box").unwrap();
+
+        // 1. Menu box width matches trigger width
+        assert_eq!(menu_bounds.size.width, trigger_bounds.size.width);
+
+        // 2. All options fit strictly inside menu box without horizontal overflow
+        for (val, opt_selector) in [
+            ("standard", "test_dd_opt_standard"),
+            ("mild", "test_dd_opt_mild"),
+            ("aggressive", "test_dd_opt_aggressive"),
+        ] {
+            let opt_bounds = cx
+                .debug_bounds(opt_selector)
+                .unwrap_or_else(|| panic!("option {val} must be rendered"));
+
+            assert!(opt_bounds.left() >= menu_bounds.left());
+            assert!(opt_bounds.right() <= menu_bounds.right());
+        }
+
+        // 3. Selected checkmark element is strictly 14px and doesn't squish
+        let right_el_bounds = cx.debug_bounds("test_dd_opt_standard_right_el").unwrap();
+        assert_eq!(right_el_bounds.size.width, px(14.0));
+        assert_eq!(right_el_bounds.size.height, px(14.0));
     }
 }

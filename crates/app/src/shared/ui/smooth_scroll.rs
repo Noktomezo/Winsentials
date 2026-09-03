@@ -105,20 +105,15 @@ impl SmoothScrollState {
 
     fn scroll_by(&mut self, delta: Pixels, reduce_motion: bool) -> (bool, bool) {
         let max_offset = self.handle.max_offset().y;
-        if max_offset <= px(0.0) || delta == px(0.0) {
-            return (false, false);
-        }
-
         let current = self.handle.offset().y;
         let base = if self.animating {
             self.target_y
         } else {
             current
         };
-        let target = (base + delta).clamp(-max_offset, px(0.0));
-        if target == base && !self.animating {
+        let Some(target) = scroll_target(base, delta, max_offset) else {
             return (false, false);
-        }
+        };
 
         self.target_y = target;
         if reduce_motion {
@@ -178,6 +173,14 @@ impl SmoothScrollState {
         self.animating = !(scroll_done && width_done);
         self.animating
     }
+}
+
+fn scroll_target(base: Pixels, delta: Pixels, max_offset: Pixels) -> Option<Pixels> {
+    if max_offset <= px(0.0) || delta == px(0.0) {
+        return None;
+    }
+    let target = (base + delta).clamp(-max_offset, px(0.0));
+    (target != base).then_some(target)
 }
 
 fn damping_factor(lambda: f32, delta_time: f32) -> f32 {
@@ -517,6 +520,12 @@ mod tests {
         assert_eq!(
             offset_from_thumb(px(45.0), px(15.0), px(92.0), px(32.0), px(300.0)),
             px(-150.0)
+        );
+        assert_eq!(scroll_target(px(0.0), px(20.0), px(300.0)), None);
+        assert_eq!(scroll_target(px(-300.0), px(-20.0), px(300.0)), None);
+        assert_eq!(
+            scroll_target(px(0.0), px(-20.0), px(300.0)),
+            Some(px(-20.0))
         );
     }
 }

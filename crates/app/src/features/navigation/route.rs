@@ -11,8 +11,11 @@ pub enum AppRoute {
     Explorer,
     Interface,
     Input,
+    System,
+    NetworkTweaks,
     Tools,
     Startup,
+    Cleanup,
     Settings,
 }
 
@@ -30,8 +33,11 @@ impl AppRoute {
             Self::Explorer => rust_i18n::t!("nav.explorer").to_string(),
             Self::Interface => rust_i18n::t!("nav.interface").to_string(),
             Self::Input => rust_i18n::t!("nav.input").to_string(),
+            Self::System => rust_i18n::t!("nav.system").to_string(),
+            Self::NetworkTweaks => rust_i18n::t!("nav.network_tweaks").to_string(),
             Self::Tools => rust_i18n::t!("nav.tools").to_string(),
             Self::Startup => rust_i18n::t!("startup.title").to_string(),
+            Self::Cleanup => rust_i18n::t!("nav.cleanup").to_string(),
             Self::Settings => rust_i18n::t!("nav.settings").to_string(),
         }
     }
@@ -43,14 +49,16 @@ impl AppRoute {
             Self::CpuDetail => "Processor (CPU)".to_string(),
             Self::RamDetail => "Memory (RAM)".to_string(),
             Self::DiskDetail(id) => format!("Disk {id}"),
-            Self::NetworkDetail(_) => "Network".to_string(),
+            Self::NetworkDetail(_) | Self::NetworkTweaks => "Network".to_string(),
             Self::GpuDetail(id) => format!("GPU {id}"),
             Self::ContextMenu => "Context Menu".to_string(),
             Self::Explorer => "File Explorer".to_string(),
             Self::Interface => "Interface".to_string(),
             Self::Input => "Input".to_string(),
+            Self::System => "System".to_string(),
             Self::Tools => "Tools".to_string(),
             Self::Startup => "Startup".to_string(),
+            Self::Cleanup => "Cleanup".to_string(),
             Self::Settings => "Settings".to_string(),
         }
     }
@@ -65,7 +73,9 @@ impl AppRoute {
             | Self::GpuDetail(_) => {
                 format!("Dashboard > {}", self.english_name())
             }
-            Self::Startup => "Tools > Startup".to_string(),
+            Self::Startup | Self::Cleanup => {
+                format!("Tools > {}", self.english_name())
+            }
             _ => self.english_name(),
         }
     }
@@ -83,8 +93,11 @@ impl AppRoute {
             Self::Explorer => rust_i18n::t!("nav.explorer_desc").to_string(),
             Self::Interface => rust_i18n::t!("nav.interface_desc").to_string(),
             Self::Input => rust_i18n::t!("nav.input_desc").to_string(),
+            Self::System => rust_i18n::t!("nav.system_desc").to_string(),
+            Self::NetworkTweaks => rust_i18n::t!("nav.network_tweaks_desc").to_string(),
             Self::Tools => rust_i18n::t!("nav.tools_desc").to_string(),
             Self::Startup => rust_i18n::t!("startup.desc").to_string(),
+            Self::Cleanup => rust_i18n::t!("nav.cleanup_desc").to_string(),
             Self::Settings => rust_i18n::t!("nav.settings_desc").to_string(),
         }
     }
@@ -102,8 +115,11 @@ impl AppRoute {
             Self::Explorer => "icons/folder.svg",
             Self::Interface => "icons/layout-grid.svg",
             Self::Input => "icons/mouse.svg",
+            Self::System => "icons/monitor-cog.svg",
+            Self::NetworkTweaks => "icons/globe.svg",
             Self::Tools => "icons/wrench.svg",
             Self::Startup => "icons/rocket.svg",
+            Self::Cleanup => "icons/broom.svg",
             Self::Settings => "icons/settings.svg",
         }
     }
@@ -121,18 +137,23 @@ impl AppRoute {
             Self::Explorer => "nav_explorer",
             Self::Interface => "nav_interface",
             Self::Input => "nav_input",
+            Self::System => "nav_system",
+            Self::NetworkTweaks => "nav_network_tweaks",
             Self::Tools => "nav_tools",
             Self::Startup => "nav_startup",
+            Self::Cleanup => "nav_cleanup",
             Self::Settings => "nav_settings",
         }
     }
 
-    pub const TOP_NAV: [Self; 5] = [
+    pub const TOP_NAV: [Self; 7] = [
         Self::Dashboard,
         Self::ContextMenu,
         Self::Explorer,
         Self::Interface,
         Self::Input,
+        Self::System,
+        Self::NetworkTweaks,
     ];
 
     pub const BOTTOM_NAV: [Self; 2] = [Self::Tools, Self::Settings];
@@ -154,8 +175,11 @@ mod tests {
         assert_eq!(AppRoute::Explorer.english_name(), "File Explorer");
         assert_eq!(AppRoute::Interface.english_name(), "Interface");
         assert_eq!(AppRoute::Input.english_name(), "Input");
+        assert_eq!(AppRoute::System.english_name(), "System");
+        assert_eq!(AppRoute::NetworkTweaks.english_name(), "Network");
         assert_eq!(AppRoute::Tools.english_name(), "Tools");
         assert_eq!(AppRoute::Startup.english_name(), "Startup");
+        assert_eq!(AppRoute::Cleanup.english_name(), "Cleanup");
         assert_eq!(AppRoute::Settings.english_name(), "Settings");
     }
 
@@ -172,7 +196,10 @@ mod tests {
         );
         assert_eq!(AppRoute::ContextMenu.breadcrumb_english(), "Context Menu");
         assert_eq!(AppRoute::Input.breadcrumb_english(), "Input");
+        assert_eq!(AppRoute::System.breadcrumb_english(), "System");
+        assert_eq!(AppRoute::NetworkTweaks.breadcrumb_english(), "Network");
         assert_eq!(AppRoute::Tools.breadcrumb_english(), "Tools");
         assert_eq!(AppRoute::Startup.breadcrumb_english(), "Tools > Startup");
+        assert_eq!(AppRoute::Cleanup.breadcrumb_english(), "Tools > Cleanup");
     }
 }

@@ -38,7 +38,7 @@ enum Commands {
     FmtCheck,
     /// Run all unit and integration tests
     Test,
-    /// Build release executable, UPX compress, package portable ZIP and build NSIS installer
+    /// Build release executable, portable ZIP and Inno Setup installer
     Build,
     /// Run development server with watchexec auto-reload
     Dev {
@@ -353,24 +353,36 @@ fn package_portable_zip(binary_path: &Path, zip_path: &Path) -> Result<(), Strin
     Ok(())
 }
 
-fn build_installer(_version: &str, output_path: &Path) -> Result<(), String> {
-    println!("=== Building Native GPUI Installer ===");
-    run_cargo(&["build", "--release", "--package", "winsentials-installer"])?;
-
-    let release_dir = Path::new("target").join("release");
-    let setup_raw = release_dir.join(format!("winsentials-setup{}", env::consts::EXE_SUFFIX));
-    if !setup_raw.exists() {
-        return Err(format!("Setup binary not found at {}", setup_raw.display()));
-    }
-
-    let _ = fs::copy(&setup_raw, output_path);
-
-    println!("=== Compressing installer with UPX ===");
-    if let Err(e) = run_external("upx", &["--best", "--lzma", &output_path.to_string_lossy()]) {
-        eprintln!("Warning: UPX compression skipped or failed: {e}");
-    }
-
-    Ok(())
+fn build_installer(version: &str, binary: &Path, output_path: &Path) -> Result<(), String> {
+    println!("=== Building Inno Setup installer ===");
+    let script = fs::canonicalize("installer/Winsentials.iss")
+        .map_err(|error| format!("Inno Setup script not found: {error}"))?;
+    let binary =
+        fs::canonicalize(binary).map_err(|error| format!("release binary not found: {error}"))?;
+    let icon = fs::canonicalize("assets/app-logo.ico")
+        .map_err(|error| format!("installer icon not found: {error}"))?;
+    let output_dir = output_path
+        .parent()
+        .ok_or_else(|| "installer output directory is missing".to_string())?;
+    let output_name = output_path
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| "installer output name is invalid".to_string())?;
+    let inno_path = |path: &Path| {
+        let value = path.to_string_lossy();
+        value.strip_prefix(r"\\?\").unwrap_or(&value).to_string()
+    };
+    let args = [
+        "/Qp".to_string(),
+        format!("/DAppVersion={version}"),
+        format!("/DSourceExe={}", inno_path(&binary)),
+        format!("/DSetupIcon={}", inno_path(&icon)),
+        format!("/O{}", inno_path(output_dir)),
+        format!("/F{output_name}"),
+        inno_path(&script),
+    ];
+    let args = args.iter().map(String::as_str).collect::<Vec<_>>();
+    run_external("iscc", &args)
 }
 
 fn run_build() -> Result<(), String> {
@@ -388,14 +400,14 @@ fn run_build() -> Result<(), String> {
         eprintln!("Warning: UPX compression skipped or failed: {e}");
     }
 
-    let version = "0.1.0";
+    let version = env!("CARGO_PKG_VERSION");
 
     println!("=== Packaging portable ZIP ===");
     let portable_zip_path = release_dir.join("winsentials-win-x64-portable.zip");
     package_portable_zip(&binary, &portable_zip_path)?;
 
     let setup_exe_path = release_dir.join("winsentials-win-x64-setup.exe");
-    build_installer(version, &setup_exe_path)?;
+    build_installer(version, &binary, &setup_exe_path)?;
 
     println!("\n=== Release distribution artifacts ready in target/release/ ===");
     let artifacts = [

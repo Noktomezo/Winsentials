@@ -34,7 +34,7 @@ pub fn set_remove_shortcut_suffix(applied: bool) -> Result<(), String> {
                 .map_err(|e| format!("Failed to set ShortcutNameTemplate: {e}"))?;
 
             // Method 2: Set link = [0, 0, 0, 0]
-            if let Ok(explorer_key) = windows_registry::CURRENT_USER.open(REG_EXPLORER) {
+            if let Ok(explorer_key) = windows_registry::CURRENT_USER.create(REG_EXPLORER) {
                 let _ =
                     explorer_key.set_bytes("link", windows_registry::Type::Bytes, &[0u8, 0, 0, 0]);
             }
@@ -43,7 +43,7 @@ pub fn set_remove_shortcut_suffix(applied: bool) -> Result<(), String> {
             let _ = windows_registry::CURRENT_USER.remove_tree(REG_NAMING_TEMPLATES);
 
             // Remove link override
-            if let Ok(explorer_key) = windows_registry::CURRENT_USER.open(REG_EXPLORER) {
+            if let Ok(explorer_key) = windows_registry::CURRENT_USER.create(REG_EXPLORER) {
                 let _ = explorer_key.remove_value("link");
             }
         }

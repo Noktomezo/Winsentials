@@ -1,3 +1,4 @@
+pub mod cleanup;
 pub mod config;
 pub mod hardware;
 pub mod startup;
@@ -20,5 +21,6 @@ pub use startup::{
 pub use system_info::SystemInfo;
 #[allow(unused_imports)]
 pub use tweaks::{
-    RestartRequirement, TweakCategory, TweakDefinition, count_applied_tweaks, get_all_tweaks,
+    RestartRequirement, SideEffect, SideEffectLevel, TweakCategory, TweakDefinition,
+    count_applied_tweaks, get_all_tweaks,
 };

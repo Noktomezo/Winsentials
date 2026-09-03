@@ -4,8 +4,8 @@ use std::time::Duration;
 use gpui::prelude::FluentBuilder;
 use gpui::{
     Animation, AnimationExt, AnyElement, App, ElementId, FocusHandle, FontWeight,
-    InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce, SpringAnimation,
-    SpringConfig, StatefulInteractiveElement, Styled, Window, deferred, div, ease_in_out, img, px,
+    InteractiveElement, IntoElement, ParentElement, RenderOnce, SpringAnimation, SpringConfig,
+    StatefulInteractiveElement, Styled, Window, deferred, div, ease_in_out, img, px,
 };
 
 use crate::entities::startup::search::matches_startup_query;
@@ -13,11 +13,11 @@ use crate::entities::startup::{StartupEntry, StartupSource, StartupStatus};
 use crate::features::navigation::AppRoute;
 use crate::pages::page_header::PageHeader;
 use crate::shared::theme::Theme;
-use crate::shared::ui::TooltipState;
 use crate::shared::ui::icon::Icon;
 use crate::shared::ui::search_input::{SearchChangeHandler, SearchInput};
 use crate::shared::ui::smooth_scroll::SmoothVirtualList;
 use crate::shared::ui::switch::Switch;
+use crate::shared::ui::{Chip, IconButton, MenuItem, TooltipState};
 use crate::widgets::sidebar::lerp_rgba;
 
 pub type StartupToggleHandler = Arc<dyn Fn(&StartupEntry, &mut Window, &mut App) + 'static>;
@@ -255,11 +255,7 @@ fn render_source_badge(
         .flex()
         .items_center()
         .justify_center()
-        .size(px(18.0))
-        .rounded(px(4.0))
-        .bg(source_col.opacity(0.12))
-        .border_1()
-        .border_color(source_col.opacity(0.3))
+        .size(px(16.0))
         .cursor_pointer()
         .on_mouse_move(move |event, window, cx| {
             if let Some(ref h) = tt_h {
@@ -282,7 +278,7 @@ fn render_source_badge(
         })
         .child(
             Icon::new(entry.source.icon())
-                .size(px(11.0))
+                .size(px(12.0))
                 .color(source_col),
         )
 }
@@ -309,11 +305,7 @@ fn render_scope_badge(
         .flex()
         .items_center()
         .justify_center()
-        .size(px(18.0))
-        .rounded(px(4.0))
-        .bg(theme.input_bg)
-        .border_1()
-        .border_color(theme.input_border)
+        .size(px(16.0))
         .cursor_pointer()
         .on_mouse_move(move |event, window, cx| {
             if let Some(ref h) = tt_h {
@@ -336,8 +328,8 @@ fn render_scope_badge(
         })
         .child(
             Icon::new(entry.scope.icon())
-                .size(px(11.0))
-                .color(theme.text_muted),
+                .size(px(12.0))
+                .color(theme.accent_blue),
         )
 }
 
@@ -359,6 +351,9 @@ fn render_action_menu(
     let close_fn = handlers.toggle_menu.clone();
 
     let close_fn_click = close_fn.clone();
+    let close_fn_src = close_fn.clone();
+    let close_fn_copy = close_fn.clone();
+    let close_fn_del = close_fn.clone();
     let entry_id = entry.id.clone();
 
     let box_el = div()
@@ -383,137 +378,66 @@ fn render_action_menu(
             }
         })
         .child(
-            div()
-                .flex()
-                .items_center()
-                .gap(px(8.0))
-                .px(px(8.0))
-                .py(px(6.0))
-                .rounded_md()
-                .hover(move |s| s.bg(theme.button_hover))
-                .cursor_pointer()
-                .on_mouse_down(MouseButton::Left, move |_, window, cx| {
-                    if let Some(ref h) = on_folder {
-                        h(&entry_folder, window, cx);
-                    }
-                    if let Some(ref h) = close_fn_click {
-                        h(None, window, cx);
-                    }
-                    cx.stop_propagation();
-                })
-                .child(
-                    Icon::new("icons/folder-open.svg")
-                        .size(px(14.0))
-                        .color(theme.text_muted),
-                )
-                .child(
-                    div()
-                        .text_xs()
-                        .text_color(theme.text_primary)
-                        .child(rust_i18n::t!("startup.action_open_folder").to_string()),
-                ),
-        );
-
-    let close_fn_src = handlers.toggle_menu.clone();
-    let box_el = box_el.child(
-        div()
-            .flex()
-            .items_center()
-            .gap(px(8.0))
-            .px(px(8.0))
-            .py(px(6.0))
-            .rounded_md()
-            .hover(move |s| s.bg(theme.button_hover))
-            .cursor_pointer()
-            .on_mouse_down(MouseButton::Left, move |_, window, cx| {
+            MenuItem::new(
+                "menu_open_folder",
+                rust_i18n::t!("startup.action_open_folder").to_string(),
+            )
+            .icon("icons/folder-open.svg")
+            .on_click(move |window, cx| {
+                if let Some(ref h) = on_folder {
+                    h(&entry_folder, window, cx);
+                }
+                if let Some(ref h) = close_fn_click {
+                    h(None, window, cx);
+                }
+            }),
+        )
+        .child(
+            MenuItem::new(
+                "menu_open_src",
+                rust_i18n::t!("startup.action_open_source").to_string(),
+            )
+            .icon("icons/external-link.svg")
+            .on_click(move |window, cx| {
                 if let Some(ref h) = on_source {
                     h(&entry_src, window, cx);
                 }
                 if let Some(ref h) = close_fn_src {
                     h(None, window, cx);
                 }
-                cx.stop_propagation();
-            })
-            .child(
-                Icon::new("icons/external-link.svg")
-                    .size(px(14.0))
-                    .color(theme.text_muted),
+            }),
+        )
+        .child(
+            MenuItem::new(
+                "menu_copy_path",
+                rust_i18n::t!("startup.action_copy_path").to_string(),
             )
-            .child(
-                div()
-                    .text_xs()
-                    .text_color(theme.text_primary)
-                    .child(rust_i18n::t!("startup.action_open_source").to_string()),
-            ),
-    );
-
-    let close_fn_copy = handlers.toggle_menu.clone();
-    let box_el = box_el.child(
-        div()
-            .flex()
-            .items_center()
-            .gap(px(8.0))
-            .px(px(8.0))
-            .py(px(6.0))
-            .rounded_md()
-            .hover(move |s| s.bg(theme.button_hover))
-            .cursor_pointer()
-            .on_mouse_down(MouseButton::Left, move |_, window, cx| {
+            .icon("icons/copy.svg")
+            .on_click(move |window, cx| {
                 if let Some(ref h) = on_copy {
                     h(&entry_copy, window, cx);
                 }
                 if let Some(ref h) = close_fn_copy {
                     h(None, window, cx);
                 }
-                cx.stop_propagation();
-            })
-            .child(
-                Icon::new("icons/copy.svg")
-                    .size(px(14.0))
-                    .color(theme.text_muted),
+            }),
+        )
+        .child(
+            MenuItem::new(
+                "menu_delete",
+                rust_i18n::t!("startup.action_delete").to_string(),
             )
-            .child(
-                div()
-                    .text_xs()
-                    .text_color(theme.text_primary)
-                    .child(rust_i18n::t!("startup.action_copy_path").to_string()),
-            ),
-    );
-
-    let close_fn_del = handlers.toggle_menu.clone();
-    let del_color = theme.accent_red;
-    let box_el = box_el.child(
-        div()
-            .flex()
-            .items_center()
-            .gap(px(8.0))
-            .px(px(8.0))
-            .py(px(6.0))
-            .rounded_md()
-            .hover(move |s| s.bg(theme.button_hover))
-            .cursor_pointer()
-            .on_mouse_down(MouseButton::Left, move |_, window, cx| {
+            .icon("icons/trash-2.svg")
+            .destructive(true)
+            .on_click(move |window, cx| {
                 if let Some(ref h) = on_del {
                     h(&entry_del, window, cx);
                 }
                 if let Some(ref h) = close_fn_del {
                     h(None, window, cx);
                 }
-                cx.stop_propagation();
-            })
-            .child(
-                Icon::new("icons/trash-2.svg")
-                    .size(px(14.0))
-                    .color(del_color),
-            )
-            .child(
-                div()
-                    .text_xs()
-                    .font_weight(FontWeight::MEDIUM)
-                    .text_color(del_color)
-                    .child(rust_i18n::t!("startup.action_delete").to_string()),
-            ),
-    );
+            }),
+        );
 
     box_el.with_animation(
         ElementId::Name(format!("{entry_id}_menu_enter").into()),
@@ -523,6 +447,10 @@ fn render_action_menu(
             menu.opacity(delta).mt(px(offset_y))
         },
     )
+}
+
+const fn fallback_app_icon() -> &'static str {
+    "icons/app-window.svg"
 }
 
 #[allow(clippy::too_many_lines)]
@@ -547,42 +475,28 @@ fn render_startup_card(
 
     let menu_toggle_id = entry_id.clone();
     let on_toggle_menu_btn = handlers.toggle_menu.clone();
-    let menu_btn_bg = if is_menu_open {
-        theme.button_selected
-    } else {
-        theme.card_bg
-    };
     let menu_icon_col = if is_menu_open {
         theme.accent_blue
     } else {
         theme.text_muted
     };
 
-    let menu_btn = div()
-        .id(ElementId::Name(format!("{}_more_btn", entry.id).into()))
-        .flex()
-        .items_center()
-        .justify_center()
-        .size(px(28.0))
-        .rounded_md()
-        .bg(menu_btn_bg)
-        .cursor_pointer()
-        .hover(move |s| s.bg(theme.button_hover))
-        .on_mouse_down(MouseButton::Left, move |_, window, cx| {
-            if let Some(ref h) = on_toggle_menu_btn {
-                if is_menu_open {
-                    h(None, window, cx);
-                } else {
-                    h(Some(menu_toggle_id.clone()), window, cx);
-                }
+    let menu_btn = IconButton::new(
+        ElementId::Name(format!("{}_more_btn", entry.id).into()),
+        "icons/ellipsis-vertical.svg",
+    )
+    .selected(is_menu_open)
+    .icon_color(menu_icon_col)
+    .on_click(move |_, window, cx| {
+        if let Some(ref h) = on_toggle_menu_btn {
+            if is_menu_open {
+                h(None, window, cx);
+            } else {
+                h(Some(menu_toggle_id.clone()), window, cx);
             }
-            cx.stop_propagation();
-        })
-        .child(
-            Icon::new("icons/ellipsis-vertical.svg")
-                .size(px(16.0))
-                .color(menu_icon_col),
-        );
+        }
+        cx.stop_propagation();
+    });
 
     let secondary_text = entry
         .publisher
@@ -597,25 +511,27 @@ fn render_startup_card(
             .flex()
             .items_center()
             .justify_center()
-            .size(px(38.0))
-            .rounded_lg()
+            .size(px(32.0))
+            .rounded(px(6.0))
             .bg(theme.input_bg)
             .border_1()
-            .border_color(theme.input_border)
+            .border_color(theme.card_border)
             .flex_none()
-            .child(img(icon_file.clone()).size(px(24.0)).rounded(px(4.0)))
+            .child(img(icon_file.clone()).size(px(16.0)).rounded(px(4.0)))
     } else {
         div()
             .flex()
             .items_center()
             .justify_center()
-            .size(px(38.0))
-            .rounded_lg()
-            .bg(source_col.opacity(0.12))
+            .size(px(32.0))
+            .rounded(px(6.0))
+            .bg(theme.input_bg)
+            .border_1()
+            .border_color(theme.card_border)
             .flex_none()
             .child(
-                Icon::new(entry.source.icon())
-                    .size(px(20.0))
+                Icon::new(fallback_app_icon())
+                    .size(px(16.0))
                     .color(source_col),
             )
     };
@@ -625,15 +541,15 @@ fn render_startup_card(
         .as_ref()
         .is_some_and(|id| id == &entry.id);
     let target = if is_card_hovered { 1.0 } else { 0.0 };
-    let spring = SpringAnimation::new(SpringConfig::new(350.0, 28.0, 1.0))
+    let spring = SpringAnimation::new(SpringConfig::new(260.0, 26.0, 1.0))
         .to(target)
-        .with_epsilon(0.005);
+        .with_epsilon(0.01);
     let card_id = entry.id.clone();
     let on_hover_c = handlers.hover_card.clone();
     let card_bg = theme.card_bg;
     let input_bg = theme.input_bg;
     let card_border = theme.card_border;
-    let accent_blue = theme.accent_blue;
+    let input_border = theme.input_border;
 
     div()
         .id(ElementId::Name(format!("{}_card", entry.id).into()))
@@ -642,10 +558,9 @@ fn render_startup_card(
         .flex()
         .items_center()
         .justify_between()
-        .gap(px(12.0))
-        .h(px(58.0))
-        .px(px(16.0))
-        .py(px(10.0))
+        .gap(px(10.0))
+        .h(px(64.0))
+        .p(px(16.0))
         .rounded(px(10.0))
         .border_1()
         .on_hover(move |&hovered, window, cx| {
@@ -662,8 +577,8 @@ fn render_startup_card(
             spring,
             move |card, val| {
                 let t = val.clamp(0.0, 1.0);
-                let border = lerp_rgba(card_border, accent_blue, t);
-                let bg = lerp_rgba(card_bg, input_bg, t * 0.4);
+                let border = lerp_rgba(card_border, input_border, t);
+                let bg = lerp_rgba(card_bg, input_bg, t);
                 card.bg(bg).border_color(border)
             },
         )
@@ -671,7 +586,7 @@ fn render_startup_card(
             div()
                 .flex()
                 .items_center()
-                .gap(px(12.0))
+                .gap(px(10.0))
                 .flex_1()
                 .min_w(px(0.0))
                 .child(app_icon_el)
@@ -679,7 +594,8 @@ fn render_startup_card(
                     div()
                         .flex()
                         .flex_col()
-                        .gap(px(2.0))
+                        .justify_between()
+                        .h(px(32.0))
                         .flex_1()
                         .min_w(px(0.0))
                         .child(
@@ -689,7 +605,8 @@ fn render_startup_card(
                                 .gap(px(8.0))
                                 .child(
                                     div()
-                                        .text_sm()
+                                        .text_size(px(13.0))
+                                        .line_height(px(16.0))
                                         .font_weight(FontWeight::SEMIBOLD)
                                         .text_color(theme.text_primary)
                                         .text_ellipsis()
@@ -703,7 +620,7 @@ fn render_startup_card(
                         .child(
                             div()
                                 .text_size(px(11.5))
-                                .line_height(px(15.0))
+                                .line_height(px(14.0))
                                 .font_weight(FontWeight::NORMAL)
                                 .text_color(theme.text_muted)
                                 .text_ellipsis()
@@ -732,7 +649,7 @@ fn render_startup_card(
 fn render_filter_pill(
     source: Option<StartupSource>,
     active_filter: Option<StartupSource>,
-    theme: &Theme,
+    _theme: &Theme,
     on_select_filter: Option<FilterSelectHandler>,
 ) -> impl IntoElement {
     let is_selected = active_filter == source;
@@ -752,44 +669,13 @@ fn render_filter_pill(
         Some(StartupSource::ScheduledTask) => "filter_tasks",
     };
 
-    let bg = if is_selected {
-        theme.button_selected
-    } else {
-        theme.input_bg
-    };
-
-    let text_col = if is_selected {
-        theme.text_primary
-    } else {
-        theme.text_muted
-    };
-
-    div()
-        .id(ElementId::Name(pill_id.into()))
-        .flex()
-        .items_center()
-        .justify_center()
-        .px(px(12.0))
-        .py(px(6.0))
-        .rounded_md()
-        .bg(bg)
-        .border_1()
-        .border_color(theme.card_border)
-        .hover(|s| s.bg(theme.button_hover))
-        .cursor_pointer()
-        .text_xs()
-        .font_weight(if is_selected {
-            FontWeight::SEMIBOLD
-        } else {
-            FontWeight::NORMAL
-        })
-        .text_color(text_col)
-        .on_click(move |_, window, cx| {
+    Chip::new(pill_id, label)
+        .selected(is_selected)
+        .on_click(move |_event, window, cx| {
             if let Some(ref h) = on_select_filter {
                 h(source, window, cx);
             }
         })
-        .child(label)
 }
 
 impl RenderOnce for StartupPage {
@@ -990,5 +876,22 @@ impl RenderOnce for StartupPage {
                 .child(PageHeader::new(route.title(), route.description()).badge(count_badge))
                 .child(filter_bar),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fallback_app_icon_does_not_duplicate_source_badge() {
+        for source in [
+            StartupSource::Registry,
+            StartupSource::StartupFolder,
+            StartupSource::Service,
+            StartupSource::ScheduledTask,
+        ] {
+            assert_ne!(fallback_app_icon(), source.icon());
+        }
     }
 }

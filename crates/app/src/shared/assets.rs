@@ -6,8 +6,9 @@ use std::borrow::Cow;
 #[folder = "../../assets/"]
 #[include = "icons/*.svg"]
 #[include = "icons/**/*.svg"]
+#[include = "icons/*.png"]
+#[include = "icons/**/*.png"]
 #[include = "icons/blank.ico"]
-#[include = "icons/flags/{ru,us}.png"]
 #[include = "app-logo.png"]
 pub struct EmbeddedAssetSource;
 

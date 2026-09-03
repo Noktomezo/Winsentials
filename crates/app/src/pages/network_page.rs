@@ -8,8 +8,8 @@ use crate::entities::hardware::{NetworkInfo, NetworkKind};
 use crate::shared::theme::Theme;
 use crate::shared::ui::{GroupCard, Icon};
 
-use super::cpu_page::{HistoryGraphPalette, render_stepped_history_graph};
 use super::page_header::PageHeader;
+use crate::shared::ui::history_graph::{HistoryGraphPalette, render_stepped_history_graph};
 
 #[derive(IntoElement)]
 pub struct NetworkPage {

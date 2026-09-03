@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnimationExt, App, ElementId, InteractiveElement, IntoElement, ParentElement, RenderOnce, Rgba,
+    AnimationExt, App, ElementId, InteractiveElement, IntoElement, ParentElement, RenderOnce,
     SharedString, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, Window, div,
     px,
 };
@@ -181,39 +181,7 @@ impl RenderOnce for Sidebar {
     }
 }
 
-#[must_use]
-pub fn lerp_rgba(c1: Rgba, c2: Rgba, t: f32) -> Rgba {
-    let t = t.clamp(0.0, 1.0);
-    Rgba {
-        r: c1.r + (c2.r - c1.r) * t,
-        g: c1.g + (c2.g - c1.g) * t,
-        b: c1.b + (c2.b - c1.b) * t,
-        a: c1.a + (c2.a - c1.a) * t,
-    }
-}
-
-#[must_use]
-pub fn lerp_item_bg(accent: Rgba, val: f32) -> Rgba {
-    let val = val.clamp(0.0, 1.0);
-    Rgba {
-        r: accent.r,
-        g: accent.g,
-        b: accent.b,
-        a: val,
-    }
-}
-
-#[must_use]
-pub fn lerp_item_text(theme: &Theme, val: f32) -> Rgba {
-    let val = val.clamp(0.0, 1.0);
-    if val <= 0.5 {
-        let t = val / 0.5;
-        lerp_rgba(theme.text_primary, theme.accent_blue, t)
-    } else {
-        let t = (val - 0.5) / 0.5;
-        lerp_rgba(theme.accent_blue, theme.selected_text, t)
-    }
-}
+pub use crate::shared::motion::{lerp_item_bg, lerp_item_text, lerp_rgba};
 
 #[allow(clippy::too_many_arguments)]
 fn render_sidebar_item(

@@ -65,6 +65,9 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=../../assets/app-logo.png");
     println!("cargo:rerun-if-changed=../../assets/app-logo-dev.png");
+    println!("cargo:rerun-if-changed=../../locales/ru.json");
+    println!("cargo:rerun-if-changed=../../locales/en.json");
+    println!("cargo:rerun-if-changed=Winsentials.manifest");
     println!("cargo:rerun-if-env-changed=PROFILE");
 
     let profile = std::env::var("PROFILE").unwrap_or_else(|_| "debug".to_string());
@@ -105,6 +108,7 @@ fn main() {
         res.set("CompanyName", "Noktomezo");
         res.set("LegalCopyright", "Copyright (C) 2026 Noktomezo");
         res.set("Comments", "https://github.com/Noktomezo/Winsentials");
+        res.set_manifest_file("Winsentials.manifest");
         res.set_language(0x0409); // U.S. English (standard for Windows PE metadata)
 
         if let Err(e) = res.compile() {

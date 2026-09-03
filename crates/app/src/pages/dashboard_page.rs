@@ -14,7 +14,6 @@ use crate::features::navigation::AppRoute;
 use crate::pages::page_header::PageHeader;
 use crate::shared::theme::Theme;
 use crate::shared::ui::GroupCard;
-use crate::shared::ui::animated_grid::render_animated_grid;
 use crate::shared::ui::icon::Icon;
 use crate::widgets::sidebar::lerp_rgba;
 
@@ -28,28 +27,22 @@ pub type TelemetryCardClickHandler = Arc<dyn Fn(&mut Window, &mut App) + Send + 
 pub struct DashboardPage {
     telemetry: TelemetryData,
     hovered_card: Option<SharedString>,
-    sidebar_expanded: bool,
     on_hover_card: Option<TelemetryCardHoverHandler>,
     on_navigate: Option<DashboardNavigateHandler>,
 }
 
 impl Default for DashboardPage {
     fn default() -> Self {
-        Self::new(TelemetryData::fetch(), None, false)
+        Self::new(TelemetryData::fetch(), None)
     }
 }
 
 impl DashboardPage {
     #[must_use]
-    pub fn new(
-        telemetry: TelemetryData,
-        hovered_card: Option<SharedString>,
-        sidebar_expanded: bool,
-    ) -> Self {
+    pub fn new(telemetry: TelemetryData, hovered_card: Option<SharedString>) -> Self {
         Self {
             telemetry,
             hovered_card,
-            sidebar_expanded,
             on_hover_card: None,
             on_navigate: None,
         }
@@ -283,8 +276,8 @@ fn render_telemetry_card(
         .gap(px(10.0))
         .rounded(px(10.0))
         .border_1()
-        .p(px(12.0))
-        .h(px(58.0))
+        .p(px(16.0))
+        .h(px(64.0))
         .w_full()
         .on_hover(move |&hovered, window, cx| {
             if let Some(ref h) = on_hov {
@@ -324,7 +317,7 @@ fn render_telemetry_card(
 
 impl RenderOnce for DashboardPage {
     #[allow(clippy::too_many_lines, clippy::cast_precision_loss)]
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
         let route = AppRoute::Dashboard;
         let info = SystemInfo::fetch();
@@ -402,7 +395,7 @@ impl RenderOnce for DashboardPage {
                 .icon_color(theme.accent_blue)
                 .child(grid_row);
 
-        // 2. Interactive Telemetry Cards with Spring-driven Hover & Animated Flow Grid
+        // 2. Interactive telemetry cards in a fixed two-column grid.
         let mut card_items: Vec<(&'static str, AnyElement)> = Vec::new();
 
         // CPU Card: Uniform Blue accent icon - Navigates to CpuDetail
@@ -607,21 +600,11 @@ impl RenderOnce for DashboardPage {
             ));
         }
 
-        // Available content width in the main window view (excluding sidebar & padding)
-        let sidebar_w = if self.sidebar_expanded {
-            px(200.0)
-        } else {
-            px(40.0)
-        };
-        let available_width = (window.viewport_size().width - sidebar_w - px(32.0)).max(px(320.0));
-        let telemetry_grid = render_animated_grid(
-            "dashboard_telemetry_grid",
-            available_width,
-            px(320.0),
-            px(58.0),
-            px(12.0),
-            card_items,
-        );
+        let telemetry_grid = div()
+            .grid()
+            .grid_cols(2)
+            .gap(px(12.0))
+            .children(card_items.into_iter().map(|(_, card)| card));
 
         div()
             .flex()

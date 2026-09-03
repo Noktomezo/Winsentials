@@ -1,14 +1,19 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use gpui::{Context, IntoElement, ParentElement, Render, SharedString, Styled, Window, div, px};
 
+#[cfg(debug_assertions)]
+use gpui::{InteractiveElement, MouseButton, Pixels, Point};
+
+use crate::entities::cleanup::{CleanupCategory, CleanupState};
 use crate::entities::{AppConfig, TelemetryData, load_config, save_config};
 use crate::features::discord_rpc::{DiscordRpcActivity, DiscordRpcManager};
 use crate::features::navigation::AppRoute;
 use crate::features::tray::TrayManager;
-use crate::pages::render_route;
+use crate::pages::{CleanupPage, render_route};
 use crate::shared::theme::{Theme, ThemeMode, ThemePalette};
 use crate::shared::ui::{Tooltip, TooltipState};
 use crate::widgets::sidebar::Sidebar;
@@ -52,6 +57,9 @@ pub struct AppView {
     startup_search_focus: Option<gpui::FocusHandle>,
     startup_open_menu_id: Option<String>,
     hovered_startup_card: Option<String>,
+    cleanup: CleanupState,
+    #[cfg(debug_assertions)]
+    pub dev_perf_monitor: crate::widgets::dev_perf_monitor::DevPerfMonitorState,
 }
 
 impl AppView {
@@ -65,7 +73,7 @@ impl AppView {
             .and_then(|s| s.parse::<u32>().ok())
             .unwrap_or(22000);
 
-        let config = load_config();
+        let mut config = load_config();
 
         let mut discord_manager = DiscordRpcManager::new(windows_build);
         if config.discord_rpc != DiscordRpcActivity::Disabled {
@@ -77,6 +85,13 @@ impl AppView {
         let open_item_id = tray_manager.open_item_id.clone();
         let quit_item_id = tray_manager.quit_item_id.clone();
         let startup_entries = crate::entities::startup::fetch_all_startup_entries();
+
+        if config.snapkey != crate::entities::tweaks::input::SnapKeyPreset::Off {
+            if let Err(error) = crate::entities::tweaks::input::set_snapkey_preset(config.snapkey) {
+                eprintln!("failed to restore SnapKey preset: {error}");
+                config.snapkey = crate::entities::tweaks::input::SnapKeyPreset::Off;
+            }
+        }
 
         Self {
             sidebar_expanded: false,
@@ -115,6 +130,9 @@ impl AppView {
             startup_search_focus: None,
             startup_open_menu_id: None,
             hovered_startup_card: None,
+            cleanup: CleanupState::default(),
+            #[cfg(debug_assertions)]
+            dev_perf_monitor: crate::widgets::dev_perf_monitor::DevPerfMonitorState::new(),
         }
     }
 
@@ -132,6 +150,10 @@ impl AppView {
                     .await;
 
                 let updated = this.update(cx, |this, cx| {
+                    #[cfg(debug_assertions)]
+                    if this.dev_perf_monitor.freeze_telemetry {
+                        return;
+                    }
                     this.telemetry = next_data;
                     cx.notify();
                 });
@@ -151,6 +173,10 @@ impl AppView {
                     .await;
 
                 let updated = this.update(cx, |this, cx| {
+                    #[cfg(debug_assertions)]
+                    if this.dev_perf_monitor.disable_chart_animation {
+                        return;
+                    }
                     if matches!(
                         this.current_route,
                         AppRoute::CpuDetail
@@ -194,8 +220,110 @@ impl AppView {
             if route == AppRoute::Startup {
                 self.startup_entries = crate::entities::startup::fetch_all_startup_entries();
             }
+            if route == AppRoute::Cleanup && !self.cleanup.scanned_once {
+                self.refresh_cleanup(cx);
+            }
             cx.notify();
         }
+    }
+
+    fn refresh_cleanup(&mut self, cx: &mut Context<Self>) {
+        if self.cleanup.scanning || self.cleanup.cleaning {
+            return;
+        }
+        self.cleanup.scanning = true;
+        cx.notify();
+        cx.spawn(async move |this, cx| {
+            let files = cx
+                .background_executor()
+                .spawn(async { crate::entities::cleanup::scan_cleanup_targets() });
+            let devices = cx
+                .background_executor()
+                .spawn(async { crate::entities::cleanup::scan_unused_devices() });
+            let mut snapshot = files.await;
+            snapshot.targets.extend(devices.await);
+            if let Err(error) = this.update(cx, |this, cx| {
+                this.cleanup.apply_snapshot(snapshot);
+                cx.notify();
+            }) {
+                eprintln!("cleanup scan update failed: {error}");
+            }
+        })
+        .detach();
+    }
+
+    fn clean_cleanup(&mut self, category: Option<CleanupCategory>, cx: &mut Context<Self>) {
+        if self.cleanup.scanning || self.cleanup.cleaning {
+            return;
+        }
+        let selected = self
+            .cleanup
+            .snapshot
+            .targets
+            .iter()
+            .filter(|target| {
+                self.cleanup.selected.contains(&target.id)
+                    && category.is_none_or(|value| value == target.category)
+            })
+            .map(|target| target.id.clone())
+            .collect::<std::collections::HashSet<_>>();
+        if selected.is_empty() {
+            return;
+        }
+        let confirmed = rfd::MessageDialog::new()
+            .set_title(rust_i18n::t!("cleanup.confirm_title").as_ref())
+            .set_description(rust_i18n::t!("cleanup.confirm_body").as_ref())
+            .set_level(rfd::MessageLevel::Warning)
+            .set_buttons(rfd::MessageButtons::YesNo)
+            .show()
+            == rfd::MessageDialogResult::Yes;
+        if !confirmed {
+            return;
+        }
+
+        let snapshot = self.cleanup.snapshot.clone();
+        self.cleanup.cleaning = true;
+        cx.notify();
+        cx.spawn(async move |this, cx| {
+            let report = cx
+                .background_executor()
+                .spawn(
+                    async move { crate::entities::cleanup::clean_selected(&snapshot, &selected) },
+                )
+                .await;
+            let files = cx
+                .background_executor()
+                .spawn(async { crate::entities::cleanup::scan_cleanup_targets() });
+            let devices = cx
+                .background_executor()
+                .spawn(async { crate::entities::cleanup::scan_unused_devices() });
+            let mut refreshed = files.await;
+            refreshed.targets.extend(devices.await);
+            if let Err(error) = this.update(cx, |this, cx| {
+                this.cleanup.cleaning = false;
+                this.cleanup.selected.clear();
+                this.cleanup.apply_snapshot(refreshed);
+                let size = crate::entities::cleanup::format_bytes(report.removed_bytes);
+                let title = if report.failures == 0 {
+                    rust_i18n::t!("cleanup.done", size = size).to_string()
+                } else {
+                    rust_i18n::t!(
+                        "cleanup.done_with_errors",
+                        size = size,
+                        count = report.failures
+                    )
+                    .to_string()
+                };
+                this.show_toast(
+                    crate::shared::ui::ToastData::new("cleanup_result", title)
+                        .icon("icons/broom.svg"),
+                    cx,
+                );
+            }) {
+                eprintln!("cleanup result update failed: {error}");
+            }
+        })
+        .detach();
     }
 
     pub fn set_hovered_route(
@@ -527,25 +655,54 @@ impl AppView {
     pub fn toggle_tweak(&mut self, tweak_id: &'static str, enabled: bool, cx: &mut Context<Self>) {
         let all_tweaks = crate::entities::tweaks::get_all_tweaks();
         if let Some(tweak) = all_tweaks.iter().find(|t| t.id == tweak_id) {
-            let _ = (tweak.set_applied)(enabled);
-            crate::shared::shell_notify::notify_shell_change();
-            if let Ok(mut mgr) = self.discord_rpc_manager.lock() {
-                mgr.refresh_presence();
-            }
-            match tweak.restart {
-                crate::entities::tweaks::RestartRequirement::Explorer => {
-                    self.show_explorer_restart_toast(cx);
+            let set_applied = tweak.set_applied;
+            let restart = tweak.restart;
+            cx.spawn(async move |this, cx| {
+                let result = cx
+                    .background_executor()
+                    .spawn(async move { set_applied(enabled) })
+                    .await;
+                if let Err(update_error) = this.update(cx, move |this, cx| match result {
+                    Ok(()) => {
+                        crate::entities::SystemInfo::invalidate_cache();
+                        crate::shared::shell_notify::notify_shell_change();
+                        if let Ok(mut mgr) = this.discord_rpc_manager.lock() {
+                            mgr.refresh_presence();
+                        }
+                        match restart {
+                            crate::entities::tweaks::RestartRequirement::Explorer => {
+                                this.show_explorer_restart_toast(cx);
+                            }
+                            crate::entities::tweaks::RestartRequirement::Logoff => {
+                                this.show_logoff_toast(cx);
+                            }
+                            crate::entities::tweaks::RestartRequirement::Reboot => {
+                                this.show_reboot_toast(cx);
+                            }
+                            crate::entities::tweaks::RestartRequirement::None => {}
+                        }
+                        cx.notify();
+                    }
+                    Err(error) => this.show_setting_error(tweak_id, &error, cx),
+                }) {
+                    eprintln!(
+                        "failed to update tweak state after applying {tweak_id}: {update_error}"
+                    );
                 }
-                crate::entities::tweaks::RestartRequirement::Logoff => {
-                    self.show_logoff_toast(cx);
-                }
-                crate::entities::tweaks::RestartRequirement::Reboot => {
-                    self.show_reboot_toast(cx);
-                }
-                crate::entities::tweaks::RestartRequirement::None => {}
-            }
-            cx.notify();
+            })
+            .detach();
         }
+    }
+
+    fn show_setting_error(&mut self, setting: &str, error: &str, cx: &mut Context<Self>) {
+        eprintln!("failed to apply {setting}: {error}");
+        let toast = crate::shared::ui::ToastData::new(
+            "setting_apply_error",
+            rust_i18n::t!("tweaks.apply_failed_title"),
+        )
+        .description(rust_i18n::t!("tweaks.apply_failed_desc"))
+        .variant(crate::shared::ui::ToastVariant::Error);
+        self.show_toast(toast, cx);
     }
 
     pub fn start_closing_dropdown(&mut self, name: &'static str, cx: &mut Context<Self>) {
@@ -570,6 +727,7 @@ impl AppView {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn select_option(
         &mut self,
         dropdown: &'static str,
@@ -588,7 +746,25 @@ impl AppView {
             "notepad" => "notepad",
             "arclate" => "arclate",
             "flexoki" => "flexoki",
-            other => Box::leak(other.to_string().into_boxed_str()),
+            "standard" => "standard",
+            "balanced" => "balanced",
+            "fast" => "fast",
+            "ultra" => "ultra",
+            "mild" => "mild",
+            "aggressive" => "aggressive",
+            "off" => "off",
+            "wasd" => "wasd",
+            "arrow_keys" => "arrow_keys",
+            "esdf" => "esdf",
+            "azerty" => "azerty",
+            "playing" => "playing",
+            "listening" => "listening",
+            "watching" => "watching",
+            "competing" => "competing",
+            other => {
+                self.show_setting_error(dropdown, &format!("unknown option: {other}"), cx);
+                return;
+            }
         };
 
         // Instantly transition the clicked item into the selected state (100% blue + checkmark)
@@ -602,8 +778,51 @@ impl AppView {
             cx.background_executor()
                 .timer(Duration::from_millis(100))
                 .await;
-            this.update(cx, |this, cx| {
-                if dropdown_copy == "palette" {
+            let apply_result = match dropdown_copy {
+                "keyboard_repeat" => {
+                    match crate::entities::tweaks::input::KeyboardRepeatPreset::from_id(val_copy) {
+                        Some(preset) => {
+                            cx.background_executor()
+                                .spawn(async move {
+                                    crate::entities::tweaks::input::set_keyboard_repeat_preset(
+                                        preset,
+                                    )
+                                })
+                                .await
+                        }
+                        None => Err(format!("unknown keyboard repeat preset: {val_copy}")),
+                    }
+                }
+                "ctf_optimization" => {
+                    match crate::entities::tweaks::input::CtfOptimizationPreset::from_id(val_copy) {
+                        Some(preset) => {
+                            cx.background_executor()
+                                .spawn(async move {
+                                    crate::entities::tweaks::input::set_ctf_preset(preset)
+                                })
+                                .await
+                        }
+                        None => Err(format!("unknown CTF preset: {val_copy}")),
+                    }
+                }
+                "snapkey" => {
+                    match crate::entities::tweaks::input::SnapKeyPreset::from_id(val_copy) {
+                        Some(preset) => {
+                            cx.background_executor()
+                                .spawn(async move {
+                                    crate::entities::tweaks::input::set_snapkey_preset(preset)
+                                })
+                                .await
+                        }
+                        None => Err(format!("unknown SnapKey preset: {val_copy}")),
+                    }
+                }
+                _ => Ok(()),
+            };
+            this.update(cx, move |this, cx| {
+                if let Err(error) = apply_result {
+                    this.show_setting_error(dropdown_copy, &error, cx);
+                } else if dropdown_copy == "palette" {
                     this.set_palette(val_copy, cx);
                 } else if dropdown_copy == "theme" {
                     this.set_theme_mode(val_copy, cx);
@@ -611,6 +830,12 @@ impl AppView {
                     this.set_language(val_copy, cx);
                 } else if dropdown_copy == "transparency" {
                     this.set_transparency(val_copy == "enabled", cx);
+                } else if dropdown_copy == "snapkey" {
+                    if let Some(preset) =
+                        crate::entities::tweaks::input::SnapKeyPreset::from_id(val_copy)
+                    {
+                        this.save_snapkey_preset(preset, cx);
+                    }
                 }
                 this.pending_selection = None;
                 this.start_closing_dropdown(dropdown_copy, cx);
@@ -618,6 +843,57 @@ impl AppView {
             .ok();
         })
         .detach();
+    }
+
+    fn save_snapkey_preset(
+        &mut self,
+        preset: crate::entities::tweaks::input::SnapKeyPreset,
+        cx: &mut Context<Self>,
+    ) {
+        self.config.snapkey = preset;
+        if let Err(error) = crate::entities::config::save_config(&self.config) {
+            self.show_setting_error("snapkey_config", &error, cx);
+        }
+
+        if preset != crate::entities::tweaks::input::SnapKeyPreset::Off
+            && !self.config.minimize_to_tray
+        {
+            let on_enable_tray = cx.listener(|this, _event: &(), _window, cx| {
+                this.toggle_minimize_to_tray(true, cx);
+            });
+            let enable_btn = crate::shared::ui::ToastButton::new(rust_i18n::t!(
+                "tweaks.snapkey_tray_toast_action"
+            ))
+            .variant(crate::shared::ui::ToastButtonVariant::Primary)
+            .icon("icons/check.svg")
+            .on_click(move |window, cx| {
+                on_enable_tray(&(), window, cx);
+            });
+
+            let toast = crate::shared::ui::ToastData::new(
+                "snapkey_tray_prompt",
+                rust_i18n::t!("tweaks.snapkey_tray_toast_title"),
+            )
+            .description(rust_i18n::t!("tweaks.snapkey_tray_toast_desc"))
+            .variant(crate::shared::ui::ToastVariant::Info)
+            .duration(Some(Duration::from_secs(8)))
+            .button(enable_btn);
+
+            self.show_toast(toast, cx);
+        }
+        cx.notify();
+    }
+
+    fn dropdown_required_space_below(name: &str) -> gpui::Pixels {
+        let item_count: f32 = match name {
+            "language" | "transparency" => 2.0,
+            "theme" | "ctf_optimization" => 3.0,
+            "snapkey" => 5.0,
+            "palette" => 6.0,
+            _ => 4.0,
+        };
+        // Item height (32px) + borders (2px) + vertical offset & breathing room (25px)
+        px(item_count * 32.0 + 25.0)
     }
 
     pub fn toggle_dropdown(
@@ -635,7 +911,8 @@ impl AppView {
             let viewport_h = window.viewport_size().height;
             let space_below = viewport_h - mouse_y;
             let space_above = mouse_y - px(40.0);
-            self.open_dropdown_upward = space_below < px(220.0) && space_above > space_below;
+            let required_space = Self::dropdown_required_space_below(name);
+            self.open_dropdown_upward = space_below < required_space && space_above > space_below;
             self.open_dropdown = Some(name);
             self.closing_dropdown = None;
             cx.notify();
@@ -805,8 +1082,11 @@ impl Default for AppView {
 }
 
 impl Render for AppView {
-    #[allow(clippy::too_many_lines)]
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    #[allow(clippy::too_many_lines, unused_variables)]
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        #[cfg(debug_assertions)]
+        let render_start = std::time::Instant::now();
+
         let theme = Theme::get(cx);
         let sidebar_expanded = self.sidebar_expanded;
         let sidebar_toggle_hovered = self.sidebar_toggle_hovered;
@@ -938,6 +1218,18 @@ impl Render for AppView {
                 this.toggle_tweak(tweak_id, enabled, cx);
             },
         );
+
+        let on_change_keyboard_repeat = cx.listener(|this, preset: &str, window, cx| {
+            this.select_option("keyboard_repeat", preset, window, cx);
+        });
+
+        let on_change_ctf_optimization = cx.listener(|this, preset: &str, window, cx| {
+            this.select_option("ctf_optimization", preset, window, cx);
+        });
+
+        let on_change_snapkey = cx.listener(|this, preset: &str, window, cx| {
+            this.select_option("snapkey", preset, window, cx);
+        });
 
         let on_change_pal = cx.listener(|this, palette: &str, window, cx| {
             this.select_option("palette", palette, window, cx);
@@ -1078,6 +1370,33 @@ impl Render for AppView {
             this.set_hovered_startup_card(card_id.clone(), cx);
         });
 
+        let on_cleanup_toggle_target = cx.listener(|this, id: &String, _window, cx| {
+            this.cleanup.toggle_target(id);
+            cx.notify();
+        });
+        let on_cleanup_toggle_category =
+            cx.listener(|this, category: &CleanupCategory, _window, cx| {
+                this.cleanup.toggle_category(*category);
+                cx.notify();
+            });
+        let on_cleanup_toggle_expanded =
+            cx.listener(|this, category: &CleanupCategory, _window, cx| {
+                this.cleanup.expanded =
+                    (this.cleanup.expanded != Some(*category)).then_some(*category);
+                cx.notify();
+            });
+        let on_cleanup_toggle_all = cx.listener(|this, _event: &(), _window, cx| {
+            this.cleanup.toggle_all();
+            cx.notify();
+        });
+        let on_cleanup_refresh = cx.listener(|this, _event: &(), _window, cx| {
+            this.refresh_cleanup(cx);
+        });
+        let on_cleanup_clean =
+            cx.listener(|this, category: &Option<CleanupCategory>, _window, cx| {
+                this.clean_cleanup(*category, cx);
+            });
+
         let minimize_to_tray = self.config.minimize_to_tray;
         let autostart = self.config.autostart;
         let autostart_to_tray = self.config.autostart_to_tray;
@@ -1089,6 +1408,27 @@ impl Render for AppView {
             .startup_search_focus
             .get_or_insert_with(|| cx.focus_handle())
             .clone();
+        let cleanup_page = CleanupPage::new(
+            self.cleanup.clone(),
+            Rc::new(move |id, window, cx| {
+                on_cleanup_toggle_target(&id, window, cx);
+            }),
+            Rc::new(move |category, window, cx| {
+                on_cleanup_toggle_category(&category, window, cx);
+            }),
+            Rc::new(move |category, window, cx| {
+                on_cleanup_toggle_expanded(&category, window, cx);
+            }),
+            Rc::new(move |window, cx| {
+                on_cleanup_toggle_all(&(), window, cx);
+            }),
+            Rc::new(move |window, cx| {
+                on_cleanup_refresh(&(), window, cx);
+            }),
+            Rc::new(move |category, window, cx| {
+                on_cleanup_clean(&category, window, cx);
+            }),
+        );
 
         let main_panel = div()
             .flex()
@@ -1105,7 +1445,6 @@ impl Render for AppView {
                 current_route,
                 telemetry,
                 windows_build,
-                sidebar_expanded,
                 hovered_telemetry_card,
                 current_locale,
                 open_dropdown,
@@ -1128,6 +1467,7 @@ impl Render for AppView {
                 &startup_search_focus,
                 startup_open_menu_id,
                 hovered_startup_card,
+                cleanup_page,
                 move |target_route, window, cx| {
                     on_navigate_page(&target_route, window, cx);
                 },
@@ -1136,6 +1476,15 @@ impl Render for AppView {
                 },
                 move |tweak_id, enabled, window, cx| {
                     on_toggle_tweak(&(tweak_id, enabled), window, cx);
+                },
+                move |preset, window, cx| {
+                    on_change_keyboard_repeat(preset, window, cx);
+                },
+                move |preset, window, cx| {
+                    on_change_ctf_optimization(preset, window, cx);
+                },
+                move |preset, window, cx| {
+                    on_change_snapkey(preset, window, cx);
                 },
                 move |pal, window, cx| {
                     on_change_pal(pal, window, cx);
@@ -1271,6 +1620,207 @@ impl Render for AppView {
                 .into_any_element();
 
             root = root.child(gpui::deferred(stack_el).with_priority(200));
+        }
+
+        #[cfg(debug_assertions)]
+        let (on_dev_move, on_dev_up) = {
+            let on_dev_move = Arc::new(cx.listener(
+                |this, event: &gpui::MouseMoveEvent, window, cx| {
+                    if !event.dragging() {
+                        if this.dev_perf_monitor.is_dragging {
+                            this.dev_perf_monitor.end_drag();
+                            cx.notify();
+                        }
+                        return;
+                    }
+                    let vp = window.viewport_size();
+                    this.dev_perf_monitor
+                        .update_drag(event.position, vp.width, vp.height);
+                    cx.notify();
+                },
+            ));
+            let on_dev_up = Arc::new(cx.listener(
+                |this, _event: &gpui::MouseUpEvent, _window, cx| {
+                    this.dev_perf_monitor.end_drag();
+                    cx.notify();
+                },
+            ));
+            (on_dev_move, on_dev_up)
+        };
+
+        #[cfg(debug_assertions)]
+        if self.dev_perf_monitor.is_dragging {
+            let move_cb = on_dev_move.clone();
+            let up_cb = on_dev_up.clone();
+            let up_cb_out = on_dev_up.clone();
+            let up_cb_right = on_dev_up.clone();
+            let up_cb_right_out = on_dev_up.clone();
+            let down_cb = on_dev_up.clone();
+            let down_cb_right = on_dev_up.clone();
+
+            root = root
+                .on_mouse_move({
+                    let move_cb = on_dev_move.clone();
+                    move |event, window, cx| {
+                        move_cb(event, window, cx);
+                    }
+                })
+                .on_mouse_up(MouseButton::Left, {
+                    let up_cb = on_dev_up.clone();
+                    move |event, window, cx| {
+                        up_cb(event, window, cx);
+                    }
+                })
+                .on_mouse_up_out(MouseButton::Left, {
+                    let up_cb = on_dev_up.clone();
+                    move |event, window, cx| {
+                        up_cb(event, window, cx);
+                    }
+                })
+                .child(
+                    div()
+                        .id("dev_perf_drag_capture")
+                        .absolute()
+                        .inset_0()
+                        .cursor_move()
+                        .on_mouse_down(MouseButton::Left, move |_event, window, cx| {
+                            cx.stop_propagation();
+                            down_cb(&gpui::MouseUpEvent::default(), window, cx);
+                        })
+                        .on_mouse_down(MouseButton::Right, move |_event, window, cx| {
+                            cx.stop_propagation();
+                            down_cb_right(&gpui::MouseUpEvent::default(), window, cx);
+                        })
+                        .on_mouse_move(move |event, window, cx| {
+                            move_cb(event, window, cx);
+                        })
+                        .on_mouse_up(MouseButton::Left, move |event, window, cx| {
+                            up_cb(event, window, cx);
+                        })
+                        .on_mouse_up_out(MouseButton::Left, move |event, window, cx| {
+                            up_cb_out(event, window, cx);
+                        })
+                        .on_mouse_up(MouseButton::Right, move |event, window, cx| {
+                            up_cb_right(event, window, cx);
+                        })
+                        .on_mouse_up_out(MouseButton::Right, move |event, window, cx| {
+                            up_cb_right_out(event, window, cx);
+                        }),
+                );
+        }
+
+        #[cfg(debug_assertions)]
+        if self.dev_perf_monitor.enabled {
+            let on_toggle_min = cx.listener(|this, _event: &(), _window, cx| {
+                this.dev_perf_monitor.minimized = !this.dev_perf_monitor.minimized;
+                cx.notify();
+            });
+            let on_freeze_tel = cx.listener(|this, _event: &(), _window, cx| {
+                this.dev_perf_monitor.freeze_telemetry = !this.dev_perf_monitor.freeze_telemetry;
+                cx.notify();
+            });
+            let on_chart_anim = cx.listener(|this, _event: &(), _window, cx| {
+                this.dev_perf_monitor.disable_chart_animation =
+                    !this.dev_perf_monitor.disable_chart_animation;
+                cx.notify();
+            });
+            let on_start_drag = cx.listener(
+                |this,
+                 &(mouse_pos, current_widget_pos): &(Point<Pixels>, Point<Pixels>),
+                 _window,
+                 cx| {
+                    this.dev_perf_monitor
+                        .start_drag(mouse_pos, current_widget_pos);
+                    cx.notify();
+                },
+            );
+            let on_close_hud = cx.listener(|this, _event: &(), _window, cx| {
+                this.dev_perf_monitor.enabled = false;
+                cx.notify();
+            });
+
+            let on_continuous = cx.listener(|this, _event: &(), _window, cx| {
+                this.dev_perf_monitor.continuous_mode = !this.dev_perf_monitor.continuous_mode;
+                cx.notify();
+            });
+
+            let on_hover_perf_control = cx.listener(
+                |this, &(ctrl, is_hovered): &(&'static str, bool), _window, cx| {
+                    let new_ctrl = if is_hovered {
+                        Some(ctrl)
+                    } else if this.dev_perf_monitor.hovered_control == Some(ctrl) {
+                        None
+                    } else {
+                        return;
+                    };
+                    if this.dev_perf_monitor.hovered_control != new_ctrl {
+                        this.dev_perf_monitor.set_hovered_control(new_ctrl);
+                        cx.notify();
+                    }
+                },
+            );
+
+            let on_dev_move_widget = on_dev_move.clone();
+            let on_dev_up_widget = on_dev_up.clone();
+
+            let perf_widget = crate::widgets::dev_perf_monitor::DevPerfMonitor::new(
+                self.dev_perf_monitor.snapshot(),
+                current_route,
+                move |window, cx| {
+                    on_toggle_min(&(), window, cx);
+                },
+                move |window, cx| {
+                    on_freeze_tel(&(), window, cx);
+                },
+                move |window, cx| {
+                    on_chart_anim(&(), window, cx);
+                },
+                move |window, cx| {
+                    on_continuous(&(), window, cx);
+                },
+                move |mouse_pos, current_pos, window, cx| {
+                    on_start_drag(&(mouse_pos, current_pos), window, cx);
+                },
+                move |mouse_pos, is_pressed, window, cx| {
+                    let event = gpui::MouseMoveEvent {
+                        position: mouse_pos,
+                        pressed_button: if is_pressed {
+                            Some(MouseButton::Left)
+                        } else {
+                            None
+                        },
+                        modifiers: gpui::Modifiers::default(),
+                    };
+                    on_dev_move_widget(&event, window, cx);
+                },
+                move |window, cx| {
+                    let event = gpui::MouseUpEvent {
+                        button: MouseButton::Left,
+                        position: gpui::point(px(0.0), px(0.0)),
+                        modifiers: gpui::Modifiers::default(),
+                        click_count: 1,
+                    };
+                    on_dev_up_widget(&event, window, cx);
+                },
+                move |window, cx| {
+                    on_close_hud(&(), window, cx);
+                },
+            )
+            .on_hover_control(move |ctrl, is_hovered, window, cx| {
+                on_hover_perf_control(&(ctrl, is_hovered), window, cx);
+            });
+
+            root = root.child(perf_widget);
+        }
+
+        #[cfg(debug_assertions)]
+        {
+            #[allow(clippy::cast_precision_loss)]
+            let draw_ms = render_start.elapsed().as_secs_f32() * 1000.0;
+            self.dev_perf_monitor.record_frame(draw_ms);
+            if self.dev_perf_monitor.continuous_mode && self.dev_perf_monitor.enabled {
+                window.request_animation_frame();
+            }
         }
 
         root

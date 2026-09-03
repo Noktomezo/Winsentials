@@ -1,7 +1,7 @@
 use crate::entities::tweaks::context_menu::{
-    is_classic_context_menu_applied, is_create_symlink_applied, is_menu_show_delay_disabled,
-    is_take_ownership_applied, set_classic_context_menu, set_create_symlink,
-    set_menu_show_delay_disabled, set_take_ownership,
+    is_classic_context_menu_applied, is_copy_image_applied, is_create_symlink_applied,
+    is_menu_show_delay_disabled, is_take_ownership_applied, set_classic_context_menu,
+    set_copy_image, set_create_symlink, set_menu_show_delay_disabled, set_take_ownership,
 };
 use crate::entities::tweaks::explorer::{
     is_hide_gallery_applied, is_hide_home_applied, is_hide_linux_applied, is_hide_network_applied,
@@ -9,12 +9,24 @@ use crate::entities::tweaks::explorer::{
     set_hide_network, set_open_to_this_pc,
 };
 use crate::entities::tweaks::input::{
-    is_disable_mouse_acceleration_applied, set_disable_mouse_acceleration,
+    is_csrss_priority_applied, is_disable_mouse_acceleration_applied, set_csrss_priority,
+    set_disable_mouse_acceleration,
 };
 use crate::entities::tweaks::interface_tweak::{
     is_disable_jpeg_compression_applied, is_remove_shortcut_arrows_applied,
     is_remove_shortcut_suffix_applied, set_disable_jpeg_compression, set_remove_shortcut_arrows,
     set_remove_shortcut_suffix,
+};
+use crate::entities::tweaks::network::{
+    is_bbr2_applied, is_disable_ndu_applied, is_fast_send_copy_applied, is_rss_applied, set_bbr2,
+    set_disable_ndu, set_fast_send_copy, set_rss,
+};
+use crate::entities::tweaks::security::{
+    are_security_center_notifications_disabled, is_download_warning_disabled,
+    is_quick_access_history_disabled, is_removable_autoplay_disabled, is_startup_delay_disabled,
+    is_uac_disabled, set_download_warning_disabled, set_quick_access_history_disabled,
+    set_removable_autoplay_disabled, set_security_center_notifications_disabled,
+    set_startup_delay_disabled, set_uac_disabled,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -24,6 +36,8 @@ pub enum TweakCategory {
     Explorer,
     Interface,
     Input,
+    System,
+    Network,
     Privacy,
     Performance,
 }
@@ -37,6 +51,19 @@ pub enum RestartRequirement {
     Reboot,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SideEffectLevel {
+    Low,
+    Medium,
+    High,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SideEffect {
+    pub level: SideEffectLevel,
+    pub description_key: &'static str,
+}
+
 #[allow(dead_code)]
 pub struct TweakDefinition {
     pub id: &'static str,
@@ -48,6 +75,7 @@ pub struct TweakDefinition {
     pub max_build: Option<u32>,
     pub custom_support: Option<fn() -> bool>,
     pub restart: RestartRequirement,
+    pub side_effect: Option<SideEffect>,
     pub is_applied: fn() -> bool,
     pub set_applied: fn(bool) -> Result<(), String>,
 }
@@ -85,6 +113,10 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         max_build: None,
         custom_support: None,
         restart: RestartRequirement::Explorer,
+        side_effect: Some(SideEffect {
+            level: SideEffectLevel::Low,
+            description_key: "tweaks.classic_context_menu_side_effect",
+        }),
         is_applied: is_classic_context_menu_applied,
         set_applied: set_classic_context_menu,
     },
@@ -98,6 +130,7 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         max_build: None,
         custom_support: None,
         restart: RestartRequirement::None,
+        side_effect: None,
         is_applied: is_menu_show_delay_disabled,
         set_applied: set_menu_show_delay_disabled,
     },
@@ -111,6 +144,7 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         max_build: None,
         custom_support: None,
         restart: RestartRequirement::None,
+        side_effect: None,
         is_applied: is_create_symlink_applied,
         set_applied: set_create_symlink,
     },
@@ -124,8 +158,26 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         max_build: None,
         custom_support: None,
         restart: RestartRequirement::None,
+        side_effect: Some(SideEffect {
+            level: SideEffectLevel::Medium,
+            description_key: "tweaks.take_ownership_side_effect",
+        }),
         is_applied: is_take_ownership_applied,
         set_applied: set_take_ownership,
+    },
+    TweakDefinition {
+        id: "copy_image",
+        category: TweakCategory::ContextMenu,
+        icon: "icons/copy-image.svg",
+        title_key: "tweaks.copy_image_title",
+        desc_key: "tweaks.copy_image_desc",
+        min_build: None,
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::None,
+        side_effect: None,
+        is_applied: is_copy_image_applied,
+        set_applied: set_copy_image,
     },
     TweakDefinition {
         id: "open_to_this_pc",
@@ -137,6 +189,7 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         max_build: None,
         custom_support: None,
         restart: RestartRequirement::None,
+        side_effect: None,
         is_applied: is_open_to_this_pc_applied,
         set_applied: set_open_to_this_pc,
     },
@@ -150,6 +203,7 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         max_build: None,
         custom_support: None,
         restart: RestartRequirement::None,
+        side_effect: None,
         is_applied: is_hide_network_applied,
         set_applied: set_hide_network,
     },
@@ -163,6 +217,7 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         max_build: None,
         custom_support: None,
         restart: RestartRequirement::None,
+        side_effect: None,
         is_applied: is_hide_home_applied,
         set_applied: set_hide_home,
     },
@@ -176,6 +231,7 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         max_build: None,
         custom_support: None,
         restart: RestartRequirement::None,
+        side_effect: None,
         is_applied: is_hide_gallery_applied,
         set_applied: set_hide_gallery,
     },
@@ -189,6 +245,7 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         max_build: None,
         custom_support: Some(is_wsl_installed),
         restart: RestartRequirement::None,
+        side_effect: None,
         is_applied: is_hide_linux_applied,
         set_applied: set_hide_linux,
     },
@@ -202,6 +259,7 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         max_build: None,
         custom_support: None,
         restart: RestartRequirement::None,
+        side_effect: None,
         is_applied: is_remove_shortcut_arrows_applied,
         set_applied: set_remove_shortcut_arrows,
     },
@@ -215,6 +273,7 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         max_build: None,
         custom_support: None,
         restart: RestartRequirement::None,
+        side_effect: None,
         is_applied: is_remove_shortcut_suffix_applied,
         set_applied: set_remove_shortcut_suffix,
     },
@@ -228,6 +287,7 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         max_build: None,
         custom_support: None,
         restart: RestartRequirement::None,
+        side_effect: None,
         is_applied: is_disable_jpeg_compression_applied,
         set_applied: set_disable_jpeg_compression,
     },
@@ -241,8 +301,178 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         max_build: None,
         custom_support: None,
         restart: RestartRequirement::None,
+        side_effect: None,
         is_applied: is_disable_mouse_acceleration_applied,
         set_applied: set_disable_mouse_acceleration,
+    },
+    TweakDefinition {
+        id: "csrss_priority",
+        category: TweakCategory::Input,
+        icon: "icons/chevrons-up.svg",
+        title_key: "tweaks.csrss_priority_title",
+        desc_key: "tweaks.csrss_priority_desc",
+        min_build: None,
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::Reboot,
+        side_effect: None,
+        is_applied: is_csrss_priority_applied,
+        set_applied: set_csrss_priority,
+    },
+    TweakDefinition {
+        id: "disable_uac",
+        category: TweakCategory::System,
+        icon: "icons/shield-off.svg",
+        title_key: "tweaks.disable_uac_title",
+        desc_key: "tweaks.disable_uac_desc",
+        min_build: None,
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::Reboot,
+        side_effect: Some(SideEffect {
+            level: SideEffectLevel::Low,
+            description_key: "tweaks.disable_uac_side_effect",
+        }),
+        is_applied: is_uac_disabled,
+        set_applied: set_uac_disabled,
+    },
+    TweakDefinition {
+        id: "disable_download_warning",
+        category: TweakCategory::System,
+        icon: "icons/file-down.svg",
+        title_key: "tweaks.disable_download_warning_title",
+        desc_key: "tweaks.disable_download_warning_desc",
+        min_build: None,
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::None,
+        side_effect: Some(SideEffect {
+            level: SideEffectLevel::Medium,
+            description_key: "tweaks.disable_download_warning_side_effect",
+        }),
+        is_applied: is_download_warning_disabled,
+        set_applied: set_download_warning_disabled,
+    },
+    TweakDefinition {
+        id: "disable_removable_autoplay",
+        category: TweakCategory::System,
+        icon: "icons/usb.svg",
+        title_key: "tweaks.disable_removable_autoplay_title",
+        desc_key: "tweaks.disable_removable_autoplay_desc",
+        min_build: None,
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::Explorer,
+        side_effect: None,
+        is_applied: is_removable_autoplay_disabled,
+        set_applied: set_removable_autoplay_disabled,
+    },
+    TweakDefinition {
+        id: "disable_quick_access_history",
+        category: TweakCategory::System,
+        icon: "icons/clock-arrow-down.svg",
+        title_key: "tweaks.disable_quick_access_history_title",
+        desc_key: "tweaks.disable_quick_access_history_desc",
+        min_build: None,
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::Explorer,
+        side_effect: None,
+        is_applied: is_quick_access_history_disabled,
+        set_applied: set_quick_access_history_disabled,
+    },
+    TweakDefinition {
+        id: "disable_security_center_notifications",
+        category: TweakCategory::System,
+        icon: "icons/bell-off.svg",
+        title_key: "tweaks.disable_security_center_notifications_title",
+        desc_key: "tweaks.disable_security_center_notifications_desc",
+        min_build: Some(18362),
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::Logoff,
+        side_effect: Some(SideEffect {
+            level: SideEffectLevel::Medium,
+            description_key: "tweaks.disable_security_center_notifications_side_effect",
+        }),
+        is_applied: are_security_center_notifications_disabled,
+        set_applied: set_security_center_notifications_disabled,
+    },
+    TweakDefinition {
+        id: "disable_startup_delay",
+        category: TweakCategory::System,
+        icon: "icons/rocket.svg",
+        title_key: "tweaks.disable_startup_delay_title",
+        desc_key: "tweaks.disable_startup_delay_desc",
+        min_build: None,
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::Logoff,
+        side_effect: Some(SideEffect {
+            level: SideEffectLevel::Low,
+            description_key: "tweaks.disable_startup_delay_side_effect",
+        }),
+        is_applied: is_startup_delay_disabled,
+        set_applied: set_startup_delay_disabled,
+    },
+    TweakDefinition {
+        id: "bbr2",
+        category: TweakCategory::Network,
+        icon: "icons/gauge.svg",
+        title_key: "tweaks.bbr2_title",
+        desc_key: "tweaks.bbr2_desc",
+        min_build: Some(22621),
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::None,
+        side_effect: None,
+        is_applied: is_bbr2_applied,
+        set_applied: set_bbr2,
+    },
+    TweakDefinition {
+        id: "rss",
+        category: TweakCategory::Network,
+        icon: "icons/cpu.svg",
+        title_key: "tweaks.rss_title",
+        desc_key: "tweaks.rss_desc",
+        min_build: None,
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::None,
+        side_effect: None,
+        is_applied: is_rss_applied,
+        set_applied: set_rss,
+    },
+    TweakDefinition {
+        id: "fast_send_copy",
+        category: TweakCategory::Network,
+        icon: "icons/zap.svg",
+        title_key: "tweaks.fast_send_copy_title",
+        desc_key: "tweaks.fast_send_copy_desc",
+        min_build: None,
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::Reboot,
+        side_effect: None,
+        is_applied: is_fast_send_copy_applied,
+        set_applied: set_fast_send_copy,
+    },
+    TweakDefinition {
+        id: "disable_ndu",
+        category: TweakCategory::Network,
+        icon: "icons/chart-network.svg",
+        title_key: "tweaks.disable_ndu_title",
+        desc_key: "tweaks.disable_ndu_desc",
+        min_build: None,
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::Reboot,
+        side_effect: Some(SideEffect {
+            level: SideEffectLevel::Low,
+            description_key: "tweaks.disable_ndu_side_effect",
+        }),
+        is_applied: is_disable_ndu_applied,
+        set_applied: set_disable_ndu,
     },
 ];
 
@@ -266,4 +496,87 @@ pub fn count_applied_tweaks(build: u32) -> (usize, usize) {
     }
 
     (applied, total_supported)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn system_tweaks_only_flag_meaningful_side_effects() {
+        let system: Vec<_> = ALL_TWEAKS
+            .iter()
+            .filter(|tweak| tweak.category == TweakCategory::System)
+            .collect();
+
+        assert_eq!(system.len(), 6);
+        assert_eq!(system[0].side_effect.unwrap().level, SideEffectLevel::Low);
+        assert_eq!(
+            system[1].side_effect.unwrap().level,
+            SideEffectLevel::Medium
+        );
+        assert!(system[2].side_effect.is_none());
+        assert!(system[3].side_effect.is_none());
+        assert_eq!(
+            system[4].side_effect.unwrap().level,
+            SideEffectLevel::Medium
+        );
+        assert_eq!(system[5].side_effect.unwrap().level, SideEffectLevel::Low);
+    }
+
+    #[test]
+    fn classic_context_menu_flags_third_party_patch_conflicts() {
+        let tweak = ALL_TWEAKS
+            .iter()
+            .find(|tweak| tweak.id == "classic_context_menu")
+            .unwrap();
+        let side_effect = tweak.side_effect.unwrap();
+
+        assert_eq!(side_effect.level, SideEffectLevel::Low);
+        assert_eq!(
+            side_effect.description_key,
+            "tweaks.classic_context_menu_side_effect"
+        );
+    }
+
+    #[test]
+    fn take_ownership_flags_system_acl_risk() {
+        let tweak = ALL_TWEAKS
+            .iter()
+            .find(|tweak| tweak.id == "take_ownership")
+            .unwrap();
+        let side_effect = tweak.side_effect.unwrap();
+
+        assert_eq!(side_effect.level, SideEffectLevel::Medium);
+        assert_eq!(
+            side_effect.description_key,
+            "tweaks.take_ownership_side_effect"
+        );
+    }
+
+    #[test]
+    fn network_tweaks_are_registered() {
+        let network: Vec<_> = ALL_TWEAKS
+            .iter()
+            .filter(|tweak| tweak.category == TweakCategory::Network)
+            .collect();
+
+        assert_eq!(network.len(), 4);
+        assert_eq!(network[0].id, "bbr2");
+        assert_eq!(network[1].id, "rss");
+        assert_eq!(network[2].id, "fast_send_copy");
+        assert_eq!(network[3].id, "disable_ndu");
+    }
+
+    #[test]
+    fn input_tweaks_are_registered() {
+        let input: Vec<_> = ALL_TWEAKS
+            .iter()
+            .filter(|tweak| tweak.category == TweakCategory::Input)
+            .collect();
+
+        assert_eq!(input.len(), 2);
+        assert_eq!(input[0].id, "disable_mouse_acceleration");
+        assert_eq!(input[1].id, "csrss_priority");
+    }
 }

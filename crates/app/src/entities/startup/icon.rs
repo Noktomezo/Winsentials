@@ -4,6 +4,9 @@ use std::path::{Path, PathBuf};
 
 use crate::entities::startup::vendor::extract_clean_exe_path;
 
+#[cfg(target_os = "windows")]
+const MAX_ICON_DIMENSION: i32 = 1_024;
+
 /// Resolves or extracts a PNG icon for the given executable / target path and caches it.
 #[must_use]
 pub fn resolve_entry_icon(target_path: Option<&str>, command: Option<&str>) -> Option<PathBuf> {
@@ -22,13 +25,31 @@ pub fn resolve_entry_icon(target_path: Option<&str>, command: Option<&str>) -> O
 
     #[cfg(target_os = "windows")]
     {
+        let is_lnk = clean_path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("lnk"))
+            || clean_path
+                .to_string_lossy()
+                .to_lowercase()
+                .ends_with(".lnk.disabled");
+        let actual_path = if is_lnk {
+            resolve_shortcut(&clean_path).unwrap_or_else(|| clean_path.clone())
+        } else {
+            clean_path.clone()
+        };
+
         // 1. Direct icon extraction from target executable (if PE has real icons)
-        if clean_path.exists() {
-            if let Some(icon) = extract_direct_icon(&clean_path) {
+        if actual_path.exists() {
+            if let Some(icon) = extract_direct_icon(&actual_path) {
                 return Some(icon);
             }
+            if actual_path != clean_path && clean_path.exists() {
+                if let Some(icon) = extract_direct_icon(&clean_path) {
+                    return Some(icon);
+                }
+            }
             // 2. Sibling GUI executable discovery in the same directory (for CLI helpers / services)
-            if let Some(sibling_icon) = find_sibling_icon(&clean_path) {
+            if let Some(sibling_icon) = find_sibling_icon(&actual_path) {
                 return Some(sibling_icon);
             }
         }
@@ -96,7 +117,7 @@ fn normalize_path(path: &Path) -> PathBuf {
 
 #[cfg(target_os = "windows")]
 fn get_cache_dir() -> PathBuf {
-    let dir = std::env::temp_dir().join("winsentials_icon_cache_v3");
+    let dir = std::env::temp_dir().join("winsentials_icon_cache_v4");
     let _ = std::fs::create_dir_all(&dir);
     dir
 }
@@ -108,11 +129,27 @@ fn find_sibling_icon(exe_path: &Path) -> Option<PathBuf> {
     let current_stem = exe_path.file_stem()?.to_string_lossy().to_lowercase();
     let folder_name = parent.file_name()?.to_string_lossy().to_lowercase();
 
+    // Never search siblings in common/shared directories where unrelated executables live!
+    let lower_parent = parent.to_string_lossy().to_lowercase();
+    if lower_parent.ends_with(r"\startup")
+        || lower_parent.ends_with(r"\system32")
+        || lower_parent.ends_with(r"\syswow64")
+        || lower_parent.ends_with(r"\windows")
+        || lower_parent.ends_with(r"\temp")
+        || lower_parent.ends_with(r"\tmp")
+        || lower_parent.ends_with(r"\downloads")
+        || lower_parent.ends_with(r"\desktop")
+        || lower_parent.ends_with(r"\program files")
+        || lower_parent.ends_with(r"\program files (x86)")
+    {
+        return None;
+    }
+
     let Ok(entries) = std::fs::read_dir(parent) else {
         return None;
     };
 
-    let mut candidate_exes = Vec::new();
+    let mut ranked_candidates = Vec::new();
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_file() {
@@ -120,37 +157,33 @@ fn find_sibling_icon(exe_path: &Path) -> Option<PathBuf> {
                 if ext.eq_ignore_ascii_case("exe") {
                     let name = path.file_name().unwrap().to_string_lossy().to_lowercase();
                     if name != current_name {
-                        candidate_exes.push(path);
+                        let stem = path.file_stem().unwrap().to_string_lossy().to_lowercase();
+                        let score = if stem == folder_name {
+                            0
+                        } else if current_stem.starts_with(&stem) || stem.starts_with(&current_stem)
+                        {
+                            1
+                        } else if stem.contains("radeon")
+                            || stem.contains("amd")
+                            || stem.contains("control")
+                            || stem.contains("main")
+                            || stem.contains("launcher")
+                            || stem.contains("gui")
+                        {
+                            2
+                        } else {
+                            continue; // DO NOT include unrelated executables!
+                        };
+                        ranked_candidates.push((score, path));
                     }
                 }
             }
         }
     }
 
-    // Sort candidate executables by relevance:
-    // 1. Matches folder name (e.g. AmneziaVPN.exe in AmneziaVPN folder)
-    // 2. Base stem of service/cli (e.g. AmneziaVPN.exe for AmneziaVPN-service.exe)
-    // 3. Known main names (e.g. RadeonSoftware.exe, Launcher.exe, App.exe)
-    candidate_exes.sort_by_key(|p| {
-        let stem = p.file_stem().unwrap().to_string_lossy().to_lowercase();
-        if stem == folder_name {
-            0
-        } else if current_stem.starts_with(&stem) || stem.starts_with(&current_stem) {
-            1
-        } else if stem.contains("radeon")
-            || stem.contains("amd")
-            || stem.contains("control")
-            || stem.contains("main")
-            || stem.contains("launcher")
-            || stem.contains("gui")
-        {
-            2
-        } else {
-            10
-        }
-    });
+    ranked_candidates.sort_by_key(|(score, _)| *score);
 
-    for cand in candidate_exes {
+    for (_, cand) in ranked_candidates {
         if let Some(icon) = extract_direct_icon(&cand) {
             return Some(icon);
         }
@@ -164,7 +197,9 @@ fn extract_direct_icon(path: &Path) -> Option<PathBuf> {
     use std::ffi::OsStr;
     use std::os::windows::ffi::OsStrExt;
     use std::ptr::null_mut;
-    use windows_sys::Win32::UI::Shell::ExtractIconExW;
+    use windows_sys::Win32::UI::Shell::{
+        ExtractIconExW, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON, SHGetFileInfoW,
+    };
     use windows_sys::Win32::UI::WindowsAndMessaging::HICON;
 
     let mut hasher = DefaultHasher::new();
@@ -181,13 +216,30 @@ fn extract_direct_icon(path: &Path) -> Option<PathBuf> {
     let mut wide: Vec<u16> = OsStr::new(path).encode_wide().collect();
     wide.push(0);
 
-    // Extract authentic embedded PE icon
+    // 1. Extract authentic embedded PE icon
     let mut large_icon: HICON = null_mut();
     let icon_count =
         unsafe { ExtractIconExW(wide.as_ptr(), 0, &raw mut large_icon, null_mut(), 1) };
 
     if icon_count > 0 && !large_icon.is_null() {
         if let Some(saved) = hicon_to_png(large_icon, &cache_file) {
+            return Some(saved);
+        }
+    }
+
+    // 2. Query Windows Shell API (SHGetFileInfoW) for .lnk shortcuts, manifests, and file associations
+    let mut sfi: SHFILEINFOW = unsafe { std::mem::zeroed() };
+    let res = unsafe {
+        SHGetFileInfoW(
+            wide.as_ptr(),
+            0,
+            &raw mut sfi,
+            std::mem::size_of::<SHFILEINFOW>() as u32,
+            SHGFI_ICON | SHGFI_LARGEICON,
+        )
+    };
+    if res != 0 && !sfi.hIcon.is_null() {
+        if let Some(saved) = hicon_to_png(sfi.hIcon, &cache_file) {
             return Some(saved);
         }
     }
@@ -222,6 +274,20 @@ fn hicon_to_png(
         return None;
     }
 
+    let cleanup = || {
+        // SAFETY: these handles were returned by `GetIconInfo`; each is released once
+        // after all GDI reads finish, and null bitmap handles are explicitly skipped.
+        unsafe {
+            if !icon_info.hbmColor.is_null() {
+                DeleteObject(icon_info.hbmColor);
+            }
+            if !icon_info.hbmMask.is_null() {
+                DeleteObject(icon_info.hbmMask);
+            }
+            DestroyIcon(hicon);
+        }
+    };
+
     let mut bmp: BITMAP = unsafe { std::mem::zeroed() };
     if unsafe {
         GetObjectW(
@@ -231,35 +297,26 @@ fn hicon_to_png(
         )
     } == 0
     {
-        unsafe {
-            if !icon_info.hbmColor.is_null() {
-                DeleteObject(icon_info.hbmColor);
-            }
-            if !icon_info.hbmMask.is_null() {
-                DeleteObject(icon_info.hbmMask);
-            }
-            DestroyIcon(hicon);
-        }
+        cleanup();
         return None;
     }
 
     let width = bmp.bmWidth;
     let height = bmp.bmHeight;
-    if width <= 0 || height <= 0 {
-        unsafe {
-            if !icon_info.hbmColor.is_null() {
-                DeleteObject(icon_info.hbmColor);
-            }
-            if !icon_info.hbmMask.is_null() {
-                DeleteObject(icon_info.hbmMask);
-            }
-            DestroyIcon(hicon);
-        }
+    if width <= 0 || height <= 0 || width > MAX_ICON_DIMENSION || height > MAX_ICON_DIMENSION {
+        cleanup();
         return None;
     }
 
-    let pixel_count = (width * height) as usize;
-    let mut bgra_buf: Vec<u8> = vec![0u8; pixel_count * 4];
+    let Some(pixel_count) = (width as usize).checked_mul(height as usize) else {
+        cleanup();
+        return None;
+    };
+    let Some(buffer_len) = pixel_count.checked_mul(4) else {
+        cleanup();
+        return None;
+    };
+    let mut bgra_buf: Vec<u8> = vec![0u8; buffer_len];
 
     let mut bi = BITMAPINFO {
         bmiHeader: BITMAPINFOHEADER {
@@ -284,6 +341,8 @@ fn hicon_to_png(
     };
 
     let hdc = unsafe { GetDC(null_mut()) };
+    // SAFETY: the bitmap dimensions are validated above and `bgra_buf` contains exactly
+    // `width * height * 4` writable bytes required by the 32-bit top-down DIB request.
     let dib_res = unsafe {
         GetDIBits(
             hdc,
@@ -295,16 +354,9 @@ fn hicon_to_png(
             DIB_RGB_COLORS,
         )
     };
-    unsafe {
-        ReleaseDC(null_mut(), hdc);
-        if !icon_info.hbmColor.is_null() {
-            DeleteObject(icon_info.hbmColor);
-        }
-        if !icon_info.hbmMask.is_null() {
-            DeleteObject(icon_info.hbmMask);
-        }
-        DestroyIcon(hicon);
-    }
+    // SAFETY: `hdc` was acquired by `GetDC` above and has not been released yet.
+    unsafe { ReleaseDC(null_mut(), hdc) };
+    cleanup();
 
     if dib_res == 0 {
         return None;
@@ -319,7 +371,7 @@ fn hicon_to_png(
         }
     }
 
-    let mut rgba_buf = Vec::with_capacity(pixel_count * 4);
+    let mut rgba_buf = Vec::with_capacity(buffer_len);
     for chunk in bgra_buf.chunks_exact(4) {
         let b = chunk[0];
         let g = chunk[1];
@@ -347,6 +399,185 @@ fn hicon_to_png(
     } else {
         None
     }
+}
+
+/// Resolves a Windows Shell Link (`.lnk`) file to its target executable path.
+#[cfg(target_os = "windows")]
+#[must_use]
+pub fn resolve_shortcut(lnk_path: &Path) -> Option<PathBuf> {
+    let bytes = std::fs::read(lnk_path).ok()?;
+    if bytes.len() < 76 || bytes[0..4] != [0x4C, 0x00, 0x00, 0x00] {
+        return None;
+    }
+
+    let flags = u32::from_le_bytes([bytes[0x14], bytes[0x15], bytes[0x16], bytes[0x17]]);
+    let has_id_list = (flags & 0x01) != 0;
+    let has_link_info = (flags & 0x02) != 0;
+
+    let mut offset = 76usize;
+
+    if has_id_list {
+        if bytes.len() < offset + 2 {
+            return None;
+        }
+        let id_list_size = u16::from_le_bytes([bytes[offset], bytes[offset + 1]]) as usize;
+        offset += 2 + id_list_size;
+    }
+
+    if has_link_info && bytes.len() >= offset + 28 {
+        let info_start = offset;
+        let header_size = u32::from_le_bytes([
+            bytes[info_start + 4],
+            bytes[info_start + 5],
+            bytes[info_start + 6],
+            bytes[info_start + 7],
+        ]) as usize;
+
+        // Try Unicode local base path if header_size >= 0x24 (Windows Vista+)
+        if header_size >= 0x24 && bytes.len() >= info_start + 32 {
+            let u_offset = u32::from_le_bytes([
+                bytes[info_start + 28],
+                bytes[info_start + 29],
+                bytes[info_start + 30],
+                bytes[info_start + 31],
+            ]) as usize;
+            if u_offset > 0 && info_start + u_offset < bytes.len() {
+                let slice = &bytes[info_start + u_offset..];
+                let u16_chars: Vec<u16> = slice
+                    .chunks_exact(2)
+                    .map(|c| u16::from_le_bytes([c[0], c[1]]))
+                    .take_while(|&c| c != 0)
+                    .collect();
+                let path_str = String::from_utf16_lossy(&u16_chars);
+                let pb = PathBuf::from(path_str);
+                if pb.exists() {
+                    return Some(pb);
+                }
+            }
+        }
+
+        // Try ASCII local base path
+        let a_offset = u32::from_le_bytes([
+            bytes[info_start + 16],
+            bytes[info_start + 17],
+            bytes[info_start + 18],
+            bytes[info_start + 19],
+        ]) as usize;
+        if a_offset > 0 && info_start + a_offset < bytes.len() {
+            let slice = &bytes[info_start + a_offset..];
+            let ascii_str: String = slice
+                .iter()
+                .copied()
+                .take_while(|&b| b != 0)
+                .map(|b| b as char)
+                .collect();
+            let pb = PathBuf::from(ascii_str);
+            if pb.exists() {
+                return Some(pb);
+            }
+        }
+    }
+
+    // Fallback heuristic: scan raw bytes for any existing executable or working dir path
+    find_path_in_bytes(&bytes, lnk_path)
+}
+
+/// Fallback scanner for non-standard or advertised/MSI shortcuts.
+#[cfg(target_os = "windows")]
+fn find_path_in_bytes(bytes: &[u8], lnk_path: &Path) -> Option<PathBuf> {
+    let file_name = lnk_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+    let stem = file_name
+        .trim_end_matches(".disabled")
+        .trim_end_matches(".lnk");
+
+    let check_candidate = |cand: &str| -> Option<PathBuf> {
+        let trimmed = cand.trim().trim_matches('"');
+        if trimmed.is_empty() {
+            return None;
+        }
+
+        // Direct file check
+        let pb = PathBuf::from(trimmed);
+        if pb.is_file() && pb.exists() {
+            return Some(pb);
+        }
+
+        // Working directory + stem.exe check
+        if pb.is_dir() && pb.exists() && !stem.is_empty() {
+            let exe_cand = pb.join(format!("{stem}.exe"));
+            if exe_cand.is_file() && exe_cand.exists() {
+                return Some(exe_cand);
+            }
+        }
+
+        // Relative path from shortcut's folder
+        if trimmed.starts_with(r"..") {
+            if let Some(parent) = lnk_path.parent() {
+                let resolved = parent.join(trimmed);
+                if resolved.is_file() && resolved.exists() {
+                    return Some(resolved);
+                }
+            }
+        }
+
+        None
+    };
+
+    // 1. Scan ASCII strings
+    let mut i = 0;
+    while i + 4 < bytes.len() {
+        if (bytes[i].is_ascii_alphabetic()
+            && bytes[i + 1] == b':'
+            && (bytes[i + 2] == b'\\' || bytes[i + 2] == b'/'))
+            || (bytes[i] == b'.' && bytes[i + 1] == b'.' && bytes[i + 2] == b'\\')
+        {
+            let end = bytes[i..]
+                .iter()
+                .position(|&b| b == 0 || b == b'"' || b < 32)
+                .unwrap_or(bytes.len() - i);
+            let candidate: String = bytes[i..i + end].iter().map(|&b| b as char).collect();
+            if let Some(found) = check_candidate(&candidate) {
+                return Some(found);
+            }
+            i += end + 1;
+        } else {
+            i += 1;
+        }
+    }
+
+    // 2. Scan UTF-16 strings (both even and odd byte offsets)
+    for start_offset in [0, 1] {
+        let mut idx = start_offset;
+        while idx + 8 < bytes.len() {
+            let c0 = u16::from_le_bytes([bytes[idx], bytes[idx + 1]]);
+            let c1 = u16::from_le_bytes([bytes[idx + 2], bytes[idx + 3]]);
+            let c2 = u16::from_le_bytes([bytes[idx + 4], bytes[idx + 5]]);
+
+            let is_drive = u8::try_from(c0).is_ok_and(|b| b.is_ascii_alphabetic())
+                && c1 == u16::from(b':')
+                && (c2 == u16::from(b'\\') || c2 == u16::from(b'/'));
+            let is_dotdot = c0 == u16::from(b'.')
+                && c1 == u16::from(b'.')
+                && (c2 == u16::from(b'\\') || c2 == u16::from(b'/'));
+
+            if is_drive || is_dotdot {
+                let u16s: Vec<u16> = bytes[idx..]
+                    .chunks_exact(2)
+                    .map(|c| u16::from_le_bytes([c[0], c[1]]))
+                    .take_while(|&c| c != 0 && c != u16::from(b'"') && c >= 32)
+                    .collect();
+                let candidate = String::from_utf16_lossy(&u16s);
+                if let Some(found) = check_candidate(&candidate) {
+                    return Some(found);
+                }
+                idx += 2;
+            } else {
+                idx += 2;
+            }
+        }
+    }
+
+    None
 }
 
 #[cfg(test)]
@@ -398,11 +629,33 @@ mod tests {
 
     #[test]
     #[cfg(target_os = "windows")]
-    fn test_extract_auepdu_relative_icon() {
-        let auep_rel = r"C:\Program Files\AMD\CIM\..\Performance Profile Client\AUEPDU.exe";
-        if Path::new(r"C:\Program Files\AMD\Performance Profile Client\AUEPDU.exe").exists() {
-            let icon = resolve_entry_icon(Some(auep_rel), None);
-            assert!(icon.is_some());
+    fn test_resolve_shortcut_sharex() {
+        let appdata = std::env::var("APPDATA").unwrap();
+        let lnk = PathBuf::from(appdata)
+            .join(r"Microsoft\Windows\Start Menu\Programs\Startup\ShareX.lnk");
+        if lnk.exists() {
+            let target = resolve_shortcut(&lnk);
+            assert!(target.is_some());
+            let t = target.unwrap();
+            assert!(t.to_string_lossy().to_lowercase().contains("sharex.exe"));
+        }
+    }
+
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_resolve_shortcut_waves() {
+        let progdata = std::env::var("PROGRAMDATA").unwrap();
+        let lnk = PathBuf::from(progdata)
+            .join(r"Microsoft\Windows\Start Menu\Programs\Startup\WavesLocalServer.lnk");
+        if lnk.exists() {
+            let target = resolve_shortcut(&lnk);
+            assert!(target.is_some());
+            let t = target.unwrap();
+            assert!(
+                t.to_string_lossy()
+                    .to_lowercase()
+                    .contains("waveslocalserver.exe")
+            );
         }
     }
 }

@@ -1,3 +1,4 @@
+pub mod cleanup_page;
 pub mod context_menu_page;
 pub mod cpu_page;
 pub mod dashboard_page;
@@ -7,8 +8,10 @@ pub mod gpu_page;
 pub mod input_page;
 pub mod interface_page;
 pub mod network_page;
+pub mod network_tweaks_page;
 pub mod page_header;
 pub mod ram_page;
+pub mod security_page;
 pub mod settings_page;
 pub mod startup_page;
 pub mod tools_page;
@@ -17,6 +20,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
+#[allow(unused_imports)]
+pub use cleanup_page::CleanupPage;
 #[allow(unused_imports)]
 pub use context_menu_page::ContextMenuPage;
 #[allow(unused_imports)]
@@ -36,9 +41,13 @@ pub use interface_page::InterfacePage;
 #[allow(unused_imports)]
 pub use network_page::NetworkPage;
 #[allow(unused_imports)]
+pub use network_tweaks_page::NetworkTweaksPage;
+#[allow(unused_imports)]
 pub use page_header::PageHeader;
 #[allow(unused_imports)]
 pub use ram_page::RamPage;
+#[allow(unused_imports)]
+pub use security_page::SystemPage;
 #[allow(unused_imports)]
 pub use settings_page::SettingsPage;
 #[allow(unused_imports)]
@@ -65,7 +74,6 @@ pub fn render_route(
     route: AppRoute,
     telemetry: TelemetryData,
     windows_build: u32,
-    sidebar_expanded: bool,
     hovered_telemetry_card: Option<SharedString>,
     current_locale: &'static str,
     open_dropdown: Option<&'static str>,
@@ -88,9 +96,13 @@ pub fn render_route(
     startup_search_focus: &gpui::FocusHandle,
     startup_open_menu_id: Option<&str>,
     hovered_startup_card: Option<String>,
+    cleanup_page: CleanupPage,
     on_navigate: impl Fn(AppRoute, &mut Window, &mut App) + Send + Sync + 'static,
     on_hover_telemetry_card: impl Fn(SharedString, bool, &mut Window, &mut App) + Send + Sync + 'static,
     on_toggle_tweak: impl Fn(&'static str, bool, &mut Window, &mut App) + 'static,
+    on_change_keyboard_repeat: impl Fn(&str, &mut Window, &mut App) + 'static,
+    on_change_ctf_optimization: impl Fn(&str, &mut Window, &mut App) + 'static,
+    on_change_snapkey: impl Fn(&str, &mut Window, &mut App) + 'static,
     on_change_palette: impl Fn(&str, &mut Window, &mut App) + 'static,
     on_change_language: impl Fn(&str, &mut Window, &mut App) + 'static,
     on_change_theme: impl Fn(&str, &mut Window, &mut App) + 'static,
@@ -142,42 +154,48 @@ pub fn render_route(
     let on_toggle_tweak_ctx = on_toggle_tweak_arc.clone();
     let on_toggle_tweak_exp = on_toggle_tweak_arc.clone();
     let on_toggle_tweak_iface = on_toggle_tweak_arc.clone();
-    let on_toggle_tweak_input = on_toggle_tweak_arc;
+    let on_toggle_tweak_input = on_toggle_tweak_arc.clone();
+    let on_toggle_tweak_security = on_toggle_tweak_arc.clone();
+    let on_toggle_tweak_net = on_toggle_tweak_arc;
 
     let on_toggle_dropdown_arc = Arc::new(on_toggle_dropdown);
     let on_toggle_dd_set = on_toggle_dropdown_arc.clone();
-    let on_toggle_dd_gpu = on_toggle_dropdown_arc;
+    let on_toggle_dd_gpu = on_toggle_dropdown_arc.clone();
+    let on_toggle_dd_input = on_toggle_dropdown_arc;
 
     let on_hover_dropdown_arc = Arc::new(on_hover_dropdown);
     let on_hover_dd_set = on_hover_dropdown_arc.clone();
-    let on_hover_dd_gpu = on_hover_dropdown_arc;
+    let on_hover_dd_gpu = on_hover_dropdown_arc.clone();
+    let on_hover_dd_input = on_hover_dropdown_arc;
 
     let on_hover_option_arc = Arc::new(on_hover_option);
     let on_hover_opt_set = on_hover_option_arc.clone();
-    let on_hover_opt_gpu = on_hover_option_arc;
+    let on_hover_opt_gpu = on_hover_option_arc.clone();
+    let on_hover_opt_input = on_hover_option_arc;
 
     let on_close_dropdowns_arc = Arc::new(on_close_dropdowns);
     let on_close_dd_set = on_close_dropdowns_arc.clone();
-    let on_close_dd_gpu = on_close_dropdowns_arc;
+    let on_close_dd_gpu = on_close_dropdowns_arc.clone();
+    let on_close_dd_input = on_close_dropdowns_arc;
 
     let on_hover_tooltip_arc = Arc::new(on_hover_tooltip);
     let on_hover_tt_ctx = on_hover_tooltip_arc.clone();
     let on_hover_tt_exp = on_hover_tooltip_arc.clone();
     let on_hover_tt_iface = on_hover_tooltip_arc.clone();
     let on_hover_tt_input = on_hover_tooltip_arc.clone();
+    let on_hover_tt_security = on_hover_tooltip_arc.clone();
+    let on_hover_tt_net = on_hover_tooltip_arc.clone();
     let on_hover_tt_startup = on_hover_tooltip_arc;
 
     let page_element = match route {
-        AppRoute::Dashboard => {
-            DashboardPage::new(telemetry, hovered_telemetry_card.clone(), sidebar_expanded)
-                .on_hover_card(move |id, val, window, cx| {
-                    on_hover_card_dash(id, val, window, cx);
-                })
-                .on_navigate(move |target_route, window, cx| {
-                    on_nav_dash(target_route, window, cx);
-                })
-                .into_any_element()
-        }
+        AppRoute::Dashboard => DashboardPage::new(telemetry, hovered_telemetry_card.clone())
+            .on_hover_card(move |id, val, window, cx| {
+                on_hover_card_dash(id, val, window, cx);
+            })
+            .on_navigate(move |target_route, window, cx| {
+                on_nav_dash(target_route, window, cx);
+            })
+            .into_any_element(),
         AppRoute::CpuDetail => CpuPage::new(telemetry.cpu_detail)
             .on_navigate(move |target_route, window, cx| {
                 on_nav_cpu(target_route, window, cx);
@@ -271,7 +289,7 @@ pub fn render_route(
                     .into_any_element()
                 },
             ),
-        AppRoute::ContextMenu => ContextMenuPage::new(windows_build, sidebar_expanded)
+        AppRoute::ContextMenu => ContextMenuPage::new(windows_build)
             .on_toggle_tweak(move |id, val, window, cx| {
                 on_toggle_tweak_ctx(id, val, window, cx);
             })
@@ -279,7 +297,7 @@ pub fn render_route(
                 on_hover_tt_ctx(tt, window, cx);
             })
             .into_any_element(),
-        AppRoute::Explorer => ExplorerPage::new(windows_build, sidebar_expanded)
+        AppRoute::Explorer => ExplorerPage::new(windows_build)
             .on_toggle_tweak(move |id, val, window, cx| {
                 on_toggle_tweak_exp(id, val, window, cx);
             })
@@ -287,7 +305,7 @@ pub fn render_route(
                 on_hover_tt_exp(tt, window, cx);
             })
             .into_any_element(),
-        AppRoute::Interface => InterfacePage::new(windows_build, sidebar_expanded)
+        AppRoute::Interface => InterfacePage::new(windows_build)
             .on_toggle_tweak(move |id, val, window, cx| {
                 on_toggle_tweak_iface(id, val, window, cx);
             })
@@ -295,15 +313,54 @@ pub fn render_route(
                 on_hover_tt_iface(tt, window, cx);
             })
             .into_any_element(),
-        AppRoute::Input => InputPage::new(windows_build, sidebar_expanded)
+        AppRoute::Input => InputPage::new(
+            windows_build,
+            open_dropdown,
+            open_dropdown_upward,
+            closing_dropdown,
+            hovered_dropdown,
+            hovered_option,
+            pending_selection,
+        )
+        .on_toggle_tweak(move |id, val, window, cx| {
+            on_toggle_tweak_input(id, val, window, cx);
+        })
+        .on_select_preset(on_change_keyboard_repeat)
+        .on_select_ctf_preset(on_change_ctf_optimization)
+        .on_select_snapkey_preset(on_change_snapkey)
+        .on_toggle_dropdown(move |id, window, cx| {
+            on_toggle_dd_input(id, window, cx);
+        })
+        .on_hover_dropdown(move |id, hovered, window, cx| {
+            on_hover_dd_input(id, hovered, window, cx);
+        })
+        .on_hover_option(move |id, option, hovered, window, cx| {
+            on_hover_opt_input(id, option, hovered, window, cx);
+        })
+        .on_close_dropdowns(move |window, cx| {
+            on_close_dd_input(window, cx);
+        })
+        .on_hover_tooltip(move |tt, window, cx| {
+            on_hover_tt_input(tt, window, cx);
+        })
+        .into_any_element(),
+        AppRoute::System => SystemPage::new(windows_build)
             .on_toggle_tweak(move |id, val, window, cx| {
-                on_toggle_tweak_input(id, val, window, cx);
+                on_toggle_tweak_security(id, val, window, cx);
             })
             .on_hover_tooltip(move |tt, window, cx| {
-                on_hover_tt_input(tt, window, cx);
+                on_hover_tt_security(tt, window, cx);
             })
             .into_any_element(),
-        AppRoute::Tools => ToolsPage::new(hovered_telemetry_card, sidebar_expanded)
+        AppRoute::NetworkTweaks => NetworkTweaksPage::new(windows_build)
+            .on_toggle_tweak(move |id, val, window, cx| {
+                on_toggle_tweak_net(id, val, window, cx);
+            })
+            .on_hover_tooltip(move |tt, window, cx| {
+                on_hover_tt_net(tt, window, cx);
+            })
+            .into_any_element(),
+        AppRoute::Tools => ToolsPage::new(hovered_telemetry_card)
             .on_hover_card(move |id, val, window, cx| {
                 on_hover_card_tools(id, val, window, cx);
             })
@@ -338,6 +395,7 @@ pub fn render_route(
         .on_toggle_menu(on_toggle_startup_menu)
         .on_select_filter(on_select_startup_filter)
         .into_any_element(),
+        AppRoute::Cleanup => cleanup_page.into_any_element(),
         AppRoute::Settings => SettingsPage::new(
             current_locale,
             minimize_to_tray,

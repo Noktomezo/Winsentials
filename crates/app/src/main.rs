@@ -4,6 +4,7 @@ use gpui::{
     App, AppContext, Application, Bounds, TitlebarOptions, WindowBackgroundAppearance,
     WindowBounds, WindowOptions, point, px, size,
 };
+use std::rc::Rc;
 
 use winsentials::app::AppView;
 use winsentials::features;
@@ -17,7 +18,10 @@ fn main() {
 
     rust_i18n::set_locale("ru");
 
-    Application::with_platform(gpui_platform::current_platform(false))
+    let platform =
+        gpui_windows::WindowsPlatform::new(false).expect("failed to initialize Windows platform");
+
+    Application::with_platform(Rc::new(platform))
         .with_assets(EmbeddedAssetSource)
         .run(|cx: &mut App| {
             let fonts = vec![
@@ -78,6 +82,7 @@ fn main() {
                     traffic_light_position: None,
                 }),
                 window_background: WindowBackgroundAppearance::Blurred,
+                is_resizable: false,
                 focus: !start_in_tray,
                 show: !start_in_tray,
                 ..Default::default()
