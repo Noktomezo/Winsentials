@@ -7,7 +7,7 @@ use gpui::{
     RenderOnce, ScrollHandle, StatefulInteractiveElement, Styled, Window, div, point, px,
 };
 
-use crate::shared::theme::Theme;
+use crate::theme::Theme;
 
 const SCROLL_DAMPING: f32 = 6.0;
 const WIDTH_DAMPING: f32 = 18.0;

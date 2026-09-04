@@ -1,12 +1,13 @@
 [workspace]
 members = [
     "crates/app",
+    "crates/core",
     "crates/xtask",
 ]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.9.0"
 edition = "2024"
 rust-version = "1.85"
 authors = ["Noktomezo <https://github.com/Noktomezo>"]
@@ -15,6 +16,7 @@ homepage = "https://github.com/Noktomezo/Winsentials"
 
 [workspace.dependencies]
 winsentials = { path = "crates/app" }
+winsentials-core = { path = "crates/core" }
 gpui = { git = "https://github.com/zed-industries/zed", branch = "main", default-features = false }
 gpui_windows = { git = "https://github.com/zed-industries/zed", branch = "main", default-features = false }
 rfd = "0.17.2"
@@ -50,6 +52,13 @@ windows-sys = { version = "0.59", features = [
 winres = "0.1"
 clap = { version = "4.5", features = ["derive"] }
 zip = { version = "2.2", default-features = false, features = ["deflate"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
+semver = "1.0"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+serde_json = "1.0"
+uuid = { version = "1.10", features = ["v4"] }
+minisign-verify = "0.2"
+tokio = { version = "1", default-features = false, features = ["rt", "rt-multi-thread", "time"] }
 
 [workspace.lints.rust]
 unsafe_code = "warn"
@@ -63,3 +72,23 @@ must_use_candidate = "allow"
 module_name_repetitions = "allow"
 implicit_hasher = "allow"
 should_implement_trait = "allow"
+
+[profile.dev.package]
+gpui = { opt-level = 3 }
+gpui_windows = { opt-level = 3 }
+rustybuzz = { opt-level = 3 }
+taffy = { opt-level = 3 }
+ttf-parser = { opt-level = 3 }
+fontdb = { opt-level = 3 }
+resvg = { opt-level = 3 }
+usvg = { opt-level = 3 }
+tiny-skia = { opt-level = 3 }
+lyon_tessellation = { opt-level = 3 }
+image = { opt-level = 3 }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true

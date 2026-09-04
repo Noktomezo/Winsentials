@@ -8,6 +8,6 @@ pub mod security;
 
 #[allow(unused_imports)]
 pub use registry::{
-    RestartRequirement, SideEffect, SideEffectLevel, TweakCategory, TweakDefinition,
+    RestartRequirement, SideEffect, SideEffectLevel, TweakCategory, TweakDefinition, TweakStates,
     count_applied_tweaks, get_all_tweaks,
 };

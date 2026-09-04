@@ -7,10 +7,12 @@ use gpui::{
     Transformation, Window, div, px, radians, svg,
 };
 
-use crate::shared::theme::Theme;
-use crate::shared::ui::icon::Icon;
+use crate::components::icon::Icon;
+use crate::motion::{hover_spring, lerp_rgba};
+use crate::theme::Theme;
 
 pub type ClickHandler = Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
+pub type HoverHandler = Arc<dyn Fn(bool, &mut Window, &mut App) + 'static>;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ButtonVariant {
@@ -47,6 +49,7 @@ pub struct Button {
     loading: bool,
     tooltip: Option<SharedString>,
     on_click: Option<ClickHandler>,
+    on_hover: Option<HoverHandler>,
 }
 
 impl Button {
@@ -63,6 +66,7 @@ impl Button {
             loading: false,
             tooltip: None,
             on_click: None,
+            on_hover: None,
         }
     }
 
@@ -122,16 +126,22 @@ impl Button {
         self.on_click = Some(Arc::new(handler));
         self
     }
+
+    #[must_use]
+    pub fn on_hover(mut self, handler: impl Fn(bool, &mut Window, &mut App) + 'static) -> Self {
+        self.on_hover = Some(Arc::new(handler));
+        self
+    }
 }
 
 impl RenderOnce for Button {
     #[allow(clippy::too_many_lines)]
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
 
         let (height, padding_x, text_size, icon_size, rounded_radius) = match self.size {
             ButtonSize::Sm => (px(28.0), px(10.0), px(12.0), px(13.0), px(5.0)),
-            ButtonSize::Md => (px(34.0), px(14.0), px(13.0), px(15.0), px(6.0)),
+            ButtonSize::Md => (px(32.0), px(12.0), px(13.0), px(14.0), px(6.0)),
             ButtonSize::Lg => (px(40.0), px(18.0), px(14.0), px(16.0), px(8.0)),
         };
 
@@ -174,6 +184,15 @@ impl RenderOnce for Button {
         };
 
         let spinner_id = format!("{:?}_btn_spinner", self.id);
+        let spring_id = format!("{:?}_btn_spring", self.id);
+
+        let hover_id = ElementId::Name(format!("{:?}_hover_state", self.id).into());
+        let hover_state = window.use_keyed_state(hover_id, cx, |_, _| false);
+        let mut hovered = *hover_state.read(cx);
+        if self.disabled && hovered {
+            hover_state.update(cx, |s, _| *s = false);
+            hovered = false;
+        }
 
         let mut base = div()
             .id(self.id)
@@ -184,7 +203,6 @@ impl RenderOnce for Button {
             .h(height)
             .px(padding_x)
             .rounded(rounded_radius)
-            .bg(bg)
             .text_size(text_size)
             .font_weight(FontWeight::MEDIUM)
             .text_color(text_color);
@@ -193,15 +211,28 @@ impl RenderOnce for Button {
             base = base.border_1().border_color(border);
         }
 
+        let is_disabled = self.disabled;
+        let hover_state_for_event = hover_state;
+        let on_hover_cb = self.on_hover;
+        base = base.on_hover(move |&hov, window, cx| {
+            let active_hov = hov && !is_disabled;
+            hover_state_for_event.update(cx, |state, cx| {
+                if *state != active_hov {
+                    *state = active_hov;
+                    cx.notify();
+                }
+            });
+            if let Some(ref h) = on_hover_cb {
+                h(active_hov, window, cx);
+            }
+        });
+
         if self.disabled {
             if !self.loading {
                 base = base.opacity(0.45);
             }
         } else {
-            base = base
-                .cursor_pointer()
-                .hover(move |s| s.bg(hover_bg))
-                .active(move |s| s.bg(active_bg));
+            base = base.cursor_pointer().active(move |s| s.bg(active_bg));
 
             if let Some(on_click) = self.on_click {
                 base = base.on_click(move |event, window, cx| {
@@ -249,8 +280,32 @@ impl RenderOnce for Button {
                 .into_any_element()
         });
 
-        base.children(left_child)
+        let content = base
+            .children(left_child)
             .child(self.label)
-            .children(right_child)
+            .children(right_child);
+
+        if cx.reduce_motion() || self.disabled {
+            content
+                .bg(if hovered && !self.disabled {
+                    hover_bg
+                } else {
+                    bg
+                })
+                .into_any_element()
+        } else {
+            let spring = hover_spring(if hovered && !self.disabled { 1.0 } else { 0.0 });
+            content
+                .with_spring(
+                    ElementId::Name(spring_id.into()),
+                    spring,
+                    move |btn, val| {
+                        let progress = val.clamp(0.0, 1.0);
+                        let current_bg = lerp_rgba(bg, hover_bg, progress);
+                        btn.bg(current_bg)
+                    },
+                )
+                .into_any_element()
+        }
     }
 }

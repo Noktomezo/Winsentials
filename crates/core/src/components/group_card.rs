@@ -3,8 +3,8 @@ use gpui::{
     Styled, Window, div, px,
 };
 
-use crate::shared::theme::Theme;
-use crate::shared::ui::icon::Icon;
+use crate::components::icon::Icon;
+use crate::theme::Theme;
 
 #[derive(IntoElement)]
 pub struct GroupCard {
@@ -12,6 +12,7 @@ pub struct GroupCard {
     title: SharedString,
     description: SharedString,
     icon_color: Option<Rgba>,
+    title_accessory: Option<AnyElement>,
     header_action: Option<AnyElement>,
     children: Vec<AnyElement>,
 }
@@ -28,6 +29,7 @@ impl GroupCard {
             title: title.into(),
             description: description.into(),
             icon_color: None,
+            title_accessory: None,
             header_action: None,
             children: Vec::new(),
         }
@@ -36,6 +38,12 @@ impl GroupCard {
     #[must_use]
     pub fn icon_color(mut self, color: Rgba) -> Self {
         self.icon_color = Some(color);
+        self
+    }
+
+    #[must_use]
+    pub fn title_accessory(mut self, accessory: impl IntoElement) -> Self {
+        self.title_accessory = Some(accessory.into_any_element());
         self
     }
 
@@ -70,20 +78,26 @@ impl RenderOnce for GroupCard {
             .flex_none()
             .child(Icon::new(self.icon).size(px(16.0)).color(icon_col));
 
+        let mut title_row = div().flex().items_center().gap(px(8.0)).child(
+            div()
+                .text_size(px(13.5))
+                .line_height(px(16.0))
+                .font_weight(FontWeight::SEMIBOLD)
+                .text_color(theme.text_primary)
+                .child(self.title),
+        );
+
+        if let Some(accessory) = self.title_accessory {
+            title_row = title_row.child(accessory);
+        }
+
         // Text stack: aligned to exactly 32px height matching the icon box
         let text_stack = div()
             .flex()
             .flex_col()
             .justify_between()
             .h(px(32.0))
-            .child(
-                div()
-                    .text_size(px(13.5))
-                    .line_height(px(16.0))
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .text_color(theme.text_primary)
-                    .child(self.title),
-            )
+            .child(title_row)
             .child(
                 div()
                     .text_size(px(11.5))

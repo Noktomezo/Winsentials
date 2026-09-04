@@ -1,0 +1,222 @@
+name: Promote Version
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      pull_request:
+        description: Merged version-bump pull request number
+        required: false
+        type: string
+      run_id:
+        description: Successful PR Build run ID
+        required: false
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: promote-version
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    env:
+      WINSENTIALS_UPDATE_MINISIGN_PUBLIC_KEY: RWSlOeLuyQXBGSoaYq+TP8gRloPlIBZ2wDXx9yQvkzie9zUBalLlZFGG
+
+    steps:
+      - name: Resolve merged version bump
+        id: release
+        uses: actions/github-script@v7
+        env:
+          INPUT_PR: ${{ inputs.pull_request }}
+          INPUT_RUN_ID: ${{ inputs.run_id }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const requestedPr = process.env.INPUT_PR?.trim();
+            let pullRequest;
+
+            if (requestedPr) {
+              const response = await github.rest.pulls.get({ owner, repo, pull_number: Number(requestedPr) });
+              pullRequest = response.data;
+            } else {
+              const response = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner,
+                repo,
+                commit_sha: context.sha,
+              });
+              pullRequest = response.data.find(pr => pr.merged_at && pr.head.ref.startsWith('chore/version-bump-v'));
+            }
+
+            if (!pullRequest?.merged_at) {
+              core.setOutput('skip', 'true');
+              core.notice('No merged version-bump pull request is associated with this commit.');
+              return;
+            }
+            if (!pullRequest.head.ref.startsWith('chore/version-bump-v')) {
+              core.setFailed(`Pull request #${pullRequest.number} is not a version-bump pull request.`);
+              return;
+            }
+
+            const version = pullRequest.head.ref.replace('chore/version-bump-v', '');
+            if (!/^\d+\.\d+\.\d+$/.test(version)) {
+              core.setFailed(`Invalid version in branch ${pullRequest.head.ref}.`);
+              return;
+            }
+
+            const mergeSha = pullRequest.merge_commit_sha;
+            const runId = process.env.INPUT_RUN_ID?.trim();
+            let workflowRun;
+
+            if (runId) {
+              const response = await github.rest.actions.getWorkflowRun({ owner, repo, run_id: Number(runId) });
+              workflowRun = response.data;
+            } else {
+              const response = await github.rest.actions.listWorkflowRuns({
+                owner,
+                repo,
+                workflow_id: 'pr-build.yml',
+                branch: pullRequest.head.ref,
+                event: 'pull_request',
+                status: 'success',
+                per_page: 100,
+              });
+              workflowRun = response.data.workflow_runs.find(run => run.head_sha === pullRequest.head.sha);
+            }
+
+            if (!workflowRun || workflowRun.conclusion !== 'success') {
+              core.setFailed(`No successful PR Build run found for ${pullRequest.head.sha}.`);
+              return;
+            }
+
+            core.setOutput('skip', 'false');
+            core.setOutput('pr_number', String(pullRequest.number));
+            core.setOutput('version', version);
+            core.setOutput('tag', `v${version}`);
+            core.setOutput('merge_sha', mergeSha);
+            core.setOutput('run_id', String(workflowRun.id));
+
+      - name: Checkout promoted commit
+        if: steps.release.outputs.skip != 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.merge_sha }}
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Validate promoted version
+        if: steps.release.outputs.skip != 'true'
+        shell: bash
+        env:
+          EXPECTED_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          actual_version="$(sed -nE 's/^version[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"/\1/p' Cargo.toml | head -n1)"
+          test "$actual_version" = "$EXPECTED_VERSION"
+
+      - name: Download tested artifacts
+        if: steps.release.outputs.skip != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: Winsentials-pr-${{ steps.release.outputs.pr_number }}
+          path: dist
+          run-id: ${{ steps.release.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Rename release artifacts
+        if: steps.release.outputs.skip != 'true'
+        shell: bash
+        env:
+          PR_NUMBER: ${{ steps.release.outputs.pr_number }}
+        run: |
+          set -euo pipefail
+          mv "dist/Winsentials-pr-${PR_NUMBER}-windows-x86_64-setup.exe" "dist/winsentials-win-x64-setup.exe"
+          mv "dist/Winsentials-pr-${PR_NUMBER}-windows-x86_64-portable.zip" "dist/winsentials-win-x64-portable.zip"
+
+      - name: Install Rust
+        if: steps.release.outputs.skip != 'true'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install minisign
+        if: steps.release.outputs.skip != 'true'
+        run: sudo apt-get update && sudo apt-get install -y minisign
+
+      - name: Sign and verify artifacts
+        if: steps.release.outputs.skip != 'true'
+        shell: bash
+        env:
+          WINSENTIALS_UPDATE_MINISIGN_SECRET_KEY: ${{ secrets.WINSENTIALS_UPDATE_MINISIGN_SECRET_KEY }}
+          WINSENTIALS_UPDATE_MINISIGN_PASSWORD: ${{ secrets.WINSENTIALS_UPDATE_MINISIGN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${WINSENTIALS_UPDATE_MINISIGN_PUBLIC_KEY:?Configure WINSENTIALS_UPDATE_MINISIGN_PUBLIC_KEY}"
+          : "${WINSENTIALS_UPDATE_MINISIGN_SECRET_KEY:?Configure WINSENTIALS_UPDATE_MINISIGN_SECRET_KEY}"
+          : "${WINSENTIALS_UPDATE_MINISIGN_PASSWORD:?Configure WINSENTIALS_UPDATE_MINISIGN_PASSWORD}"
+
+          key_file="$(mktemp)"
+          trap 'rm -f "$key_file"' EXIT
+          printf '%s' "$WINSENTIALS_UPDATE_MINISIGN_SECRET_KEY" | tr -d '[:space:]' | base64 -d > "$key_file"
+          chmod 600 "$key_file"
+
+          for artifact in dist/*.exe dist/*.zip; do
+            printf '%s\n' "$WINSENTIALS_UPDATE_MINISIGN_PASSWORD" | \
+              minisign -S -s "$key_file" -m "$artifact" -x "$artifact.sig"
+            minisign -V -P "$WINSENTIALS_UPDATE_MINISIGN_PUBLIC_KEY" -m "$artifact" -x "$artifact.sig"
+          done
+
+      - name: Create checksums and updater manifest
+        if: steps.release.outputs.skip != 'true'
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          (
+            cd dist
+            sha256sum -- *.exe *.zip > SHA256SUMS
+          )
+
+          setup_sig="$(cat dist/winsentials-win-x64-setup.exe.sig | tr -d '\r')"
+          cargo run --package xtask -- manifest --sig "$setup_sig" --version "$VERSION"
+          cp target/release/latest.json dist/latest.json
+
+      - name: Create release tag
+        if: steps.release.outputs.skip != 'true'
+        shell: bash
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+          MERGE_SHA: ${{ steps.release.outputs.merge_sha }}
+        run: |
+          set -euo pipefail
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            test "$(git rev-list -n1 "$TAG")" = "$MERGE_SHA"
+          else
+            git tag "$TAG" "$MERGE_SHA"
+            git push origin "$TAG"
+          fi
+
+      - name: Create draft release
+        if: steps.release.outputs.skip != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release.outputs.tag }}
+          target_commitish: ${{ steps.release.outputs.merge_sha }}
+          draft: true
+          generate_release_notes: true
+          body: |
+            Artifacts were built and tested by PR Build before the version-bump pull request was merged.
+          files: |
+            dist/*.exe
+            dist/*.zip
+            dist/*.sig
+            dist/SHA256SUMS
+            dist/latest.json

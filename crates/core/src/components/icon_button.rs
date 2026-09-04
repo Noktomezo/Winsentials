@@ -7,9 +7,9 @@ use gpui::{
     StatefulInteractiveElement, Styled, Transformation, Window, div, px, radians, svg,
 };
 
-use crate::shared::motion::lerp_item_bg;
-use crate::shared::theme::Theme;
-use crate::shared::ui::icon::Icon;
+use crate::components::icon::Icon;
+use crate::motion::{hover_spring, lerp_item_bg, lerp_rgba};
+use crate::theme::Theme;
 
 pub type ClickHandler = Arc<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 pub type MouseDownHandler = Arc<dyn Fn(&mut Window, &mut App) + 'static>;
@@ -17,6 +17,13 @@ pub type HoverHandler = Arc<dyn Fn(bool, &mut Window, &mut App) + 'static>;
 
 fn spinner_angle(progress: f32) -> f32 {
     progress * std::f32::consts::TAU
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum IconButtonVariant {
+    #[default]
+    Ghost,
+    Outline,
 }
 
 #[allow(clippy::struct_excessive_bools)]
@@ -28,6 +35,7 @@ pub struct IconButton {
     icon_size: Pixels,
     button_size: Pixels,
     icon_color: Option<Hsla>,
+    variant: IconButtonVariant,
     selected: bool,
     destructive: bool,
     disabled: bool,
@@ -48,6 +56,7 @@ impl IconButton {
             icon_size: px(16.0),
             button_size: px(32.0),
             icon_color: None,
+            variant: IconButtonVariant::Ghost,
             selected: false,
             destructive: false,
             disabled: false,
@@ -58,6 +67,22 @@ impl IconButton {
             on_mouse_down: None,
             on_hover: None,
         }
+    }
+
+    #[must_use]
+    pub fn variant(mut self, variant: IconButtonVariant) -> Self {
+        self.variant = variant;
+        self
+    }
+
+    #[must_use]
+    pub fn outline(mut self, outline: bool) -> Self {
+        self.variant = if outline {
+            IconButtonVariant::Outline
+        } else {
+            IconButtonVariant::Ghost
+        };
+        self
     }
 
     #[must_use]
@@ -137,21 +162,51 @@ impl IconButton {
 }
 
 impl RenderOnce for IconButton {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    #[allow(clippy::too_many_lines)]
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
-        let color = self.icon_color.unwrap_or_else(|| {
-            if self.destructive {
-                theme.accent_red.into()
-            } else if self.selected {
-                theme.accent_cyan.into()
-            } else {
-                theme.text_primary.into()
-            }
-        });
+        let default_color: Hsla = if self.destructive {
+            theme.accent_red.into()
+        } else if self.selected {
+            theme.accent_blue.into()
+        } else {
+            theme.text_primary.into()
+        };
+        let color = self.icon_color.unwrap_or(default_color);
         let spinner_id = format!("{:?}_spinner", self.id);
         let spring_id = format!("{:?}_bg_spring", self.id);
 
         let rounded_radius = (self.button_size * 0.2).clamp(px(4.0), px(8.0));
+
+        let hover_id = ElementId::Name(format!("{:?}_hover_state", self.id).into());
+        let hover_state = window.use_keyed_state(hover_id, cx, |_, _| false);
+        let mut hovered = *hover_state.read(cx);
+
+        if self.disabled && hovered {
+            hover_state.update(cx, |state, _| *state = false);
+            hovered = false;
+        }
+
+        let is_hovered = hovered && !self.disabled;
+        let is_outline = self.variant == IconButtonVariant::Outline;
+
+        let (bg_rest, bg_hover) = if self.destructive {
+            (gpui::rgba(0x0000_0000), theme.accent_red.opacity(0.18))
+        } else if self.selected {
+            (theme.accent_selected_bg, theme.accent_selected_bg)
+        } else {
+            (gpui::rgba(0x0000_0000), theme.accent_hover_bg)
+        };
+
+        let (text_color_rest, text_color_hover): (Rgba, Rgba) = if self.destructive {
+            (theme.accent_red, theme.accent_red)
+        } else if self.selected {
+            (theme.accent_blue, theme.accent_blue)
+        } else if self.icon_color.is_some() {
+            (color.into(), color.into())
+        } else {
+            (theme.text_primary, theme.accent_blue)
+        };
 
         let mut base = div()
             .id(self.id)
@@ -161,35 +216,36 @@ impl RenderOnce for IconButton {
             .size(self.button_size)
             .rounded(rounded_radius);
 
+        if is_outline {
+            base = base.border_1().border_color(theme.card_border);
+        }
+
+        let hover_state_for_event = hover_state;
+        let on_hover_cb = self.on_hover;
+        let is_disabled = self.disabled;
+
+        base = base.on_hover(move |&hov, window, cx| {
+            let active_hov = hov && !is_disabled;
+            hover_state_for_event.update(cx, |state, cx| {
+                if *state != active_hov {
+                    *state = active_hov;
+                    cx.notify();
+                }
+            });
+            if let Some(ref h) = on_hover_cb {
+                h(hov, window, cx);
+            }
+        });
+
         if self.disabled {
             if !self.loading {
                 base = base.opacity(0.45);
             }
-        } else if self.spring.is_some() {
-            base = base
-                .cursor_pointer()
-                .active(move |s| s.bg(theme.accent_active_bg));
-
-            if let Some(on_hover) = self.on_hover {
-                base = base.on_hover(move |&hov, window, cx| {
-                    (on_hover)(hov, window, cx);
-                });
-            }
-        } else if self.destructive {
-            base = base
-                .cursor_pointer()
-                .hover(move |s| s.bg(theme.accent_red.opacity(0.18)))
-                .active(move |s| s.bg(theme.accent_red.opacity(0.35)));
-        } else if self.selected {
-            base = base.cursor_pointer().bg(theme.accent_selected_bg);
         } else {
             base = base
                 .cursor_pointer()
-                .hover(move |s| s.bg(theme.accent_hover_bg).text_color(theme.accent_cyan))
                 .active(move |s| s.bg(theme.accent_active_bg));
-        }
 
-        if !self.disabled {
             if let Some(on_click) = self.on_click {
                 base = base.on_click(move |event, window, cx| {
                     (on_click)(event, window, cx);
@@ -204,11 +260,21 @@ impl RenderOnce for IconButton {
             }
         }
 
+        let current_icon_color: Hsla = if self.icon_color.is_some() {
+            color
+        } else if self.destructive {
+            theme.accent_red.into()
+        } else if self.selected || is_hovered {
+            theme.accent_blue.into()
+        } else {
+            theme.text_primary.into()
+        };
+
         let icon = if self.loading {
             let spinner = svg()
-                .path("icons/loader-circle.svg")
+                .path(self.icon_path.clone())
                 .size(self.icon_size)
-                .text_color(color);
+                .text_color(current_icon_color);
             if cx.reduce_motion() {
                 spinner.into_any_element()
             } else {
@@ -227,25 +293,59 @@ impl RenderOnce for IconButton {
         } else {
             Icon::new(self.icon_path)
                 .size(self.icon_size)
-                .color(color)
+                .color(current_icon_color)
                 .into_any_element()
         };
 
         let content = base.child(icon);
 
-        if let Some((spring, accent)) = self.spring {
+        if let Some((custom_spring, accent)) = self.spring {
             content
                 .with_spring(
                     ElementId::Name(spring_id.into()),
-                    spring,
+                    custom_spring,
                     move |btn, val| {
                         let bg = lerp_item_bg(accent, val);
                         btn.bg(bg)
                     },
                 )
                 .into_any_element()
+        } else if cx.reduce_motion() || self.disabled {
+            let mut el = content
+                .bg(if is_hovered { bg_hover } else { bg_rest })
+                .text_color(if is_hovered {
+                    text_color_hover
+                } else {
+                    text_color_rest
+                });
+            if is_outline {
+                el = el.border_color(if is_hovered {
+                    theme.accent_blue.opacity(0.5)
+                } else {
+                    theme.card_border
+                });
+            }
+            el.into_any_element()
         } else {
-            content.into_any_element()
+            let spring = hover_spring(if is_hovered { 1.0 } else { 0.0 });
+            let border_rest = theme.card_border;
+            let border_hover = theme.accent_blue.opacity(0.5);
+            content
+                .with_spring(
+                    ElementId::Name(spring_id.into()),
+                    spring,
+                    move |btn, val| {
+                        let progress = val.clamp(0.0, 1.0);
+                        let bg = lerp_rgba(bg_rest, bg_hover, progress);
+                        let text_col = lerp_rgba(text_color_rest, text_color_hover, progress);
+                        let mut el = btn.bg(bg).text_color(text_col);
+                        if is_outline {
+                            el = el.border_color(lerp_rgba(border_rest, border_hover, progress));
+                        }
+                        el
+                    },
+                )
+                .into_any_element()
         }
     }
 }

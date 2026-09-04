@@ -7,8 +7,8 @@ use gpui::{
     StatefulInteractiveElement, Styled, Window, div, ease_in_out, px, svg,
 };
 
-use crate::shared::theme::Theme;
-use crate::shared::ui::icon::Icon;
+use crate::components::icon::Icon;
+use crate::theme::Theme;
 
 pub type BreadcrumbClickHandler = Arc<dyn Fn(&mut Window, &mut App) + 'static>;
 pub type BreadcrumbHoverHandler = Arc<dyn Fn(bool, &mut Window, &mut App) + 'static>;

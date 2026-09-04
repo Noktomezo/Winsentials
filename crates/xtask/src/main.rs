@@ -52,6 +52,18 @@ enum Commands {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
+    /// Generate latest.json updater manifest
+    Manifest {
+        /// Minisign signature string
+        #[arg(long)]
+        sig: Option<String>,
+        /// Path to minisign signature file
+        #[arg(long)]
+        sig_file: Option<PathBuf>,
+        /// Release version override
+        #[arg(long)]
+        version: Option<String>,
+    },
 }
 
 fn main() {
@@ -107,6 +119,11 @@ fn main() {
             run_args.extend(rest_refs);
             run_cargo(&run_args)
         }
+        Commands::Manifest {
+            sig,
+            sig_file,
+            version,
+        } => generate_manifest(sig, sig_file, version),
     };
 
     if let Err(err) = result {
@@ -445,4 +462,97 @@ fn run_external(program: &str, args: &[&str]) -> Result<(), String> {
             status.code()
         ))
     }
+}
+
+#[derive(serde::Serialize)]
+struct PlatformTarget {
+    signature: String,
+    url: String,
+}
+
+#[derive(serde::Serialize)]
+struct ManifestPlatforms {
+    #[serde(rename = "windows-x86_64")]
+    windows_x86_64: PlatformTarget,
+}
+
+#[derive(serde::Serialize)]
+struct LatestManifest {
+    version: String,
+    notes: String,
+    pub_date: String,
+    platforms: ManifestPlatforms,
+}
+
+fn generate_manifest(
+    sig: Option<String>,
+    sig_file: Option<PathBuf>,
+    version: Option<String>,
+) -> Result<(), String> {
+    let signature = if let Some(s) = sig {
+        s.trim().to_string()
+    } else if let Some(path) = sig_file {
+        fs::read_to_string(&path)
+            .map_err(|e| format!("Failed to read signature file {}: {e}", path.display()))?
+            .trim()
+            .to_string()
+    } else {
+        return Err("Either --sig or --sig-file must be provided".to_string());
+    };
+
+    if signature.is_empty() {
+        return Err("Installer signature cannot be empty".to_string());
+    }
+
+    let version = if let Some(v) = version {
+        v
+    } else {
+        let cargo_toml = fs::read_to_string("Cargo.toml")
+            .map_err(|e| format!("Failed to read Cargo.toml: {e}"))?;
+        let ver_line = cargo_toml
+            .lines()
+            .find(|line| line.trim().starts_with("version = \""))
+            .ok_or_else(|| "version not found in Cargo.toml".to_string())?;
+        ver_line
+            .split('"')
+            .nth(1)
+            .ok_or_else(|| "invalid version format in Cargo.toml".to_string())?
+            .to_string()
+    };
+
+    let installer_name = "winsentials-win-x64-setup.exe";
+    let url = format!(
+        "https://github.com/Noktomezo/Winsentials/releases/download/v{version}/{installer_name}"
+    );
+
+    let pub_date = chrono::Utc::now().to_rfc3339();
+
+    let manifest = LatestManifest {
+        version: version.clone(),
+        notes: format!("Winsentials {version} Release"),
+        pub_date,
+        platforms: ManifestPlatforms {
+            windows_x86_64: PlatformTarget { signature, url },
+        },
+    };
+
+    let json = serde_json::to_string_pretty(&manifest)
+        .map_err(|e| format!("Failed to serialize manifest: {e}"))?;
+
+    let target_dir = Path::new("target").join("release");
+    fs::create_dir_all(&target_dir).map_err(|e| format!("Failed to create target/release: {e}"))?;
+    let target_path = target_dir.join("latest.json");
+    fs::write(&target_path, &json)
+        .map_err(|e| format!("Failed to write {}: {e}", target_path.display()))?;
+    println!("Generated {}", target_path.display());
+
+    let dist_dir = Path::new("dist");
+    if dist_dir.exists() {
+        let dist_path = dist_dir.join("latest.json");
+        fs::write(&dist_path, &json)
+            .map_err(|e| format!("Failed to write {}: {e}", dist_path.display()))?;
+        println!("Generated {}", dist_path.display());
+    }
+
+    Ok(())
 }

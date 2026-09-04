@@ -8,7 +8,7 @@ use gpui::{
     pulsating_between, px, size,
 };
 
-use crate::shared::theme::Theme;
+use crate::theme::Theme;
 
 pub const GRAPH_COLOR_BANDS: [(f32, f32); 5] = [
     (0.0, 55.0),
@@ -605,7 +605,7 @@ mod tests {
         graph_percent_color, smooth_percent_transition, stepped_corner_radius,
         stepped_history_index,
     };
-    use crate::shared::theme::Theme;
+    use crate::theme::Theme;
 
     #[test]
     fn graph_colors_blend_between_dashboard_zones() {

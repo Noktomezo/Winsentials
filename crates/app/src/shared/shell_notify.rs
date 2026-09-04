@@ -1,19 +1,17 @@
 #![allow(unsafe_code)]
 
-use windows_sys::Win32::UI::Shell::{
-    SHCNE_ASSOCCHANGED, SHCNF_FLUSH, SHCNF_IDLIST, SHChangeNotify,
-};
+use windows_sys::Win32::UI::Shell::{SHCNE_ASSOCCHANGED, SHCNF_IDLIST, SHChangeNotify};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     HWND_BROADCAST, SMTO_ABORTIFHUNG, SendMessageTimeoutW, WM_SETTINGCHANGE,
 };
 
 pub fn notify_shell_change() {
     unsafe {
-        // 1. Notify Windows Shell about file associations, icon overlays & shell namespaces
+        // 1. Notify Windows Shell about file associations, icon overlays & shell namespaces asynchronously
         #[allow(clippy::cast_possible_wrap)]
         SHChangeNotify(
             SHCNE_ASSOCCHANGED as i32,
-            SHCNF_IDLIST | SHCNF_FLUSH,
+            SHCNF_IDLIST,
             std::ptr::null(),
             std::ptr::null(),
         );

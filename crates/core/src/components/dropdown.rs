@@ -9,9 +9,10 @@ use gpui::{
     px, radians, svg,
 };
 
-use crate::shared::theme::Theme;
-use crate::shared::ui::icon::Icon;
-use crate::widgets::sidebar::{lerp_item_bg, lerp_item_text};
+use crate::components::icon::Icon;
+use crate::components::marquee_text::MarqueeText;
+use crate::motion::{lerp_item_bg, lerp_item_text};
+use crate::theme::Theme;
 
 pub type DropdownSelectHandler = Arc<dyn Fn(&str, &mut Window, &mut App) + 'static>;
 pub type DropdownDeleteHandler = Arc<dyn Fn(&str, &mut Window, &mut App) + 'static>;
@@ -60,6 +61,7 @@ pub struct Dropdown {
     items: Vec<DropdownItem>,
     selected_value: &'static str,
     open: bool,
+    opening: bool,
     closing: bool,
     morphing: bool,
     hovered: bool,
@@ -88,6 +90,7 @@ impl Dropdown {
             items: Vec::new(),
             selected_value,
             open: false,
+            opening: false,
             closing: false,
             morphing: false,
             hovered: false,
@@ -149,6 +152,12 @@ impl Dropdown {
     #[must_use]
     pub fn open(mut self, open: bool) -> Self {
         self.open = open;
+        self
+    }
+
+    #[must_use]
+    pub fn opening(mut self, opening: bool) -> Self {
+        self.opening = opening;
         self
     }
 
@@ -258,6 +267,7 @@ impl RenderOnce for Dropdown {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
         let is_open = self.open;
+        let _is_opening = self.opening;
         let is_closing = self.closing;
         let is_morphing = self.morphing;
         let is_hovered = self.hovered;
@@ -278,7 +288,8 @@ impl RenderOnce for Dropdown {
 
         let icon_el = self
             .icon
-            .map(|icon_path| render_dropdown_icon(&icon_path, theme.accent_blue));
+            .as_ref()
+            .map(|icon_path| render_dropdown_icon(icon_path, theme.accent_blue));
 
         // Chevron rotation animation on open and close
         let chevron_el = if is_open {
@@ -349,6 +360,14 @@ impl RenderOnce for Dropdown {
         let blue_border = theme.accent_blue;
         let hover_blue_border = theme.accent_hover_bg;
 
+        let icon_space = if self.icon.is_some() {
+            px(22.0)
+        } else {
+            px(0.0)
+        };
+        let max_label_width =
+            (trigger_width - px(20.0) - px(2.0) - px(14.0) - px(8.0) - icon_space).max(px(30.0));
+
         // Pure fade morph animation for trigger icon & text ONLY when active selection change happens
         let base_left_stack = div()
             .id(ElementId::Name(
@@ -361,25 +380,26 @@ impl RenderOnce for Dropdown {
             .flex()
             .items_center()
             .gap(px(8.0))
-            .overflow_hidden()
             .flex_1()
             .min_w(px(0.0))
+            .h_full()
             .children(icon_el)
-            .child(
-                div()
-                    .id(ElementId::Name(
-                        format!("{dropdown_id_str}_label_text").into(),
-                    ))
-                    .debug_selector({
-                        let id_clone = dropdown_id_str.clone();
-                        move || format!("{id_clone}_label_text")
-                    })
-                    .text_size(px(13.0))
-                    .font_weight(gpui::FontWeight::MEDIUM)
-                    .text_color(theme.text_primary)
-                    .truncate()
-                    .child(self.current_label),
-            );
+            .child({
+                let is_trigger_marquee_active = is_hovered && !is_open && !is_closing;
+                let trigger_marquee_id = format!("{dropdown_id_str}_trigger_marquee");
+                MarqueeText::new(
+                    trigger_marquee_id.clone(),
+                    self.current_label.clone(),
+                    max_label_width,
+                )
+                .debug_name(trigger_marquee_id)
+                .font_size(px(13.0))
+                .font_weight(gpui::FontWeight::MEDIUM)
+                .text_color(theme.text_primary)
+                .fade_color(theme.input_bg)
+                .fade_width(px(8.0))
+                .active(is_trigger_marquee_active)
+            });
 
         let left_morph_stack = if is_morphing {
             let label_anim_id = format!("{dropdown_id_str}_fade_morph_{selected_value}");
@@ -429,10 +449,10 @@ impl RenderOnce for Dropdown {
                     let v = val.clamp(0.0, 1.0);
                     let color = if v <= 0.5 {
                         let t = v / 0.5;
-                        crate::widgets::sidebar::lerp_rgba(neutral_border, hover_blue_border, t)
+                        crate::motion::lerp_rgba(neutral_border, hover_blue_border, t)
                     } else {
                         let t = (v - 0.5) / 0.5;
-                        crate::widgets::sidebar::lerp_rgba(hover_blue_border, blue_border, t)
+                        crate::motion::lerp_rgba(hover_blue_border, blue_border, t)
                     };
                     el.border_color(color)
                 },
@@ -467,7 +487,6 @@ impl RenderOnce for Dropdown {
                 let delete_handler = on_delete.clone();
                 let opt_hover_handler = on_hover_opt.clone();
 
-                // Target state: 0.0 (rest) -> 0.5 (hover: 50% cyan) -> 1.0 (selected: 100% solid cyan)
                 let target_state: f32 = if is_selected {
                     1.0
                 } else if is_opt_hovered {
@@ -480,90 +499,31 @@ impl RenderOnce for Dropdown {
                     .to(target_state)
                     .with_epsilon(0.005);
 
-                let current_text_color = lerp_item_text(&theme, target_state);
-
-                let opt_icon_el =
-                    opt_icon.map(|icon_path| render_dropdown_icon(icon_path, current_text_color));
-
-                let left_stack = div()
-                    .flex()
-                    .items_center()
-                    .gap(px(8.0))
-                    .overflow_hidden()
-                    .flex_1()
-                    .min_w(px(0.0))
-                    .children(opt_icon_el)
-                    .child(
-                        div()
-                            .text_size(px(13.0))
-                            .font_weight(if target_state >= 0.5 {
-                                gpui::FontWeight::SEMIBOLD
-                            } else {
-                                gpui::FontWeight::NORMAL
-                            })
-                            .text_color(current_text_color)
-                            .truncate()
-                            .child(label),
-                    );
-
-                let opt_id = format!("{dropdown_id_str}_opt_{val}");
-
-                // Right element: 14px wide to match chevron alignment perfectly with 10px padding
-                let right_el = if is_selected {
-                    div()
-                        .id(ElementId::Name(format!("{opt_id}_right_el").into()))
-                        .debug_selector({
-                            let id_clone = opt_id.clone();
-                            move || format!("{id_clone}_right_el")
-                        })
-                        .flex_none()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .size(px(14.0))
-                        .child(
-                            Icon::new("icons/check.svg")
-                                .size(px(14.0))
-                                .color(current_text_color),
-                        )
-                        .into_any_element()
-                } else if is_deletable {
-                    let del_cb = delete_handler;
-                    div()
-                        .id(ElementId::Name(format!("{opt_id}_del_btn").into()))
-                        .debug_selector({
-                            let id_clone = opt_id.clone();
-                            move || format!("{id_clone}_del_btn")
-                        })
-                        .flex_none()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .size(px(14.0))
-                        .rounded(px(3.0))
-                        .cursor_pointer()
-                        .hover(|s| s.bg(theme.accent_hover_bg))
-                        .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                            cx.stop_propagation();
-                        })
-                        .on_click(move |_, window, cx| {
-                            cx.stop_propagation();
-                            if let Some(ref h) = del_cb {
-                                h(val, window, cx);
-                            }
-                        })
-                        .child(
-                            Icon::new("icons/x.svg")
-                                .size(px(12.0))
-                                .color(theme.text_muted),
-                        )
-                        .into_any_element()
+                let opt_icon_space = if opt_icon.is_some() {
+                    px(22.0)
                 } else {
-                    div().flex_none().size(px(14.0)).into_any_element()
+                    px(0.0)
                 };
 
+                let has_trailing = is_selected || is_deletable;
+                let trailing_space = if has_trailing {
+                    px(14.0) + px(8.0)
+                } else {
+                    px(0.0)
+                };
+
+                let max_opt_label_width =
+                    (trigger_width - px(20.0) - px(2.0) - trailing_space - opt_icon_space)
+                        .max(px(30.0));
+
+                let opt_id = format!("{dropdown_id_str}_opt_{val}");
+                let is_opt_active = is_opt_hovered && !is_closing;
+                let opt_marquee_id = format!("{dropdown_id_str}_opt_marquee_{val}");
                 let accent_blue = theme.accent_blue;
-                let select_handler_cb = select_handler.clone();
+                let theme_input_bg = theme.input_bg;
+                let theme_accent_hover_bg = theme.accent_hover_bg;
+                let theme_text_muted = theme.text_muted;
+                let close_handler = on_close.clone();
 
                 let mut option_row = div()
                     .id(ElementId::Name(opt_id.clone().into()))
@@ -593,35 +553,6 @@ impl RenderOnce for Dropdown {
                     option_row = option_row.rounded_b(px(5.0));
                 }
 
-                let mut sel_area = div()
-                    .id(ElementId::Name(format!("{opt_id}_sel_area").into()))
-                    .flex()
-                    .items_center()
-                    .flex_1()
-                    .min_w(px(0.0))
-                    .h_full()
-                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                        cx.stop_propagation();
-                    })
-                    .child(left_stack);
-
-                if is_selected {
-                    let close_cb = on_close.clone();
-                    sel_area = sel_area.cursor_default().on_click(move |_, window, cx| {
-                        cx.stop_propagation();
-                        if let Some(ref h) = close_cb {
-                            h(window, cx);
-                        }
-                    });
-                } else {
-                    sel_area = sel_area.cursor_pointer().on_click(move |_, window, cx| {
-                        cx.stop_propagation();
-                        if let Some(ref h) = select_handler_cb {
-                            h(val, window, cx);
-                        }
-                    });
-                }
-
                 let row_with_spring = option_row
                     .on_hover(move |&hov, window, cx| {
                         if let Some(ref h) = opt_hover_handler {
@@ -631,13 +562,144 @@ impl RenderOnce for Dropdown {
                     .with_spring(
                         ElementId::Name(format!("{opt_id}_spring").into()),
                         state_spring,
-                        move |btn, val| {
-                            let bg = lerp_item_bg(accent_blue, val);
-                            btn.bg(bg)
+                        move |btn, spring_val| {
+                            let bg = if is_selected {
+                                accent_blue
+                            } else {
+                                lerp_item_bg(accent_blue, spring_val)
+                            };
+                            let current_fade = if is_selected {
+                                accent_blue
+                            } else if spring_val > 0.0 {
+                                crate::motion::lerp_rgba(theme_input_bg, accent_blue, spring_val)
+                            } else {
+                                theme_input_bg
+                            };
+                            let current_text_color = if is_selected {
+                                theme.selected_text
+                            } else {
+                                lerp_item_text(&theme, spring_val)
+                            };
+
+                            let opt_icon_el = opt_icon.map(|icon_path| {
+                                render_dropdown_icon(icon_path, current_text_color)
+                            });
+
+                            let left_stack = div()
+                                .flex()
+                                .items_center()
+                                .gap(px(8.0))
+                                .flex_1()
+                                .min_w(px(0.0))
+                                .h_full()
+                                .children(opt_icon_el)
+                                .child(
+                                    MarqueeText::new(
+                                        opt_marquee_id.clone(),
+                                        label.clone(),
+                                        max_opt_label_width,
+                                    )
+                                    .debug_name(opt_marquee_id)
+                                    .font_size(px(13.0))
+                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                    .text_color(current_text_color)
+                                    .fade_color(current_fade)
+                                    .fade_width(px(8.0))
+                                    .active(is_opt_active),
+                                );
+
+                            let mut sel_area = div()
+                                .id(ElementId::Name(format!("{opt_id}_sel_area").into()))
+                                .flex()
+                                .items_center()
+                                .flex_1()
+                                .min_w(px(0.0))
+                                .h_full()
+                                .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                                    cx.stop_propagation();
+                                })
+                                .child(left_stack);
+
+                            if is_selected {
+                                let close_cb = close_handler.clone();
+                                sel_area =
+                                    sel_area.cursor_default().on_click(move |_, window, cx| {
+                                        cx.stop_propagation();
+                                        if let Some(ref h) = close_cb {
+                                            h(window, cx);
+                                        }
+                                    });
+                            } else {
+                                let select_cb = select_handler.clone();
+                                sel_area =
+                                    sel_area.cursor_pointer().on_click(move |_, window, cx| {
+                                        cx.stop_propagation();
+                                        if let Some(ref h) = select_cb {
+                                            h(val, window, cx);
+                                        }
+                                    });
+                            }
+
+                            let right_el = if is_selected {
+                                Some(
+                                    div()
+                                        .id(ElementId::Name(format!("{opt_id}_right_el").into()))
+                                        .debug_selector({
+                                            let id_clone = opt_id.clone();
+                                            move || format!("{id_clone}_right_el")
+                                        })
+                                        .flex_none()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .size(px(14.0))
+                                        .child(
+                                            Icon::new("icons/check.svg")
+                                                .size(px(14.0))
+                                                .color(current_text_color),
+                                        )
+                                        .into_any_element(),
+                                )
+                            } else if is_deletable {
+                                let del_cb = delete_handler.clone();
+                                Some(
+                                    div()
+                                        .id(ElementId::Name(format!("{opt_id}_del_btn").into()))
+                                        .debug_selector({
+                                            let id_clone = opt_id.clone();
+                                            move || format!("{id_clone}_del_btn")
+                                        })
+                                        .flex_none()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .size(px(14.0))
+                                        .rounded(px(3.0))
+                                        .cursor_pointer()
+                                        .hover(|s| s.bg(theme_accent_hover_bg))
+                                        .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                                            cx.stop_propagation();
+                                        })
+                                        .on_click(move |_, window, cx| {
+                                            cx.stop_propagation();
+                                            if let Some(ref h) = del_cb {
+                                                h(val, window, cx);
+                                            }
+                                        })
+                                        .child(
+                                            Icon::new("icons/x.svg")
+                                                .size(px(12.0))
+                                                .color(theme_text_muted),
+                                        )
+                                        .into_any_element(),
+                                )
+                            } else {
+                                None
+                            };
+
+                            btn.bg(bg).child(sel_area).children(right_el)
                         },
-                    )
-                    .child(sel_area)
-                    .child(right_el);
+                    );
 
                 options_list = options_list.child(row_with_spring);
             }
@@ -782,6 +844,8 @@ mod tests {
 
     struct TestDropdownView {
         open: bool,
+        opening: bool,
+        closing: bool,
         current_label: SharedString,
         width: Option<gpui::Pixels>,
     }
@@ -793,9 +857,15 @@ mod tests {
                 .options(vec![
                     ("standard", "Стандарт", Some("icons/shield-check.svg")),
                     ("mild", "Мягкий", Some("icons/feather.svg")),
-                    ("aggressive", "Агрессивный", Some("icons/flame.svg")),
+                    (
+                        "aggressive",
+                        "Очень длинный агрессивный пресет с большим переполнением",
+                        Some("icons/flame.svg"),
+                    ),
                 ])
-                .open(self.open);
+                .open(self.open)
+                .opening(self.opening)
+                .closing(self.closing);
 
             if let Some(w) = self.width {
                 dd = dd.width(w);
@@ -833,6 +903,8 @@ mod tests {
         for (label, expected_width) in test_cases {
             let window = cx.open_window(size(px(600.0), px(400.0)), move |_, _| TestDropdownView {
                 open: false,
+                opening: false,
+                closing: false,
                 current_label: label.into(),
                 width: if expected_width != px(150.0) {
                     Some(expected_width)
@@ -866,6 +938,8 @@ mod tests {
     fn dropdown_menu_box_matches_width_and_options_do_not_overflow(cx: &mut TestAppContext) {
         let window = cx.open_window(size(px(600.0), px(400.0)), |_, _| TestDropdownView {
             open: true,
+            opening: false,
+            closing: false,
             current_label: "Стандарт".into(),
             width: None,
         });
@@ -895,5 +969,119 @@ mod tests {
         let right_el_bounds = cx.debug_bounds("test_dd_opt_standard_right_el").unwrap();
         assert_eq!(right_el_bounds.size.width, px(14.0));
         assert_eq!(right_el_bounds.size.height, px(14.0));
+    }
+
+    #[gpui::test]
+    fn dropdown_trigger_with_long_label_renders_marquee_with_fog(cx: &mut TestAppContext) {
+        let window = cx.open_window(size(px(600.0), px(400.0)), |_, _| TestDropdownView {
+            open: false,
+            opening: false,
+            closing: false,
+            current_label: "Очень длинное название аудиоустройства или пресета переключения клавиш"
+                .into(),
+            width: Some(px(150.0)),
+        });
+        let mut cx = VisualTestContext::from_window(window.into(), cx);
+
+        let trigger_bounds = cx.debug_bounds("test_dd_trigger").unwrap();
+        let chevron_bounds = cx.debug_bounds("test_dd_chevron_box").unwrap();
+
+        assert_eq!(trigger_bounds.size.width, px(150.0));
+        assert_eq!(chevron_bounds.size.width, px(14.0));
+        assert!(chevron_bounds.right() <= trigger_bounds.right());
+    }
+
+    #[gpui::test]
+    fn dropdown_open_options_with_overflow_render_fog_correctly(cx: &mut TestAppContext) {
+        let window = cx.open_window(size(px(600.0), px(400.0)), |_, _| TestDropdownView {
+            open: true,
+            opening: false,
+            closing: false,
+            current_label: "Стандарт".into(),
+            width: Some(px(150.0)),
+        });
+        let mut cx = VisualTestContext::from_window(window.into(), cx);
+
+        let menu_bounds = cx.debug_bounds("test_dd_menu_box").unwrap();
+        let selected_opt = cx.debug_bounds("test_dd_opt_standard").unwrap();
+        let checkmark = cx.debug_bounds("test_dd_opt_standard_right_el").unwrap();
+
+        assert_eq!(menu_bounds.size.width, px(150.0));
+        assert!(selected_opt.left() >= menu_bounds.left());
+        assert!(selected_opt.right() <= menu_bounds.right());
+        assert_eq!(checkmark.size.width, px(14.0));
+        assert!(checkmark.right() <= selected_opt.right());
+    }
+
+    #[gpui::test]
+    fn dropdown_trigger_fog_remains_present_when_menu_is_open(cx: &mut TestAppContext) {
+        let window = cx.open_window(size(px(600.0), px(400.0)), |_, _| TestDropdownView {
+            open: true,
+            opening: false,
+            closing: false,
+            current_label: "Очень длинное название аудиоустройства или пресета переключения клавиш"
+                .into(),
+            width: Some(px(150.0)),
+        });
+        let mut cx = VisualTestContext::from_window(window.into(), cx);
+
+        let trigger_fog = cx
+            .debug_bounds("test_dd_trigger_marquee_fade_right")
+            .expect("trigger fog must remain visible even when menu is open");
+        assert!(trigger_fog.size.width > px(0.0));
+    }
+
+    #[gpui::test]
+    fn dropdown_animation_opening_and_closing_maintains_continuous_bounds(cx: &mut TestAppContext) {
+        // 1. Opening phase: menu is marked open & opening
+        let window = cx.open_window(size(px(600.0), px(400.0)), |_, _| TestDropdownView {
+            open: true,
+            opening: true,
+            closing: false,
+            current_label: "Стандарт".into(),
+            width: Some(px(160.0)),
+        });
+        let mut cx = VisualTestContext::from_window(window.into(), cx);
+
+        let menu_opening_bounds = cx
+            .debug_bounds("test_dd_menu_box")
+            .expect("menu box must exist during open animation");
+        assert_eq!(menu_opening_bounds.size.width, px(160.0));
+
+        let opt_marquee = cx
+            .debug_bounds("test_dd_opt_marquee_aggressive_anchor")
+            .expect("overflowing option marquee anchor must be rendered");
+        assert!(opt_marquee.size.width > px(0.0));
+
+        let opt_fog_opening = cx
+            .debug_bounds("test_dd_opt_marquee_aggressive_fade_right")
+            .expect("overflowing option fog must be rendered during open animation");
+        assert!(opt_fog_opening.size.width > px(0.0));
+
+        // 2. Closing phase: open is false, closing is true
+        let window_close = cx.open_window(size(px(600.0), px(400.0)), |_, _| TestDropdownView {
+            open: false,
+            opening: false,
+            closing: true,
+            current_label: "Стандарт".into(),
+            width: Some(px(160.0)),
+        });
+        let mut cx_close = VisualTestContext::from_window(window_close.into(), &cx);
+
+        let menu_closing_bounds = cx_close
+            .debug_bounds("test_dd_menu_box_close")
+            .expect("menu box close must exist during close animation");
+        assert_eq!(menu_closing_bounds.size.width, px(160.0));
+
+        // Marquee anchor preserves identical width and coordinates during closing
+        let opt_marquee_close = cx_close
+            .debug_bounds("test_dd_opt_marquee_aggressive_anchor")
+            .expect("overflowing option marquee anchor must remain stable during close animation");
+        assert_eq!(opt_marquee_close.size.width, opt_marquee.size.width);
+
+        let opt_fog_closing = cx_close
+            .debug_bounds("test_dd_opt_marquee_aggressive_fade_right")
+            .expect("overflowing option fog must be rendered during close animation");
+        assert!(opt_fog_closing.size.width > px(0.0));
     }
 }

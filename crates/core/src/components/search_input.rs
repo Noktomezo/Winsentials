@@ -9,8 +9,8 @@ use gpui::{
     ease_in_out, px,
 };
 
-use crate::shared::theme::Theme;
-use crate::shared::ui::icon::Icon;
+use crate::components::icon::Icon;
+use crate::theme::Theme;
 
 pub type SearchChangeHandler = Arc<dyn Fn(String, &mut Window, &mut App) + 'static>;
 pub type SearchHoverHandler = Arc<dyn Fn(&bool, &mut Window, &mut App) + 'static>;
@@ -377,7 +377,7 @@ impl RenderOnce for SearchInput {
         let icon_color = if is_focused {
             theme.accent_blue
         } else if is_hovered {
-            crate::widgets::sidebar::lerp_rgba(theme.text_muted, theme.accent_blue, 0.5)
+            crate::motion::lerp_rgba(theme.text_muted, theme.accent_blue, 0.5)
         } else {
             theme.text_muted
         };
@@ -472,10 +472,10 @@ impl RenderOnce for SearchInput {
                     let v = val.clamp(0.0, 1.0);
                     let color = if v <= 0.5 {
                         let t = v / 0.5;
-                        crate::widgets::sidebar::lerp_rgba(neutral_border, hover_blue_border, t)
+                        crate::motion::lerp_rgba(neutral_border, hover_blue_border, t)
                     } else {
                         let t = (v - 0.5) / 0.5;
-                        crate::widgets::sidebar::lerp_rgba(hover_blue_border, blue_border, t)
+                        crate::motion::lerp_rgba(hover_blue_border, blue_border, t)
                     };
                     el.border_color(color)
                 },

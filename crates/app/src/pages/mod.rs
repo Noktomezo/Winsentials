@@ -78,6 +78,7 @@ pub fn render_route(
     current_locale: &'static str,
     open_dropdown: Option<&'static str>,
     open_dropdown_upward: bool,
+    opening_dropdown: Option<&'static str>,
     closing_dropdown: Option<&'static str>,
     hovered_dropdown: Option<&'static str>,
     hovered_option: Option<(&'static str, &'static str)>,
@@ -87,6 +88,8 @@ pub fn render_route(
     autostart: bool,
     autostart_to_tray: bool,
     discord_rpc: crate::features::discord_rpc::DiscordRpcActivity,
+    check_updates: bool,
+    update_state: &crate::features::updater::UpdateState,
     startup_entries: &[crate::entities::startup::StartupEntry],
     startup_filter: Option<crate::entities::startup::StartupSource>,
     startup_search_query: &str,
@@ -111,6 +114,9 @@ pub fn render_route(
     on_toggle_autostart: impl Fn(bool, &mut Window, &mut App) + 'static,
     on_toggle_autostart_to_tray: impl Fn(bool, &mut Window, &mut App) + 'static,
     on_change_discord_rpc: impl Fn(&str, &mut Window, &mut App) + 'static,
+    on_toggle_check_updates: impl Fn(bool, &mut Window, &mut App) + 'static,
+    on_check_update: impl Fn(&mut Window, &mut App) + 'static,
+    on_download_and_install_update: impl Fn(&mut Window, &mut App) + 'static,
     on_select_gpu_engine: impl Fn(usize, usize, &'static str, &mut Window, &mut App) + 'static,
     on_reset_gpu_slots: impl Fn(usize, &mut Window, &mut App) + 'static,
     on_toggle_dropdown: impl Fn(&'static str, &mut Window, &mut App) + 'static,
@@ -185,7 +191,8 @@ pub fn render_route(
     let on_hover_tt_input = on_hover_tooltip_arc.clone();
     let on_hover_tt_security = on_hover_tooltip_arc.clone();
     let on_hover_tt_net = on_hover_tooltip_arc.clone();
-    let on_hover_tt_startup = on_hover_tooltip_arc;
+    let on_hover_tt_startup = on_hover_tooltip_arc.clone();
+    let on_hover_tt_settings = on_hover_tooltip_arc;
 
     let page_element = match route {
         AppRoute::Dashboard => DashboardPage::new(telemetry, hovered_telemetry_card.clone())
@@ -264,6 +271,7 @@ pub fn render_route(
                         gpu,
                         slots,
                         open_dropdown,
+                        opening_dropdown,
                         closing_dropdown,
                         hovered_dropdown,
                         hovered_option,
@@ -317,6 +325,7 @@ pub fn render_route(
             windows_build,
             open_dropdown,
             open_dropdown_upward,
+            opening_dropdown,
             closing_dropdown,
             hovered_dropdown,
             hovered_option,
@@ -402,8 +411,11 @@ pub fn render_route(
             autostart,
             autostart_to_tray,
             discord_rpc,
+            check_updates,
+            update_state.clone(),
             open_dropdown,
             open_dropdown_upward,
+            opening_dropdown,
             closing_dropdown,
             hovered_dropdown,
             hovered_option,
@@ -417,6 +429,9 @@ pub fn render_route(
         .on_toggle_autostart(on_toggle_autostart)
         .on_toggle_autostart_to_tray(on_toggle_autostart_to_tray)
         .on_change_discord_rpc(on_change_discord_rpc)
+        .on_toggle_check_updates(on_toggle_check_updates)
+        .on_check_update(on_check_update)
+        .on_download_and_install_update(on_download_and_install_update)
         .on_toggle_dropdown(move |id, window, cx| {
             on_toggle_dd_set(id, window, cx);
         })
@@ -428,6 +443,9 @@ pub fn render_route(
         })
         .on_close_dropdowns(move |window, cx| {
             on_close_dd_set(window, cx);
+        })
+        .on_hover_tooltip(move |tt, window, cx| {
+            on_hover_tt_settings(tt, window, cx);
         })
         .into_any_element(),
     };

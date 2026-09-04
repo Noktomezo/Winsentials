@@ -47,6 +47,7 @@ pub struct GpuPage {
     gpu: GpuInfo,
     slots: [&'static str; 4],
     open_dropdown: Option<&'static str>,
+    opening_dropdown: Option<&'static str>,
     closing_dropdown: Option<&'static str>,
     hovered_dropdown: Option<&'static str>,
     hovered_option: Option<(&'static str, &'static str)>,
@@ -64,6 +65,7 @@ impl GpuPage {
         gpu: GpuInfo,
         slots: [&'static str; 4],
         open_dropdown: Option<&'static str>,
+        opening_dropdown: Option<&'static str>,
         closing_dropdown: Option<&'static str>,
         hovered_dropdown: Option<&'static str>,
         hovered_option: Option<(&'static str, &'static str)>,
@@ -72,6 +74,7 @@ impl GpuPage {
             gpu,
             slots,
             open_dropdown,
+            opening_dropdown,
             closing_dropdown,
             hovered_dropdown,
             hovered_option,
@@ -247,6 +250,7 @@ impl RenderOnce for GpuPage {
                 };
 
                 let is_open = self.open_dropdown == Some(dropdown_id);
+                let is_opening = self.opening_dropdown == Some(dropdown_id);
                 let is_closing = self.closing_dropdown == Some(dropdown_id);
                 let is_hovered = self.hovered_dropdown == Some(dropdown_id);
                 let hovered_opt = self
@@ -268,6 +272,7 @@ impl RenderOnce for GpuPage {
                 let dropdown = Dropdown::new(dropdown_id, current_engine, current_engine)
                     .options(options)
                     .open(is_open)
+                    .opening(is_opening)
                     .closing(is_closing)
                     .hovered(is_hovered)
                     .hovered_option(hovered_opt)

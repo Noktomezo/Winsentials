@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+
+use gpui::Global;
+
 use crate::entities::tweaks::context_menu::{
     is_classic_context_menu_applied, is_copy_image_applied, is_create_symlink_applied,
     is_menu_show_delay_disabled, is_take_ownership_applied, set_classic_context_menu,
@@ -496,6 +500,53 @@ pub fn count_applied_tweaks(build: u32) -> (usize, usize) {
     }
 
     (applied, total_supported)
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct TweakStates {
+    states: HashMap<&'static str, bool>,
+}
+
+impl Global for TweakStates {}
+
+impl TweakStates {
+    #[must_use]
+    pub fn load_initial() -> Self {
+        let mut states = HashMap::with_capacity(ALL_TWEAKS.len());
+        for tweak in ALL_TWEAKS {
+            states.insert(tweak.id, (tweak.is_applied)());
+        }
+        Self { states }
+    }
+
+    #[must_use]
+    pub fn is_applied(&self, tweak: &TweakDefinition) -> bool {
+        self.states
+            .get(tweak.id)
+            .copied()
+            .unwrap_or_else(tweak.is_applied)
+    }
+
+    pub fn set_state(&mut self, tweak_id: &'static str, applied: bool) {
+        self.states.insert(tweak_id, applied);
+    }
+
+    #[must_use]
+    pub fn count_applied(&self, build: u32) -> (usize, usize) {
+        let mut applied = 0;
+        let mut total_supported = 0;
+
+        for tweak in ALL_TWEAKS {
+            if tweak.is_supported(build) {
+                total_supported += 1;
+                if self.is_applied(tweak) {
+                    applied += 1;
+                }
+            }
+        }
+
+        (applied, total_supported)
+    }
 }
 
 #[cfg(test)]

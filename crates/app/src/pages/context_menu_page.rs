@@ -117,6 +117,7 @@ pub(crate) fn render_tweak_cards_for_category(
     theme: &Theme,
     on_toggle: Option<&TweakToggleHandler>,
     on_hover_tt: Option<&TooltipHoverHandler>,
+    cx: &App,
 ) -> Vec<AnyElement> {
     let all_tweaks = get_all_tweaks();
     let mut tweak_items: Vec<AnyElement> = Vec::new();
@@ -124,7 +125,12 @@ pub(crate) fn render_tweak_cards_for_category(
     for tweak in all_tweaks {
         if tweak.category == category && tweak.is_supported(windows_build) {
             let badges = build_tweak_badges(tweak, theme);
-            let is_applied = (tweak.is_applied)();
+            let is_applied = if cx.has_global::<crate::entities::tweaks::TweakStates>() {
+                cx.global::<crate::entities::tweaks::TweakStates>()
+                    .is_applied(tweak)
+            } else {
+                (tweak.is_applied)()
+            };
             let tweak_id = tweak.id;
             let toggle_cb = on_toggle.cloned();
 
@@ -182,6 +188,7 @@ impl RenderOnce for ContextMenuPage {
             &theme,
             self.on_toggle_tweak.as_ref(),
             self.on_hover_tooltip.as_ref(),
+            cx,
         );
         render_tweak_page(AppRoute::ContextMenu, tweak_items)
     }

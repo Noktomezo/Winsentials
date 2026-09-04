@@ -21,6 +21,15 @@ pub enum AppRoute {
 
 impl AppRoute {
     #[must_use]
+    pub const fn parent(self) -> Option<Self> {
+        match self {
+            Self::Dashboard => None,
+            Self::Startup | Self::Cleanup => Some(Self::Tools),
+            _ => Some(Self::Dashboard),
+        }
+    }
+
+    #[must_use]
     pub fn title(self) -> String {
         match self {
             Self::Dashboard => rust_i18n::t!("nav.dashboard").to_string(),
@@ -201,5 +210,28 @@ mod tests {
         assert_eq!(AppRoute::Tools.breadcrumb_english(), "Tools");
         assert_eq!(AppRoute::Startup.breadcrumb_english(), "Tools > Startup");
         assert_eq!(AppRoute::Cleanup.breadcrumb_english(), "Tools > Cleanup");
+    }
+
+    #[test]
+    fn test_route_parent() {
+        assert_eq!(AppRoute::Dashboard.parent(), None);
+        assert_eq!(AppRoute::CpuDetail.parent(), Some(AppRoute::Dashboard));
+        assert_eq!(AppRoute::RamDetail.parent(), Some(AppRoute::Dashboard));
+        assert_eq!(AppRoute::DiskDetail(0).parent(), Some(AppRoute::Dashboard));
+        assert_eq!(
+            AppRoute::NetworkDetail(1).parent(),
+            Some(AppRoute::Dashboard)
+        );
+        assert_eq!(AppRoute::GpuDetail(2).parent(), Some(AppRoute::Dashboard));
+        assert_eq!(AppRoute::Startup.parent(), Some(AppRoute::Tools));
+        assert_eq!(AppRoute::Cleanup.parent(), Some(AppRoute::Tools));
+        assert_eq!(AppRoute::Tools.parent(), Some(AppRoute::Dashboard));
+        assert_eq!(AppRoute::ContextMenu.parent(), Some(AppRoute::Dashboard));
+        assert_eq!(AppRoute::Explorer.parent(), Some(AppRoute::Dashboard));
+        assert_eq!(AppRoute::Interface.parent(), Some(AppRoute::Dashboard));
+        assert_eq!(AppRoute::Input.parent(), Some(AppRoute::Dashboard));
+        assert_eq!(AppRoute::System.parent(), Some(AppRoute::Dashboard));
+        assert_eq!(AppRoute::NetworkTweaks.parent(), Some(AppRoute::Dashboard));
+        assert_eq!(AppRoute::Settings.parent(), Some(AppRoute::Dashboard));
     }
 }

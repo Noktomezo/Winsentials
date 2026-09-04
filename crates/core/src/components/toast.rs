@@ -2,13 +2,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{
-    Animation, AnimationExt, App, ElementId, InteractiveElement, IntoElement, ParentElement,
-    RenderOnce, Rgba, SharedString, SpringAnimation, SpringConfig, StatefulInteractiveElement,
-    Styled, Window, div, ease_in_out, px,
+    Animation, AnimationExt, App, ElementId, InteractiveElement, IntoElement, MouseButton,
+    ParentElement, RenderOnce, Rgba, SharedString, SpringAnimation, SpringConfig,
+    StatefulInteractiveElement, Styled, Window, div, ease_in_out, px,
 };
 
-use crate::shared::theme::Theme;
-use crate::shared::ui::icon::Icon;
+use crate::components::icon::Icon;
+use crate::theme::Theme;
 
 #[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -53,6 +53,7 @@ pub struct ToastButton {
     pub variant: ToastButtonVariant,
     pub icon: Option<SharedString>,
     pub on_click: Option<ToastActionHandler>,
+    pub full_width: bool,
 }
 
 #[allow(dead_code)]
@@ -64,12 +65,19 @@ impl ToastButton {
             variant: ToastButtonVariant::Primary,
             icon: None,
             on_click: None,
+            full_width: false,
         }
     }
 
     #[must_use]
     pub const fn variant(mut self, variant: ToastButtonVariant) -> Self {
         self.variant = variant;
+        self
+    }
+
+    #[must_use]
+    pub const fn full_width(mut self, full_width: bool) -> Self {
+        self.full_width = full_width;
         self
     }
 
@@ -319,6 +327,31 @@ impl RenderOnce for ToastItemView {
             );
         }
 
+        let dismiss_btn = on_dismiss.clone().map(|dismiss_cb| {
+            let dismiss_btn_id = format!("toast_dismiss_{id_str}");
+            div()
+                .id(ElementId::Name(dismiss_btn_id.into()))
+                .size(px(20.0))
+                .rounded(px(4.0))
+                .flex()
+                .items_center()
+                .justify_center()
+                .cursor_pointer()
+                .text_color(theme.text_muted)
+                .hover(|s| s.text_color(theme.text_primary).bg(theme.input_bg))
+                .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                    cx.stop_propagation();
+                })
+                .on_mouse_down(MouseButton::Right, |_, _, cx| {
+                    cx.stop_propagation();
+                })
+                .on_click(move |_, window, cx| {
+                    cx.stop_propagation();
+                    dismiss_cb(window, cx);
+                })
+                .child(Icon::new("icons/x.svg").size(px(14.0)))
+        });
+
         let header_row = div()
             .flex()
             .items_start()
@@ -334,7 +367,8 @@ impl RenderOnce for ToastItemView {
                     .min_w(px(0.0))
                     .child(icon_box)
                     .child(text_stack),
-            );
+            )
+            .children(dismiss_btn);
 
         // Progress bar slot (if provided)
         let progress_el = if let Some(prog) = self.data.progress {
@@ -374,12 +408,12 @@ impl RenderOnce for ToastItemView {
             div().size(px(0.0)).into_any_element()
         };
 
-        // Dynamic buttons bottom row (filling the width)
-        let buttons_el = if self.data.buttons.is_empty() {
-            div().size(px(0.0)).into_any_element()
-        } else {
+        let has_buttons = !self.data.buttons.is_empty();
+
+        let buttons_el = if has_buttons {
             let mut btns_row = div()
                 .flex()
+                .flex_wrap()
                 .items_center()
                 .gap(px(8.0))
                 .w_full()
@@ -457,13 +491,20 @@ impl RenderOnce for ToastItemView {
                     .icon
                     .map(|ic| Icon::new(ic.to_string()).size(px(13.0)).color(text_rest));
 
-                let button_el = div()
+                let mut button_el = div()
                     .id(ElementId::Name(btn_id.clone().into()))
                     .flex()
                     .items_center()
                     .justify_center()
-                    .gap(px(6.0))
-                    .flex_1()
+                    .gap(px(6.0));
+
+                if btn.full_width {
+                    button_el = button_el.w_full();
+                } else {
+                    button_el = button_el.flex_1();
+                }
+
+                let button_el = button_el
                     .h(px(30.0))
                     .px(px(12.0))
                     .rounded(px(5.0))
@@ -476,7 +517,14 @@ impl RenderOnce for ToastItemView {
                             h(idx, &hov, window, cx);
                         }
                     })
+                    .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                        cx.stop_propagation();
+                    })
+                    .on_mouse_down(MouseButton::Right, |_, _, cx| {
+                        cx.stop_propagation();
+                    })
                     .on_click(move |_, window, cx| {
+                        cx.stop_propagation();
                         if let Some(ref h) = click_cb {
                             h(window, cx);
                         }
@@ -489,10 +537,9 @@ impl RenderOnce for ToastItemView {
                         btn_spring,
                         move |el, val| {
                             let v = val.clamp(0.0, 1.0);
-                            let bg = crate::widgets::sidebar::lerp_rgba(bg_rest, bg_hover, v);
-                            let border =
-                                crate::widgets::sidebar::lerp_rgba(border_rest, border_hover, v);
-                            let text = crate::widgets::sidebar::lerp_rgba(text_rest, text_hover, v);
+                            let bg = crate::motion::lerp_rgba(bg_rest, bg_hover, v);
+                            let border = crate::motion::lerp_rgba(border_rest, border_hover, v);
+                            let text = crate::motion::lerp_rgba(text_rest, text_hover, v);
                             el.bg(bg).border_color(border).text_color(text)
                         },
                     )
@@ -503,9 +550,14 @@ impl RenderOnce for ToastItemView {
             }
 
             btns_row.into_any_element()
+        } else {
+            div().size(px(0.0)).into_any_element()
         };
 
+        let on_dismiss_card = on_dismiss;
+
         let card_body = div()
+            .id(ElementId::Name(format!("toast_card_{id_str}").into()))
             .flex()
             .flex_col()
             .w(px(340.0))
@@ -516,6 +568,26 @@ impl RenderOnce for ToastItemView {
             .border_color(theme.card_border)
             .bg(theme.card_bg)
             .shadow_lg()
+            .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                cx.stop_propagation();
+            })
+            .on_mouse_down(MouseButton::Right, |_, _, cx| {
+                cx.stop_propagation();
+            })
+            .on_mouse_up(MouseButton::Left, |_, _, cx| {
+                cx.stop_propagation();
+            })
+            .on_mouse_up(MouseButton::Right, |_, _, cx| {
+                cx.stop_propagation();
+            })
+            .on_click(move |_, window, cx| {
+                cx.stop_propagation();
+                if !has_buttons {
+                    if let Some(ref d) = on_dismiss_card {
+                        d(window, cx);
+                    }
+                }
+            })
             .child(header_row)
             .child(progress_el)
             .child(buttons_el);
@@ -658,16 +730,62 @@ impl RenderOnce for ToastStack {
             .id(ElementId::Name("toast_stack_container".into()))
             .flex()
             .flex_col()
-            .gap(if is_expanded { px(10.0) } else { px(0.0) })
-            .on_hover(move |&hov, window, cx| {
+            .gap(if is_expanded { px(10.0) } else { px(0.0) });
+
+        if total_count > 1 {
+            stack_container = stack_container.on_hover(move |&hov, window, cx| {
                 if let Some(ref h) = on_hover_stack {
                     h(&hov, window, cx);
                 }
             });
+        }
 
-        // When expanded, render all toasts top-to-bottom.
-        // When collapsed, render stacked (last 3 items with Sonner scale & depth).
-        if is_expanded {
+        stack_container = stack_container
+            .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                cx.stop_propagation();
+            })
+            .on_mouse_down(MouseButton::Right, |_, _, cx| {
+                cx.stop_propagation();
+            })
+            .on_mouse_up(MouseButton::Left, |_, _, cx| {
+                cx.stop_propagation();
+            })
+            .on_mouse_up(MouseButton::Right, |_, _, cx| {
+                cx.stop_propagation();
+            })
+            .on_click(|_, _, cx| {
+                cx.stop_propagation();
+            });
+
+        if total_count == 1 {
+            let toast = self.toasts.into_iter().next().unwrap();
+            let t_id = toast.id.clone();
+            let is_closing = closing_id.as_ref() == Some(&t_id);
+            let hov_btn = hovered_toast_btn
+                .as_ref()
+                .filter(|(id, _)| id == &t_id)
+                .map(|(_, idx)| *idx);
+
+            let on_dismiss_cb = on_dismiss;
+            let on_hov_cb = on_hover_btn;
+            let t_id_str: &'static str = Box::leak(t_id.to_string().into_boxed_str());
+
+            let item_el = ToastItemView::new(toast)
+                .closing(is_closing)
+                .hovered_button(hov_btn)
+                .on_dismiss(move |window, cx| {
+                    if let Some(ref h) = on_dismiss_cb {
+                        h(t_id_str, window, cx);
+                    }
+                })
+                .on_hover_button(move |idx, is_hov, window, cx| {
+                    if let Some(ref h) = on_hov_cb {
+                        h(t_id_str, idx, is_hov, window, cx);
+                    }
+                });
+
+            stack_container = stack_container.child(item_el);
+        } else if is_expanded {
             for toast in self.toasts {
                 let t_id = toast.id.clone();
                 let is_closing = closing_id.as_ref() == Some(&t_id);
@@ -699,7 +817,25 @@ impl RenderOnce for ToastStack {
         } else {
             // Render up to 3 toasts with Sonner stack offset
             let visible_toasts: Vec<_> = self.toasts.into_iter().rev().take(3).collect();
-            let mut overlay_box = div().relative().w(px(340.0));
+            let mut overlay_box = div()
+                .id(ElementId::Name("toast_overlay_box".into()))
+                .relative()
+                .w(px(340.0))
+                .on_mouse_down(MouseButton::Left, |_, _, cx| {
+                    cx.stop_propagation();
+                })
+                .on_mouse_down(MouseButton::Right, |_, _, cx| {
+                    cx.stop_propagation();
+                })
+                .on_mouse_up(MouseButton::Left, |_, _, cx| {
+                    cx.stop_propagation();
+                })
+                .on_mouse_up(MouseButton::Right, |_, _, cx| {
+                    cx.stop_propagation();
+                })
+                .on_click(|_, _, cx| {
+                    cx.stop_propagation();
+                });
 
             for (depth, toast) in visible_toasts.into_iter().enumerate() {
                 let t_id = toast.id.clone();
@@ -772,5 +908,24 @@ impl RenderOnce for ToastStack {
         };
 
         positioned.child(stack_container).into_any_element()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_toast_data_builder() {
+        let toast = ToastData::new("test_1", "Test Toast")
+            .description("Description")
+            .variant(ToastVariant::Success)
+            .button(ToastButton::new("Action"));
+
+        assert_eq!(toast.id, "test_1");
+        assert_eq!(toast.title, "Test Toast");
+        assert_eq!(toast.variant, ToastVariant::Success);
+        assert_eq!(toast.buttons.len(), 1);
+        assert_eq!(toast.count, 1);
     }
 }

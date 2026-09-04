@@ -6,8 +6,8 @@ use gpui::{
     px,
 };
 
-use crate::shared::theme::Theme;
-use crate::widgets::sidebar::lerp_rgba;
+use crate::motion::lerp_rgba;
+use crate::theme::Theme;
 
 pub type SwitchToggleHandler = Arc<dyn Fn(bool, &mut Window, &mut App) + 'static>;
 

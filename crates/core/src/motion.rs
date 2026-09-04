@@ -1,6 +1,6 @@
 use gpui::{Rgba, SpringAnimation, SpringConfig};
 
-use crate::shared::theme::Theme;
+use crate::theme::Theme;
 
 #[must_use]
 pub fn lerp_rgba(c1: Rgba, c2: Rgba, t: f32) -> Rgba {

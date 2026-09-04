@@ -32,9 +32,13 @@ pub fn set_csrss_priority(applied: bool) -> Result<(), String> {
                 .map_err(|e| format!("Failed to set CpuPriorityClass: {e}"))?;
             key.set_u32(IO_PRIORITY, HIGH_PRIORITY)
                 .map_err(|e| format!("Failed to set IoPriority: {e}"))?;
-        } else if let Ok(key) = windows_registry::LOCAL_MACHINE.open(REG_CSRSS_PERF) {
-            let _ = key.remove_value(CPU_PRIORITY_CLASS);
-            let _ = key.remove_value(IO_PRIORITY);
+        } else {
+            let _ = windows_registry::LOCAL_MACHINE.remove_tree(REG_CSRSS_PERF);
+            if let Ok(key) = windows_registry::LOCAL_MACHINE.create(REG_CSRSS_PERF) {
+                let _ = key.remove_value(CPU_PRIORITY_CLASS);
+                let _ = key.remove_value(IO_PRIORITY);
+            }
+            let _ = windows_registry::LOCAL_MACHINE.remove_tree(REG_CSRSS_PERF);
         }
         Ok(())
     }
@@ -52,5 +56,14 @@ mod tests {
     #[test]
     fn csrss_priority_check_runs_without_panic() {
         let _ = is_csrss_priority_applied();
+    }
+
+    #[test]
+    fn csrss_priority_toggle_roundtrip() {
+        let original = is_csrss_priority_applied();
+        assert!(set_csrss_priority(!original).is_ok());
+        assert_eq!(is_csrss_priority_applied(), !original);
+        assert!(set_csrss_priority(original).is_ok());
+        assert_eq!(is_csrss_priority_applied(), original);
     }
 }

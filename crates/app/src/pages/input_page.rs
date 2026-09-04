@@ -27,6 +27,7 @@ pub struct InputPage {
     windows_build: u32,
     open_dropdown: Option<&'static str>,
     open_dropdown_upward: bool,
+    opening_dropdown: Option<&'static str>,
     closing_dropdown: Option<&'static str>,
     hovered_dropdown: Option<&'static str>,
     hovered_option: Option<(&'static str, &'static str)>,
@@ -44,10 +45,12 @@ pub struct InputPage {
 
 impl InputPage {
     #[must_use]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         windows_build: u32,
         open_dropdown: Option<&'static str>,
         open_dropdown_upward: bool,
+        opening_dropdown: Option<&'static str>,
         closing_dropdown: Option<&'static str>,
         hovered_dropdown: Option<&'static str>,
         hovered_option: Option<(&'static str, &'static str)>,
@@ -57,6 +60,7 @@ impl InputPage {
             windows_build,
             open_dropdown,
             open_dropdown_upward,
+            opening_dropdown,
             closing_dropdown,
             hovered_dropdown,
             hovered_option,
@@ -167,6 +171,7 @@ impl RenderOnce for InputPage {
             &theme,
             on_toggle.as_ref(),
             on_hover_tt.as_ref(),
+            cx,
         );
 
         let dropdown_name = "keyboard_repeat";
@@ -224,6 +229,7 @@ impl RenderOnce for InputPage {
             .icon(keyboard_repeat_preset_icon(current_preset))
             .localized_options(options)
             .open(self.open_dropdown == Some(dropdown_name))
+            .opening(self.opening_dropdown == Some(dropdown_name))
             .closing(self.closing_dropdown == Some(dropdown_name))
             .upward(self.open_dropdown_upward)
             .morphing(self.pending_selection.map(|(name, _)| name) == Some(dropdown_name))
@@ -305,6 +311,7 @@ impl RenderOnce for InputPage {
         .icon(ctf_preset_icon(current_ctf))
         .localized_options(ctf_options)
         .open(self.open_dropdown == Some(ctf_dropdown_name))
+        .opening(self.opening_dropdown == Some(ctf_dropdown_name))
         .closing(self.closing_dropdown == Some(ctf_dropdown_name))
         .upward(self.open_dropdown_upward)
         .morphing(self.pending_selection.map(|(name, _)| name) == Some(ctf_dropdown_name))
@@ -408,6 +415,7 @@ impl RenderOnce for InputPage {
         .icon(snapkey_preset_icon(current_snapkey))
         .localized_options(snapkey_options)
         .open(self.open_dropdown == Some(snapkey_dropdown_name))
+        .opening(self.opening_dropdown == Some(snapkey_dropdown_name))
         .closing(self.closing_dropdown == Some(snapkey_dropdown_name))
         .upward(self.open_dropdown_upward)
         .morphing(self.pending_selection.map(|(name, _)| name) == Some(snapkey_dropdown_name))

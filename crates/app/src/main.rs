@@ -61,6 +61,7 @@ fn main() {
             cx.text_system().add_fonts(fonts).ok();
 
             cx.set_global(Theme::dark());
+            cx.set_global(winsentials::entities::tweaks::TweakStates::load_initial());
 
             let start_in_tray = std::env::args().any(|arg| arg == "--tray" || arg == "--minimized");
 
@@ -93,6 +94,7 @@ fn main() {
                     let mut view = AppView::new();
                     view.start_telemetry_polling(cx);
                     view.start_tray_listener(cx);
+                    view.start_updater_polling(cx);
                     view
                 })
             })

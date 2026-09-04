@@ -5,7 +5,12 @@ use serde::{Deserialize, Serialize};
 use crate::entities::tweaks::input::SnapKeyPreset;
 use crate::features::discord_rpc::DiscordRpcActivity;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+const fn default_true() -> bool {
+    true
+}
+
+#[allow(clippy::struct_excessive_bools)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     #[serde(default)]
     pub minimize_to_tray: bool,
@@ -17,6 +22,21 @@ pub struct AppConfig {
     pub discord_rpc: DiscordRpcActivity,
     #[serde(default)]
     pub snapkey: SnapKeyPreset,
+    #[serde(default = "default_true")]
+    pub check_updates: bool,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            minimize_to_tray: false,
+            autostart: false,
+            autostart_to_tray: false,
+            discord_rpc: DiscordRpcActivity::default(),
+            snapkey: SnapKeyPreset::default(),
+            check_updates: true,
+        }
+    }
 }
 
 #[must_use]

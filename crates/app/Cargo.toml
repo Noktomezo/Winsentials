@@ -16,6 +16,7 @@ name = "Winsentials"
 path = "src/main.rs"
 
 [dependencies]
+winsentials-core = { workspace = true }
 gpui = { workspace = true }
 gpui_windows = { workspace = true }
 rfd = { workspace = true }
@@ -32,6 +33,13 @@ strsim = { workspace = true }
 glob = { workspace = true }
 thiserror = { workspace = true }
 windows-sys = { workspace = true }
+reqwest = { workspace = true }
+semver = { workspace = true }
+futures-util = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+minisign-verify = { workspace = true }
+tokio = { workspace = true }
 
 [build-dependencies]
 winres = { workspace = true }

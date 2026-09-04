@@ -1,15 +1,19 @@
 use std::sync::Arc;
 
 use gpui::{
-    App, Div, FontWeight, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window,
-    div, px,
+    App, Div, FontWeight, InteractiveElement, IntoElement, ParentElement, RenderOnce, SharedString,
+    StatefulInteractiveElement, Styled, Window, div, px,
 };
 
 use crate::features::discord_rpc::DiscordRpcActivity;
 use crate::features::navigation::AppRoute;
+use crate::features::updater::{CURRENT_VERSION, UpdateState};
 use crate::pages::page_header::PageHeader;
 use crate::shared::theme::{Theme, ThemeMode, ThemePalette};
-use crate::shared::ui::{Dropdown, GroupCard, Switch};
+use crate::shared::ui::{
+    Badge, BadgeVariant, Button, ButtonSize, ButtonVariant, Dropdown, GroupCard, IconButton,
+    IconButtonVariant, Switch, TooltipState,
+};
 
 pub type StringHandler = Arc<dyn Fn(&str, &mut Window, &mut App) + 'static>;
 pub type BoolHandler = Arc<dyn Fn(bool, &mut Window, &mut App) + 'static>;
@@ -18,6 +22,7 @@ pub type DropdownHoverHandler = Arc<dyn Fn(&'static str, &bool, &mut Window, &mu
 pub type OptionHoverHandler =
     Arc<dyn Fn(&'static str, &'static str, &bool, &mut Window, &mut App) + 'static>;
 pub type VoidHandler = Arc<dyn Fn(&mut Window, &mut App) + 'static>;
+pub type TooltipHoverHandler = Arc<dyn Fn(Option<TooltipState>, &mut Window, &mut App) + 'static>;
 
 #[allow(clippy::struct_excessive_bools)]
 #[derive(IntoElement)]
@@ -27,8 +32,11 @@ pub struct SettingsPage {
     autostart: bool,
     autostart_to_tray: bool,
     discord_rpc: DiscordRpcActivity,
+    check_updates: bool,
+    update_state: UpdateState,
     open_dropdown: Option<&'static str>,
     open_dropdown_upward: bool,
+    opening_dropdown: Option<&'static str>,
     closing_dropdown: Option<&'static str>,
     hovered_dropdown: Option<&'static str>,
     hovered_option: Option<(&'static str, &'static str)>,
@@ -41,10 +49,14 @@ pub struct SettingsPage {
     on_toggle_autostart: Option<BoolHandler>,
     on_toggle_autostart_to_tray: Option<BoolHandler>,
     on_change_discord_rpc: Option<StringHandler>,
+    on_toggle_check_updates: Option<BoolHandler>,
+    on_check_update: Option<VoidHandler>,
+    on_download_and_install_update: Option<VoidHandler>,
     on_toggle_dropdown: Option<DropdownToggleHandler>,
     on_hover_dropdown: Option<DropdownHoverHandler>,
     on_hover_option: Option<OptionHoverHandler>,
     on_close_dropdowns: Option<VoidHandler>,
+    on_hover_tooltip: Option<TooltipHoverHandler>,
 }
 
 impl Default for SettingsPage {
@@ -55,8 +67,11 @@ impl Default for SettingsPage {
             false,
             false,
             DiscordRpcActivity::Disabled,
+            true,
+            UpdateState::Idle,
             None,
             false,
+            None,
             None,
             None,
             None,
@@ -74,8 +89,11 @@ impl SettingsPage {
         autostart: bool,
         autostart_to_tray: bool,
         discord_rpc: DiscordRpcActivity,
+        check_updates: bool,
+        update_state: UpdateState,
         open_dropdown: Option<&'static str>,
         open_dropdown_upward: bool,
+        opening_dropdown: Option<&'static str>,
         closing_dropdown: Option<&'static str>,
         hovered_dropdown: Option<&'static str>,
         hovered_option: Option<(&'static str, &'static str)>,
@@ -87,8 +105,11 @@ impl SettingsPage {
             autostart,
             autostart_to_tray,
             discord_rpc,
+            check_updates,
+            update_state,
             open_dropdown,
             open_dropdown_upward,
+            opening_dropdown,
             closing_dropdown,
             hovered_dropdown,
             hovered_option,
@@ -101,10 +122,14 @@ impl SettingsPage {
             on_toggle_autostart: None,
             on_toggle_autostart_to_tray: None,
             on_change_discord_rpc: None,
+            on_toggle_check_updates: None,
+            on_check_update: None,
+            on_download_and_install_update: None,
             on_toggle_dropdown: None,
             on_hover_dropdown: None,
             on_hover_option: None,
             on_close_dropdowns: None,
+            on_hover_tooltip: None,
         }
     }
 
@@ -181,6 +206,30 @@ impl SettingsPage {
     }
 
     #[must_use]
+    pub fn on_toggle_check_updates(
+        mut self,
+        handler: impl Fn(bool, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_toggle_check_updates = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    pub fn on_check_update(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
+        self.on_check_update = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    pub fn on_download_and_install_update(
+        mut self,
+        handler: impl Fn(&mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_download_and_install_update = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
     pub fn on_toggle_dropdown(
         mut self,
         handler: impl Fn(&'static str, &mut Window, &mut App) + 'static,
@@ -212,6 +261,15 @@ impl SettingsPage {
         self.on_close_dropdowns = Some(Arc::new(handler));
         self
     }
+
+    #[must_use]
+    pub fn on_hover_tooltip(
+        mut self,
+        handler: impl Fn(Option<TooltipState>, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_hover_tooltip = Some(Arc::new(handler));
+        self
+    }
 }
 
 impl RenderOnce for SettingsPage {
@@ -227,6 +285,7 @@ impl RenderOnce for SettingsPage {
 
         let open_dropdown = self.open_dropdown;
         let open_dropdown_upward = self.open_dropdown_upward;
+        let opening_dropdown = self.opening_dropdown;
         let closing_dropdown = self.closing_dropdown;
         let hovered_dropdown = self.hovered_dropdown;
         let hovered_option = self.hovered_option;
@@ -302,6 +361,7 @@ impl RenderOnce for SettingsPage {
                     ("en", "English".into(), Some("icons/flags/us.png")),
                 ])
                 .open(open_dropdown == Some("language"))
+                .opening(opening_dropdown == Some("language"))
                 .closing(closing_dropdown == Some("language"))
                 .upward(open_dropdown_upward)
                 .morphing(is_lang_morphing)
@@ -392,6 +452,7 @@ impl RenderOnce for SettingsPage {
                     ("light", light_label.into(), Some("icons/sun.svg")),
                 ])
                 .open(open_dropdown == Some("theme"))
+                .opening(opening_dropdown == Some("theme"))
                 .closing(closing_dropdown == Some("theme"))
                 .upward(open_dropdown_upward)
                 .morphing(is_theme_morphing)
@@ -474,6 +535,7 @@ impl RenderOnce for SettingsPage {
                     ("flexoki", flexoki_label.into(), Some("icons/palette.svg")),
                 ])
                 .open(open_dropdown == Some("palette"))
+                .opening(opening_dropdown == Some("palette"))
                 .closing(closing_dropdown == Some("palette"))
                 .upward(open_dropdown_upward)
                 .morphing(is_pal_morphing)
@@ -658,6 +720,7 @@ impl RenderOnce for SettingsPage {
             ),
         ])
         .open(open_dropdown == Some("discord"))
+        .opening(opening_dropdown == Some("discord"))
         .closing(closing_dropdown == Some("discord"))
         .upward(open_dropdown_upward)
         .morphing(is_discord_morphing)
@@ -713,6 +776,186 @@ impl RenderOnce for SettingsPage {
 
         let behavior_card = behavior_card.child(discord_row);
 
+        // --- UPDATES CARD ---
+        let current_version_label = format!("v{CURRENT_VERSION}");
+        let version_badge = Badge::new("settings_current_version_badge", current_version_label)
+            .variant(BadgeVariant::Neutral);
+
+        let (status_label, status_variant, status_icon) = match &self.update_state {
+            UpdateState::Idle | UpdateState::UpToDate => (
+                rust_i18n::t!("settings.status_latest").to_string(),
+                BadgeVariant::Success,
+                Some("icons/check.svg"),
+            ),
+            UpdateState::Checking => (
+                rust_i18n::t!("settings.status_checking").to_string(),
+                BadgeVariant::Neutral,
+                Some("icons/refresh-cw.svg"),
+            ),
+            UpdateState::UpdateAvailable(info) => (
+                format!(
+                    "{} v{}",
+                    rust_i18n::t!("settings.status_has_update"),
+                    info.version
+                ),
+                BadgeVariant::Accent,
+                Some("icons/arrow-up.svg"),
+            ),
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            UpdateState::Downloading { progress, .. } => (
+                rust_i18n::t!(
+                    "settings.downloading_btn",
+                    percent = (*progress * 100.0) as u32
+                )
+                .to_string(),
+                BadgeVariant::Accent,
+                Some("icons/download.svg"),
+            ),
+            UpdateState::Installing { .. } => (
+                rust_i18n::t!("settings.update_installing").to_string(),
+                BadgeVariant::Accent,
+                Some("icons/loader.svg"),
+            ),
+            UpdateState::Error(_) => (
+                rust_i18n::t!("settings.status_error").to_string(),
+                BadgeVariant::Warning,
+                Some("icons/alert-circle.svg"),
+            ),
+        };
+
+        let mut status_badge =
+            Badge::new("settings_status_badge", status_label).variant(status_variant);
+        if let Some(ic) = status_icon {
+            status_badge = status_badge.icon(ic);
+        }
+
+        let title_badges = div()
+            .flex()
+            .items_center()
+            .gap(px(6.0))
+            .child(version_badge)
+            .child(status_badge);
+
+        let is_checking = matches!(self.update_state, UpdateState::Checking);
+        let is_downloading = matches!(
+            self.update_state,
+            UpdateState::Downloading { .. } | UpdateState::Installing { .. }
+        );
+
+        let mut header_actions = div().flex().items_center().gap(px(8.0));
+
+        if let UpdateState::UpdateAvailable(_) = self.update_state {
+            let on_dl = self.on_download_and_install_update.clone();
+            let install_btn = Button::new(
+                "settings_install_update_btn",
+                rust_i18n::t!("settings.download_and_install_btn").to_string(),
+            )
+            .size(ButtonSize::Md)
+            .variant(ButtonVariant::Primary)
+            .icon_left("icons/download.svg")
+            .on_click(move |_, window, cx| {
+                if let Some(ref h) = on_dl {
+                    h(window, cx);
+                }
+            });
+            header_actions = header_actions.child(install_btn);
+        } else if let UpdateState::Downloading { progress, .. } = self.update_state {
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            let dl_label = rust_i18n::t!(
+                "settings.downloading_btn",
+                percent = (progress * 100.0) as u32
+            )
+            .to_string();
+            let dl_btn = Button::new("settings_downloading_btn", dl_label)
+                .size(ButtonSize::Md)
+                .variant(ButtonVariant::Primary)
+                .icon_left("icons/download.svg")
+                .disabled(true);
+            header_actions = header_actions.child(dl_btn);
+        }
+
+        let on_check = self.on_check_update.clone();
+        let check_btn = IconButton::new("settings_check_update_btn", "icons/refresh-cw.svg")
+            .variant(IconButtonVariant::Outline)
+            .loading(is_checking)
+            .disabled(is_checking || is_downloading)
+            .on_click(move |_, window, cx| {
+                if let Some(ref h) = on_check {
+                    h(window, cx);
+                }
+            });
+
+        let tt_handler = self.on_hover_tooltip.clone();
+        let tooltip_msg = if is_checking {
+            rust_i18n::t!("settings.status_checking").to_string()
+        } else {
+            rust_i18n::t!("settings.check_updates_tooltip").to_string()
+        };
+
+        let check_btn_wrapper = div()
+            .id(gpui::ElementId::Name(
+                "settings_check_update_wrapper".into(),
+            ))
+            .flex()
+            .items_center()
+            .justify_center()
+            .on_mouse_move({
+                let tt_h = tt_handler.clone();
+                let tt_text = tooltip_msg.clone();
+                move |event, window, cx| {
+                    if let Some(ref h) = tt_h {
+                        h(
+                            Some(TooltipState {
+                                text: tt_text.clone().into(),
+                                cursor_pos: event.position,
+                            }),
+                            window,
+                            cx,
+                        );
+                    }
+                }
+            })
+            .on_hover({
+                let tt_h = tt_handler;
+                move |hovered, window, cx| {
+                    if !hovered {
+                        if let Some(ref h) = tt_h {
+                            h(None, window, cx);
+                        }
+                    }
+                }
+            })
+            .child(check_btn);
+
+        header_actions = header_actions.child(check_btn_wrapper);
+
+        let auto_check_text = settings_row_text(
+            rust_i18n::t!("settings.auto_check_updates_title"),
+            rust_i18n::t!("settings.auto_check_updates_desc"),
+            &theme,
+        );
+
+        let on_toggle_check = self.on_toggle_check_updates.clone();
+        let auto_check_switch = Switch::new("auto_check_switch", self.check_updates).on_toggle(
+            move |new_val, window, cx| {
+                if let Some(ref h) = on_toggle_check {
+                    h(new_val, window, cx);
+                }
+            },
+        );
+
+        let auto_check_row = settings_row(auto_check_text, auto_check_switch);
+
+        let updates_card = GroupCard::new(
+            "icons/download.svg",
+            rust_i18n::t!("settings.updates_title").to_string(),
+            rust_i18n::t!("settings.updates_desc").to_string(),
+        )
+        .icon_color(theme.accent_blue)
+        .title_accessory(title_badges)
+        .header_action(header_actions)
+        .child(auto_check_row);
+
         div()
             .flex()
             .flex_col()
@@ -722,6 +965,7 @@ impl RenderOnce for SettingsPage {
             .child(PageHeader::new(route.title(), route.description()))
             .child(appearance_card)
             .child(behavior_card)
+            .child(updates_card)
     }
 }
 

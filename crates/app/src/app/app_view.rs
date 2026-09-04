@@ -1,12 +1,17 @@
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use gpui::{Context, IntoElement, ParentElement, Render, SharedString, Styled, Window, div, px};
+use gpui::{
+    Context, FocusHandle, InteractiveElement, IntoElement, KeyDownEvent, MouseButton,
+    MouseDownEvent, MouseUpEvent, NavigationDirection, ParentElement, Render, SharedString, Styled,
+    Window, div, px,
+};
 
 #[cfg(debug_assertions)]
-use gpui::{InteractiveElement, MouseButton, Pixels, Point};
+use gpui::{Pixels, Point};
 
 use crate::entities::cleanup::{CleanupCategory, CleanupState};
 use crate::entities::{AppConfig, TelemetryData, load_config, save_config};
@@ -27,6 +32,9 @@ pub struct AppView {
     hovered_titlebar_breadcrumb: Option<&'static str>,
     current_route: AppRoute,
     hovered_route: Option<AppRoute>,
+    history_back: Vec<AppRoute>,
+    history_forward: Vec<AppRoute>,
+    focus_handle: Option<FocusHandle>,
     current_locale: &'static str,
     config: AppConfig,
     discord_rpc_manager: Arc<Mutex<DiscordRpcManager>>,
@@ -34,6 +42,7 @@ pub struct AppView {
     open_item_id: String,
     quit_item_id: String,
     open_dropdown: Option<&'static str>,
+    opening_dropdown: Option<&'static str>,
     open_dropdown_upward: bool,
     closing_dropdown: Option<&'static str>,
     hovered_dropdown: Option<&'static str>,
@@ -58,6 +67,8 @@ pub struct AppView {
     startup_open_menu_id: Option<String>,
     hovered_startup_card: Option<String>,
     cleanup: CleanupState,
+    update_state: crate::features::updater::UpdateState,
+    http_client: reqwest::Client,
     #[cfg(debug_assertions)]
     pub dev_perf_monitor: crate::widgets::dev_perf_monitor::DevPerfMonitorState,
 }
@@ -100,6 +111,9 @@ impl AppView {
             hovered_titlebar_breadcrumb: None,
             current_route: AppRoute::Dashboard,
             hovered_route: None,
+            history_back: Vec::new(),
+            history_forward: Vec::new(),
+            focus_handle: None,
             current_locale: "system",
             config,
             discord_rpc_manager,
@@ -107,6 +121,7 @@ impl AppView {
             open_item_id,
             quit_item_id,
             open_dropdown: None,
+            opening_dropdown: None,
             open_dropdown_upward: false,
             closing_dropdown: None,
             hovered_dropdown: None,
@@ -131,6 +146,12 @@ impl AppView {
             startup_open_menu_id: None,
             hovered_startup_card: None,
             cleanup: CleanupState::default(),
+            update_state: crate::features::updater::UpdateState::Idle,
+            http_client: reqwest::Client::builder()
+                .user_agent(concat!("Winsentials/", env!("CARGO_PKG_VERSION")))
+                .timeout(Duration::from_secs(15))
+                .build()
+                .unwrap_or_default(),
             #[cfg(debug_assertions)]
             dev_perf_monitor: crate::widgets::dev_perf_monitor::DevPerfMonitorState::new(),
         }
@@ -197,6 +218,320 @@ impl AppView {
         .detach();
     }
 
+    #[allow(clippy::unused_self)]
+    pub fn start_updater_polling(&mut self, cx: &mut Context<Self>) {
+        let client = self.http_client.clone();
+        cx.spawn(async move |this, cx| {
+            // Initial delay to avoid competing with app launch
+            cx.background_executor().timer(Duration::from_secs(3)).await;
+
+            loop {
+                let mut should_check = false;
+                let _ = this.update(cx, |this, _cx| {
+                    should_check = this.config.check_updates
+                        && !matches!(
+                            this.update_state,
+                            crate::features::updater::UpdateState::Checking
+                                | crate::features::updater::UpdateState::Downloading { .. }
+                                | crate::features::updater::UpdateState::Installing { .. }
+                        );
+                });
+
+                if should_check {
+                    let _ = this.update(cx, |this, cx| {
+                        this.update_state = crate::features::updater::UpdateState::Checking;
+                        cx.notify();
+                    });
+
+                    let current_ver = crate::features::updater::CURRENT_VERSION;
+                    let http_client = client.clone();
+                    let tokio_handle = crate::shared::async_runtime::spawn_tokio(async move {
+                        crate::features::updater::check_for_update(&http_client, current_ver).await
+                    });
+                    let res = tokio_handle
+                        .await
+                        .map_err(|e| e.to_string())
+                        .and_then(|r| r);
+
+                    let update_res = this.update(cx, |this, cx| {
+                        if let Ok(Some(info)) = res {
+                            this.on_update_found(&info, cx);
+                        } else {
+                            this.update_state = crate::features::updater::UpdateState::UpToDate;
+                            cx.notify();
+                        }
+                    });
+
+                    if update_res.is_err() {
+                        break;
+                    }
+                }
+
+                cx.background_executor()
+                    .timer(crate::features::updater::UPDATE_POLL_INTERVAL)
+                    .await;
+            }
+        })
+        .detach();
+    }
+
+    fn on_update_found(
+        &mut self,
+        info: &crate::features::updater::UpdateInfo,
+        cx: &mut Context<Self>,
+    ) {
+        let is_already_available = matches!(
+            &self.update_state,
+            crate::features::updater::UpdateState::UpdateAvailable(curr) if curr.version == info.version
+        );
+        self.update_state = crate::features::updater::UpdateState::UpdateAvailable(info.clone());
+        cx.notify();
+
+        if !is_already_available {
+            let on_dl = cx.listener(|this, (), _window, cx| {
+                this.dismiss_toast("update_available_toast", cx);
+                this.download_and_install_update(cx);
+            });
+            let dl_btn = crate::shared::ui::ToastButton::new(rust_i18n::t!(
+                "settings.toast_update_download_btn"
+            ))
+            .variant(crate::shared::ui::ToastButtonVariant::Primary)
+            .icon("icons/download.svg")
+            .on_click(move |window, cx| {
+                on_dl(&(), window, cx);
+            });
+
+            let on_later = cx.listener(|this, (), _window, cx| {
+                this.dismiss_toast("update_available_toast", cx);
+            });
+            let later_btn = crate::shared::ui::ToastButton::new(rust_i18n::t!(
+                "settings.toast_update_later_btn"
+            ))
+            .variant(crate::shared::ui::ToastButtonVariant::Secondary)
+            .on_click(move |window, cx| {
+                on_later(&(), window, cx);
+            });
+
+            let on_disable = cx.listener(|this, (), _window, cx| {
+                this.dismiss_toast("update_available_toast", cx);
+                this.toggle_check_updates(false, cx);
+            });
+            let disable_btn = crate::shared::ui::ToastButton::new(rust_i18n::t!(
+                "settings.toast_update_disable_btn"
+            ))
+            .variant(crate::shared::ui::ToastButtonVariant::Outline)
+            .full_width(true)
+            .icon("icons/bell-off.svg")
+            .on_click(move |window, cx| {
+                on_disable(&(), window, cx);
+            });
+
+            let toast = crate::shared::ui::ToastData::new(
+                "update_available_toast",
+                rust_i18n::t!("settings.update_toast_title"),
+            )
+            .description(format!("Winsentials v{}", info.version))
+            .variant(crate::shared::ui::ToastVariant::Info)
+            .duration(Some(Duration::from_secs(16)))
+            .button(dl_btn)
+            .button(later_btn)
+            .button(disable_btn);
+
+            self.show_toast(toast, cx);
+        }
+    }
+
+    pub fn check_for_updates(&mut self, manual: bool, cx: &mut Context<Self>) {
+        if matches!(
+            self.update_state,
+            crate::features::updater::UpdateState::Checking
+                | crate::features::updater::UpdateState::Downloading { .. }
+                | crate::features::updater::UpdateState::Installing { .. }
+        ) {
+            return;
+        }
+
+        self.update_state = crate::features::updater::UpdateState::Checking;
+        cx.notify();
+
+        let client = self.http_client.clone();
+        let current_version = crate::features::updater::CURRENT_VERSION;
+
+        cx.spawn(async move |this, cx| {
+            let tokio_handle = crate::shared::async_runtime::spawn_tokio(async move {
+                crate::features::updater::check_for_update(&client, current_version).await
+            });
+            let res = tokio_handle
+                .await
+                .map_err(|e| e.to_string())
+                .and_then(|r| r);
+
+            let _ = this.update(cx, |this, cx| {
+                match res {
+                    Ok(Some(info)) => {
+                        this.on_update_found(&info, cx);
+                    }
+                    Ok(None) => {
+                        this.update_state = crate::features::updater::UpdateState::UpToDate;
+                    }
+                    Err(err) => {
+                        if manual {
+                            this.update_state = crate::features::updater::UpdateState::Error(err);
+                        } else {
+                            this.update_state = crate::features::updater::UpdateState::UpToDate;
+                        }
+                    }
+                }
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+
+    #[allow(clippy::too_many_lines)]
+    pub fn download_and_install_update(&mut self, cx: &mut Context<Self>) {
+        let crate::features::updater::UpdateState::UpdateAvailable(info) = &self.update_state
+        else {
+            return;
+        };
+        let info = info.clone();
+        let version = info.version.clone();
+        self.update_state = crate::features::updater::UpdateState::Downloading {
+            version: version.clone(),
+            progress: 0.0,
+        };
+        self.dismiss_toast("update_available_toast", cx);
+
+        let initial_toast = crate::shared::ui::ToastData::new(
+            "updater_download_progress",
+            rust_i18n::t!("settings.update_toast_downloading").to_string(),
+        )
+        .description(format!("Winsentials v{version}"))
+        .variant(crate::shared::ui::ToastVariant::Info)
+        .progress(Some(crate::shared::ui::ToastProgress {
+            value: 0.0,
+            label: Some("0%".into()),
+        }));
+        self.show_toast(initial_toast, cx);
+        cx.notify();
+
+        let client = self.http_client.clone();
+        let progress_atomic = Arc::new(AtomicU32::new(0));
+        let is_done = Arc::new(AtomicBool::new(false));
+
+        let prog_for_download = Arc::clone(&progress_atomic);
+        let done_for_download = Arc::clone(&is_done);
+
+        let download_handle = crate::shared::async_runtime::spawn_tokio(async move {
+            let res =
+                crate::features::updater::download_and_install_update(&client, &info, move |p| {
+                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                    let permille = (p * 1000.0).clamp(0.0, 1000.0) as u32;
+                    prog_for_download.store(permille, Ordering::Relaxed);
+                })
+                .await;
+            done_for_download.store(true, Ordering::Relaxed);
+            res
+        });
+
+        let prog_for_ui = Arc::clone(&progress_atomic);
+        let done_for_ui = Arc::clone(&is_done);
+
+        cx.spawn(async move |this, cx| {
+            while !done_for_ui.load(Ordering::Relaxed) {
+                cx.background_executor()
+                    .timer(Duration::from_millis(50))
+                    .await;
+                #[allow(clippy::cast_precision_loss)]
+                let p = prog_for_ui.load(Ordering::Relaxed) as f32 / 1000.0;
+                let res = this.update(cx, |this, cx| {
+                    if let crate::features::updater::UpdateState::Downloading {
+                        ref mut progress,
+                        ref version,
+                    } = this.update_state
+                    {
+                        *progress = p;
+                        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                        let pct_int = (p * 100.0).clamp(0.0, 100.0) as u32;
+                        let progress_toast = crate::shared::ui::ToastData::new(
+                            "updater_download_progress",
+                            rust_i18n::t!("settings.update_toast_downloading").to_string(),
+                        )
+                        .description(format!("Winsentials v{version}"))
+                        .variant(crate::shared::ui::ToastVariant::Info)
+                        .progress(Some(crate::shared::ui::ToastProgress {
+                            value: p,
+                            label: Some(format!("{pct_int}%").into()),
+                        }));
+                        this.show_toast(progress_toast, cx);
+                        cx.notify();
+                    }
+                });
+                if res.is_err() {
+                    break;
+                }
+            }
+
+            let download_result = download_handle
+                .await
+                .map_err(|e| e.to_string())
+                .and_then(|r| r);
+
+            let is_success = download_result.is_ok();
+            let _ = is_success;
+            let _ = this.update(cx, |this, cx| {
+                match download_result {
+                    Ok(()) => {
+                        this.update_state = crate::features::updater::UpdateState::Installing {
+                            version: version.clone(),
+                        };
+
+                        let ready_toast = crate::shared::ui::ToastData::new(
+                            "updater_download_progress",
+                            rust_i18n::t!("settings.update_toast_ready").to_string(),
+                        )
+                        .description(format!("Winsentials v{version}"))
+                        .variant(crate::shared::ui::ToastVariant::Success)
+                        .progress(Some(crate::shared::ui::ToastProgress {
+                            value: 1.0,
+                            label: Some(
+                                rust_i18n::t!("settings.update_restarting")
+                                    .to_string()
+                                    .into(),
+                            ),
+                        }));
+                        this.show_toast(ready_toast, cx);
+                    }
+                    Err(err) => {
+                        this.update_state =
+                            crate::features::updater::UpdateState::Error(err.clone());
+                        let err_toast = crate::shared::ui::ToastData::new(
+                            "updater_download_progress",
+                            rust_i18n::t!("settings.status_error").to_string(),
+                        )
+                        .description(err)
+                        .variant(crate::shared::ui::ToastVariant::Error)
+                        .duration(Some(Duration::from_secs(6)));
+                        this.show_toast(err_toast, cx);
+                    }
+                }
+                cx.notify();
+            });
+
+            #[cfg(all(windows, debug_assertions))]
+            if is_success {
+                cx.background_executor()
+                    .timer(Duration::from_millis(800))
+                    .await;
+                if let Ok(current_exe) = std::env::current_exe() {
+                    let _ = std::process::Command::new(current_exe).spawn();
+                    std::process::exit(0);
+                }
+            }
+        })
+        .detach();
+    }
+
     pub fn toggle_sidebar(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         self.sidebar_expanded = !self.sidebar_expanded;
         self.active_tooltip = None;
@@ -205,26 +540,91 @@ impl AppView {
 
     pub fn navigate_to(&mut self, route: AppRoute, _window: &mut Window, cx: &mut Context<Self>) {
         if self.current_route != route {
-            self.current_route = route;
-            if let Ok(mut mgr) = self.discord_rpc_manager.lock() {
-                mgr.set_route(route);
+            self.history_back.push(self.current_route);
+            if self.history_back.len() > 50 {
+                self.history_back.remove(0);
             }
-            self.open_dropdown = None;
-            self.closing_dropdown = None;
-            self.hovered_dropdown = None;
-            self.hovered_option = None;
-            self.pending_selection = None;
-            self.hovered_telemetry_card = None;
-            self.hovered_titlebar_breadcrumb = None;
-            self.active_tooltip = None;
-            if route == AppRoute::Startup {
-                self.startup_entries = crate::entities::startup::fetch_all_startup_entries();
+            self.history_forward.clear();
+            self.set_route_internal(route, cx);
+        }
+    }
+
+    pub fn navigate_back(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(prev) = self.history_back.pop() {
+            self.history_forward.push(self.current_route);
+            if self.history_forward.len() > 50 {
+                self.history_forward.remove(0);
             }
-            if route == AppRoute::Cleanup && !self.cleanup.scanned_once {
-                self.refresh_cleanup(cx);
+            self.set_route_internal(prev, cx);
+        }
+    }
+
+    pub fn navigate_forward(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(next) = self.history_forward.pop() {
+            self.history_back.push(self.current_route);
+            if self.history_back.len() > 50 {
+                self.history_back.remove(0);
+            }
+            self.set_route_internal(next, cx);
+        }
+    }
+
+    pub fn navigate_up(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if let Some(parent) = self.current_route.parent() {
+            self.navigate_to(parent, window, cx);
+        }
+    }
+
+    pub fn handle_escape(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.open_dropdown.is_some() {
+            self.close_dropdowns(window, cx);
+            return;
+        }
+        if self.startup_open_menu_id.is_some() {
+            self.startup_open_menu_id = None;
+            cx.notify();
+            return;
+        }
+        if !self.startup_search_query.is_empty() {
+            self.startup_search_query.clear();
+            cx.notify();
+            return;
+        }
+        if self.startup_search_focused {
+            self.startup_search_focused = false;
+            self.startup_search_selection = None;
+            if let Some(ref f) = self.focus_handle {
+                f.focus(window, cx);
             }
             cx.notify();
+            return;
         }
+        self.navigate_up(window, cx);
+    }
+
+    fn set_route_internal(&mut self, route: AppRoute, cx: &mut Context<Self>) {
+        self.current_route = route;
+        if let Ok(mut mgr) = self.discord_rpc_manager.lock() {
+            mgr.set_route(route);
+        }
+        self.open_dropdown = None;
+        self.closing_dropdown = None;
+        self.hovered_dropdown = None;
+        self.hovered_option = None;
+        self.pending_selection = None;
+        self.hovered_telemetry_card = None;
+        self.hovered_titlebar_breadcrumb = None;
+        self.active_tooltip = None;
+        self.startup_search_focused = false;
+        self.startup_search_selection = None;
+        self.startup_open_menu_id = None;
+        if route == AppRoute::Startup {
+            self.startup_entries = crate::entities::startup::fetch_all_startup_entries();
+        }
+        if route == AppRoute::Cleanup && !self.cleanup.scanned_once {
+            self.refresh_cleanup(cx);
+        }
+        cx.notify();
     }
 
     fn refresh_cleanup(&mut self, cx: &mut Context<Self>) {
@@ -373,7 +773,9 @@ impl AppView {
         let toast_id = toast.id.clone();
 
         if let Some(existing) = self.toasts.iter_mut().find(|t| t.id == toast_id) {
-            existing.count += 1;
+            if toast.progress.is_none() && existing.progress.is_none() {
+                existing.count += 1;
+            }
             existing.title = toast.title;
             existing.description = toast.description;
             existing.variant = toast.variant;
@@ -656,34 +1058,77 @@ impl AppView {
         let all_tweaks = crate::entities::tweaks::get_all_tweaks();
         if let Some(tweak) = all_tweaks.iter().find(|t| t.id == tweak_id) {
             let set_applied = tweak.set_applied;
+            let is_applied_fn = tweak.is_applied;
             let restart = tweak.restart;
+            let category = tweak.category;
+
+            // 1. Optimistic immediate update: instantly update UI state so switch animates with 0 latency
+            let mut tweak_states = if cx.has_global::<crate::entities::tweaks::TweakStates>() {
+                cx.global::<crate::entities::tweaks::TweakStates>().clone()
+            } else {
+                crate::entities::tweaks::TweakStates::load_initial()
+            };
+            tweak_states.set_state(tweak_id, enabled);
+            cx.set_global(tweak_states);
+            cx.notify();
+
             cx.spawn(async move |this, cx| {
                 let result = cx
                     .background_executor()
-                    .spawn(async move { set_applied(enabled) })
+                    .spawn(async move {
+                        let res = set_applied(enabled);
+                        if res.is_ok()
+                            && matches!(
+                                category,
+                                crate::entities::tweaks::TweakCategory::Explorer
+                                    | crate::entities::tweaks::TweakCategory::ContextMenu
+                            )
+                        {
+                            crate::shared::shell_notify::notify_shell_change();
+                        }
+                        res
+                    })
                     .await;
-                if let Err(update_error) = this.update(cx, move |this, cx| match result {
-                    Ok(()) => {
-                        crate::entities::SystemInfo::invalidate_cache();
-                        crate::shared::shell_notify::notify_shell_change();
-                        if let Ok(mut mgr) = this.discord_rpc_manager.lock() {
-                            mgr.refresh_presence();
+                if let Err(update_error) = this.update(cx, move |this, cx| {
+                    let actual_applied = is_applied_fn();
+                    let mut states = if cx.has_global::<crate::entities::tweaks::TweakStates>() {
+                        cx.global::<crate::entities::tweaks::TweakStates>().clone()
+                    } else {
+                        crate::entities::tweaks::TweakStates::load_initial()
+                    };
+                    states.set_state(tweak_id, actual_applied);
+                    cx.set_global(states);
+
+                    match result {
+                        Ok(()) => {
+                            let discord_rpc = this.discord_rpc_manager.clone();
+                            cx.background_executor()
+                                .spawn(async move {
+                                    if let Ok(mut mgr) = discord_rpc.lock() {
+                                        mgr.refresh_presence();
+                                    }
+                                })
+                                .detach();
+
+                            match restart {
+                                crate::entities::tweaks::RestartRequirement::Explorer => {
+                                    this.show_explorer_restart_toast(cx);
+                                }
+                                crate::entities::tweaks::RestartRequirement::Logoff => {
+                                    this.show_logoff_toast(cx);
+                                }
+                                crate::entities::tweaks::RestartRequirement::Reboot => {
+                                    this.show_reboot_toast(cx);
+                                }
+                                crate::entities::tweaks::RestartRequirement::None => {}
+                            }
+                            cx.notify();
                         }
-                        match restart {
-                            crate::entities::tweaks::RestartRequirement::Explorer => {
-                                this.show_explorer_restart_toast(cx);
-                            }
-                            crate::entities::tweaks::RestartRequirement::Logoff => {
-                                this.show_logoff_toast(cx);
-                            }
-                            crate::entities::tweaks::RestartRequirement::Reboot => {
-                                this.show_reboot_toast(cx);
-                            }
-                            crate::entities::tweaks::RestartRequirement::None => {}
+                        Err(error) => {
+                            this.show_setting_error(tweak_id, &error, cx);
+                            cx.notify();
                         }
-                        cx.notify();
                     }
-                    Err(error) => this.show_setting_error(tweak_id, &error, cx),
                 }) {
                     eprintln!(
                         "failed to update tweak state after applying {tweak_id}: {update_error}"
@@ -708,6 +1153,7 @@ impl AppView {
     pub fn start_closing_dropdown(&mut self, name: &'static str, cx: &mut Context<Self>) {
         if self.open_dropdown == Some(name) {
             self.open_dropdown = None;
+            self.opening_dropdown = None;
             self.closing_dropdown = Some(name);
             cx.notify();
 
@@ -718,6 +1164,7 @@ impl AppView {
                 this.update(cx, |this, cx| {
                     if this.closing_dropdown == Some(name) {
                         this.closing_dropdown = None;
+                        this.hovered_option = None;
                         cx.notify();
                     }
                 })
@@ -914,8 +1361,24 @@ impl AppView {
             let required_space = Self::dropdown_required_space_below(name);
             self.open_dropdown_upward = space_below < required_space && space_above > space_below;
             self.open_dropdown = Some(name);
+            self.opening_dropdown = Some(name);
             self.closing_dropdown = None;
             cx.notify();
+
+            let opening_name = name;
+            cx.spawn(async move |this, cx| {
+                cx.background_executor()
+                    .timer(Duration::from_millis(160))
+                    .await;
+                this.update(cx, |this, cx| {
+                    if this.opening_dropdown == Some(opening_name) {
+                        this.opening_dropdown = None;
+                        cx.notify();
+                    }
+                })
+                .ok();
+            })
+            .detach();
         }
     }
 
@@ -958,7 +1421,6 @@ impl AppView {
 
     pub fn close_dropdowns(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         if let Some(open) = self.open_dropdown {
-            self.hovered_option = None;
             self.start_closing_dropdown(open, cx);
         }
     }
@@ -1006,6 +1468,15 @@ impl AppView {
         self.config.autostart_to_tray = enabled;
         let _ = crate::features::autostart::set_autostart(self.config.autostart, enabled);
         let _ = save_config(&self.config);
+        cx.notify();
+    }
+
+    pub fn toggle_check_updates(&mut self, enabled: bool, cx: &mut Context<Self>) {
+        self.config.check_updates = enabled;
+        let _ = save_config(&self.config);
+        if enabled {
+            self.check_for_updates(false, cx);
+        }
         cx.notify();
     }
 
@@ -1096,6 +1567,7 @@ impl Render for AppView {
         let hovered_route = self.hovered_route;
         let current_locale = self.current_locale;
         let open_dropdown = self.open_dropdown;
+        let opening_dropdown = self.opening_dropdown;
         let closing_dropdown = self.closing_dropdown;
         let hovered_dropdown = self.hovered_dropdown;
         let hovered_option = self.hovered_option;
@@ -1396,11 +1868,22 @@ impl Render for AppView {
             cx.listener(|this, category: &Option<CleanupCategory>, _window, cx| {
                 this.clean_cleanup(*category, cx);
             });
+        let on_toggle_check_updates = cx.listener(|this, enabled: &bool, _window, cx| {
+            this.toggle_check_updates(*enabled, cx);
+        });
+        let on_check_update = cx.listener(|this, _event: &(), _window, cx| {
+            this.check_for_updates(true, cx);
+        });
+        let on_download_and_install_update = cx.listener(|this, _event: &(), _window, cx| {
+            this.download_and_install_update(cx);
+        });
 
         let minimize_to_tray = self.config.minimize_to_tray;
         let autostart = self.config.autostart;
         let autostart_to_tray = self.config.autostart_to_tray;
         let discord_rpc = self.config.discord_rpc;
+        let check_updates = self.config.check_updates;
+        let update_state = &self.update_state;
         let startup_filter = self.startup_filter;
         let startup_open_menu_id = self.startup_open_menu_id.as_deref();
         let hovered_startup_card = self.hovered_startup_card.clone();
@@ -1449,6 +1932,7 @@ impl Render for AppView {
                 current_locale,
                 open_dropdown,
                 self.open_dropdown_upward,
+                opening_dropdown,
                 closing_dropdown,
                 hovered_dropdown,
                 hovered_option,
@@ -1458,6 +1942,8 @@ impl Render for AppView {
                 autostart,
                 autostart_to_tray,
                 discord_rpc,
+                check_updates,
+                update_state,
                 &self.startup_entries,
                 startup_filter,
                 &self.startup_search_query,
@@ -1509,6 +1995,15 @@ impl Render for AppView {
                 },
                 move |act, window, cx| {
                     on_change_disc(act, window, cx);
+                },
+                move |enabled, window, cx| {
+                    on_toggle_check_updates(&enabled, window, cx);
+                },
+                move |window, cx| {
+                    on_check_update(&(), window, cx);
+                },
+                move |window, cx| {
+                    on_download_and_install_update(&(), window, cx);
                 },
                 move |gpu_id, slot_idx, engine, window, cx| {
                     on_select_gpu_engine(&(gpu_id, slot_idx, engine), window, cx);
@@ -1578,12 +2073,59 @@ impl Render for AppView {
             .child(sidebar)
             .child(main_panel);
 
+        let focus_handle = self
+            .focus_handle
+            .get_or_insert_with(|| cx.focus_handle())
+            .clone();
+
+        if window.focused(cx).is_none() {
+            focus_handle.focus(window, cx);
+        }
+
         let mut root = div()
+            .id("app_root")
+            .track_focus(&focus_handle)
+            .relative()
             .font_family("IBM Plex Sans")
             .flex()
             .flex_col()
             .size_full()
             .bg(theme.window_bg)
+            .capture_any_mouse_down(cx.listener(|this, event: &MouseDownEvent, window, cx| {
+                match event.button {
+                    MouseButton::Navigate(NavigationDirection::Back) => {
+                        cx.stop_propagation();
+                        this.navigate_back(window, cx);
+                    }
+                    MouseButton::Navigate(NavigationDirection::Forward) => {
+                        cx.stop_propagation();
+                        this.navigate_forward(window, cx);
+                    }
+                    _ => {}
+                }
+            }))
+            .capture_any_mouse_up(cx.listener(|_this, event: &MouseUpEvent, _window, cx| {
+                if matches!(event.button, MouseButton::Navigate(_)) {
+                    cx.stop_propagation();
+                }
+            }))
+            .capture_key_down(cx.listener(|this, event: &KeyDownEvent, window, cx| {
+                let key = event.keystroke.key.as_str();
+                let is_alt = event.keystroke.modifiers.alt;
+                if key == "escape" {
+                    cx.stop_propagation();
+                    this.handle_escape(window, cx);
+                } else if (is_alt && (key == "left" || key == "arrowleft")) || key == "back" {
+                    cx.stop_propagation();
+                    this.navigate_back(window, cx);
+                } else if (is_alt && (key == "right" || key == "arrowright")) || key == "forward" {
+                    cx.stop_propagation();
+                    this.navigate_forward(window, cx);
+                } else if is_alt && (key == "up" || key == "arrowup") {
+                    cx.stop_propagation();
+                    this.navigate_up(window, cx);
+                }
+            }))
             .child(titlebar)
             .child(content_row);
 
@@ -1824,5 +2366,138 @@ impl Render for AppView {
         }
 
         root
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gpui::{TestAppContext, px, size};
+
+    #[gpui::test]
+    fn test_navigation_history(cx: &mut TestAppContext) {
+        let window = cx.open_window(size(px(800.0), px(600.0)), |_window, _cx| AppView::new());
+
+        window
+            .update(cx, |view: &mut AppView, window, cx| {
+                assert_eq!(view.current_route, AppRoute::Dashboard);
+                assert!(view.history_back.is_empty());
+                assert!(view.history_forward.is_empty());
+
+                // Navigate to ContextMenu
+                view.navigate_to(AppRoute::ContextMenu, window, cx);
+                assert_eq!(view.current_route, AppRoute::ContextMenu);
+                assert_eq!(view.history_back, vec![AppRoute::Dashboard]);
+                assert!(view.history_forward.is_empty());
+
+                // Navigate to Explorer
+                view.navigate_to(AppRoute::Explorer, window, cx);
+                assert_eq!(view.current_route, AppRoute::Explorer);
+                assert_eq!(
+                    view.history_back,
+                    vec![AppRoute::Dashboard, AppRoute::ContextMenu]
+                );
+
+                // Back to ContextMenu
+                view.navigate_back(window, cx);
+                assert_eq!(view.current_route, AppRoute::ContextMenu);
+                assert_eq!(view.history_back, vec![AppRoute::Dashboard]);
+                assert_eq!(view.history_forward, vec![AppRoute::Explorer]);
+
+                // Back to Dashboard
+                view.navigate_back(window, cx);
+                assert_eq!(view.current_route, AppRoute::Dashboard);
+                assert!(view.history_back.is_empty());
+                assert_eq!(
+                    view.history_forward,
+                    vec![AppRoute::Explorer, AppRoute::ContextMenu]
+                );
+
+                // Forward to ContextMenu
+                view.navigate_forward(window, cx);
+                assert_eq!(view.current_route, AppRoute::ContextMenu);
+                assert_eq!(view.history_back, vec![AppRoute::Dashboard]);
+                assert_eq!(view.history_forward, vec![AppRoute::Explorer]);
+
+                // Forward to Explorer
+                view.navigate_forward(window, cx);
+                assert_eq!(view.current_route, AppRoute::Explorer);
+                assert_eq!(
+                    view.history_back,
+                    vec![AppRoute::Dashboard, AppRoute::ContextMenu]
+                );
+                assert!(view.history_forward.is_empty());
+            })
+            .unwrap();
+    }
+
+    #[gpui::test]
+    fn test_escape_navigation_hierarchy(cx: &mut TestAppContext) {
+        let window = cx.open_window(size(px(800.0), px(600.0)), |_window, _cx| AppView::new());
+
+        window
+            .update(cx, |view: &mut AppView, window, cx| {
+                // Navigate to Cleanup (child of Tools)
+                view.navigate_to(AppRoute::Cleanup, window, cx);
+                assert_eq!(view.current_route, AppRoute::Cleanup);
+
+                // Escape should go to Tools
+                view.handle_escape(window, cx);
+                assert_eq!(view.current_route, AppRoute::Tools);
+
+                // Escape on Tools should go to Dashboard
+                view.handle_escape(window, cx);
+                assert_eq!(view.current_route, AppRoute::Dashboard);
+
+                // Escape on Dashboard should stay on Dashboard
+                view.handle_escape(window, cx);
+                assert_eq!(view.current_route, AppRoute::Dashboard);
+
+                // Navigate to CpuDetail (child of Dashboard)
+                view.navigate_to(AppRoute::CpuDetail, window, cx);
+                assert_eq!(view.current_route, AppRoute::CpuDetail);
+
+                // Escape on CpuDetail should go to Dashboard
+                view.handle_escape(window, cx);
+                assert_eq!(view.current_route, AppRoute::Dashboard);
+            })
+            .unwrap();
+    }
+
+    #[gpui::test]
+    fn test_escape_prioritizes_dropdowns_and_search(cx: &mut TestAppContext) {
+        let window = cx.open_window(size(px(800.0), px(600.0)), |_window, _cx| AppView::new());
+
+        window
+            .update(cx, |view: &mut AppView, window, cx| {
+                // Navigate to Cleanup
+                view.navigate_to(AppRoute::Cleanup, window, cx);
+
+                // Simulate open dropdown
+                view.open_dropdown = Some("test_dropdown");
+
+                // Escape closes dropdown without navigating away from Cleanup
+                view.handle_escape(window, cx);
+                assert_eq!(view.current_route, AppRoute::Cleanup);
+
+                // Simulate search with query
+                view.startup_search_query = "search term".to_string();
+                view.startup_search_focused = true;
+
+                // First escape clears search query without navigating away
+                view.handle_escape(window, cx);
+                assert!(view.startup_search_query.is_empty());
+                assert_eq!(view.current_route, AppRoute::Cleanup);
+
+                // Second escape unfocuses search
+                view.handle_escape(window, cx);
+                assert!(!view.startup_search_focused);
+                assert_eq!(view.current_route, AppRoute::Cleanup);
+
+                // Third escape navigates up to Tools
+                view.handle_escape(window, cx);
+                assert_eq!(view.current_route, AppRoute::Tools);
+            })
+            .unwrap();
     }
 }

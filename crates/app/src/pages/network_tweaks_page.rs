@@ -55,6 +55,7 @@ impl RenderOnce for NetworkTweaksPage {
             &theme,
             self.on_toggle_tweak.as_ref(),
             self.on_hover_tooltip.as_ref(),
+            cx,
         );
         render_tweak_page(AppRoute::NetworkTweaks, tweak_items)
     }

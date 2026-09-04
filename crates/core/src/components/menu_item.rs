@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use gpui::{
-    App, ElementId, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce,
-    SharedString, StatefulInteractiveElement, Styled, Window, div, px,
+    AnimationExt, App, ElementId, InteractiveElement, IntoElement, MouseButton, ParentElement,
+    RenderOnce, SharedString, StatefulInteractiveElement, Styled, Window, div, px,
 };
 
-use crate::shared::theme::Theme;
-use crate::shared::ui::icon::Icon;
+use crate::components::icon::Icon;
+use crate::motion::{hover_spring, lerp_rgba};
+use crate::theme::Theme;
 
 pub type ActionHandler = Arc<dyn Fn(&mut Window, &mut App) + 'static>;
 
@@ -58,7 +59,7 @@ impl MenuItem {
 }
 
 impl RenderOnce for MenuItem {
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
 
         let (text_color, icon_color, hover_bg, active_bg) = if self.destructive {
@@ -77,6 +78,11 @@ impl RenderOnce for MenuItem {
             )
         };
 
+        let hover_id = ElementId::Name(format!("{:?}_hover_state", self.id).into());
+        let spring_id = format!("{:?}_menu_item_spring", self.id);
+        let hover_state = window.use_keyed_state(hover_id, cx, |_, _| false);
+        let hovered = *hover_state.read(cx);
+
         let mut base = div()
             .id(self.id)
             .flex()
@@ -89,10 +95,18 @@ impl RenderOnce for MenuItem {
         if self.disabled {
             base = base.opacity(0.45);
         } else {
+            let hover_state_for_event = hover_state;
             base = base
                 .cursor_pointer()
-                .hover(move |s| s.bg(hover_bg))
-                .active(move |s| s.bg(active_bg));
+                .active(move |s| s.bg(active_bg))
+                .on_hover(move |&hov, _, cx| {
+                    hover_state_for_event.update(cx, |state, cx| {
+                        if *state != hov {
+                            *state = hov;
+                            cx.notify();
+                        }
+                    });
+                });
 
             if let Some(on_click) = self.on_click {
                 base = base.on_mouse_down(MouseButton::Left, move |_, window, cx| {
@@ -106,7 +120,32 @@ impl RenderOnce for MenuItem {
             .icon
             .map(|p| Icon::new(p).size(px(14.0)).color(icon_color));
 
-        base.children(icon_el)
-            .child(div().text_xs().text_color(text_color).child(self.label))
+        let content = base
+            .children(icon_el)
+            .child(div().text_xs().text_color(text_color).child(self.label));
+
+        let rest_bg = gpui::rgba(0x0000_0000);
+        if cx.reduce_motion() || self.disabled {
+            content
+                .bg(if hovered && !self.disabled {
+                    hover_bg
+                } else {
+                    rest_bg
+                })
+                .into_any_element()
+        } else {
+            let spring = hover_spring(if hovered && !self.disabled { 1.0 } else { 0.0 });
+            content
+                .with_spring(
+                    ElementId::Name(spring_id.into()),
+                    spring,
+                    move |item, val| {
+                        let progress = val.clamp(0.0, 1.0);
+                        let bg = lerp_rgba(rest_bg, hover_bg, progress);
+                        item.bg(bg)
+                    },
+                )
+                .into_any_element()
+        }
     }
 }
