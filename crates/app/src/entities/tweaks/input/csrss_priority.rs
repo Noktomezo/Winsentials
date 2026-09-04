@@ -9,8 +9,7 @@ pub fn is_csrss_priority_applied() -> bool {
     {
         windows_registry::LOCAL_MACHINE
             .open(REG_CSRSS_PERF)
-            .ok()
-            .is_some_and(|key| {
+            .is_ok_and(|key| {
                 key.get_u32(CPU_PRIORITY_CLASS) == Ok(HIGH_PRIORITY)
                     && key.get_u32(IO_PRIORITY) == Ok(HIGH_PRIORITY)
             })

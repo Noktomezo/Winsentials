@@ -9,9 +9,7 @@ pub fn is_disable_ndu_applied() -> bool {
     {
         windows_registry::LOCAL_MACHINE
             .open(REG_NDU_KEY)
-            .ok()
-            .and_then(|key| key.get_u32(NDU_START_VAL).ok())
-            .is_some_and(|val| val == NDU_DISABLED)
+            .is_ok_and(|key| key.get_u32(NDU_START_VAL) == Ok(NDU_DISABLED))
     }
     #[cfg(not(target_os = "windows"))]
     {

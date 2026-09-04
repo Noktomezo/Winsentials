@@ -9,8 +9,7 @@ pub fn is_fast_send_copy_applied() -> bool {
     {
         windows_registry::LOCAL_MACHINE
             .open(REG_AFD_PARAMS)
-            .ok()
-            .is_some_and(|key| {
+            .is_ok_and(|key| {
                 let send_ok = key
                     .get_u32(FAST_SEND_DATAGRAM_THRESHOLD)
                     .is_ok_and(|val| val >= FAST_BUFFER_SIZE_64K);
