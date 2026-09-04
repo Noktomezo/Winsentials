@@ -1,0 +1,558 @@
+#![allow(clippy::all, clippy::pedantic)]
+
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    process::{Command, ExitStatus},
+};
+
+use clap::{Parser, Subcommand};
+
+#[derive(Parser)]
+#[command(
+    name = "xtask",
+    about = "Winsentials developer automation, packaging and patch manager"
+)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Apply all .patch files from patches/ to cargo git checkouts
+    Patch,
+    /// Revert all patches and restore cargo git checkouts to clean state
+    Unpatch,
+    /// Export current changes from cargo git checkout to patches/0001-gpui-custom.patch
+    Diff,
+    /// Run full completion gate (fmt-check, check, clippy, test) with patches applied
+    Gate,
+    /// Run cargo check
+    Check,
+    /// Run cargo clippy with -D warnings
+    Clippy,
+    /// Format all workspace code with cargo fmt
+    Fmt,
+    /// Check workspace formatting without modifying files
+    FmtCheck,
+    /// Run all unit and integration tests
+    Test,
+    /// Build release executable, portable ZIP and Inno Setup installer
+    Build,
+    /// Run development server with watchexec auto-reload
+    Dev {
+        /// Optional arguments passed to the application
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+    /// Run the winsentials application
+    Run {
+        /// Optional arguments passed to the application
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+    /// Generate latest.json updater manifest
+    Manifest {
+        /// Minisign signature string
+        #[arg(long)]
+        sig: Option<String>,
+        /// Path to minisign signature file
+        #[arg(long)]
+        sig_file: Option<PathBuf>,
+        /// Release version override
+        #[arg(long)]
+        version: Option<String>,
+    },
+}
+
+fn main() {
+    let cli = Cli::parse();
+
+    let result = match cli.command {
+        Commands::Patch => apply_all_patches(),
+        Commands::Unpatch => revert_all_patches(),
+        Commands::Diff => export_patch_diff(),
+        Commands::Gate => {
+            let _ = apply_all_patches();
+            run_gate()
+        }
+        Commands::Check => {
+            let _ = apply_all_patches();
+            run_cargo(&["check"])
+        }
+        Commands::Clippy => {
+            let _ = apply_all_patches();
+            run_cargo(&["clippy", "--", "-D", "warnings"])
+        }
+        Commands::Fmt => run_cargo(&["fmt", "--all"]),
+        Commands::FmtCheck => run_cargo(&["fmt", "--all", "--check"]),
+        Commands::Test => {
+            let _ = apply_all_patches();
+            run_cargo(&["test"])
+        }
+        Commands::Build => {
+            let _ = apply_all_patches();
+            run_build()
+        }
+        Commands::Dev { args } => {
+            let _ = apply_all_patches();
+            let mut watch_args = vec![
+                "-r",
+                "-e",
+                "rs,hlsl,toml,json",
+                "--",
+                "cargo",
+                "run",
+                "--package",
+                "winsentials",
+                "--",
+            ];
+            let rest_refs: Vec<&str> = args.iter().map(String::as_str).collect();
+            watch_args.extend(rest_refs);
+            run_external("watchexec", &watch_args)
+        }
+        Commands::Run { args } => {
+            let _ = apply_all_patches();
+            let mut run_args = vec!["run", "--package", "winsentials", "--"];
+            let rest_refs: Vec<&str> = args.iter().map(String::as_str).collect();
+            run_args.extend(rest_refs);
+            run_cargo(&run_args)
+        }
+        Commands::Manifest {
+            sig,
+            sig_file,
+            version,
+        } => generate_manifest(sig, sig_file, version),
+    };
+
+    if let Err(err) = result {
+        eprintln!("xtask error: {err}");
+        std::process::exit(1);
+    }
+}
+
+fn cargo_home() -> PathBuf {
+    env::var("CARGO_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            let home = env::var("USERPROFILE")
+                .or_else(|_| env::var("HOME"))
+                .unwrap_or_else(|_| ".".to_string());
+            Path::new(&home).join(".cargo")
+        })
+}
+
+fn find_zed_checkouts() -> Vec<PathBuf> {
+    let checkouts_dir = cargo_home().join("git").join("checkouts");
+    let mut dirs = Vec::new();
+    if let Ok(entries) = fs::read_dir(&checkouts_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir()
+                && path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(|n| n.starts_with("zed-"))
+            {
+                if let Ok(sub_entries) = fs::read_dir(&path) {
+                    for sub in sub_entries.flatten() {
+                        let sub_path = sub.path();
+                        if sub_path.is_dir() && sub_path.join("crates").join("gpui").exists() {
+                            dirs.push(sub_path);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    dirs
+}
+
+fn get_patches() -> Vec<PathBuf> {
+    let patches_dir = Path::new("patches");
+    let mut patches = Vec::new();
+    if let Ok(entries) = fs::read_dir(patches_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() && path.extension().and_then(|e| e.to_str()) == Some("patch") {
+                patches.push(path);
+            }
+        }
+    }
+    patches.sort();
+    patches
+}
+
+fn apply_all_patches() -> Result<(), String> {
+    let patches = get_patches();
+    if patches.is_empty() {
+        return Ok(());
+    }
+
+    let checkouts = find_zed_checkouts();
+    if checkouts.is_empty() {
+        println!("No active zed git checkout found, running cargo fetch...");
+        run_cargo(&["fetch"])?;
+    }
+
+    let checkouts = find_zed_checkouts();
+    if checkouts.is_empty() {
+        return Err("Could not locate zed checkout in cargo cache.".to_string());
+    }
+
+    for checkout in &checkouts {
+        for patch in &patches {
+            let current = env::current_dir().map_err(|e| e.to_string())?;
+            let abs_patch = current.join(patch);
+            let patch_str = abs_patch.to_string_lossy();
+
+            // Check if already applied (reverse check passes)
+            let already_applied = Command::new("git")
+                .args([
+                    "-C",
+                    &checkout.to_string_lossy(),
+                    "apply",
+                    "--reverse",
+                    "--check",
+                    "--ignore-space-change",
+                    &patch_str,
+                ])
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
+
+            if already_applied {
+                println!(
+                    "Patch {} already applied to {:?}",
+                    patch.display(),
+                    checkout.file_name().unwrap_or_default()
+                );
+                continue;
+            }
+
+            let can_apply = Command::new("git")
+                .args([
+                    "-C",
+                    &checkout.to_string_lossy(),
+                    "apply",
+                    "--check",
+                    "--ignore-space-change",
+                    &patch_str,
+                ])
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
+
+            if !can_apply {
+                continue;
+            }
+
+            println!(
+                "Applying patch {} to {:?}",
+                patch.display(),
+                checkout.file_name().unwrap_or_default()
+            );
+
+            let status = Command::new("git")
+                .args([
+                    "-C",
+                    &checkout.to_string_lossy(),
+                    "apply",
+                    "--whitespace=nowarn",
+                    "--ignore-space-change",
+                    &patch_str,
+                ])
+                .status()
+                .map_err(|e| format!("failed to run git apply: {e}"))?;
+
+            if !status.success() {
+                eprintln!(
+                    "Warning: Failed to apply patch {} to {:?}",
+                    patch.display(),
+                    checkout
+                );
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn revert_all_patches() -> Result<(), String> {
+    let checkouts = find_zed_checkouts();
+    if checkouts.is_empty() {
+        println!("No zed git checkouts found.");
+        return Ok(());
+    }
+
+    for checkout in &checkouts {
+        println!("Reverting patches in {:?}", checkout);
+        let status = Command::new("git")
+            .args(["-C", &checkout.to_string_lossy(), "checkout", "."])
+            .status()
+            .map_err(|e| format!("failed to run git checkout: {e}"))?;
+
+        if !status.success() {
+            return Err(format!("failed to revert in {:?}", checkout));
+        }
+
+        let _ = Command::new("git")
+            .args(["-C", &checkout.to_string_lossy(), "clean", "-fd"])
+            .status();
+    }
+
+    println!("All patches reverted successfully.");
+    Ok(())
+}
+
+fn export_patch_diff() -> Result<(), String> {
+    let checkouts = find_zed_checkouts();
+    let Some(checkout) = checkouts.first() else {
+        return Err("No zed git checkout found to generate diff from.".to_string());
+    };
+
+    let output = Command::new("git")
+        .args(["-C", &checkout.to_string_lossy(), "diff"])
+        .output()
+        .map_err(|e| format!("failed to run git diff: {e}"))?;
+
+    if !output.status.success() {
+        return Err("git diff failed".to_string());
+    }
+
+    if output.stdout.is_empty() {
+        println!("No modifications found in {:?}.", checkout);
+        return Ok(());
+    }
+
+    let patch_path = Path::new("patches").join("0001-gpui-custom.patch");
+    fs::write(&patch_path, &output.stdout)
+        .map_err(|e| format!("failed to write patch file: {e}"))?;
+
+    println!("Exported diff to {}", patch_path.display());
+    Ok(())
+}
+
+fn run_gate() -> Result<(), String> {
+    println!("=== [1/4] Running fmt check ===");
+    run_cargo(&["fmt", "--all", "--check"])?;
+
+    println!("=== [2/4] Running cargo check ===");
+    run_cargo(&["check"])?;
+
+    println!("=== [3/4] Running cargo clippy ===");
+    run_cargo(&["clippy", "--", "-D", "warnings"])?;
+
+    println!("=== [4/4] Running cargo test ===");
+    run_cargo(&["test"])?;
+
+    println!("=== All checks passed successfully! ===");
+    Ok(())
+}
+
+fn package_portable_zip(binary_path: &Path, zip_path: &Path) -> Result<(), String> {
+    let file = fs::File::create(zip_path).map_err(|e| format!("Failed to create zip file: {e}"))?;
+    let mut zip = zip::ZipWriter::new(file);
+
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+
+    zip.start_file("Winsentials.exe", options)
+        .map_err(|e| format!("Failed to start file in zip: {e}"))?;
+
+    let binary_bytes = fs::read(binary_path).map_err(|e| format!("Failed to read binary: {e}"))?;
+    std::io::Write::write_all(&mut zip, &binary_bytes)
+        .map_err(|e| format!("Failed to write binary to zip: {e}"))?;
+
+    zip.finish()
+        .map_err(|e| format!("Failed to finish zip: {e}"))?;
+    Ok(())
+}
+
+fn build_installer(version: &str, binary: &Path, output_path: &Path) -> Result<(), String> {
+    println!("=== Building Inno Setup installer ===");
+    let script = fs::canonicalize("installer/Winsentials.iss")
+        .map_err(|error| format!("Inno Setup script not found: {error}"))?;
+    let binary =
+        fs::canonicalize(binary).map_err(|error| format!("release binary not found: {error}"))?;
+    let icon = fs::canonicalize("assets/app-logo.ico")
+        .map_err(|error| format!("installer icon not found: {error}"))?;
+    let output_dir = output_path
+        .parent()
+        .ok_or_else(|| "installer output directory is missing".to_string())?;
+    let output_name = output_path
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| "installer output name is invalid".to_string())?;
+    let inno_path = |path: &Path| {
+        let value = path.to_string_lossy();
+        value.strip_prefix(r"\\?\").unwrap_or(&value).to_string()
+    };
+    let args = [
+        "/Qp".to_string(),
+        format!("/DAppVersion={version}"),
+        format!("/DSourceExe={}", inno_path(&binary)),
+        format!("/DSetupIcon={}", inno_path(&icon)),
+        format!("/O{}", inno_path(output_dir)),
+        format!("/F{output_name}"),
+        inno_path(&script),
+    ];
+    let args = args.iter().map(String::as_str).collect::<Vec<_>>();
+    run_external("iscc", &args)
+}
+
+fn run_build() -> Result<(), String> {
+    println!("=== Building Winsentials release binary ===");
+    run_cargo(&["build", "--release", "--package", "winsentials"])?;
+
+    let release_dir = Path::new("target").join("release");
+    let binary = release_dir.join(format!("Winsentials{}", env::consts::EXE_SUFFIX));
+    if !binary.exists() {
+        return Err(format!("Binary not found at {}", binary.display()));
+    }
+
+    println!("=== Compressing binary with UPX ===");
+    if let Err(e) = run_external("upx", &["--best", "--lzma", &binary.to_string_lossy()]) {
+        eprintln!("Warning: UPX compression skipped or failed: {e}");
+    }
+
+    let version = env!("CARGO_PKG_VERSION");
+
+    println!("=== Packaging portable ZIP ===");
+    let portable_zip_path = release_dir.join("winsentials-win-x64-portable.zip");
+    package_portable_zip(&binary, &portable_zip_path)?;
+
+    let setup_exe_path = release_dir.join("winsentials-win-x64-setup.exe");
+    build_installer(version, &binary, &setup_exe_path)?;
+
+    println!("\n=== Release distribution artifacts ready in target/release/ ===");
+    let artifacts = [
+        ("Winsentials.exe", &binary),
+        ("winsentials-win-x64-portable.zip", &portable_zip_path),
+        ("winsentials-win-x64-setup.exe", &setup_exe_path),
+    ];
+
+    for (name, path) in &artifacts {
+        if let Ok(meta) = fs::metadata(path) {
+            let size_mb = meta.len() as f64 / (1024.0 * 1024.0);
+            println!("  - {:<36} ({:.2} MB)", name, size_mb);
+        }
+    }
+
+    Ok(())
+}
+
+fn run_cargo(args: &[&str]) -> Result<(), String> {
+    let cargo = env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
+    run_external(&cargo, args)
+}
+
+fn run_external(program: &str, args: &[&str]) -> Result<(), String> {
+    let status: ExitStatus = Command::new(program)
+        .args(args)
+        .status()
+        .map_err(|e| format!("failed to execute {program}: {e}"))?;
+
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "{program} command exited with non-zero status: {:?}",
+            status.code()
+        ))
+    }
+}
+
+#[derive(serde::Serialize)]
+struct PlatformTarget {
+    signature: String,
+    url: String,
+}
+
+#[derive(serde::Serialize)]
+struct ManifestPlatforms {
+    #[serde(rename = "windows-x86_64")]
+    windows_x86_64: PlatformTarget,
+}
+
+#[derive(serde::Serialize)]
+struct LatestManifest {
+    version: String,
+    notes: String,
+    pub_date: String,
+    platforms: ManifestPlatforms,
+}
+
+fn generate_manifest(
+    sig: Option<String>,
+    sig_file: Option<PathBuf>,
+    version: Option<String>,
+) -> Result<(), String> {
+    let signature = if let Some(s) = sig {
+        s.trim().to_string()
+    } else if let Some(path) = sig_file {
+        fs::read_to_string(&path)
+            .map_err(|e| format!("Failed to read signature file {}: {e}", path.display()))?
+            .trim()
+            .to_string()
+    } else {
+        return Err("Either --sig or --sig-file must be provided".to_string());
+    };
+
+    if signature.is_empty() {
+        return Err("Installer signature cannot be empty".to_string());
+    }
+
+    let version = if let Some(v) = version {
+        v
+    } else {
+        let cargo_toml = fs::read_to_string("Cargo.toml")
+            .map_err(|e| format!("Failed to read Cargo.toml: {e}"))?;
+        let ver_line = cargo_toml
+            .lines()
+            .find(|line| line.trim().starts_with("version = \""))
+            .ok_or_else(|| "version not found in Cargo.toml".to_string())?;
+        ver_line
+            .split('"')
+            .nth(1)
+            .ok_or_else(|| "invalid version format in Cargo.toml".to_string())?
+            .to_string()
+    };
+
+    let installer_name = "winsentials-win-x64-setup.exe";
+    let url = format!(
+        "https://github.com/Noktomezo/Winsentials/releases/download/v{version}/{installer_name}"
+    );
+
+    let pub_date = chrono::Utc::now().to_rfc3339();
+
+    let manifest = LatestManifest {
+        version: version.clone(),
+        notes: format!("Winsentials {version} Release"),
+        pub_date,
+        platforms: ManifestPlatforms {
+            windows_x86_64: PlatformTarget { signature, url },
+        },
+    };
+
+    let json = serde_json::to_string_pretty(&manifest)
+        .map_err(|e| format!("Failed to serialize manifest: {e}"))?;
+
+    let target_dir = Path::new("target").join("release");
+    fs::create_dir_all(&target_dir).map_err(|e| format!("Failed to create target/release: {e}"))?;
+    let target_path = target_dir.join("latest.json");
+    fs::write(&target_path, &json)
+        .map_err(|e| format!("Failed to write {}: {e}", target_path.display()))?;
+    println!("Generated {}", target_path.display());
+
+    let dist_dir = Path::new("dist");
+    if dist_dir.exists() {
+        let dist_path = dist_dir.join("latest.json");
+        fs::write(&dist_path, &json)
+            .map_err(|e| format!("Failed to write {}: {e}", dist_path.display()))?;
+        println!("Generated {}", dist_path.display());
+    }
+
+    Ok(())
+}

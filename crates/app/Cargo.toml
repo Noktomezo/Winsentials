@@ -1,0 +1,52 @@
+[package]
+name = "winsentials"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[lib]
+name = "winsentials"
+path = "src/lib.rs"
+
+[[bin]]
+name = "Winsentials"
+path = "src/main.rs"
+
+[dependencies]
+winsentials-core = { workspace = true }
+gpui = { workspace = true }
+gpui_windows = { workspace = true }
+rfd = { workspace = true }
+rust-i18n = { workspace = true }
+rust-embed = { workspace = true }
+serde = { workspace = true }
+toml = { workspace = true }
+windows-registry = { workspace = true }
+discord-rich-presence = { workspace = true }
+tray-icon = { workspace = true }
+system_shutdown = { workspace = true }
+image = { workspace = true }
+strsim = { workspace = true }
+glob = { workspace = true }
+thiserror = { workspace = true }
+windows-sys = { workspace = true }
+reqwest = { workspace = true }
+semver = { workspace = true }
+futures-util = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+minisign-verify = { workspace = true }
+tokio = { workspace = true }
+
+[build-dependencies]
+winres = { workspace = true }
+image = { workspace = true }
+
+[dev-dependencies]
+gpui = { git = "https://github.com/zed-industries/zed", branch = "main", default-features = false, features = ["test-support"] }
+
+[lints]
+workspace = true

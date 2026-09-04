@@ -1,0 +1,94 @@
+[workspace]
+members = [
+    "crates/app",
+    "crates/core",
+    "crates/xtask",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.9.0"
+edition = "2024"
+rust-version = "1.85"
+authors = ["Noktomezo <https://github.com/Noktomezo>"]
+repository = "https://github.com/Noktomezo/Winsentials"
+homepage = "https://github.com/Noktomezo/Winsentials"
+
+[workspace.dependencies]
+winsentials = { path = "crates/app" }
+winsentials-core = { path = "crates/core" }
+gpui = { git = "https://github.com/zed-industries/zed", branch = "main", default-features = false }
+gpui_windows = { git = "https://github.com/zed-industries/zed", branch = "main", default-features = false }
+rfd = "0.17.2"
+rust-i18n = "3"
+rust-embed = { version = "8.12.0", features = ["debug-embed", "include-exclude"] }
+serde = { version = "1.0.229", features = ["derive"] }
+toml = "1.1.4"
+windows-registry = "0.5"
+discord-rich-presence = "0.2.3"
+tray-icon = "0.19"
+system_shutdown = "4"
+image = { version = "0.25", default-features = false, features = ["ico", "png"] }
+strsim = "0.11"
+glob = "0.3.4"
+thiserror = "2.0.20"
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Shell",
+    "Win32_Graphics_Gdi",
+    "Win32_System_SystemInformation",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Threading",
+    "Win32_System_IO",
+    "Win32_System_Ioctl",
+    "Win32_Storage_FileSystem",
+    "Win32_Security",
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_NetworkManagement_Ndis",
+    "Win32_System_Com",
+] }
+winres = "0.1"
+clap = { version = "4.5", features = ["derive"] }
+zip = { version = "2.2", default-features = false, features = ["deflate"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
+semver = "1.0"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+serde_json = "1.0"
+uuid = { version = "1.10", features = ["v4"] }
+minisign-verify = "0.2"
+tokio = { version = "1", default-features = false, features = ["rt", "rt-multi-thread", "time"] }
+
+[workspace.lints.rust]
+unsafe_code = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -2 }
+pedantic = { level = "warn", priority = -1 }
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+must_use_candidate = "allow"
+module_name_repetitions = "allow"
+implicit_hasher = "allow"
+should_implement_trait = "allow"
+
+[profile.dev.package]
+gpui = { opt-level = 3 }
+gpui_windows = { opt-level = 3 }
+rustybuzz = { opt-level = 3 }
+taffy = { opt-level = 3 }
+ttf-parser = { opt-level = 3 }
+fontdb = { opt-level = 3 }
+resvg = { opt-level = 3 }
+usvg = { opt-level = 3 }
+tiny-skia = { opt-level = 3 }
+lyon_tessellation = { opt-level = 3 }
+image = { opt-level = 3 }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true

@@ -1,50 +1,57 @@
-set windows-shell := ["powershell", "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]
+# Winsentials Justfile
 
-# List all available recipes
-_default:
-  @just --list
+# List available recipes
+default:
+    @just --list
 
-# Generate icons from the same source used in CI
-gen-icons:
-  bun tauri icon assets/app-logo.png
+# Run complete quality gate (fmt-check, check, clippy, test)
+gate:
+    cargo run --package xtask -- gate
 
-# Run in dev mode with hot reload
-dev:
-  bun run tauri dev
+# Check project compilation across all workspace crates
+check:
+    cargo run --package xtask -- check
 
-# Install developer hooks
-boot:
-  bun install
-  cargo check --manifest-path "src-tauri/Cargo.toml"
+# Run clippy linter with warnings treated as errors
+clippy:
+    cargo run --package xtask -- clippy
 
-# Local installer build without updater artifacts/latest.json.
-build: gen-icons
-  bun tauri build --no-sign
-  upx --best --lzma "src-tauri/target/release/Winsentials.exe"
+# Format all workspace code
+fmt:
+    cargo run --package xtask -- fmt
 
-# Lint only backend
-lint-back:
-  cargo clippy --manifest-path "src-tauri/Cargo.toml" --all-targets --all-features -- -D warnings
+# Check workspace code formatting
+fmt-check:
+    cargo run --package xtask -- fmt-check
 
-# Lint only frontend
-lint-front:
-  bun run typecheck
-  bun run lint
+# Run all workspace unit tests
+test:
+    cargo run --package xtask -- test
 
-# Lint both backend and frontend
-lint: lint-back lint-front
+# Apply all patches from patches/ directory to cargo git checkouts
+patch:
+    cargo run --package xtask -- patch
 
-# Format only backend
-format-back:
-  cargo clippy --fix --allow-dirty --manifest-path "src-tauri/Cargo.toml" --all-targets --all-features
-  cargo fmt --manifest-path "src-tauri/Cargo.toml"
+# Revert all patches in cargo git checkouts
+unpatch:
+    cargo run --package xtask -- unpatch
 
-# Format only frontend
-format-front:
-  bun run format
+# Export current cargo git checkout changes to patches/0001-gpui-custom.patch
+diff:
+    cargo run --package xtask -- diff
 
-# Format both backend and frontend
-format: format-back format-front
+# Build the release executable, portable ZIP and Inno Setup installer
+build:
+    cargo run --package xtask --release -- build
 
-clean:
-  bunx poof dist src-tauri/target
+# Run development server with watchexec auto-reload on file change
+dev *ARGS: patch
+    watchexec -r -e rs,hlsl,toml,json -- cargo run --package winsentials -- {{ARGS}}
+
+# Run Winsentials application
+run *ARGS:
+    cargo run --package winsentials -- {{ARGS}}
+
+# Run custom xtask command
+xtask *ARGS:
+    cargo run --package xtask -- {{ARGS}}

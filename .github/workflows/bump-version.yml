@@ -1,9 +1,10 @@
 name: Bump Version
+
 on:
   workflow_dispatch:
     inputs:
-      bump_type:
-        description: Type of version bump
+      bump:
+        description: Version component to bump
         required: true
         default: patch
         type: choice
@@ -12,100 +13,91 @@ on:
           - minor
           - major
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
-  bump:
+  bump-version:
     runs-on: windows-latest
-    permissions:
-      contents: write
-      pull-requests: write
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout main
+        uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
           persist-credentials: false
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install jq (для Windows)
-        uses: dcarbone/install-jq-action@v3
-        with:
-          version: latest
-
-      - name: Git Config
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Bump package.json version
-        shell: bash
-        env:
-          BUMP_TYPE: ${{ github.event.inputs.bump_type }}
-        run: |
-          CURRENT_VERSION=$(jq -r '.version' package.json)
-
-          case "$BUMP_TYPE" in
-            major)
-              NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{print $1+1".0.0"}')
-              ;;
-            minor)
-              NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{print $1"."$2+1".0"}')
-              ;;
-            patch|*)
-              NEW_VERSION=$(echo "$CURRENT_VERSION" | awk -F. '{print $1"."$2"."$3+1}')
-              ;;
-          esac
-
-          jq --arg v "$NEW_VERSION" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
-
-          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-          echo "✅ Version bumped: $CURRENT_VERSION → $NEW_VERSION"
-
-      - name: Update tauri.conf.json
-        shell: bash
-        run: |
-          jq ".version = \"${{ env.NEW_VERSION }}\"" src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
-
-      - name: Update Cargo.toml
-        shell: bash
-        run: |
-          sed -i "s/^version = \".*\"/version = \"${{ env.NEW_VERSION }}\"/" src-tauri/Cargo.toml
-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Regenerate Cargo.lock
-        run: cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
+      - name: Calculate and apply version
+        id: version
+        shell: pwsh
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          $cargo = Get-Content -Raw -LiteralPath Cargo.toml
+          $match = [regex]::Match($cargo, '(?m)^version\s*=\s*"(?<version>\d+\.\d+\.\d+)"')
+          if (-not $match.Success) { throw 'Package version not found in Cargo.toml' }
 
-      - name: Create Pull Request
-        id: cpr
+          $parts = [int[]]$match.Groups['version'].Value.Split('.')
+          switch ($env:BUMP) {
+            'major' { $parts[0]++; $parts[1] = 0; $parts[2] = 0 }
+            'minor' { $parts[1]++; $parts[2] = 0 }
+            'patch' { $parts[2]++ }
+            default { throw "Unsupported bump: $env:BUMP" }
+          }
+
+          $version = $parts -join '.'
+          $updated = $cargo.Remove($match.Groups['version'].Index, $match.Groups['version'].Length).Insert($match.Groups['version'].Index, $version)
+          Set-Content -LiteralPath Cargo.toml -Value $updated -NoNewline
+
+          $issPath = "installer/Winsentials.iss"
+          if (Test-Path $issPath) {
+            $iss = Get-Content -Raw -LiteralPath $issPath
+            $iss = [regex]::Replace($iss, '(?m)^(\s*#define\s+AppVersion\s+)"\d+\.\d+\.\d+"', "`${1}`"$version`"")
+            Set-Content -LiteralPath $issPath -Value $iss -NoNewline
+          }
+
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=v$version" >> $env:GITHUB_OUTPUT
+
+      - name: Update lockfile
+        run: cargo update --workspace
+
+      - name: Validate lockfile version
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $lock = Get-Content -Raw -LiteralPath Cargo.lock
+          $pattern = '(?ms)^\[\[package\]\]\s*name = "winsentials"\s*version = "' + [regex]::Escape($env:VERSION) + '"'
+          if ($lock -notmatch $pattern) { throw "Cargo.lock does not contain winsentials $env:VERSION" }
+
+      - name: Ensure labels exist
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          gh label create version-bump --color D4A72C --description 'Automated version bump' --force
+          gh label create automated-pr --color 6F42C1 --description 'Created by automation' --force
+
+      - name: Create version bump pull request
         uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.RELEASE_TOKEN }}
-          commit-message: 'chore: bump version to v${{ env.NEW_VERSION }}'
-          committer: 'github-actions[bot] <github-actions[bot]@users.noreply.github.com>'
-          author: 'github-actions[bot] <github-actions[bot]@users.noreply.github.com>'
-          branch: 'chore/version-bump-v${{ env.NEW_VERSION }}'
-          title: 'chore: bump version to v${{ env.NEW_VERSION }}'
-          body: |
-            Bumping version to v${{ env.NEW_VERSION }}
-            - Bump type: ${{ github.event.inputs.bump_type }}
-            - Updated: `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock`
+          branch: chore/version-bump-${{ steps.version.outputs.tag }}
+          delete-branch: true
+          commit-message: "chore: bump version to ${{ steps.version.outputs.tag }}"
+          title: "chore: bump version to ${{ steps.version.outputs.tag }}"
           labels: |
             version-bump
             automated-pr
+          body: |
+            Automated Winsentials version bump to `${{ steps.version.outputs.tag }}`.
 
-      - name: Create and Push Tag
-        if: steps.cpr.outputs.pull-request-number != ''
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        run: |
-          # Настраиваем авторизацию (persist-credentials: false)
-          git config --local http.https://github.com/.extraheader "AUTHORIZATION: basic $(echo -n x-access-token:${GITHUB_TOKEN} | base64)"
-
-          git tag -f "v${{ env.NEW_VERSION }}" ${{ steps.cpr.outputs.pull-request-head-sha }}
-          git push origin "v${{ env.NEW_VERSION }}" --force
+            - Updates `Cargo.toml` and `Cargo.lock`.
+            - The release is promoted only from artifacts produced by the successful PR Build workflow.

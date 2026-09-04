@@ -1,0 +1,63 @@
+name: PR Build
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-build-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: startsWith(github.head_ref, 'chore/version-bump-v')
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install packaging tools
+        run: choco install innosetup upx -y --no-progress
+
+      - name: Apply GPUI patches
+        run: cargo run --package xtask -- patch
+
+      - name: Run tests
+        run: cargo test --workspace
+
+      - name: Run Clippy
+        run: cargo clippy --workspace -- -D warnings
+
+      - name: Build distributions
+        run: cargo run --package xtask -- build
+
+      - name: Stage tested artifacts
+        shell: pwsh
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item -LiteralPath "target/release/winsentials-win-x64-setup.exe" -Destination "dist/Winsentials-pr-$env:PR_NUMBER-windows-x86_64-setup.exe"
+          Copy-Item -LiteralPath "target/release/winsentials-win-x64-portable.zip" -Destination "dist/Winsentials-pr-$env:PR_NUMBER-windows-x86_64-portable.zip"
+
+      - name: Upload tested artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Winsentials-pr-${{ github.event.pull_request.number }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
