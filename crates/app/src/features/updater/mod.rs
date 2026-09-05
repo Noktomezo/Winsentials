@@ -337,7 +337,7 @@ where
     #[cfg(windows)]
     {
         // Launch Inno Setup installer
-        std::process::Command::new(&installer_path)
+        std::process::Command::new(&installer_path).args(["/SILENT", "/CLOSEAPPLICATIONS", "/RESTARTAPPLICATIONS"])
             .spawn()
             .map_err(|e| format!("Failed to launch installer: {e}"))?;
 
