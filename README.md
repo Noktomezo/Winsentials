@@ -2,10 +2,9 @@
   <img src="assets/app-thumbnail.png" alt="Winsentials Preview" width="100%" />
   <p align="center">
     <a href="https://github.com/Noktomezo/Winsentials/releases"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/release/Noktomezo/Winsentials.svg?size=sm&amp;mode=dark&amp;theme=slate"><img alt="Release" src="https://www.shieldcn.dev/github/release/Noktomezo/Winsentials.svg?size=sm&amp;mode=light&amp;theme=slate"></picture></a>
-    <a href="https://github.com/Noktomezo/Winsentials/actions"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/ci/Noktomezo/Winsentials.svg?variant=secondary&amp;size=sm&amp;mode=dark&amp;theme=slate"><img alt="CI" src="https://www.shieldcn.dev/github/ci/Noktomezo/Winsentials.svg?variant=secondary&amp;size=sm&amp;mode=light&amp;theme=slate"></picture></a>
+    <a href="https://github.com/Noktomezo/Winsentials/actions"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/ci/Noktomezo/Winsentials.svg?variant=secondary&amp;size=sm&amp;mode=dark&amp;theme=slate"><img alt="CI" src="https://www.shieldcn.dev/github/ci/Noktomezo/Winsentials.svg?variant=secondary&amp;size=sm&amp;mode=dark&amp;theme=slate"></picture></a>
     <a href="https://github.com/Noktomezo/Winsentials/stargazers"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/stars/Noktomezo/Winsentials.svg?variant=secondary&amp;size=sm&amp;mode=dark&amp;theme=slate"><img alt="GitHub Stars" src="https://www.shieldcn.dev/github/stars/Noktomezo/Winsentials.svg?variant=secondary&amp;size=sm&amp;mode=light&amp;theme=slate"></picture></a>
     <a href="https://github.com/Noktomezo/Winsentials/commits/main"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/last-commit/Noktomezo/Winsentials.svg?variant=secondary&amp;size=sm&amp;mode=dark&amp;theme=slate"><img alt="Last commit" src="https://www.shieldcn.dev/github/last-commit/Noktomezo/Winsentials.svg?variant=secondary&amp;size=sm&amp;mode=light&amp;theme=slate"></picture></a>
-    <a href="AGENTS.md"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/badge/Agent--friendly-AGENTS.md-D97757.svg?variant=secondary&amp;size=sm&amp;mode=dark&amp;theme=slate"><img alt="Agent-friendly AGENTS.md" src="https://www.shieldcn.dev/badge/Agent--friendly-AGENTS.md-D97757.svg?variant=secondary&amp;size=sm&amp;mode=light&amp;theme=slate"></picture></a>
   </p>
 
   <p align="center">
@@ -16,14 +15,14 @@
 
 ## ⚡ Features
 
-- 🦀 **Pure Rust & GPUI**: Zero Electron or WebView overhead. Direct GPU-accelerated rendering at native display refresh rates.
-- ⏱️ **Lightweight & Instant**: Near-instant cold start with negligible memory footprint.
-- 🎮 **Gaming & Input Latency**: Directional SOCD neutralization (SnapKey), low-latency pointer control, and kernel I/O scheduling.
-- 📊 **Real-Time Telemetry**: Stepped history graphs and live metrics for CPU (per-core load), GPU (engines & VRAM), disk I/O, and network.
-- 🛠️ **System & Shell Tuning**: Windows 10/11 shell decluttering, context menu restoration, and low-level network optimization.
-- 🧹 **Disk Cleanup**: Fast scanner for crash dumps, temporary files, and system caches with accurate space reclamation.
-- 🚀 **Startup Manager**: Unified inspection and control of autoruns, background services, and scheduled tasks.
-- 🔄 **Integrated Auto-Updater**: Background release checks with in-toast download progress and seamless updates.
+🦀 **Pure Rust & GPUI** — Zero Electron or WebView overhead. Direct GPU-accelerated rendering at native display refresh rates.<br/>
+⏱️ **Lightweight & Instant** — Near-instant cold start with negligible memory footprint.<br/>
+🎮 **Gaming & Input Latency** — Directional SOCD neutralization (SnapKey), low-latency pointer control, and kernel I/O scheduling.<br/>
+📊 **Real-Time Telemetry** — Stepped history graphs and live metrics for CPU (per-core load), GPU (engines & VRAM), disk I/O, and network.<br/>
+🛠️ **System & Shell Tuning** — Windows 10/11 shell decluttering, context menu restoration, and low-level network optimization.<br/>
+🧹 **Disk Cleanup** — Fast scanner for crash dumps, temporary files, and system caches with accurate space reclamation.<br/>
+🚀 **Startup Manager** — Unified inspection and control of autoruns, background services, and scheduled tasks.<br/>
+🔄 **Integrated Auto-Updater** — Background release checks with in-toast download progress and seamless updates.
 
 ## 📥 Installation
 
@@ -35,6 +34,7 @@
 ### Prerequisites
 - [Rust](https://rustup.rs) 1.85+ (Edition 2024)
 - Visual Studio 2022 C++ Build Tools
+- [just](https://github.com/casey/just) command runner (`cargo install just`)
 
 ### Build & Run
 
@@ -43,10 +43,10 @@ git clone https://github.com/Noktomezo/Winsentials.git
 cd Winsentials
 
 # Run debug build
-cargo run -p winsentials
+just run
 
-# Build release binary
-cargo build --release
+# Build release artifacts (installer & portable zip)
+just build
 ```
 
 ## ⌨️ Keyboard Shortcuts
