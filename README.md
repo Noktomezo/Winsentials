@@ -55,8 +55,8 @@
 
 ## 📥 Installation
 
-- **Installer (Recommended)**: Download `Winsentials-Setup.exe` from the latest [GitHub Release](https://github.com/Noktomezo/Winsentials/releases) for automatic desktop integration and clean uninstallation.
-- **Portable**: Download standalone `Winsentials.exe` and run directly.
+- **Installer (Recommended)**: Download `winsentials-win-x64-setup.exe` from the latest [GitHub Release](https://github.com/Noktomezo/Winsentials/releases) for automatic desktop integration and clean uninstallation.
+- **Portable**: Download `winsentials-win-x64-portable.zip`, extract anywhere, and run `Winsentials.exe`.
 
 ## 🛠️ Building From Source
 
