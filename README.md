@@ -44,114 +44,43 @@
 
 ---
 
-## ⚡ Highlights
+## ⚡ Features
 
-- 🦀 **Pure Rust & GPUI**: Zero Electron/WebView2 runtime overhead. Direct GPU-accelerated rendering powered by Zed's GPUI framework at your monitor's native refresh rate.
-- ⏱️ **Instant Cold Start**: Launches in sub-milliseconds with negligible memory footprint in the system tray.
-- 🎯 **Gaming Input Engine**: Hardware-level directional SOCD / Counter-strafe neutralization (*SnapKey*), CSRSS I/O priority boost, and real-time Win32 mouse acceleration control.
-- 📊 **Real-time Telemetry**: Stepped history graphs and live diagnostics for CPU (per-core load), GPU (dedicated/shared memory and 3D/video engines), RAM, Disks, and Network.
-- 🧹 **Interactive Disk Cleaner**: High-speed scanner for system logs, crash dumps, and application caches with accurate freed space calculation.
-- 🚀 **Intelligent Startup Manager**: Levenshtein fuzzy search, PE/LNK/VBS/PowerShell icon extraction, and safe Task Scheduler / service control.
-- 🔄 **Production Auto-Updater**: Background GitHub Release checks with interactive two-row action toasts, in-toast download progress, and clean app restart.
-- 🎨 **Library-Grade UI**: Arclate & Flexoki design systems with Windows 11 Mica/Acrylic material backdrops, continuous spring physics, and zero abrupt styling jumps.
-
----
-
-## 🎛️ Features
-
-- **🎮 Gaming & Low-Latency Input Engine**  
-  Directional SOCD / null-bind neutralization (SnapKey), kernel I/O priority boosting, real-time pointer acceleration control, and low-level keyboard repeat tuning applied instantaneously through native Win32 APIs.
-
-- **🛠️ System, Shell & Network Tuning**  
-  Curated Windows 10 and 11 customizations, Explorer navigation decluttering, context menu restoration, and AFD/TCP network stack tuning — backed by interactive action toasts for zero-friction Explorer or system reloads.
-
-- **📈 Real-Time Hardware Telemetry**  
-  Low-overhead hardware monitoring with stepped history graphs: per-core CPU topology and load cards, multi-GPU engine tracking (3D, Video, Copy, VRAM), live disk I/O throughput, and network activity.
-
-- **🧹 System Maintenance & Disk Cleanup**  
-  Deep multi-category scanner targeting system crash dumps, update caches, diagnostic logs, and temporary application data with granular selection and accurate space reclamation calculations.
-
-- **🚀 Intelligent Startup Manager**  
-  Unified inspection of registry autoruns, startup folders, scheduled tasks, and Windows services with PE icon extraction, vendor identification, and instant fuzzy filtering.
-
----
-
-## 🏗️ Architecture & Philosophy
-
-Winsentials is built as a lightweight, Rust-adapted Feature-Sliced Design (FSD) workspace:
-
-```text
-Winsentials/
-├── crates/
-│   ├── app/           # Main GPUI desktop application (pages, widgets, features, entities)
-│   ├── core/          # winsentials-core (library-grade UI components, motion primitives, theme)
-│   └── xtask/         # Build pipeline, packaging, and release automation
-├── assets/            # Fonts, vector icons, and branding assets
-├── installer/         # Inno Setup 6 build scripts and configurations
-└── locales/           # English (en) and Russian (ru) internationalization catalogs
-```
-
-### Motion-First UI Contract
-Every component in `winsentials-core` adheres to a strict visual and behavioral contract:
-- **Continuous State Transitions**: Hover, active, focus, and selection states transition through smooth spring physics.
-- **Zero Layout Popping**: Dropdown menus, modals, and notifications morph with proportional bounding box interpolation.
-- **Reduced Motion Support**: Automatically honors Windows system accessibility settings.
+- 🦀 **Pure Rust & GPUI**: Zero Electron or WebView overhead. Direct GPU-accelerated rendering at native display refresh rates.
+- ⏱️ **Lightweight & Instant**: Near-instant cold start with negligible memory footprint.
+- 🎮 **Gaming & Input Latency**: Directional SOCD neutralization (SnapKey), low-latency pointer control, and kernel I/O scheduling.
+- 📊 **Real-Time Telemetry**: Stepped history graphs and live metrics for CPU (per-core load), GPU (engines & VRAM), disk I/O, and network.
+- 🛠️ **System & Shell Tuning**: Windows 10/11 shell decluttering, context menu restoration, and low-level network optimization.
+- 🧹 **Disk Cleanup**: Fast scanner for crash dumps, temporary files, and system caches with accurate space reclamation.
+- 🚀 **Startup Manager**: Unified inspection and control of autoruns, background services, and scheduled tasks.
+- 🔄 **Integrated Auto-Updater**: Background release checks with in-toast download progress and seamless updates.
 
 ---
 
 ## 📥 Installation
 
-### Automated Installer (Recommended)
-Download the latest `Winsentials-Setup.exe` from [GitHub Releases](https://github.com/Noktomezo/Winsentials/releases). The installer provides:
-- Seamless Windows 11 dark theme integration.
-- Start menu & desktop shortcut creation.
-- Clean uninstallation via Windows Settings.
-
-### Portable Binary
-Download `Winsentials.exe` from the latest release, extract to any directory, and run directly.
+- **Installer (Recommended)**: Download `Winsentials-Setup.exe` from the latest [GitHub Release](https://github.com/Noktomezo/Winsentials/releases) for automatic desktop integration and clean uninstallation.
+- **Portable**: Download standalone `Winsentials.exe` and run directly.
 
 ---
 
 ## 🛠️ Building From Source
 
 ### Prerequisites
-- **Rust**: 1.85+ (Edition 2024) — install via [rustup.rs](https://rustup.rs)
-- **C++ Build Tools**: Visual Studio 2022 C++ build tools (required for Windows APIs)
-- **Git**
+- [Rust](https://rustup.rs) 1.85+ (Edition 2024)
+- Visual Studio 2022 C++ Build Tools
 
-### Clone & Run
+### Build & Run
 
 ```bash
-# Clone the repository
 git clone https://github.com/Noktomezo/Winsentials.git
 cd Winsentials
 
 # Run debug build
 cargo run -p winsentials
 
-# Build optimized release binary
+# Build release binary
 cargo build --release
-```
-
-### Quality & Completion Gates
-
-Before submitting code, run the workspace test and verification suites:
-
-```bash
-# Code formatting
-cargo fmt --all --check
-
-# Compiler checks
-cargo check --workspace
-
-# Clippy linter
-cargo clippy --workspace -- -D warnings
-
-# Unit & visual GPUI tests
-cargo test --workspace
-
-# Code duplication audit (< 7%)
-bunx jscpd crates --min-lines 10 --reporters console --summary
 ```
 
 ---
@@ -160,21 +89,13 @@ bunx jscpd crates --min-lines 10 --reporters console --summary
 
 | Shortcut | Action |
 | :--- | :--- |
-| <kbd>Ctrl</kbd> + <kbd>F</kbd> / <kbd>/</kbd> | Focus global search in Startup / Tweaks |
-| <kbd>Escape</kbd> | Close active dropdown, dismiss search, or navigate to parent view |
-| <kbd>Ctrl</kbd> + <kbd>X</kbd> | Cut selected text in input fields |
+| <kbd>Ctrl</kbd> + <kbd>F</kbd> / <kbd>/</kbd> | Focus search in Startup / Tweaks |
+| <kbd>Escape</kbd> | Close active dropdown, clear search, or navigate back |
 | <kbd>Ctrl</kbd> + <kbd>Q</kbd> | Quit application |
-
----
-
-## 🤝 Contributing & Agents
-
-Contributions are welcome! If you're building with autonomous AI agents or local scripts:
-- Review [`AGENTS.md`](AGENTS.md) for architectural boundaries, downward dependency flow, and library promotion rules.
-- Maintain documentation integrity and adhere to the Rust completion gate.
 
 ---
 
 ## 📄 License
 
 Distributed under the terms of the project repository. See individual crate manifests for dependency licensing.
+
