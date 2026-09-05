@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
 use gpui::{
-    App, FontWeight, InteractiveElement, IntoElement, ParentElement, RenderOnce, Rgba,
-    SharedString, StatefulInteractiveElement, Styled, Window, div, px,
+    App, FontWeight, IntoElement, ParentElement, RenderOnce, Rgba, SharedString, Styled, Window,
+    div, px,
 };
 use rust_i18n::t;
 
 use crate::entities::hardware::GpuInfo;
 use crate::shared::theme::Theme;
-use crate::shared::ui::{Dropdown, GroupCard, Icon};
+use crate::shared::ui::{Button, ButtonVariant, Dropdown, GroupCard};
 
 use super::page_header::PageHeader;
 use crate::shared::ui::history_graph::{HistoryGraphPalette, render_stepped_history_graph};
@@ -191,36 +191,15 @@ impl RenderOnce for GpuPage {
         let on_close_dropdowns = self.on_close_dropdowns.clone();
 
         // 1. Engine Grid (2x2) Card
-        let reset_btn = div()
-            .id("gpu_reset_btn")
-            .flex()
-            .items_center()
-            .gap(px(4.0))
-            .px(px(8.0))
-            .py(px(3.0))
-            .rounded(px(5.0))
-            .border_1()
-            .border_color(theme.input_border)
-            .bg(theme.input_bg)
-            .cursor_pointer()
-            .hover(move |s| s.border_color(theme.accent_blue))
-            .on_click(move |_event, window, cx| {
-                if let Some(ref h) = on_reset_slots {
+        let on_reset = on_reset_slots.clone();
+        let reset_btn = Button::new("gpu_reset_btn", t!("gpu_detail.reset_selection"))
+            .icon_left("icons/rotate-ccw.svg")
+            .variant(ButtonVariant::Outline)
+            .on_click(move |_, window, cx| {
+                if let Some(ref h) = on_reset {
                     h(window, cx);
                 }
-            })
-            .child(
-                Icon::new("icons/rotate-ccw.svg")
-                    .size(px(12.0))
-                    .color(theme.text_muted),
-            )
-            .child(
-                div()
-                    .text_size(px(11.5))
-                    .font_weight(FontWeight::MEDIUM)
-                    .text_color(theme.text_primary)
-                    .child(t!("gpu_detail.reset_selection")),
-            );
+            });
 
         let mut engine_slots_grid = div().flex().flex_col().gap(px(12.0)).w_full();
 

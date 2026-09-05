@@ -153,7 +153,7 @@ impl RenderOnce for Button {
                 theme.selected_text,
                 None,
             ),
-            ButtonVariant::Secondary => (
+            ButtonVariant::Secondary | ButtonVariant::Outline => (
                 theme.input_bg,
                 theme.button_hover,
                 theme.button_active,
@@ -173,13 +173,6 @@ impl RenderOnce for Button {
                 theme.accent_red.opacity(0.40),
                 theme.accent_red,
                 Some(theme.accent_red.opacity(0.35)),
-            ),
-            ButtonVariant::Outline => (
-                gpui::rgba(0x0000_0000),
-                theme.accent_hover_bg,
-                theme.accent_active_bg,
-                theme.text_primary,
-                Some(theme.card_border),
             ),
         };
 

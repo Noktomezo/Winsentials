@@ -12,7 +12,9 @@ use crate::entities::cleanup::{CleanupCategory, CleanupState, format_bytes};
 use crate::pages::PageHeader;
 use crate::shared::theme::Theme;
 use crate::shared::ui::smooth_scroll::SmoothVirtualList;
-use crate::shared::ui::{Button, ButtonSize, Icon, IconButton};
+use crate::shared::ui::{
+    Badge, BadgeVariant, Button, ButtonSize, ButtonVariant, Icon, IconButton, IconButtonVariant,
+};
 
 const TARGET_HEIGHT: f32 = 50.0;
 const TARGET_GAP: f32 = 6.0;
@@ -67,18 +69,9 @@ impl CleanupPage {
     }
 }
 
-fn badge(id: String, text: String, theme: &Theme) -> AnyElement {
-    div()
-        .id(ElementId::Name(id.into()))
-        .px(px(6.0))
-        .py(px(1.0))
-        .rounded(px(6.0))
-        .bg(theme.input_bg)
-        .border_1()
-        .border_color(theme.card_border)
-        .text_size(px(11.0))
-        .text_color(theme.text_muted)
-        .child(text)
+fn badge(id: String, text: String, _theme: &Theme) -> AnyElement {
+    Badge::new(id, text)
+        .variant(BadgeVariant::Outline)
         .into_any_element()
 }
 
@@ -127,7 +120,8 @@ fn clean_button(
     on_click: Option<ClickHandler>,
 ) -> AnyElement {
     let mut button = Button::new(id, label)
-        .size(ButtonSize::Sm)
+        .size(ButtonSize::Md)
+        .variant(ButtonVariant::Outline)
         .icon_left("icons/trash-2.svg")
         .disabled(!enabled);
 
@@ -270,6 +264,7 @@ impl RenderOnce for CleanupPage {
                 ))
                 .child(
                     IconButton::new("cleanup_check_all", "icons/square-check-big.svg")
+                        .variant(IconButtonVariant::Outline)
                         .disabled(total == 0 || busy)
                         .on_click(move |_event, window, cx| {
                             toggle_all(window, cx);
@@ -277,6 +272,7 @@ impl RenderOnce for CleanupPage {
                 )
                 .child(
                     IconButton::new("cleanup_refresh", "icons/refresh-cw.svg")
+                        .variant(IconButtonVariant::Outline)
                         .disabled(busy)
                         .loading(self.state.scanning)
                         .on_click(move |_event, window, cx| {
@@ -428,6 +424,7 @@ impl RenderOnce for CleanupPage {
                         format!("cleanup_{category_id}_check"),
                         "icons/square-check-big.svg",
                     )
+                    .variant(IconButtonVariant::Outline)
                     .disabled(targets.is_empty() || busy)
                     .on_click(move |_event, window, cx| {
                         cx.stop_propagation();

@@ -194,6 +194,8 @@ impl RenderOnce for IconButton {
             (gpui::rgba(0x0000_0000), theme.accent_red.opacity(0.18))
         } else if self.selected {
             (theme.accent_selected_bg, theme.accent_selected_bg)
+        } else if is_outline {
+            (theme.input_bg, theme.button_hover)
         } else {
             (gpui::rgba(0x0000_0000), theme.accent_hover_bg)
         };

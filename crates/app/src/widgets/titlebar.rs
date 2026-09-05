@@ -156,7 +156,7 @@ impl RenderOnce for Titlebar {
             .to(toggle_hover_target)
             .with_epsilon(0.005);
 
-        let accent_cyan = theme.accent_cyan;
+        let accent_blue = theme.accent_blue;
         let toggle_text_color = lerp_item_text(&theme, toggle_hover_target);
 
         // Sidebar panel icon:
@@ -317,7 +317,7 @@ impl RenderOnce for Titlebar {
                 "sidebar_toggle_bg_spring",
                 toggle_hover_spring,
                 move |btn, val| {
-                    let bg = lerp_item_bg(accent_cyan, val);
+                    let bg = lerp_item_bg(accent_blue, val);
                     btn.bg(bg)
                 },
             )
