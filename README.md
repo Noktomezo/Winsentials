@@ -42,8 +42,6 @@
   </p>
 </div>
 
----
-
 ## ⚡ Features
 
 - 🦀 **Pure Rust & GPUI**: Zero Electron or WebView overhead. Direct GPU-accelerated rendering at native display refresh rates.
@@ -55,14 +53,10 @@
 - 🚀 **Startup Manager**: Unified inspection and control of autoruns, background services, and scheduled tasks.
 - 🔄 **Integrated Auto-Updater**: Background release checks with in-toast download progress and seamless updates.
 
----
-
 ## 📥 Installation
 
 - **Installer (Recommended)**: Download `Winsentials-Setup.exe` from the latest [GitHub Release](https://github.com/Noktomezo/Winsentials/releases) for automatic desktop integration and clean uninstallation.
 - **Portable**: Download standalone `Winsentials.exe` and run directly.
-
----
 
 ## 🛠️ Building From Source
 
@@ -83,8 +77,6 @@ cargo run -p winsentials
 cargo build --release
 ```
 
----
-
 ## ⌨️ Keyboard Shortcuts
 
 | Shortcut | Action |
@@ -92,8 +84,6 @@ cargo build --release
 | <kbd>Ctrl</kbd> + <kbd>F</kbd> / <kbd>/</kbd> | Focus search in Startup / Tweaks |
 | <kbd>Escape</kbd> | Close active dropdown, clear search, or navigate back |
 | <kbd>Ctrl</kbd> + <kbd>Q</kbd> | Quit application |
-
----
 
 ## 📄 License
 
