@@ -28,6 +28,10 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern dynamic
+ShowLanguageDialog=auto
+UsePreviousLanguage=yes
+UsePreviousTasks=yes
+UsePreviousAppDir=yes
 CloseApplications=yes
 CloseApplicationsFilter=Winsentials.exe
 RestartApplications=no
@@ -54,3 +58,4 @@ Name: "{autodesktop}\Winsentials"; Filename: "{app}\Winsentials.exe"; Tasks: des
 
 [Run]
 Filename: "{app}\Winsentials.exe"; Description: "{cm:LaunchProgram,Winsentials}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\Winsentials.exe"; Flags: nowait; Check: WizardSilent
