@@ -3,6 +3,9 @@ use tray_icon::{
     menu::{Menu, MenuItem},
 };
 
+pub const WINDOW_WIDTH: f32 = 900.0;
+pub const WINDOW_HEIGHT: f32 = 700.0;
+
 const APP_LOGO_PNG_BYTES: &[u8] = if cfg!(debug_assertions) {
     include_bytes!("../../../../assets/app-logo-dev.png")
 } else {
@@ -41,9 +44,44 @@ impl Default for TrayManager {
     }
 }
 
+#[repr(i32)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[allow(dead_code)]
+enum PreferredAppMode {
+    Default = 0,
+    AllowDark = 1,
+    ForceDark = 2,
+    ForceLight = 3,
+}
+
+#[allow(unsafe_code)]
+pub fn init_theme_aware_menus() {
+    unsafe {
+        let uxtheme =
+            windows_sys::Win32::System::LibraryLoader::LoadLibraryA(c"uxtheme.dll".as_ptr().cast());
+        if !uxtheme.is_null() {
+            let set_preferred_app_mode =
+                windows_sys::Win32::System::LibraryLoader::GetProcAddress(uxtheme, 135 as _);
+            if let Some(func) = set_preferred_app_mode {
+                let func: unsafe extern "system" fn(i32) -> i32 = std::mem::transmute(func);
+                func(PreferredAppMode::AllowDark as i32);
+            }
+
+            let flush_menu_themes =
+                windows_sys::Win32::System::LibraryLoader::GetProcAddress(uxtheme, 136 as _);
+            if let Some(func) = flush_menu_themes {
+                let func: unsafe extern "system" fn() = std::mem::transmute(func);
+                func();
+            }
+        }
+    }
+}
+
 impl TrayManager {
     #[must_use]
     pub fn new() -> Self {
+        init_theme_aware_menus();
+
         let menu = Menu::new();
         let open_title = if cfg!(debug_assertions) {
             "Открыть Winsentials (Dev)"
@@ -66,6 +104,7 @@ impl TrayManager {
                 .with_menu(Box::new(menu))
                 .with_tooltip(APP_NAME)
                 .with_icon(icon)
+                .with_menu_on_left_click(false)
                 .build()
                 .ok()
         } else {
@@ -107,7 +146,12 @@ unsafe extern "system" fn find_main_window_proc(
     1
 }
 
-#[allow(unsafe_code)]
+#[allow(
+    unsafe_code,
+    clippy::too_many_lines,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation
+)]
 pub fn show_main_window() {
     unsafe {
         let mut target_hwnd: windows_sys::Win32::Foundation::HWND = std::ptr::null_mut();
@@ -116,10 +160,103 @@ pub fn show_main_window() {
             &raw mut target_hwnd as windows_sys::Win32::Foundation::LPARAM,
         );
         if !target_hwnd.is_null() {
-            windows_sys::Win32::UI::WindowsAndMessaging::ShowWindow(
-                target_hwnd,
-                windows_sys::Win32::UI::WindowsAndMessaging::SW_RESTORE,
-            );
+            let dpi = windows_sys::Win32::UI::HiDpi::GetDpiForWindow(target_hwnd);
+            let dpi = if dpi == 0 { 96 } else { dpi };
+            let scale = dpi as f32 / 96.0;
+            let target_w = (WINDOW_WIDTH * scale).round() as i32;
+            let target_h = (WINDOW_HEIGHT * scale).round() as i32;
+
+            let is_iconic = windows_sys::Win32::UI::WindowsAndMessaging::IsIconic(target_hwnd) != 0;
+            if is_iconic {
+                windows_sys::Win32::UI::WindowsAndMessaging::ShowWindow(
+                    target_hwnd,
+                    windows_sys::Win32::UI::WindowsAndMessaging::SW_RESTORE,
+                );
+            } else {
+                windows_sys::Win32::UI::WindowsAndMessaging::ShowWindow(
+                    target_hwnd,
+                    windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOW,
+                );
+            }
+
+            let mut rect = windows_sys::Win32::Foundation::RECT {
+                left: 0,
+                top: 0,
+                right: 0,
+                bottom: 0,
+            };
+            windows_sys::Win32::UI::WindowsAndMessaging::GetWindowRect(target_hwnd, &raw mut rect);
+            let cur_w = rect.right - rect.left;
+            let cur_h = rect.bottom - rect.top;
+
+            let is_invalid_pos =
+                rect.left <= -10000 || rect.top <= -10000 || cur_w <= 0 || cur_h <= 0;
+            if is_invalid_pos {
+                let hmonitor = windows_sys::Win32::Graphics::Gdi::MonitorFromWindow(
+                    target_hwnd,
+                    windows_sys::Win32::Graphics::Gdi::MONITOR_DEFAULTTONEAREST,
+                );
+                let mut mi = windows_sys::Win32::Graphics::Gdi::MONITORINFO {
+                    cbSize: std::mem::size_of::<windows_sys::Win32::Graphics::Gdi::MONITORINFO>()
+                        as u32,
+                    rcMonitor: windows_sys::Win32::Foundation::RECT {
+                        left: 0,
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                    },
+                    rcWork: windows_sys::Win32::Foundation::RECT {
+                        left: 0,
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                    },
+                    dwFlags: 0,
+                };
+                if windows_sys::Win32::Graphics::Gdi::GetMonitorInfoW(hmonitor, &raw mut mi) != 0 {
+                    let work_w = mi.rcWork.right - mi.rcWork.left;
+                    let work_h = mi.rcWork.bottom - mi.rcWork.top;
+                    let x = mi.rcWork.left + (work_w - target_w).max(0) / 2;
+                    let y = mi.rcWork.top + (work_h - target_h).max(0) / 2;
+                    windows_sys::Win32::UI::WindowsAndMessaging::SetWindowPos(
+                        target_hwnd,
+                        0 as _,
+                        x,
+                        y,
+                        target_w,
+                        target_h,
+                        windows_sys::Win32::UI::WindowsAndMessaging::SWP_NOZORDER
+                            | windows_sys::Win32::UI::WindowsAndMessaging::SWP_FRAMECHANGED
+                            | windows_sys::Win32::UI::WindowsAndMessaging::SWP_SHOWWINDOW,
+                    );
+                } else {
+                    windows_sys::Win32::UI::WindowsAndMessaging::SetWindowPos(
+                        target_hwnd,
+                        0 as _,
+                        100,
+                        100,
+                        target_w,
+                        target_h,
+                        windows_sys::Win32::UI::WindowsAndMessaging::SWP_NOZORDER
+                            | windows_sys::Win32::UI::WindowsAndMessaging::SWP_FRAMECHANGED
+                            | windows_sys::Win32::UI::WindowsAndMessaging::SWP_SHOWWINDOW,
+                    );
+                }
+            } else if cur_w != target_w || cur_h != target_h {
+                windows_sys::Win32::UI::WindowsAndMessaging::SetWindowPos(
+                    target_hwnd,
+                    0 as _,
+                    rect.left,
+                    rect.top,
+                    target_w,
+                    target_h,
+                    windows_sys::Win32::UI::WindowsAndMessaging::SWP_NOMOVE
+                        | windows_sys::Win32::UI::WindowsAndMessaging::SWP_NOZORDER
+                        | windows_sys::Win32::UI::WindowsAndMessaging::SWP_FRAMECHANGED
+                        | windows_sys::Win32::UI::WindowsAndMessaging::SWP_SHOWWINDOW,
+                );
+            }
+
             windows_sys::Win32::UI::WindowsAndMessaging::SetForegroundWindow(target_hwnd);
         }
     }

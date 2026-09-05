@@ -166,7 +166,6 @@ impl RenderOnce for WindowControls {
             .child(
                 div()
                     .id("win_close")
-                    .window_control_area(WindowControlArea::Close)
                     .flex()
                     .items_center()
                     .justify_center()

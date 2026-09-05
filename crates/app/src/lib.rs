@@ -1,3 +1,15 @@
+#![allow(
+    clippy::too_many_lines,
+    clippy::similar_names,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::wildcard_imports,
+    clippy::struct_excessive_bools,
+    clippy::too_many_arguments,
+    clippy::ref_option,
+    clippy::needless_pass_by_value
+)]
 pub mod app;
 pub mod entities;
 pub mod features;

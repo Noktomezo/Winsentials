@@ -89,14 +89,32 @@ fn main() {
                 ..Default::default()
             };
 
-            cx.open_window(window_options, |_, cx| {
-                cx.new(|cx| {
+            cx.open_window(window_options, |window, cx| {
+                let view = cx.new(|cx| {
                     let mut view = AppView::new();
                     view.start_telemetry_polling(cx);
                     view.start_tray_listener(cx);
                     view.start_updater_polling(cx);
                     view
-                })
+                });
+
+                let view_clone = view.downgrade();
+                window.on_window_should_close(cx, move |_window, cx| {
+                    if let Some(view) = view_clone.upgrade() {
+                        let minimize_to_tray = view.read(cx).minimize_to_tray();
+                        if minimize_to_tray {
+                            winsentials::features::tray::hide_main_window();
+                            false
+                        } else {
+                            cx.quit();
+                            true
+                        }
+                    } else {
+                        true
+                    }
+                });
+
+                view
             })
             .expect("failed to open window");
         });
