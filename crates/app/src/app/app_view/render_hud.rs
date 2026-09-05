@@ -1,4 +1,7 @@
-use gpui::{Context, Div, Stateful, InteractiveElement, ParentElement, Styled, Window, div, px};
+#![cfg_attr(not(debug_assertions), allow(unused_imports))]
+use gpui::{Context, Div, Stateful, Window};
+#[cfg(debug_assertions)]
+use gpui::{InteractiveElement, ParentElement, Styled, div, px};
 
 #[cfg(debug_assertions)]
 use std::sync::Arc;
@@ -214,13 +217,3 @@ pub(super) fn apply_dev_perf_overlay(
     root
 }
 
-#[cfg(not(debug_assertions))]
-pub(super) fn apply_dev_perf_overlay(
-    _view: &mut AppView,
-    _window: &mut Window,
-    _cx: &mut Context<AppView>,
-    root: Div,
-    _render_start: std::time::Instant,
-) -> Stateful<Div> {
-    root
-}

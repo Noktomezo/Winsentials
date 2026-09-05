@@ -11,6 +11,7 @@ use crate::widgets::sidebar::Sidebar;
 use crate::widgets::titlebar::Titlebar;
 
 use super::AppView;
+#[cfg(debug_assertions)]
 use super::render_hud::apply_dev_perf_overlay;
 
 impl Render for AppView {
