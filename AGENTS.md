@@ -12,6 +12,23 @@ cargo clippy -- -D warnings
 
 If the affected code has relevant tests, run them too. This includes tests annotated with `#[gpui::test]`; use the repository's documented test command when it differs from `cargo test`. Report any check that cannot run or does not pass.
 
+## Git branch and worktree workflow (Mandatory)
+
+All work pushed to GitHub must follow an isolated branch, worktree, and PR workflow:
+- **Dedicated branches**: Every feature, bugfix, or cohesive group of changes must be isolated in its own branch named with standard prefixes: `feature/xxx`, `fix/yyy`, `refactor/zzz`, etc. Direct pushes to `main` are strictly forbidden.
+- **Git worktree isolation**: Use `git worktree` for developing and testing changes in a separate working directory when managing parallel tasks or branches.
+- **Pull Requests via GitHub CLI (`gh`)**:
+  - Always submit changes as a Pull Request targeting `main` using `gh pr create`.
+  - **Requirement**: `gh` CLI must be installed and authenticated (`gh auth status`). If `gh` is missing or not logged in, notify and prompt the user to install GitHub CLI and run `gh auth login` before proceeding with pushes.
+- **Verification before PR**: Ensure the Rust completion gate (`cargo check`, `cargo clippy -- -D warnings`, `cargo test`) and the `<500 LoC` rule pass cleanly before creating the PR.
+
+## Source file size limit (Mandatory <500 LoC)
+
+Every source file must strictly remain **under 500 lines of code (LoC)**.
+- **Never allow runaway files**: No single file should exceed 500 lines. When a file approaches or exceeds this threshold, immediately break it down into cohesive, focused submodules or sibling files.
+- **Natural decomposition**: Extract sub-components, helper types, data models, state handlers, platform-specific code (`cfg(windows)`), or unit test suites into dedicated files within a folder/submodule (e.g. converting foo.rs into foo/mod.rs with foo/types.rs, foo/tests.rs, etc.).
+- **Preserve public interfaces**: Refactoring must maintain existing public API surfaces (`pub use ...`) and keep tests passing without behavioral regressions.
+
 ## Project structure
 
 Keep the source tree in a lightweight, Rust-adapted FSD shape as the application grows:

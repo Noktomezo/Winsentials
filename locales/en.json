@@ -136,6 +136,8 @@
     "disable_startup_delay_title": "Speed Up Startup App Launch",
     "disable_startup_delay_desc": "Removes the delay before File Explorer launches startup apps after sign-in. It does not affect kernel, driver, or service startup.",
     "disable_startup_delay_side_effect": "Startup apps will launch immediately after sign-in, so the desktop may respond more slowly for a short time on lower-end systems.",
+    "disable_password_expiration_title": "Disable Password Expiration",
+    "disable_password_expiration_desc": "Removes the requirement to change expired passwords on the sign-in screen by setting password age to unlimited for local accounts.",
     "restart_explorer_title": "Explorer Restart Required",
     "restart_explorer_desc": "Restarting explorer.exe is required for changes to take effect.",
     "restart_now": "Restart now",
