@@ -9,10 +9,14 @@ use crate::theme::Theme;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BadgeVariant {
     #[default]
+    Outline,
     Neutral,
+    Ghost,
+    Secondary,
     Success,
     Accent,
     Warning,
+    Destructive,
     Muted,
 }
 
@@ -29,7 +33,7 @@ impl Badge {
         Self {
             id: id.into(),
             label: label.into(),
-            variant: BadgeVariant::Neutral,
+            variant: BadgeVariant::Outline,
             icon: None,
         }
     }
@@ -52,26 +56,34 @@ impl RenderOnce for Badge {
         let theme = Theme::get(cx);
 
         let (bg, border, text_color) = match self.variant {
-            BadgeVariant::Neutral => (theme.input_bg, theme.card_border, theme.text_primary),
+            BadgeVariant::Outline | BadgeVariant::Neutral => {
+                (theme.input_bg, Some(theme.card_border), theme.text_primary)
+            }
+            BadgeVariant::Ghost => (gpui::rgba(0x0000_0000), None, theme.text_muted),
+            BadgeVariant::Secondary | BadgeVariant::Muted => (
+                theme.input_bg.opacity(0.5),
+                Some(theme.card_border.opacity(0.6)),
+                theme.text_muted,
+            ),
             BadgeVariant::Success => (
                 theme.accent_green.opacity(0.14),
-                theme.accent_green.opacity(0.35),
+                Some(theme.accent_green.opacity(0.35)),
                 theme.accent_green,
             ),
             BadgeVariant::Accent => (
                 theme.accent_blue.opacity(0.14),
-                theme.accent_blue.opacity(0.35),
+                Some(theme.accent_blue.opacity(0.35)),
                 theme.accent_blue,
             ),
             BadgeVariant::Warning => (
                 theme.accent_yellow.opacity(0.14),
-                theme.accent_yellow.opacity(0.35),
+                Some(theme.accent_yellow.opacity(0.35)),
                 theme.accent_yellow,
             ),
-            BadgeVariant::Muted => (
-                theme.input_bg.opacity(0.5),
-                theme.card_border.opacity(0.6),
-                theme.text_muted,
+            BadgeVariant::Destructive => (
+                theme.accent_red.opacity(0.14),
+                Some(theme.accent_red.opacity(0.35)),
+                theme.accent_red,
             ),
         };
 
@@ -81,7 +93,7 @@ impl RenderOnce for Badge {
 
         let id_str = format!("{:?}", self.id);
 
-        div()
+        let mut el = div()
             .id(self.id)
             .debug_selector(move || id_str.clone())
             .flex()
@@ -92,13 +104,15 @@ impl RenderOnce for Badge {
             .px(px(6.0))
             .rounded(px(4.0))
             .bg(bg)
-            .border_1()
-            .border_color(border)
             .text_size(px(11.0))
             .font_weight(FontWeight::MEDIUM)
-            .text_color(text_color)
-            .children(icon_el)
-            .child(self.label)
+            .text_color(text_color);
+
+        if let Some(border_col) = border {
+            el = el.border_1().border_color(border_col);
+        }
+
+        el.children(icon_el).child(self.label)
     }
 }
 

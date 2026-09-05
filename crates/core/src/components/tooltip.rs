@@ -66,6 +66,33 @@ fn estimate_tooltip_size(text: &str, viewport_width: Pixels) -> (Pixels, Pixels)
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum TooltipPlacementX {
+    Right { left: Pixels },
+    Left { right: Pixels },
+}
+
+fn tooltip_placement_x(
+    cursor_x: Pixels,
+    tooltip_width: Pixels,
+    viewport_width: Pixels,
+) -> TooltipPlacementX {
+    let margin = px(TOOLTIP_VIEWPORT_MARGIN);
+    let offset = px(12.0);
+
+    if cursor_x + offset + tooltip_width > viewport_width - margin {
+        let preferred_right = viewport_width - (cursor_x - offset);
+        let max_right = (viewport_width - tooltip_width - margin).max(px(0.0));
+        let safe_right = preferred_right.min(max_right).max(margin);
+        TooltipPlacementX::Left { right: safe_right }
+    } else {
+        let max_left = (viewport_width - tooltip_width - margin).max(margin);
+        let safe_left = (cursor_x + offset).min(max_left).max(margin);
+        TooltipPlacementX::Right { left: safe_left }
+    }
+}
+
+#[cfg(test)]
 fn tooltip_x(cursor_x: Pixels, tooltip_width: Pixels, viewport_width: Pixels) -> Pixels {
     let margin = px(TOOLTIP_VIEWPORT_MARGIN);
     let offset = px(12.0);
@@ -157,7 +184,7 @@ impl Tooltip {
 }
 
 impl RenderOnce for Tooltip {
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(clippy::cast_precision_loss, clippy::too_many_lines)]
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
         let viewport = window.viewport_size();
@@ -169,9 +196,9 @@ impl RenderOnce for Tooltip {
         let cursor_x = self.cursor_pos.x;
         let cursor_y = self.cursor_pos.y;
 
-        let safe_x = tooltip_x(cursor_x, est_width, viewport.width);
-        let placement = tooltip_placement_y(cursor_y, est_height, viewport.height);
-        let is_above = matches!(placement, TooltipPlacementY::Above { .. });
+        let placement_x = tooltip_placement_x(cursor_x, est_width, viewport.width);
+        let placement_y = tooltip_placement_y(cursor_y, est_height, viewport.height);
+        let is_above = matches!(placement_y, TooltipPlacementY::Above { .. });
         let (is_multiline, text_content) =
             if let Some((title, description)) = self.text.split_once('\n') {
                 (
@@ -220,7 +247,6 @@ impl RenderOnce for Tooltip {
             .id(ElementId::Name("global_cursor_tooltip".into()))
             .debug_selector(|| "global_cursor_tooltip".into())
             .absolute()
-            .left(safe_x)
             .max_w(max_width)
             .max_h((viewport.height - px(TOOLTIP_VIEWPORT_MARGIN * 2.0)).max(px(28.0)))
             .overflow_hidden()
@@ -228,11 +254,20 @@ impl RenderOnce for Tooltip {
             .py(px(4.0))
             .rounded(px(6.0))
             .border_1()
-            .border_color(theme.input_border)
+            .border_color(theme.card_border)
             .bg(theme.input_bg)
             .shadow_md();
 
-        match placement {
+        match placement_x {
+            TooltipPlacementX::Right { left } => {
+                container = container.left(left);
+            }
+            TooltipPlacementX::Left { right } => {
+                container = container.right(right);
+            }
+        }
+
+        match placement_y {
             TooltipPlacementY::Above { bottom } => {
                 container = container.bottom(bottom);
             }
@@ -290,6 +325,18 @@ mod tests {
                 point(px(400.0), px(580.0)),
             ))
         }
+    }
+
+    #[test]
+    fn tooltip_placement_x_anchors_correctly() {
+        assert_eq!(
+            tooltip_placement_x(px(100.0), px(150.0), px(1000.0)),
+            TooltipPlacementX::Right { left: px(112.0) }
+        );
+        assert_eq!(
+            tooltip_placement_x(px(950.0), px(150.0), px(1000.0)),
+            TooltipPlacementX::Left { right: px(62.0) }
+        );
     }
 
     #[test]

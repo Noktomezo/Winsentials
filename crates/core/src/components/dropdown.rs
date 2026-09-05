@@ -356,7 +356,7 @@ impl RenderOnce for Dropdown {
             .to(trigger_target)
             .with_epsilon(0.005);
 
-        let neutral_border = theme.input_border;
+        let neutral_border = theme.card_border;
         let blue_border = theme.accent_blue;
         let hover_blue_border = theme.accent_hover_bg;
 
@@ -722,7 +722,7 @@ impl RenderOnce for Dropdown {
                     .overflow_hidden()
                     .bg(theme.input_bg)
                     .border_1()
-                    .border_color(theme.input_border)
+                    .border_color(theme.card_border)
                     .shadow_lg()
                     .on_mouse_down(MouseButton::Left, |_, _, cx| {
                         cx.stop_propagation();
@@ -788,7 +788,7 @@ impl RenderOnce for Dropdown {
                     .overflow_hidden()
                     .bg(theme.input_bg)
                     .border_1()
-                    .border_color(theme.input_border)
+                    .border_color(theme.card_border)
                     .shadow_lg()
                     .on_mouse_down(MouseButton::Left, |_, _, cx| {
                         cx.stop_propagation();
