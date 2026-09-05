@@ -6360,7 +6360,7 @@ dependencies = [
 
 [[package]]
 name = "winsentials"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "discord-rich-presence",
  "futures-util",
@@ -6391,7 +6391,7 @@ dependencies = [
 
 [[package]]
 name = "winsentials-core"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "gpui",
  "rust-i18n",
@@ -6440,7 +6440,7 @@ checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
 
 [[package]]
 name = "xtask"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "chrono",
  "clap",
