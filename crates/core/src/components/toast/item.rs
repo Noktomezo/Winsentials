@@ -104,14 +104,21 @@ impl RenderOnce for ToastItemView {
                     .color(accent_color),
             );
 
-        let mut title_row = div().flex().items_center().gap(px(6.0)).h(px(16.0)).child(
-            div()
-                .text_size(px(13.5))
-                .line_height(px(16.0))
-                .font_weight(gpui::FontWeight::MEDIUM)
-                .text_color(theme.text_primary)
-                .child(self.data.title),
-        );
+        let mut title_row = div()
+            .flex()
+            .items_start()
+            .gap(px(6.0))
+            .flex_1()
+            .min_w(px(0.0))
+            .child(
+                div()
+                    .text_size(px(13.0))
+                    .line_height(px(18.0))
+                    .font_weight(gpui::FontWeight::MEDIUM)
+                    .text_color(theme.text_primary)
+                    .w_full()
+                    .child(self.data.title),
+            );
 
         if self.data.count >= 2 {
             title_row = title_row.child(
@@ -129,25 +136,34 @@ impl RenderOnce for ToastItemView {
                     .line_height(px(10.0))
                     .font_weight(gpui::FontWeight::SEMIBOLD)
                     .text_color(theme.text_muted)
+                    .flex_none()
+                    .mt(px(2.0))
                     .child(format!("{}", self.data.count)),
             );
         }
 
+        let has_desc = self.data.description.is_some();
         let mut text_stack = div()
             .flex()
             .flex_col()
             .gap(px(2.0))
             .flex_1()
-            .min_w(px(0.0))
-            .child(title_row);
+            .min_w(px(0.0));
+
+        if !has_desc {
+            text_stack = text_stack.min_h(px(32.0)).justify_center();
+        }
+
+        text_stack = text_stack.child(title_row);
 
         if let Some(desc) = self.data.description {
             text_stack = text_stack.child(
                 div()
                     .text_size(px(11.5))
-                    .line_height(px(14.0))
+                    .line_height(px(15.0))
                     .font_weight(gpui::FontWeight::NORMAL)
                     .text_color(theme.text_muted)
+                    .w_full()
                     .child(desc),
             );
         }
@@ -187,7 +203,7 @@ impl RenderOnce for ToastItemView {
                 div()
                     .flex()
                     .items_start()
-                    .gap(px(12.0))
+                    .gap(px(10.0))
                     .flex_1()
                     .min_w(px(0.0))
                     .child(icon_box)
@@ -196,9 +212,9 @@ impl RenderOnce for ToastItemView {
             .children(dismiss_btn);
 
         // Progress bar slot (if provided)
-        let progress_el = if let Some(prog) = self.data.progress {
+        let progress_el = self.data.progress.map(|prog| {
             let pct = prog.value.clamp(0.0, 1.0);
-            let mut bar_container = div().flex().flex_col().gap(px(4.0)).w_full().mt(px(4.0));
+            let mut bar_container = div().flex().flex_col().gap(px(4.0)).w_full().mt(px(2.0));
 
             if let Some(lbl) = prog.label {
                 bar_container = bar_container.child(
@@ -229,9 +245,7 @@ impl RenderOnce for ToastItemView {
                 );
 
             bar_container.child(track).into_any_element()
-        } else {
-            div().size(px(0.0)).into_any_element()
-        };
+        });
 
         let has_buttons = !self.data.buttons.is_empty();
 
@@ -242,7 +256,7 @@ impl RenderOnce for ToastItemView {
                 .items_center()
                 .gap(px(8.0))
                 .w_full()
-                .mt(px(6.0));
+                .mt(px(4.0));
 
             for (idx, btn) in self.data.buttons.into_iter().enumerate() {
                 let is_hovered = self.hovered_button == Some(idx);
@@ -374,20 +388,20 @@ impl RenderOnce for ToastItemView {
                 btns_row = btns_row.child(button_el);
             }
 
-            btns_row.into_any_element()
+            Some(btns_row.into_any_element())
         } else {
-            div().size(px(0.0)).into_any_element()
+            None
         };
 
         let on_dismiss_card = on_dismiss;
 
-        let card_body = div()
+        let mut card_body = div()
             .id(ElementId::Name(format!("toast_card_{id_str}").into()))
             .flex()
             .flex_col()
-            .w(px(340.0))
-            .p(px(14.0))
-            .gap(px(10.0))
+            .w(px(360.0))
+            .p(px(12.0))
+            .gap(px(8.0))
             .rounded(px(8.0))
             .border_1()
             .border_color(theme.card_border)
@@ -413,9 +427,14 @@ impl RenderOnce for ToastItemView {
                     }
                 }
             })
-            .child(header_row)
-            .child(progress_el)
-            .child(buttons_el);
+            .child(header_row);
+
+        if let Some(prog) = progress_el {
+            card_body = card_body.child(prog);
+        }
+        if let Some(btns) = buttons_el {
+            card_body = card_body.child(btns);
+        }
 
         let anim_name = if is_closing {
             format!("toast_exit_{id_str}")
@@ -450,4 +469,3 @@ impl RenderOnce for ToastItemView {
         }
     }
 }
-

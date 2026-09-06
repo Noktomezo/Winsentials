@@ -228,6 +228,31 @@ impl Render for AppView {
             root = root.child(gpui::deferred(stack_el).with_priority(200));
         }
 
+        if let Some(ref modal) = self.confirm_modal {
+            let on_confirm = modal.on_confirm.clone();
+            let on_cancel = modal.on_cancel.clone();
+            let modal_variant = if modal.is_destructive {
+                crate::shared::ui::ModalVariant::Destructive
+            } else {
+                crate::shared::ui::ModalVariant::Warning
+            };
+
+            let modal_el = crate::shared::ui::Modal::new("app_confirm_modal", modal.title.clone())
+                .description(modal.description.clone())
+                .confirm_label(modal.confirm_label.clone())
+                .cancel_label(modal.cancel_label.clone())
+                .variant(modal_variant)
+                .on_confirm(move |window, cx| {
+                    on_confirm(window, cx);
+                })
+                .on_cancel(move |window, cx| {
+                    on_cancel(window, cx);
+                })
+                .into_any_element();
+
+            root = root.child(gpui::deferred(modal_el).with_priority(300));
+        }
+
         #[cfg(debug_assertions)]
         let root = apply_dev_perf_overlay(self, window, cx, root, render_start);
 

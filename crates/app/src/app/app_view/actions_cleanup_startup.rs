@@ -1,10 +1,11 @@
+use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{Context, SharedString, Window};
 
 use crate::entities::cleanup::CleanupCategory;
 
-use super::AppView;
+use super::{AppView, ConfirmModalState};
 
 impl AppView {
     pub(crate) fn refresh_cleanup(&mut self, cx: &mut Context<Self>) {
@@ -52,40 +53,47 @@ impl AppView {
         }
 
         let snapshot = self.cleanup.snapshot.clone();
-        let confirm_title = rust_i18n::t!("cleanup.confirm_title").to_string();
-        let confirm_body = rust_i18n::t!("cleanup.confirm_body").to_string();
+        let on_confirm = cx.listener(move |this, _event: &(), _window, cx| {
+            this.confirm_modal = None;
+            this.execute_cleanup(snapshot.clone(), selected.clone(), cx);
+        });
+
+        let on_cancel = cx.listener(|this, _event: &(), _window, cx| {
+            this.confirm_modal = None;
+            cx.notify();
+        });
+
+        self.confirm_modal = Some(ConfirmModalState {
+            title: rust_i18n::t!("cleanup.confirm_title").to_string().into(),
+            description: rust_i18n::t!("cleanup.confirm_body").to_string().into(),
+            confirm_label: rust_i18n::t!("cleanup.confirm_button").to_string().into(),
+            cancel_label: rust_i18n::t!("cleanup.cancel").to_string().into(),
+            is_destructive: true,
+            on_confirm: Arc::new(move |window, cx| {
+                on_confirm(&(), window, cx);
+            }),
+            on_cancel: Arc::new(move |window, cx| {
+                on_cancel(&(), window, cx);
+            }),
+        });
+        cx.notify();
+    }
+
+    pub(crate) fn execute_cleanup(
+        &mut self,
+        snapshot: Arc<crate::entities::cleanup::CleanupSnapshot>,
+        selected: std::collections::HashSet<String>,
+        cx: &mut Context<Self>,
+    ) {
+        self.cleanup.cleaning = true;
+        cx.notify();
 
         cx.spawn(async move |this, cx| {
-            let confirmed = cx
-                .background_executor()
-                .spawn(async move {
-                    rfd::MessageDialog::new()
-                        .set_title(&confirm_title)
-                        .set_description(&confirm_body)
-                        .set_level(rfd::MessageLevel::Warning)
-                        .set_buttons(rfd::MessageButtons::YesNo)
-                        .show()
-                        == rfd::MessageDialogResult::Yes
-                })
-                .await;
-
-            if !confirmed {
-                return;
-            }
-
-            if let Err(error) = this.update(cx, |this, cx| {
-                this.cleanup.cleaning = true;
-                cx.notify();
-            }) {
-                eprintln!("cleanup start update failed: {error}");
-                return;
-            }
-
             let report = cx
                 .background_executor()
-                .spawn(
-                    async move { crate::entities::cleanup::clean_selected(&snapshot, &selected) },
-                )
+                .spawn(async move {
+                    crate::entities::cleanup::clean_selected(&snapshot, &selected)
+                })
                 .await;
             let files = cx
                 .background_executor()
