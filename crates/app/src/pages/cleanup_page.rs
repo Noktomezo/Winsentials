@@ -1,39 +1,33 @@
 use std::rc::Rc;
 use std::sync::Arc;
+use std::time::Duration;
 
 use gpui::prelude::FluentBuilder;
 use gpui::{
-    AnimationExt, AnyElement, App, ClickEvent, ElementId, FontWeight, InteractiveElement,
-    IntoElement, ParentElement, RenderOnce, SpringAnimation, SpringConfig,
-    StatefulInteractiveElement, Styled, Window, div, px,
+    Animation, AnimationExt, App, ElementId, FontWeight, InteractiveElement, IntoElement,
+    ParentElement, RenderOnce, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled,
+    Window, div, px, relative,
 };
 
 use crate::entities::cleanup::{CleanupCategory, CleanupState, format_bytes};
 use crate::pages::PageHeader;
 use crate::shared::theme::Theme;
 use crate::shared::ui::smooth_scroll::SmoothVirtualList;
-use crate::shared::ui::{
-    Badge, BadgeVariant, Button, ButtonSize, ButtonVariant, Icon, IconButton, IconButtonVariant,
+use crate::shared::ui::{Icon, IconButton, IconButtonVariant};
+
+#[path = "cleanup/widgets.rs"]
+mod widgets;
+use widgets::{
+    TargetHandler, TargetRow, badge, checkbox, clean_button, render_target,
 };
 
 const TARGET_HEIGHT: f32 = 50.0;
 const TARGET_GAP: f32 = 6.0;
 const MAX_VISIBLE_TARGETS: usize = 6;
 
-pub type TargetHandler = Rc<dyn Fn(String, &mut Window, &mut App)>;
 pub type CategoryHandler = Rc<dyn Fn(CleanupCategory, &mut Window, &mut App)>;
 pub type SimpleHandler = Rc<dyn Fn(&mut Window, &mut App)>;
 pub type CleanHandler = Rc<dyn Fn(Option<CleanupCategory>, &mut Window, &mut App)>;
-type ClickHandler = Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>;
-
-#[derive(Clone)]
-struct TargetRow {
-    id: String,
-    name: String,
-    secondary: String,
-    bytes: u64,
-    selected: bool,
-}
 
 #[derive(IntoElement)]
 pub struct CleanupPage {
@@ -67,133 +61,6 @@ impl CleanupPage {
             on_clean,
         }
     }
-}
-
-fn badge(id: String, text: String, _theme: &Theme) -> AnyElement {
-    Badge::new(id, text)
-        .variant(BadgeVariant::Outline)
-        .into_any_element()
-}
-
-fn checkbox(id: String, checked: bool, theme: &Theme, on_click: TargetHandler) -> AnyElement {
-    let theme = *theme;
-    div()
-        .id(ElementId::Name(id.clone().into()))
-        .flex()
-        .items_center()
-        .justify_center()
-        .size(px(16.0))
-        .flex_none()
-        .rounded(px(4.0))
-        .border_1()
-        .border_color(if checked {
-            theme.accent_blue
-        } else {
-            theme.input_border
-        })
-        .bg(if checked {
-            theme.accent_blue
-        } else {
-            theme.input_bg
-        })
-        .cursor_pointer()
-        .hover(move |style| style.border_color(theme.accent_blue))
-        .on_click(move |_event, window, cx| {
-            cx.stop_propagation();
-            on_click(id.clone(), window, cx);
-        })
-        .when(checked, |element| {
-            element.child(
-                Icon::new("icons/check.svg")
-                    .size(px(10.0))
-                    .color(theme.selected_text),
-            )
-        })
-        .into_any_element()
-}
-
-fn clean_button(
-    id: String,
-    label: String,
-    enabled: bool,
-    _theme: &Theme,
-    on_click: Option<ClickHandler>,
-) -> AnyElement {
-    let mut button = Button::new(id, label)
-        .size(ButtonSize::Md)
-        .variant(ButtonVariant::Outline)
-        .icon_left("icons/trash-2.svg")
-        .disabled(!enabled);
-
-    if enabled && let Some(handler) = on_click {
-        button = button.on_click(move |event, window, cx| {
-            cx.stop_propagation();
-            handler(event, window, cx);
-        });
-    }
-
-    button.into_any_element()
-}
-
-fn render_target(target: &TargetRow, theme: &Theme, on_toggle: TargetHandler) -> AnyElement {
-    let theme = *theme;
-    let id = target.id.clone();
-    div()
-        .flex()
-        .items_center()
-        .gap(px(10.0))
-        .h(px(50.0))
-        .px(px(10.0))
-        .rounded(px(8.0))
-        .border_1()
-        .border_color(theme.card_border)
-        .bg(theme.main_bg)
-        .child(checkbox(id, target.selected, &theme, on_toggle))
-        .child(
-            div()
-                .flex()
-                .items_center()
-                .justify_center()
-                .size(px(24.0))
-                .rounded(px(6.0))
-                .bg(theme.accent_green.opacity(0.12))
-                .child(
-                    Icon::new("icons/check.svg")
-                        .size(px(13.0))
-                        .color(theme.accent_green),
-                ),
-        )
-        .child(
-            div()
-                .flex()
-                .flex_col()
-                .gap(px(2.0))
-                .flex_1()
-                .min_w(px(0.0))
-                .child(
-                    div()
-                        .text_size(px(12.5))
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(theme.text_primary)
-                        .text_ellipsis()
-                        .overflow_hidden()
-                        .whitespace_nowrap()
-                        .child(target.name.clone()),
-                )
-                .child(
-                    div()
-                        .text_size(px(11.0))
-                        .text_color(theme.text_muted)
-                        .child(target.secondary.clone()),
-                ),
-        )
-        .child(
-            div()
-                .text_size(px(11.5))
-                .text_color(theme.text_muted)
-                .child(format_bytes(target.bytes)),
-        )
-        .into_any_element()
 }
 
 const fn target_list_id(category: CleanupCategory) -> &'static str {
@@ -281,6 +148,74 @@ impl RenderOnce for CleanupPage {
                 ),
         );
 
+        let progress_banner = if busy {
+            let status_text = if self.state.cleaning {
+                rust_i18n::t!("cleanup.cleaning").to_string()
+            } else {
+                rust_i18n::t!("cleanup.scanning").to_string()
+            };
+
+            let track = div()
+                .w_full()
+                .h(px(4.0))
+                .rounded(px(2.0))
+                .bg(theme.card_border)
+                .overflow_hidden()
+                .child(
+                    div()
+                        .h_full()
+                        .w(px(140.0))
+                        .rounded(px(2.0))
+                        .bg(theme.accent_blue)
+                        .with_animation(
+                            ElementId::Name("cleanup_progress_bar".into()),
+                            Animation::new(Duration::from_millis(1500)).repeat(),
+                            |bar, delta| {
+                                let offset = (delta * 1.5 - 0.3).clamp(-0.3, 1.2);
+                                bar.ml(relative(offset))
+                            },
+                        ),
+                );
+
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(6.0))
+                .w_full()
+                .px(px(16.0))
+                .py(px(10.0))
+                .rounded(px(8.0))
+                .border_1()
+                .border_color(theme.card_border)
+                .bg(theme.card_bg)
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.0))
+                        .child(
+                            Icon::new(if self.state.cleaning {
+                                "icons/trash-2.svg"
+                            } else {
+                                "icons/refresh-cw.svg"
+                            })
+                            .size(px(14.0))
+                            .color(theme.accent_blue),
+                        )
+                        .child(
+                            div()
+                                .text_size(px(12.5))
+                                .font_weight(FontWeight::MEDIUM)
+                                .text_color(theme.text_primary)
+                                .child(status_text),
+                        ),
+                )
+                .child(track)
+                .into_any_element()
+        } else {
+            div().into_any_element()
+        };
+
         let mut categories = div().flex().flex_col().gap(px(10.0));
         for category in CleanupCategory::ALL {
             let targets = self
@@ -340,9 +275,10 @@ impl RenderOnce for CleanupPage {
                 .gap(px(10.0))
                 .h(px(64.0))
                 .px(px(16.0))
-                .cursor_pointer()
-                .on_click(move |_event, window, cx| {
-                    toggle_expanded(category, window, cx);
+                .when(!busy, |this| {
+                    this.cursor_pointer().on_click(move |_event, window, cx| {
+                        toggle_expanded(category, window, cx);
+                    })
                 })
                 .child(checkbox(
                     format!("cleanup_category_{category_id}"),
@@ -404,7 +340,11 @@ impl RenderOnce for CleanupPage {
                         "icons/chevron-down.svg"
                     })
                     .size(px(16.0))
-                    .color(theme.text_muted),
+                    .color(if busy {
+                        theme.text_muted.opacity(0.35)
+                    } else {
+                        theme.text_muted
+                    }),
                 )
                 .child(clean_button(
                     format!("cleanup_{category_id}_clean"),
@@ -432,41 +372,47 @@ impl RenderOnce for CleanupPage {
                     }),
                 );
 
-            let rows_for_list = rows.clone();
-            let target_toggle = self.on_toggle_target.clone();
-            let list = SmoothVirtualList::new(
-                target_list_id(category),
-                rows.len(),
-                px(TARGET_HEIGHT),
-                px(TARGET_GAP),
-                move |index, _window, cx| {
-                    let theme = Theme::get(cx);
-                    render_target(&rows_for_list[index], &theme, target_toggle.clone())
-                },
-            );
+            let body = if expanded {
+                let rows_for_list = rows.clone();
+                let target_toggle = self.on_toggle_target.clone();
+                let list = SmoothVirtualList::new(
+                    target_list_id(category),
+                    rows.len(),
+                    px(TARGET_HEIGHT),
+                    px(TARGET_GAP),
+                    move |index, _window, cx| {
+                        let theme = Theme::get(cx);
+                        render_target(&rows_for_list[index], &theme, target_toggle.clone())
+                    },
+                );
 
-            let body = div()
-                .id(ElementId::Name(
-                    format!("cleanup_{category_id}_targets").into(),
-                ))
-                .flex()
-                .flex_col()
-                .min_h(px(0.0))
-                .flex_none()
-                .overflow_hidden()
-                .child(div().h(px(1.0)).mx(px(16.0)).bg(theme.card_border))
-                .child(div().h(px(list_height)).w_full().min_h(px(0.0)).child(list));
-            let body = if reduce_motion {
-                body.h(px(expanded_height)).into_any_element()
+                let body_container = div()
+                    .id(ElementId::Name(
+                        format!("cleanup_{category_id}_targets").into(),
+                    ))
+                    .flex()
+                    .flex_col()
+                    .min_h(px(0.0))
+                    .flex_none()
+                    .overflow_hidden()
+                    .child(div().h(px(1.0)).mx(px(16.0)).bg(theme.card_border))
+                    .child(div().h(px(list_height)).w_full().min_h(px(0.0)).child(list));
+
+                if reduce_motion {
+                    body_container.h(px(expanded_height)).into_any_element()
+                } else {
+                    body_container
+                        .with_spring(
+                            ElementId::Name(format!("cleanup_{category_id}_expand").into()),
+                            SpringAnimation::new(SpringConfig::new(300.0, 30.0, 1.0))
+                                .to(expanded_height)
+                                .with_epsilon(0.5),
+                            |body, height| body.h(px(height)),
+                        )
+                        .into_any_element()
+                }
             } else {
-                body.with_spring(
-                    ElementId::Name(format!("cleanup_{category_id}_expand").into()),
-                    SpringAnimation::new(SpringConfig::new(300.0, 30.0, 1.0))
-                        .to(expanded_height)
-                        .with_epsilon(0.5),
-                    |body, height| body.h(px(height)),
-                )
-                .into_any_element()
+                div().into_any_element()
             };
 
             let card = div()
@@ -490,6 +436,7 @@ impl RenderOnce for CleanupPage {
             .p(px(16.0))
             .w_full()
             .child(header)
+            .when(busy, |el| el.child(progress_banner))
             .child(categories)
     }
 }

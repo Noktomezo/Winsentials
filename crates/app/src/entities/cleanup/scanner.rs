@@ -110,13 +110,42 @@ pub fn clean_selected(snapshot: &CleanupSnapshot, selected: &HashSet<String>) ->
     report
 }
 
+#[cfg(target_os = "windows")]
+fn base64_encode(bytes: &[u8]) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut buf = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let b0 = chunk[0];
+        let b1 = chunk.get(1).copied().unwrap_or(0);
+        let b2 = chunk.get(2).copied().unwrap_or(0);
+        let n = (u32::from(b0) << 16) | (u32::from(b1) << 8) | u32::from(b2);
+        buf.push(TABLE[((n >> 18) & 0x3F) as usize] as char);
+        buf.push(TABLE[((n >> 12) & 0x3F) as usize] as char);
+        if chunk.len() > 1 {
+            buf.push(TABLE[((n >> 6) & 0x3F) as usize] as char);
+        } else {
+            buf.push('=');
+        }
+        if chunk.len() > 2 {
+            buf.push(TABLE[(n & 0x3F) as usize] as char);
+        } else {
+            buf.push('=');
+        }
+    }
+    buf
+}
+
 pub fn scan_unused_devices() -> Vec<CleanupTarget> {
     #[cfg(target_os = "windows")]
     {
-        let script = r"System.Text.UTF8Encoding+UTF8EncodingSealed = [Console]::OutputEncoding = [Text.UTF8Encoding]::new(); Get-PnpDevice | Where-Object { .Present -eq False } | ForEach-Object {  = if (.FriendlyName) { .FriendlyName } else { .Class }; '{0}	{1}' -f ( -replace '[	
-]', ' '), .InstanceId }";
+        const SCRIPT: &str = "$ProgressPreference = 'SilentlyContinue'; [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-PnpDevice | Where-Object { -not $_.Present } | ForEach-Object { $n = if ($_.FriendlyName) { $_.FriendlyName } else { $_.Class }; \"{0}`t{1}\" -f ($n -replace '[\\t\\n\\r]', ' '), $_.InstanceId }";
+        let utf16_bytes: Vec<u8> = SCRIPT
+            .encode_utf16()
+            .flat_map(u16::to_le_bytes)
+            .collect();
+        let encoded = base64_encode(&utf16_bytes);
         let output = Command::new("powershell")
-            .args(["-NoProfile", "-NonInteractive", "-Command", script])
+            .args(["-NoProfile", "-NonInteractive", "-EncodedCommand", &encoded])
             .creation_flags(CREATE_NO_WINDOW)
             .output();
         let Ok(output) = output else {

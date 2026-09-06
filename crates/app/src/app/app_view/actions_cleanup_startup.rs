@@ -50,21 +50,37 @@ impl AppView {
         if selected.is_empty() {
             return;
         }
-        let confirmed = rfd::MessageDialog::new()
-            .set_title(rust_i18n::t!("cleanup.confirm_title").as_ref())
-            .set_description(rust_i18n::t!("cleanup.confirm_body").as_ref())
-            .set_level(rfd::MessageLevel::Warning)
-            .set_buttons(rfd::MessageButtons::YesNo)
-            .show()
-            == rfd::MessageDialogResult::Yes;
-        if !confirmed {
-            return;
-        }
 
         let snapshot = self.cleanup.snapshot.clone();
-        self.cleanup.cleaning = true;
-        cx.notify();
+        let confirm_title = rust_i18n::t!("cleanup.confirm_title").to_string();
+        let confirm_body = rust_i18n::t!("cleanup.confirm_body").to_string();
+
         cx.spawn(async move |this, cx| {
+            let confirmed = cx
+                .background_executor()
+                .spawn(async move {
+                    rfd::MessageDialog::new()
+                        .set_title(&confirm_title)
+                        .set_description(&confirm_body)
+                        .set_level(rfd::MessageLevel::Warning)
+                        .set_buttons(rfd::MessageButtons::YesNo)
+                        .show()
+                        == rfd::MessageDialogResult::Yes
+                })
+                .await;
+
+            if !confirmed {
+                return;
+            }
+
+            if let Err(error) = this.update(cx, |this, cx| {
+                this.cleanup.cleaning = true;
+                cx.notify();
+            }) {
+                eprintln!("cleanup start update failed: {error}");
+                return;
+            }
+
             let report = cx
                 .background_executor()
                 .spawn(
