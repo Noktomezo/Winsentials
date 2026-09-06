@@ -1,6 +1,9 @@
+use std::time::Duration;
+
 use gpui::{
-    App, ElementId, FontWeight, InteractiveElement, IntoElement, ParentElement, RenderOnce,
-    SharedString, Styled, Window, div, px,
+    Animation, AnimationExt, App, ElementId, FontWeight, InteractiveElement, IntoElement,
+    ParentElement, RenderOnce, SharedString, Styled, Transformation, Window, div, px, radians,
+    svg,
 };
 
 use crate::components::icon::Icon;
@@ -26,6 +29,7 @@ pub struct Badge {
     label: SharedString,
     variant: BadgeVariant,
     icon: Option<&'static str>,
+    loading: bool,
 }
 
 impl Badge {
@@ -35,6 +39,7 @@ impl Badge {
             label: label.into(),
             variant: BadgeVariant::Outline,
             icon: None,
+            loading: false,
         }
     }
 
@@ -47,6 +52,12 @@ impl Badge {
     #[must_use]
     pub fn icon(mut self, icon: &'static str) -> Self {
         self.icon = Some(icon);
+        self
+    }
+
+    #[must_use]
+    pub fn loading(mut self, loading: bool) -> Self {
+        self.loading = loading;
         self
     }
 }
@@ -87,9 +98,33 @@ impl RenderOnce for Badge {
             ),
         };
 
-        let icon_el = self
-            .icon
-            .map(|p| Icon::new(p).size(px(11.0)).color(text_color));
+        let icon_el = if self.loading {
+            let spinner_id = format!("{:?}_badge_spinner", self.id);
+            let spinner = svg()
+                .path("icons/loader-circle.svg")
+                .size(px(11.0))
+                .text_color(text_color);
+            if cx.reduce_motion() {
+                Some(spinner.into_any_element())
+            } else {
+                Some(
+                    spinner
+                        .with_animation(
+                            ElementId::Name(spinner_id.into()),
+                            Animation::new(Duration::from_millis(850)).repeat(),
+                            |icon, delta| {
+                                icon.with_transformation(Transformation::rotate(radians(
+                                    delta * std::f32::consts::TAU,
+                                )))
+                            },
+                        )
+                        .into_any_element(),
+                )
+            }
+        } else {
+            self.icon
+                .map(|p| Icon::new(p).size(px(11.0)).color(text_color).into_any_element())
+        };
 
         let id_str = format!("{:?}", self.id);
 
@@ -130,6 +165,11 @@ mod tests {
                 .child(Badge::new("b1", "v0.9.0").variant(BadgeVariant::Neutral))
                 .child(Badge::new("b2", "Последняя").variant(BadgeVariant::Success))
                 .child(Badge::new("b3", "Есть новее").variant(BadgeVariant::Accent))
+                .child(
+                    Badge::new("b4", "Подсчет...")
+                        .variant(BadgeVariant::Accent)
+                        .loading(true),
+                )
         }
     }
 

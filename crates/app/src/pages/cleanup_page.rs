@@ -1,17 +1,19 @@
 use std::rc::Rc;
 use std::sync::Arc;
+use std::time::Duration;
 
 use gpui::prelude::FluentBuilder;
 use gpui::{
-    AnimationExt, App, ElementId, FontWeight, InteractiveElement, IntoElement, ParentElement,
-    RenderOnce, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, Window, div, px,
+    Animation, AnimationExt, App, ElementId, FontWeight, InteractiveElement, IntoElement,
+    ParentElement, RenderOnce, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled,
+    Window, div, linear_color_stop, linear_gradient, px,
 };
 
 use crate::entities::cleanup::{CleanupCategory, CleanupState, format_bytes};
 use crate::pages::PageHeader;
 use crate::shared::theme::Theme;
 use crate::shared::ui::smooth_scroll::SmoothVirtualList;
-use crate::shared::ui::{Icon, IconButton, IconButtonVariant};
+use crate::shared::ui::{Badge, BadgeVariant, Icon, IconButton, IconButtonVariant};
 
 #[path = "cleanup/widgets.rs"]
 mod widgets;
@@ -99,26 +101,32 @@ impl RenderOnce for CleanupPage {
             rust_i18n::t!("cleanup.title"),
             rust_i18n::t!("cleanup.desc"),
         )
-        .badge(
+        .badge(if is_scanning {
+            div()
+                .flex()
+                .items_center()
+                .gap(px(6.0))
+                .child(
+                    Badge::new("cleanup_count", rust_i18n::t!("cleanup.scanning"))
+                        .variant(BadgeVariant::Accent)
+                        .loading(true),
+                )
+        } else {
             div()
                 .flex()
                 .items_center()
                 .gap(px(6.0))
                 .child(badge(
                     "cleanup_count".into(),
-                    if is_scanning && total == 0 {
-                        rust_i18n::t!("cleanup.scanning").to_string()
-                    } else {
-                        rust_i18n::t!("cleanup.targets", count = total).to_string()
-                    },
+                    rust_i18n::t!("cleanup.targets", count = total).to_string(),
                     &theme,
                 ))
                 .child(badge(
                     "cleanup_size".into(),
                     format_bytes(total_bytes),
                     &theme,
-                )),
-        )
+                ))
+        })
         .actions(
             div()
                 .flex()
@@ -153,7 +161,7 @@ impl RenderOnce for CleanupPage {
         );
 
         let mut categories = div().flex().flex_col().gap(px(10.0));
-        for category in CleanupCategory::ALL {
+        for (idx, &category) in CleanupCategory::ALL.iter().enumerate() {
             let targets = self
                 .state
                 .snapshot
@@ -190,14 +198,6 @@ impl RenderOnce for CleanupPage {
                 toggle_category_checkbox(category, window, cx);
             });
 
-            let border_color = if is_cleaning && checked > 0 {
-                theme.accent_blue.opacity(0.6)
-            } else if is_scanning {
-                theme.accent_blue.opacity(0.35)
-            } else {
-                theme.card_border
-            };
-
             let header = div()
                 .id(ElementId::Name(format!("cleanup_{category_id}").into()))
                 .flex()
@@ -225,16 +225,8 @@ impl RenderOnce for CleanupPage {
                         .size(px(32.0))
                         .rounded(px(6.0))
                         .border_1()
-                        .border_color(if is_scanning {
-                            theme.accent_blue.opacity(0.4)
-                        } else {
-                            theme.card_border
-                        })
-                        .bg(if is_scanning {
-                            theme.accent_blue.opacity(0.08)
-                        } else {
-                            theme.input_bg
-                        })
+                        .border_color(theme.card_border)
+                        .bg(theme.input_bg)
                         .child(
                             Icon::new(category.icon())
                                 .size(px(16.0))
@@ -254,17 +246,25 @@ impl RenderOnce for CleanupPage {
                                 .text_color(theme.text_primary)
                                 .child(rust_i18n::t!(format!("cleanup.category.{category_id}"))),
                         )
-                        .child(
+                        .child(if is_scanning {
+                            div()
+                                .flex()
+                                .gap(px(6.0))
+                                .child(
+                                    Badge::new(
+                                        format!("cleanup_{category_id}_scanning"),
+                                        rust_i18n::t!("cleanup.scanning"),
+                                    )
+                                    .variant(BadgeVariant::Accent)
+                                    .loading(true),
+                                )
+                        } else {
                             div()
                                 .flex()
                                 .gap(px(6.0))
                                 .child(badge(
                                     format!("cleanup_{category_id}_count"),
-                                    if is_scanning && !has_targets {
-                                        rust_i18n::t!("cleanup.scanning").to_string()
-                                    } else {
-                                        format!("{checked} / {}", targets.len())
-                                    },
+                                    format!("{checked} / {}", targets.len()),
                                     &theme,
                                 ))
                                 .when(category != CleanupCategory::Devices, |row| {
@@ -273,8 +273,8 @@ impl RenderOnce for CleanupPage {
                                         format_bytes(bytes),
                                         &theme,
                                     ))
-                                }),
-                        ),
+                                })
+                        }),
                 )
                 .child(
                     Icon::new(if expanded {
@@ -375,17 +375,63 @@ impl RenderOnce for CleanupPage {
                 div().into_any_element()
             };
 
-            let card = div()
-                .flex()
-                .flex_col()
-                .w_full()
-                .rounded(px(10.0))
-                .border_1()
-                .border_color(border_color)
-                .bg(theme.card_bg)
-                .overflow_hidden()
-                .child(header)
-                .child(body);
+            let card = if is_scanning && !reduce_motion {
+                let anim_id = format!("cleanup_wave_{category_id}");
+                #[allow(clippy::cast_precision_loss)]
+                let phase_offset = (idx as f32) * 51.4;
+                let card_inner = div()
+                    .flex()
+                    .flex_col()
+                    .w_full()
+                    .rounded(px(9.0))
+                    .bg(theme.card_bg)
+                    .overflow_hidden()
+                    .child(header)
+                    .child(body);
+
+                div()
+                    .id(ElementId::Name(format!("cleanup_card_{category_id}").into()))
+                    .flex()
+                    .w_full()
+                    .rounded(px(10.0))
+                    .p(px(1.0))
+                    .overflow_hidden()
+                    .with_animation(
+                        ElementId::Name(anim_id.into()),
+                        Animation::new(Duration::from_millis(2400)).repeat(),
+                        move |wrap, delta| {
+                            let angle = (delta * 360.0 + phase_offset) % 360.0;
+                            let wave_bg = linear_gradient(
+                                angle,
+                                linear_color_stop(theme.accent_blue, 0.0),
+                                linear_color_stop(theme.card_border.opacity(0.35), 1.0),
+                            );
+                            wrap.bg(wave_bg)
+                        },
+                    )
+                    .child(card_inner)
+                    .into_any_element()
+            } else {
+                let border_color = if is_cleaning && checked > 0 {
+                    theme.accent_blue
+                } else if is_scanning {
+                    theme.accent_blue.opacity(0.6)
+                } else {
+                    theme.card_border
+                };
+                div()
+                    .flex()
+                    .flex_col()
+                    .w_full()
+                    .rounded(px(10.0))
+                    .border_1()
+                    .border_color(border_color)
+                    .bg(theme.card_bg)
+                    .overflow_hidden()
+                    .child(header)
+                    .child(body)
+                    .into_any_element()
+            };
             categories = categories.child(card);
         }
 
