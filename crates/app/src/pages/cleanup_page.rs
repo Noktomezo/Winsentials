@@ -1,12 +1,10 @@
 use std::rc::Rc;
 use std::sync::Arc;
-use std::time::Duration;
 
 use gpui::prelude::FluentBuilder;
 use gpui::{
-    Animation, AnimationExt, App, ElementId, FontWeight, InteractiveElement, IntoElement,
-    ParentElement, RenderOnce, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled,
-    Window, div, px, relative,
+    AnimationExt, App, ElementId, FontWeight, InteractiveElement, IntoElement, ParentElement,
+    RenderOnce, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, Window, div, px,
 };
 
 use crate::entities::cleanup::{CleanupCategory, CleanupState, format_bytes};
@@ -81,7 +79,9 @@ impl RenderOnce for CleanupPage {
         let theme = Theme::get(cx);
         let reduce_motion = cx.reduce_motion();
         let (selected_count, _) = self.state.selected_totals();
-        let busy = self.state.scanning || self.state.cleaning;
+        let is_scanning = self.state.scanning;
+        let is_cleaning = self.state.cleaning;
+        let busy = is_scanning || is_cleaning;
         let total = self.state.snapshot.targets.len();
         let total_bytes = self
             .state
@@ -106,7 +106,11 @@ impl RenderOnce for CleanupPage {
                 .gap(px(6.0))
                 .child(badge(
                     "cleanup_count".into(),
-                    rust_i18n::t!("cleanup.targets", count = total).to_string(),
+                    if is_scanning && total == 0 {
+                        rust_i18n::t!("cleanup.scanning").to_string()
+                    } else {
+                        rust_i18n::t!("cleanup.targets", count = total).to_string()
+                    },
                     &theme,
                 ))
                 .child(badge(
@@ -141,80 +145,12 @@ impl RenderOnce for CleanupPage {
                     IconButton::new("cleanup_refresh", "icons/refresh-cw.svg")
                         .variant(IconButtonVariant::Outline)
                         .disabled(busy)
-                        .loading(self.state.scanning)
+                        .loading(is_scanning)
                         .on_click(move |_event, window, cx| {
                             refresh(window, cx);
                         }),
                 ),
         );
-
-        let progress_banner = if busy {
-            let status_text = if self.state.cleaning {
-                rust_i18n::t!("cleanup.cleaning").to_string()
-            } else {
-                rust_i18n::t!("cleanup.scanning").to_string()
-            };
-
-            let track = div()
-                .w_full()
-                .h(px(4.0))
-                .rounded(px(2.0))
-                .bg(theme.card_border)
-                .overflow_hidden()
-                .child(
-                    div()
-                        .h_full()
-                        .w(px(140.0))
-                        .rounded(px(2.0))
-                        .bg(theme.accent_blue)
-                        .with_animation(
-                            ElementId::Name("cleanup_progress_bar".into()),
-                            Animation::new(Duration::from_millis(1500)).repeat(),
-                            |bar, delta| {
-                                let offset = (delta * 1.5 - 0.3).clamp(-0.3, 1.2);
-                                bar.ml(relative(offset))
-                            },
-                        ),
-                );
-
-            div()
-                .flex()
-                .flex_col()
-                .gap(px(6.0))
-                .w_full()
-                .px(px(16.0))
-                .py(px(10.0))
-                .rounded(px(8.0))
-                .border_1()
-                .border_color(theme.card_border)
-                .bg(theme.card_bg)
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(8.0))
-                        .child(
-                            Icon::new(if self.state.cleaning {
-                                "icons/trash-2.svg"
-                            } else {
-                                "icons/refresh-cw.svg"
-                            })
-                            .size(px(14.0))
-                            .color(theme.accent_blue),
-                        )
-                        .child(
-                            div()
-                                .text_size(px(12.5))
-                                .font_weight(FontWeight::MEDIUM)
-                                .text_color(theme.text_primary)
-                                .child(status_text),
-                        ),
-                )
-                .child(track)
-                .into_any_element()
-        } else {
-            div().into_any_element()
-        };
 
         let mut categories = div().flex().flex_col().gap(px(10.0));
         for category in CleanupCategory::ALL {
@@ -225,12 +161,13 @@ impl RenderOnce for CleanupPage {
                 .iter()
                 .filter(|target| target.category == category)
                 .collect::<Vec<_>>();
+            let has_targets = !targets.is_empty();
             let checked = targets
                 .iter()
                 .filter(|target| self.state.selected.contains(&target.id))
                 .count();
             let bytes = targets.iter().map(|target| target.bytes).sum::<u64>();
-            let expanded = self.state.expanded == Some(category);
+            let expanded = self.state.expanded == Some(category) && has_targets;
             let visible_count = targets.len().min(MAX_VISIBLE_TARGETS);
             let visible_count_f32 = f32::from(u16::try_from(visible_count).unwrap_or(u16::MAX));
             let list_height = if visible_count == 0 {
@@ -241,32 +178,25 @@ impl RenderOnce for CleanupPage {
                         * TARGET_GAP
             };
             let expanded_height = if expanded { list_height + 1.0 } else { 0.0 };
-            let all_checked = !targets.is_empty() && checked == targets.len();
+            let all_checked = has_targets && checked == targets.len();
             let toggle_category = self.on_toggle_category.clone();
             let toggle_category_checkbox = self.on_toggle_category.clone();
             let toggle_expanded = self.on_toggle_expanded.clone();
             let clean_category = self.on_clean.clone();
             let category_id = category.id();
+            let can_expand = !busy && has_targets;
 
             let category_checkbox_handler: TargetHandler = Rc::new(move |_id, window, cx| {
                 toggle_category_checkbox(category, window, cx);
             });
 
-            let rows = Arc::new(
-                targets
-                    .iter()
-                    .map(|target| TargetRow {
-                        id: target.id.clone(),
-                        name: target.name.clone(),
-                        secondary: target.device_instance_id.clone().unwrap_or_else(|| {
-                            rust_i18n::t!("cleanup.found_paths", count = target.paths.len())
-                                .to_string()
-                        }),
-                        bytes: target.bytes,
-                        selected: self.state.selected.contains(&target.id),
-                    })
-                    .collect::<Vec<_>>(),
-            );
+            let border_color = if is_cleaning && checked > 0 {
+                theme.accent_blue.opacity(0.6)
+            } else if is_scanning {
+                theme.accent_blue.opacity(0.35)
+            } else {
+                theme.card_border
+            };
 
             let header = div()
                 .id(ElementId::Name(format!("cleanup_{category_id}").into()))
@@ -275,7 +205,7 @@ impl RenderOnce for CleanupPage {
                 .gap(px(10.0))
                 .h(px(64.0))
                 .px(px(16.0))
-                .when(!busy, |this| {
+                .when(can_expand, |this| {
                     this.cursor_pointer().on_click(move |_event, window, cx| {
                         toggle_expanded(category, window, cx);
                     })
@@ -283,6 +213,7 @@ impl RenderOnce for CleanupPage {
                 .child(checkbox(
                     format!("cleanup_category_{category_id}"),
                     all_checked,
+                    has_targets && !busy,
                     &theme,
                     category_checkbox_handler,
                 ))
@@ -294,8 +225,16 @@ impl RenderOnce for CleanupPage {
                         .size(px(32.0))
                         .rounded(px(6.0))
                         .border_1()
-                        .border_color(theme.card_border)
-                        .bg(theme.input_bg)
+                        .border_color(if is_scanning {
+                            theme.accent_blue.opacity(0.4)
+                        } else {
+                            theme.card_border
+                        })
+                        .bg(if is_scanning {
+                            theme.accent_blue.opacity(0.08)
+                        } else {
+                            theme.input_bg
+                        })
                         .child(
                             Icon::new(category.icon())
                                 .size(px(16.0))
@@ -321,7 +260,11 @@ impl RenderOnce for CleanupPage {
                                 .gap(px(6.0))
                                 .child(badge(
                                     format!("cleanup_{category_id}_count"),
-                                    format!("{checked} / {}", targets.len()),
+                                    if is_scanning && !has_targets {
+                                        rust_i18n::t!("cleanup.scanning").to_string()
+                                    } else {
+                                        format!("{checked} / {}", targets.len())
+                                    },
                                     &theme,
                                 ))
                                 .when(category != CleanupCategory::Devices, |row| {
@@ -340,7 +283,9 @@ impl RenderOnce for CleanupPage {
                         "icons/chevron-down.svg"
                     })
                     .size(px(16.0))
-                    .color(if busy {
+                    .color(if !has_targets {
+                        theme.text_muted.opacity(0.2)
+                    } else if busy {
                         theme.text_muted.opacity(0.35)
                     } else {
                         theme.text_muted
@@ -365,7 +310,7 @@ impl RenderOnce for CleanupPage {
                         "icons/square-check-big.svg",
                     )
                     .variant(IconButtonVariant::Outline)
-                    .disabled(targets.is_empty() || busy)
+                    .disabled(!has_targets || busy)
                     .on_click(move |_event, window, cx| {
                         cx.stop_propagation();
                         toggle_category(category, window, cx);
@@ -373,6 +318,21 @@ impl RenderOnce for CleanupPage {
                 );
 
             let body = if expanded {
+                let rows = Arc::new(
+                    targets
+                        .iter()
+                        .map(|target| TargetRow {
+                            id: target.id.clone(),
+                            name: target.name.clone(),
+                            secondary: target.device_instance_id.clone().unwrap_or_else(|| {
+                                rust_i18n::t!("cleanup.found_paths", count = target.paths.len())
+                                    .to_string()
+                            }),
+                            bytes: target.bytes,
+                            selected: self.state.selected.contains(&target.id),
+                        })
+                        .collect::<Vec<_>>(),
+                );
                 let rows_for_list = rows.clone();
                 let target_toggle = self.on_toggle_target.clone();
                 let list = SmoothVirtualList::new(
@@ -421,7 +381,7 @@ impl RenderOnce for CleanupPage {
                 .w_full()
                 .rounded(px(10.0))
                 .border_1()
-                .border_color(theme.card_border)
+                .border_color(border_color)
                 .bg(theme.card_bg)
                 .overflow_hidden()
                 .child(header)
@@ -436,7 +396,6 @@ impl RenderOnce for CleanupPage {
             .p(px(16.0))
             .w_full()
             .child(header)
-            .when(busy, |el| el.child(progress_banner))
             .child(categories)
     }
 }

@@ -28,9 +28,30 @@ pub fn badge(id: String, text: String, _theme: &Theme) -> AnyElement {
         .into_any_element()
 }
 
-pub fn checkbox(id: String, checked: bool, theme: &Theme, on_click: TargetHandler) -> AnyElement {
+pub fn checkbox(
+    id: String,
+    checked: bool,
+    enabled: bool,
+    theme: &Theme,
+    on_click: TargetHandler,
+) -> AnyElement {
     let theme = *theme;
-    div()
+    let border_col = if !enabled {
+        theme.input_border.opacity(0.35)
+    } else if checked {
+        theme.accent_blue
+    } else {
+        theme.input_border
+    };
+    let bg_col = if !enabled {
+        theme.input_bg.opacity(0.35)
+    } else if checked {
+        theme.accent_blue
+    } else {
+        theme.input_bg
+    };
+
+    let mut element = div()
         .id(ElementId::Name(id.clone().into()))
         .flex()
         .items_center()
@@ -39,27 +60,29 @@ pub fn checkbox(id: String, checked: bool, theme: &Theme, on_click: TargetHandle
         .flex_none()
         .rounded(px(4.0))
         .border_1()
-        .border_color(if checked {
-            theme.accent_blue
-        } else {
-            theme.input_border
-        })
-        .bg(if checked {
-            theme.accent_blue
-        } else {
-            theme.input_bg
-        })
-        .cursor_pointer()
-        .hover(move |style| style.border_color(theme.accent_blue))
-        .on_click(move |_event, window, cx| {
-            cx.stop_propagation();
-            on_click(id.clone(), window, cx);
-        })
-        .when(checked, |element| {
-            element.child(
+        .border_color(border_col)
+        .bg(bg_col);
+
+    if enabled {
+        element = element
+            .cursor_pointer()
+            .hover(move |style| style.border_color(theme.accent_blue))
+            .on_click(move |_event, window, cx| {
+                cx.stop_propagation();
+                on_click(id.clone(), window, cx);
+            });
+    }
+
+    element
+        .when(checked, |el| {
+            el.child(
                 Icon::new("icons/check.svg")
                     .size(px(10.0))
-                    .color(theme.selected_text),
+                    .color(if enabled {
+                        theme.selected_text
+                    } else {
+                        theme.selected_text.opacity(0.4)
+                    }),
             )
         })
         .into_any_element()
@@ -101,7 +124,7 @@ pub fn render_target(target: &TargetRow, theme: &Theme, on_toggle: TargetHandler
         .border_1()
         .border_color(theme.card_border)
         .bg(theme.main_bg)
-        .child(checkbox(id, target.selected, &theme, on_toggle))
+        .child(checkbox(id, target.selected, true, &theme, on_toggle))
         .child(
             div()
                 .flex()

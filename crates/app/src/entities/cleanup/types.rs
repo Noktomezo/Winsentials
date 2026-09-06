@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::sync::Arc;
 use thiserror::Error;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -96,7 +97,7 @@ pub enum CleanupError {
 
 #[derive(Clone, Debug, Default)]
 pub struct CleanupState {
-    pub snapshot: CleanupSnapshot,
+    pub snapshot: Arc<CleanupSnapshot>,
     pub selected: HashSet<String>,
     pub expanded: Option<CleanupCategory>,
     pub scanning: bool,
@@ -112,7 +113,12 @@ impl CleanupState {
             .map(|target| target.id.as_str())
             .collect::<HashSet<_>>();
         self.selected.retain(|id| available.contains(id.as_str()));
-        self.snapshot = snapshot;
+        if let Some(exp) = self.expanded {
+            if !snapshot.targets.iter().any(|t| t.category == exp) {
+                self.expanded = None;
+            }
+        }
+        self.snapshot = Arc::new(snapshot);
         self.scanning = false;
         self.scanned_once = true;
     }
