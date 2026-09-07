@@ -247,8 +247,7 @@ pub struct CardProps<'a> {
     pub scanning: bool,
     pub cleaning: bool,
     pub recently_cleaned: bool,
-    pub has_targets: bool,
-    pub scanned: bool,
+    pub selected: bool,
     pub reduce_motion: bool,
     pub theme: &'a Theme,
 }
@@ -356,7 +355,7 @@ pub fn render_card(
             theme.accent_orange
         } else if props.scanning {
             theme.accent_blue.opacity(0.6)
-        } else if props.has_targets && props.scanned {
+        } else if props.selected {
             theme.accent_blue
         } else {
             theme.card_border

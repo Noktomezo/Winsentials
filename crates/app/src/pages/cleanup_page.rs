@@ -370,8 +370,6 @@ impl RenderOnce for CleanupPage {
                 div().into_any_element()
             };
 
-            let is_scanned =
-                self.state.scanned_categories.contains(&category) || self.state.scanned_once;
             let card = render_card(
                 CardProps {
                     category_id,
@@ -379,8 +377,7 @@ impl RenderOnce for CleanupPage {
                     scanning: cat_scanning,
                     cleaning: cat_cleaning,
                     recently_cleaned: cat_recently_cleaned,
-                    has_targets,
-                    scanned: is_scanned,
+                    selected: checked > 0,
                     reduce_motion,
                     theme: &theme,
                 },
