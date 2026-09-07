@@ -9,6 +9,7 @@ pub mod icon;
 pub mod icon_button;
 pub mod marquee_text;
 pub mod menu_item;
+pub mod modal;
 pub mod search_input;
 pub mod smooth_scroll;
 pub mod switch;
@@ -39,6 +40,8 @@ pub use icon_button::{IconButton, IconButtonVariant};
 pub use marquee_text::MarqueeText;
 #[allow(unused_imports)]
 pub use menu_item::MenuItem;
+#[allow(unused_imports)]
+pub use modal::{Modal, ModalVariant};
 #[allow(unused_imports)]
 pub use search_input::SearchInput;
 #[allow(unused_imports)]

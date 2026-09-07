@@ -1,11 +1,9 @@
-
 use windows_sys::Win32::Foundation::{BOOL, FILETIME};
 use windows_sys::Win32::System::ProcessStatus::{GetPerformanceInfo, PERFORMANCE_INFORMATION};
 use windows_sys::Win32::System::SystemInformation::{
     GetPhysicallyInstalledSystemMemory, GetSystemInfo, GetTickCount64, GlobalMemoryStatusEx,
     MEMORYSTATUSEX, SYSTEM_INFO,
 };
-
 
 #[allow(unsafe_code)]
 unsafe extern "system" {
@@ -39,7 +37,11 @@ pub(crate) fn query_system_times() -> (u64, u64, u64) {
         GetSystemTimes(&raw mut idle, &raw mut kernel, &raw mut user);
     }
 
-    (filetime_to_u64(idle), filetime_to_u64(kernel), filetime_to_u64(user))
+    (
+        filetime_to_u64(idle),
+        filetime_to_u64(kernel),
+        filetime_to_u64(user),
+    )
 }
 
 pub(crate) fn clean_cpu_name(raw: &str) -> String {
@@ -138,8 +140,8 @@ pub(crate) fn sample_ram_usage() -> RamSample {
         GlobalMemoryStatusEx(&raw mut mem);
     }
     let total_gb = mem.ullTotalPhys as f32 / (1024.0 * 1024.0 * 1024.0);
-    let used_gb = (mem.ullTotalPhys.saturating_sub(mem.ullAvailPhys)) as f32
-        / (1024.0 * 1024.0 * 1024.0);
+    let used_gb =
+        (mem.ullTotalPhys.saturating_sub(mem.ullAvailPhys)) as f32 / (1024.0 * 1024.0 * 1024.0);
     let available_gb = mem.ullAvailPhys as f32 / (1024.0 * 1024.0 * 1024.0);
 
     let mut installed_kb = 0u64;
@@ -172,14 +174,23 @@ pub(crate) struct PerformanceCounters {
     pub(crate) non_paged_pool_mb: f32,
 }
 
-#[allow(unsafe_code, clippy::cast_precision_loss, clippy::cast_possible_truncation)]
-pub(crate) fn query_performance_info(ram_used_gb: f32, total_gb: f32, ram_available_gb: f32) -> PerformanceCounters {
+#[allow(
+    unsafe_code,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation
+)]
+pub(crate) fn query_performance_info(
+    ram_used_gb: f32,
+    total_gb: f32,
+    ram_available_gb: f32,
+) -> PerformanceCounters {
     let mut perf: PERFORMANCE_INFORMATION = unsafe { std::mem::zeroed() };
     perf.cb = std::mem::size_of::<PERFORMANCE_INFORMATION>() as u32;
     let ok = unsafe { GetPerformanceInfo(&raw mut perf, perf.cb) };
     if ok != 0 {
         let page_size = perf.PageSize as f64;
-        let pages_to_gb = |pages: usize| (pages as f64 * page_size / (1024.0 * 1024.0 * 1024.0)) as f32;
+        let pages_to_gb =
+            |pages: usize| (pages as f64 * page_size / (1024.0 * 1024.0 * 1024.0)) as f32;
         let pages_to_mb = |pages: usize| (pages as f64 * page_size / (1024.0 * 1024.0)) as f32;
 
         PerformanceCounters {

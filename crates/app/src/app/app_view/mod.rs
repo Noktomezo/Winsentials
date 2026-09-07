@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use gpui::{Context, FocusHandle, SharedString, Window};
+use gpui::{App, Context, FocusHandle, SharedString, Window};
 
 use crate::entities::cleanup::CleanupState;
 use crate::entities::{AppConfig, TelemetryData, load_config};
@@ -22,6 +22,19 @@ mod render_panel;
 
 #[cfg(test)]
 mod tests;
+
+pub type ConfirmModalAction = Arc<dyn Fn(&mut Window, &mut App) + 'static>;
+
+#[derive(Clone)]
+pub struct ConfirmModalState {
+    pub title: SharedString,
+    pub description: SharedString,
+    pub confirm_label: SharedString,
+    pub cancel_label: SharedString,
+    pub is_destructive: bool,
+    pub on_confirm: ConfirmModalAction,
+    pub on_cancel: ConfirmModalAction,
+}
 
 #[allow(clippy::struct_excessive_bools)]
 pub struct AppView {
@@ -56,6 +69,7 @@ pub struct AppView {
     pub(crate) closing_toast_id: Option<SharedString>,
     pub(crate) hovered_toast_button: Option<(SharedString, usize)>,
     pub(crate) toast_stack_expanded: bool,
+    pub(crate) confirm_modal: Option<ConfirmModalState>,
     pub(crate) startup_entries: Vec<crate::entities::startup::StartupEntry>,
     pub(crate) startup_filter: Option<crate::entities::startup::StartupSource>,
     pub(crate) startup_search_query: String,
@@ -135,6 +149,7 @@ impl AppView {
             closing_toast_id: None,
             hovered_toast_button: None,
             toast_stack_expanded: false,
+            confirm_modal: None,
             startup_entries,
             startup_filter: None,
             startup_search_query: String::new(),

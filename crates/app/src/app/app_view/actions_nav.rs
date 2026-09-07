@@ -50,6 +50,11 @@ impl AppView {
     }
 
     pub fn handle_escape(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.confirm_modal.is_some() {
+            self.confirm_modal = None;
+            cx.notify();
+            return;
+        }
         if self.open_dropdown.is_some() {
             self.close_dropdowns(window, cx);
             return;

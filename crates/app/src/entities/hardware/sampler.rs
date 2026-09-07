@@ -3,15 +3,13 @@ use std::sync::Mutex;
 use std::time::Instant;
 
 use super::cpu_ram::{
-    query_cpu_static_info, query_performance_info, query_system_times, query_uptime_string,
-    sample_ram_usage, CpuStaticInfo,
+    CpuStaticInfo, query_cpu_static_info, query_performance_info, query_system_times,
+    query_uptime_string, sample_ram_usage,
 };
-use super::disk::{sample_disks, DiskPerformanceSnapshot};
-use super::gpu::{init_gpus, sample_gpus, CachedGpu};
+use super::disk::{DiskPerformanceSnapshot, sample_disks};
+use super::gpu::{CachedGpu, init_gpus, sample_gpus};
 use super::network::sample_networks;
-use super::types::{
-    CPU_HISTORY_SAMPLES, CpuDetailData, CpuInfo, DiskKind, RamInfo, TelemetryData,
-};
+use super::types::{CPU_HISTORY_SAMPLES, CpuDetailData, CpuInfo, DiskKind, RamInfo, TelemetryData};
 
 pub(crate) struct TelemetrySampler {
     last_sample: Instant,
@@ -107,7 +105,8 @@ impl TelemetrySampler {
         }
 
         let ram_sample = sample_ram_usage();
-        let ram_percent = (ram_sample.used_gb / ram_sample.total_gb.max(0.001) * 100.0).clamp(0.0, 100.0);
+        let ram_percent =
+            (ram_sample.used_gb / ram_sample.total_gb.max(0.001) * 100.0).clamp(0.0, 100.0);
         self.ram_history_15s.push(ram_percent);
         if self.ram_history_15s.len() > CPU_HISTORY_SAMPLES {
             self.ram_history_15s.remove(0);
@@ -141,10 +140,15 @@ impl TelemetrySampler {
             sample_instant,
         );
 
-        let perf = query_performance_info(ram_sample.used_gb, ram_sample.total_gb, ram_sample.available_gb);
+        let perf = query_performance_info(
+            ram_sample.used_gb,
+            ram_sample.total_gb,
+            ram_sample.available_gb,
+        );
         let uptime_str = query_uptime_string();
 
-        let current_clock_ghz = self.cached_cpu.base_ghz + (cpu_percent as f32 / 100.0) * 0.50 + 0.10;
+        let current_clock_ghz =
+            self.cached_cpu.base_ghz + (cpu_percent as f32 / 100.0) * 0.50 + 0.10;
 
         let core_count = self.cached_cpu.logical_cpus as usize;
         let mut core_utilization = Vec::with_capacity(core_count);

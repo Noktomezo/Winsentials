@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use gpui::{
-    App, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px,
-};
+use gpui::{App, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 
 use crate::features::discord_rpc::DiscordRpcActivity;
 use crate::features::navigation::AppRoute;

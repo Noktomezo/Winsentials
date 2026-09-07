@@ -430,6 +430,8 @@
       "games": "Game data cleanup",
       "media": "Media and messenger cleanup",
       "devices": "Remove unused devices"
-    }
+    },
+    "confirm_button": "Clean",
+    "cancel": "Cancel"
   }
 }

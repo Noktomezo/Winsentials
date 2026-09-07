@@ -2,9 +2,9 @@ use std::time::Duration;
 
 use gpui::prelude::FluentBuilder;
 use gpui::{
-    Animation, AnimationExt, AnyElement, ElementId, FontWeight,
-    InteractiveElement, IntoElement, ParentElement, SpringAnimation, SpringConfig,
-    StatefulInteractiveElement, Styled, deferred, div, ease_in_out, img, px,
+    Animation, AnimationExt, AnyElement, ElementId, FontWeight, InteractiveElement, IntoElement,
+    ParentElement, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, deferred,
+    div, ease_in_out, img, px,
 };
 
 use crate::entities::startup::{StartupEntry, StartupSource, StartupStatus};
@@ -26,7 +26,6 @@ pub(crate) struct StartupCardHandlers {
     pub(crate) hover_card: Option<StartupHoverCardHandler>,
     pub(crate) hovered_card_id: Option<String>,
 }
-
 
 fn render_source_badge(
     entry: &StartupEntry,
@@ -439,4 +438,3 @@ pub(crate) fn render_startup_card(
         )
         .into_any_element()
 }
-

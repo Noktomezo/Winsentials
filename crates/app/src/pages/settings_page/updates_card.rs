@@ -1,4 +1,6 @@
-use gpui::{ElementId, InteractiveElement, ParentElement, StatefulInteractiveElement, Styled, div, px};
+use gpui::{
+    ElementId, InteractiveElement, ParentElement, StatefulInteractiveElement, Styled, div, px,
+};
 
 use crate::features::updater::{CURRENT_VERSION, UpdateState};
 use crate::shared::theme::Theme;
@@ -137,9 +139,7 @@ pub(crate) fn build_updates_card(params: UpdatesCardParams<'_>) -> GroupCard {
     };
 
     let check_btn_wrapper = div()
-        .id(ElementId::Name(
-            "settings_check_update_wrapper".into(),
-        ))
+        .id(ElementId::Name("settings_check_update_wrapper".into()))
         .flex()
         .items_center()
         .justify_center()

@@ -243,7 +243,12 @@ impl RenderOnce for Dropdown {
             .flex()
             .items_center()
             .justify_center()
-            .child(render_dropdown_chevron(is_open, is_closing, &dropdown_id_str, &theme));
+            .child(render_dropdown_chevron(
+                is_open,
+                is_closing,
+                &dropdown_id_str,
+                &theme,
+            ));
 
         let trigger_target: f32 = if is_open {
             1.0

@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
-use super::types::{
-    CPU_HISTORY_SAMPLES, DISCRETE_ENGINES, GpuInfo, INTEGRATED_ENGINES,
-};
+use super::types::{CPU_HISTORY_SAMPLES, DISCRETE_ENGINES, GpuInfo, INTEGRATED_ENGINES};
 
 #[derive(Clone, Debug)]
 pub(crate) struct CachedGpu {
@@ -53,14 +51,13 @@ pub(crate) fn init_gpus() -> Vec<CachedGpu> {
                                     "32.0.21045.5002".to_string()
                                 }
                             });
-                        let driver_date =
-                            gpu_key.get_string("DriverDate").unwrap_or_else(|_| {
-                                if is_discrete {
-                                    "20.08.2026".to_string()
-                                } else {
-                                    "17.08.2026".to_string()
-                                }
-                            });
+                        let driver_date = gpu_key.get_string("DriverDate").unwrap_or_else(|_| {
+                            if is_discrete {
+                                "20.08.2026".to_string()
+                            } else {
+                                "17.08.2026".to_string()
+                            }
+                        });
                         let directx_version = if is_discrete {
                             "12 (FL 12.2)".to_string()
                         } else {

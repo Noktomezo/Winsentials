@@ -181,4 +181,3 @@ impl ToastData {
 pub type ToastDismissIdHandler = Arc<dyn Fn(&str, &mut Window, &mut App) + 'static>;
 pub type ToastHoverBtnIdHandler = Arc<dyn Fn(&str, usize, &bool, &mut Window, &mut App) + 'static>;
 pub type ToastStackHoverHandler = Arc<dyn Fn(&bool, &mut Window, &mut App) + 'static>;
-

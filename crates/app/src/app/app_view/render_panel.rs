@@ -195,6 +195,15 @@ impl AppView {
             });
         let on_cleanup_toggle_expanded =
             cx.listener(|this, category: &CleanupCategory, _window, cx| {
+                let has_targets = this
+                    .cleanup
+                    .snapshot
+                    .targets
+                    .iter()
+                    .any(|t| t.category == *category);
+                if !has_targets {
+                    return;
+                }
                 this.cleanup.expanded =
                     (this.cleanup.expanded != Some(*category)).then_some(*category);
                 cx.notify();
@@ -219,10 +228,11 @@ impl AppView {
         let on_download_and_install_update = cx.listener(|this, _event: &(), _window, cx| {
             this.download_and_install_update(cx);
         });
-        let page_tooltip_listener =
-            cx.listener(|this, tooltip: &Option<crate::shared::ui::TooltipState>, _window, cx| {
+        let page_tooltip_listener = cx.listener(
+            |this, tooltip: &Option<crate::shared::ui::TooltipState>, _window, cx| {
                 this.set_active_tooltip(tooltip.clone(), cx);
-            });
+            },
+        );
 
         let minimize_to_tray = self.config.minimize_to_tray;
         let autostart = self.config.autostart;
@@ -237,27 +247,31 @@ impl AppView {
             .startup_search_focus
             .get_or_insert_with(|| cx.focus_handle())
             .clone();
-        let cleanup_page = CleanupPage::new(
-            self.cleanup.clone(),
-            Rc::new(move |id, window, cx| {
-                on_cleanup_toggle_target(&id, window, cx);
-            }),
-            Rc::new(move |category, window, cx| {
-                on_cleanup_toggle_category(&category, window, cx);
-            }),
-            Rc::new(move |category, window, cx| {
-                on_cleanup_toggle_expanded(&category, window, cx);
-            }),
-            Rc::new(move |window, cx| {
-                on_cleanup_toggle_all(&(), window, cx);
-            }),
-            Rc::new(move |window, cx| {
-                on_cleanup_refresh(&(), window, cx);
-            }),
-            Rc::new(move |category, window, cx| {
-                on_cleanup_clean(&category, window, cx);
-            }),
-        );
+        let cleanup_page = if current_route == AppRoute::Cleanup {
+            Some(CleanupPage::new(
+                self.cleanup.clone(),
+                Rc::new(move |id, window, cx| {
+                    on_cleanup_toggle_target(&id, window, cx);
+                }),
+                Rc::new(move |category, window, cx| {
+                    on_cleanup_toggle_category(&category, window, cx);
+                }),
+                Rc::new(move |category, window, cx| {
+                    on_cleanup_toggle_expanded(&category, window, cx);
+                }),
+                Rc::new(move |window, cx| {
+                    on_cleanup_toggle_all(&(), window, cx);
+                }),
+                Rc::new(move |window, cx| {
+                    on_cleanup_refresh(&(), window, cx);
+                }),
+                Rc::new(move |category, window, cx| {
+                    on_cleanup_clean(&category, window, cx);
+                }),
+            ))
+        } else {
+            None
+        };
 
         div()
             .flex()

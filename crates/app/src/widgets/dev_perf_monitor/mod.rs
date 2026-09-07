@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use gpui::{
-    App, IntoElement, Pixels, Point, RenderOnce, Window,
-};
+use gpui::{App, IntoElement, Pixels, Point, RenderOnce, Window};
 
 use crate::features::navigation::AppRoute;
 use crate::shared::theme::Theme;
@@ -15,9 +13,9 @@ pub mod state;
 #[cfg(test)]
 mod tests;
 
-pub use state::*;
 use render_expanded::render_expanded_monitor;
 use render_minimized::render_minimized_monitor;
+pub use state::*;
 
 #[derive(IntoElement)]
 pub struct DevPerfMonitor {
@@ -99,7 +97,8 @@ impl RenderOnce for DevPerfMonitor {
                 &self.on_end_drag,
                 &self.on_hover_control,
                 &theme,
-            ).into_any_element()
+            )
+            .into_any_element()
         } else {
             render_expanded_monitor(
                 &self.snapshot,
@@ -116,7 +115,8 @@ impl RenderOnce for DevPerfMonitor {
                 &self.on_toggle_continuous,
                 &self.on_hover_control,
                 &theme,
-            ).into_any_element()
+            )
+            .into_any_element()
         }
     }
 }

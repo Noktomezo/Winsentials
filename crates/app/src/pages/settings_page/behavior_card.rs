@@ -57,13 +57,12 @@ pub(crate) fn build_behavior_card(params: BehaviorCardParams<'_>) -> GroupCard {
         theme,
     );
 
-    let min_tray_switch = Switch::new("min_tray_switch", minimize_to_tray).on_toggle(
-        move |new_val, window, cx| {
+    let min_tray_switch =
+        Switch::new("min_tray_switch", minimize_to_tray).on_toggle(move |new_val, window, cx| {
             if let Some(ref h) = on_toggle_min_tray {
                 h(new_val, window, cx);
             }
-        },
-    );
+        });
 
     let min_tray_row = settings_row(min_tray_text, min_tray_switch);
 
@@ -118,8 +117,7 @@ pub(crate) fn build_behavior_card(params: BehaviorCardParams<'_>) -> GroupCard {
     };
 
     let effective_discord_activity = DiscordRpcActivity::from_str(effective_discord_code);
-    let effective_discord_label =
-        rust_i18n::t!(effective_discord_activity.label_key()).to_string();
+    let effective_discord_label = rust_i18n::t!(effective_discord_activity.label_key()).to_string();
     let discord_icon = effective_discord_activity.icon();
 
     let disc_dis_label = rust_i18n::t!("settings.discord_disabled").to_string();

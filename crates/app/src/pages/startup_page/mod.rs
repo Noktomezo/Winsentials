@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{
-    App, ElementId, FocusHandle, FontWeight, InteractiveElement, IntoElement,
-    ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, div, px,
+    App, ElementId, FocusHandle, FontWeight, InteractiveElement, IntoElement, ParentElement,
+    RenderOnce, StatefulInteractiveElement, Styled, Window, div, px,
 };
 
 use crate::entities::startup::search::matches_startup_query;
@@ -10,9 +10,9 @@ use crate::entities::startup::{StartupEntry, StartupSource, StartupStatus};
 use crate::features::navigation::AppRoute;
 use crate::pages::page_header::PageHeader;
 use crate::shared::theme::Theme;
+use crate::shared::ui::TooltipState;
 use crate::shared::ui::search_input::{SearchChangeHandler, SearchInput};
 use crate::shared::ui::smooth_scroll::SmoothVirtualList;
-use crate::shared::ui::TooltipState;
 
 pub mod card;
 pub mod filter;

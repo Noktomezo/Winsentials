@@ -99,7 +99,7 @@ pub fn render_route(
     startup_search_focus: &gpui::FocusHandle,
     startup_open_menu_id: Option<&str>,
     hovered_startup_card: Option<String>,
-    cleanup_page: CleanupPage,
+    cleanup_page: Option<CleanupPage>,
     on_navigate: impl Fn(AppRoute, &mut Window, &mut App) + Send + Sync + 'static,
     on_hover_telemetry_card: impl Fn(SharedString, bool, &mut Window, &mut App) + Send + Sync + 'static,
     on_toggle_tweak: impl Fn(&'static str, bool, &mut Window, &mut App) + 'static,
@@ -404,7 +404,9 @@ pub fn render_route(
         .on_toggle_menu(on_toggle_startup_menu)
         .on_select_filter(on_select_startup_filter)
         .into_any_element(),
-        AppRoute::Cleanup => cleanup_page.into_any_element(),
+        AppRoute::Cleanup => {
+            cleanup_page.map_or_else(|| div().into_any_element(), IntoElement::into_any_element)
+        }
         AppRoute::Settings => SettingsPage::new(
             current_locale,
             minimize_to_tray,

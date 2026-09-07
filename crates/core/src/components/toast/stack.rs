@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{
-    App, ElementId, InteractiveElement, IntoElement, StatefulInteractiveElement, MouseButton, ParentElement, RenderOnce,
-    SharedString, Styled, Window, div, px,
+    App, ElementId, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce,
+    SharedString, StatefulInteractiveElement, Styled, Window, div, px,
 };
 
 use super::item::ToastItemView;
@@ -197,7 +197,7 @@ impl RenderOnce for ToastStack {
             let mut overlay_box = div()
                 .id(ElementId::Name("toast_overlay_box".into()))
                 .relative()
-                .w(px(340.0))
+                .w(px(360.0))
                 .on_mouse_down(MouseButton::Left, |_, _, cx| {
                     cx.stop_propagation();
                 })
@@ -280,11 +280,10 @@ impl RenderOnce for ToastStack {
             ToastPosition::BottomLeft => positioned.bottom(px(16.0)).left(px(16.0)),
             ToastPosition::TopRight => positioned.top(px(16.0)).right(px(16.0)),
             ToastPosition::TopLeft => positioned.top(px(16.0)).left(px(16.0)),
-            ToastPosition::BottomCenter => positioned.bottom(px(16.0)).left_1_2().ml(px(-170.0)),
-            ToastPosition::TopCenter => positioned.top(px(16.0)).left_1_2().ml(px(-170.0)),
+            ToastPosition::BottomCenter => positioned.bottom(px(16.0)).left_1_2().ml(px(-180.0)),
+            ToastPosition::TopCenter => positioned.top(px(16.0)).left_1_2().ml(px(-180.0)),
         };
 
         positioned.child(stack_container).into_any_element()
     }
 }
-
