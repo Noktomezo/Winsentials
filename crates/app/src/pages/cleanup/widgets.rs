@@ -253,6 +253,9 @@ pub struct CardProps<'a> {
     pub theme: &'a Theme,
 }
 
+const BEAM_WIDTH: f32 = 280.0;
+const TRAVEL_SPAN: f32 = 1400.0;
+
 #[allow(clippy::cast_precision_loss, clippy::suboptimal_flops)]
 pub fn render_card(
     props: CardProps<'_>,
@@ -268,13 +271,14 @@ pub fn render_card(
         } else {
             format!("cleanup_scan_wave_{category_id}")
         };
-        let phase_offset = (props.idx as f32) * 51.4;
+        let phase_offset = (props.idx as f32) * 0.16;
         let accent_color = if is_clean {
             theme.accent_orange
         } else {
             theme.accent_blue
         };
         let card_inner = div()
+            .relative()
             .flex()
             .flex_col()
             .w_full()
@@ -284,30 +288,44 @@ pub fn render_card(
             .child(header)
             .child(body);
 
+        let beam = div()
+            .absolute()
+            .top(px(-10.0))
+            .bottom(px(-10.0))
+            .w(px(BEAM_WIDTH))
+            .flex()
+            .child(div().w_1_2().h_full().bg(linear_gradient(
+                90.0,
+                linear_color_stop(accent_color.opacity(0.0), 0.0),
+                linear_color_stop(accent_color.opacity(0.95), 1.0),
+            )))
+            .child(div().w_1_2().h_full().bg(linear_gradient(
+                90.0,
+                linear_color_stop(accent_color.opacity(0.95), 0.0),
+                linear_color_stop(accent_color.opacity(0.0), 1.0),
+            )))
+            .with_animation(
+                ElementId::Name(anim_id.into()),
+                Animation::new(Duration::from_millis(2200)).repeat(),
+                move |beam_el, delta| {
+                    let progress = (delta + phase_offset).fract();
+                    let beam_x = -BEAM_WIDTH + progress * TRAVEL_SPAN;
+                    beam_el.left(px(beam_x))
+                },
+            );
+
         div()
             .id(ElementId::Name(
                 format!("cleanup_card_{category_id}").into(),
             ))
+            .relative()
             .flex()
             .w_full()
             .rounded(px(10.0))
             .p(px(1.0))
             .overflow_hidden()
-            .with_animation(
-                ElementId::Name(anim_id.into()),
-                Animation::new(Duration::from_millis(2400)).repeat(),
-                move |wrap, delta| {
-                    let angle = (delta * 360.0 + phase_offset) % 360.0;
-                    let pulse =
-                        0.75 + 0.25 * ((delta * std::f32::consts::TAU * 2.0 + phase_offset).sin());
-                    let wave_bg = linear_gradient(
-                        angle,
-                        linear_color_stop(accent_color.opacity(pulse), 0.0),
-                        linear_color_stop(theme.card_border.opacity(0.30), 1.0),
-                    );
-                    wrap.bg(wave_bg)
-                },
-            )
+            .bg(theme.card_border.opacity(0.40))
+            .child(beam)
             .child(card_inner)
             .into_any_element()
     } else if props.recently_cleaned && !props.reduce_motion {
