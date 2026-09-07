@@ -4,9 +4,9 @@ use gpui::{Context, Div, Stateful, Window};
 use gpui::{InteractiveElement, ParentElement, Styled, div, px};
 
 #[cfg(debug_assertions)]
-use std::sync::Arc;
-#[cfg(debug_assertions)]
 use gpui::{MouseButton, Pixels, Point};
+#[cfg(debug_assertions)]
+use std::sync::Arc;
 
 use super::AppView;
 
@@ -34,12 +34,12 @@ pub(super) fn apply_dev_perf_overlay(
                 cx.notify();
             },
         ));
-        let on_dev_up = Arc::new(cx.listener(
-            |this, _event: &gpui::MouseUpEvent, _window, cx| {
+        let on_dev_up = Arc::new(
+            cx.listener(|this, _event: &gpui::MouseUpEvent, _window, cx| {
                 this.dev_perf_monitor.end_drag();
                 cx.notify();
-            },
-        ));
+            }),
+        );
         (on_dev_move, on_dev_up)
     };
 
@@ -216,4 +216,3 @@ pub(super) fn apply_dev_perf_overlay(
 
     root
 }
-

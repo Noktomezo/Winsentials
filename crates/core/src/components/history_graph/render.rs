@@ -3,15 +3,14 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui::{
-    Animation, AnimationExt, Background, Bounds, ContentMask, IntoElement,
-    ParentElement, PathBuilder, Pixels, Rgba, SharedString, Styled,
-    canvas, div, fill, linear_color_stop, linear_gradient, point,
-    pulsating_between, px, size,
+    Animation, AnimationExt, Background, Bounds, ContentMask, IntoElement, ParentElement,
+    PathBuilder, Pixels, Rgba, SharedString, Styled, canvas, div, fill, linear_color_stop,
+    linear_gradient, point, pulsating_between, px, size,
 };
 
-use crate::theme::Theme;
 #[allow(clippy::wildcard_imports)]
 use super::math::*;
+use crate::theme::Theme;
 #[allow(
     clippy::cast_precision_loss,
     clippy::too_many_arguments,

@@ -3,7 +3,7 @@ use std::time::Duration;
 use gpui::{
     Animation, AnimationExt, AnyElement, ElementId, InteractiveElement, IntoElement, MouseButton,
     ParentElement, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled,
-    Transformation, ease_in_out, px, radians, svg, div,
+    Transformation, div, ease_in_out, px, radians, svg,
 };
 
 use crate::components::icon::Icon;
@@ -318,7 +318,9 @@ pub(crate) fn render_dropdown_menu(params: DropdownMenuParams) -> AnyElement {
 
     if is_open {
         let mut box_el = div()
-            .id(ElementId::Name(format!("{dropdown_id_str}_menu_box").into()))
+            .id(ElementId::Name(
+                format!("{dropdown_id_str}_menu_box").into(),
+            ))
             .debug_selector({
                 let id_clone = dropdown_id_str.clone();
                 move || format!("{id_clone}_menu_box")

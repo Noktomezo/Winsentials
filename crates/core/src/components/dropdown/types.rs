@@ -1,7 +1,9 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use gpui::{AnyElement, App, IntoElement, ParentElement, Rgba, SharedString, Styled, Window, div, img, px};
+use gpui::{
+    AnyElement, App, IntoElement, ParentElement, Rgba, SharedString, Styled, Window, div, img, px,
+};
 
 use crate::components::icon::Icon;
 

@@ -136,7 +136,12 @@ impl AppView {
         }
     }
 
-    pub(crate) fn show_setting_error(&mut self, setting: &str, error: &str, cx: &mut Context<Self>) {
+    pub(crate) fn show_setting_error(
+        &mut self,
+        setting: &str,
+        error: &str,
+        cx: &mut Context<Self>,
+    ) {
         eprintln!("failed to apply {setting}: {error}");
         let toast = crate::shared::ui::ToastData::new(
             "setting_apply_error",

@@ -85,51 +85,50 @@ pub(crate) fn build_appearance_card(params: AppearanceCardParams<'_>) -> GroupCa
         None
     };
 
-    let language_dropdown =
-        Dropdown::new("lang_select", lang_current_label, effective_lang_code)
-            .icon(lang_icon)
-            .localized_options(vec![
-                ("system", sys_lang_label.into(), Some("icons/languages.svg")),
-                ("ru", "Русский".into(), Some("icons/flags/ru.png")),
-                ("en", "English".into(), Some("icons/flags/us.png")),
-            ])
-            .open(open_dropdown == Some("language"))
-            .opening(opening_dropdown == Some("language"))
-            .closing(closing_dropdown == Some("language"))
-            .upward(open_dropdown_upward)
-            .morphing(is_lang_morphing)
-            .hovered(hovered_dropdown == Some("language"))
-            .hovered_option(lang_hovered_opt)
-            .on_hover_trigger(move |hovered, window, cx| {
-                if let Some(ref h) = on_hover_lang {
-                    h("language", hovered, window, cx);
-                }
-            })
-            .on_hover_option(move |opt_val, &hov, window, cx| {
-                if let Some(ref h) = on_hover_opt_lang {
-                    let static_val = match opt_val {
-                        "system" => "system",
-                        "en" => "en",
-                        _ => "ru",
-                    };
-                    h("language", static_val, &hov, window, cx);
-                }
-            })
-            .on_toggle(move |window, cx| {
-                if let Some(ref h) = on_toggle_lang {
-                    h("language", window, cx);
-                }
-            })
-            .on_select(move |lang, window, cx| {
-                if let Some(ref h) = on_change_lang {
-                    h(lang, window, cx);
-                }
-            })
-            .on_close(move |window, cx| {
-                if let Some(ref h) = on_close_lang {
-                    h(window, cx);
-                }
-            });
+    let language_dropdown = Dropdown::new("lang_select", lang_current_label, effective_lang_code)
+        .icon(lang_icon)
+        .localized_options(vec![
+            ("system", sys_lang_label.into(), Some("icons/languages.svg")),
+            ("ru", "Русский".into(), Some("icons/flags/ru.png")),
+            ("en", "English".into(), Some("icons/flags/us.png")),
+        ])
+        .open(open_dropdown == Some("language"))
+        .opening(opening_dropdown == Some("language"))
+        .closing(closing_dropdown == Some("language"))
+        .upward(open_dropdown_upward)
+        .morphing(is_lang_morphing)
+        .hovered(hovered_dropdown == Some("language"))
+        .hovered_option(lang_hovered_opt)
+        .on_hover_trigger(move |hovered, window, cx| {
+            if let Some(ref h) = on_hover_lang {
+                h("language", hovered, window, cx);
+            }
+        })
+        .on_hover_option(move |opt_val, &hov, window, cx| {
+            if let Some(ref h) = on_hover_opt_lang {
+                let static_val = match opt_val {
+                    "system" => "system",
+                    "en" => "en",
+                    _ => "ru",
+                };
+                h("language", static_val, &hov, window, cx);
+            }
+        })
+        .on_toggle(move |window, cx| {
+            if let Some(ref h) = on_toggle_lang {
+                h("language", window, cx);
+            }
+        })
+        .on_select(move |lang, window, cx| {
+            if let Some(ref h) = on_change_lang {
+                h(lang, window, cx);
+            }
+        })
+        .on_close(move |window, cx| {
+            if let Some(ref h) = on_close_lang {
+                h(window, cx);
+            }
+        });
 
     let language_row = settings_row(lang_text, language_dropdown);
 
@@ -175,51 +174,50 @@ pub(crate) fn build_appearance_card(params: AppearanceCardParams<'_>) -> GroupCa
         None
     };
 
-    let theme_dropdown =
-        Dropdown::new("theme_select", theme_current_label, effective_theme_code)
-            .icon(theme_icon)
-            .localized_options(vec![
-                ("system", sys_th_label.into(), Some("icons/monitor.svg")),
-                ("dark", dark_label.into(), Some("icons/moon.svg")),
-                ("light", light_label.into(), Some("icons/sun.svg")),
-            ])
-            .open(open_dropdown == Some("theme"))
-            .opening(opening_dropdown == Some("theme"))
-            .closing(closing_dropdown == Some("theme"))
-            .upward(open_dropdown_upward)
-            .morphing(is_theme_morphing)
-            .hovered(hovered_dropdown == Some("theme"))
-            .hovered_option(theme_hovered_opt)
-            .on_hover_trigger(move |hovered, window, cx| {
-                if let Some(ref h) = on_hover_th {
-                    h("theme", hovered, window, cx);
-                }
-            })
-            .on_hover_option(move |opt_val, &hov, window, cx| {
-                if let Some(ref h) = on_hover_opt_th {
-                    let static_val = match opt_val {
-                        "system" => "system",
-                        "light" => "light",
-                        _ => "dark",
-                    };
-                    h("theme", static_val, &hov, window, cx);
-                }
-            })
-            .on_toggle(move |window, cx| {
-                if let Some(ref h) = on_toggle_th {
-                    h("theme", window, cx);
-                }
-            })
-            .on_select(move |mode, window, cx| {
-                if let Some(ref h) = on_change_th {
-                    h(mode, window, cx);
-                }
-            })
-            .on_close(move |window, cx| {
-                if let Some(ref h) = on_close_th {
-                    h(window, cx);
-                }
-            });
+    let theme_dropdown = Dropdown::new("theme_select", theme_current_label, effective_theme_code)
+        .icon(theme_icon)
+        .localized_options(vec![
+            ("system", sys_th_label.into(), Some("icons/monitor.svg")),
+            ("dark", dark_label.into(), Some("icons/moon.svg")),
+            ("light", light_label.into(), Some("icons/sun.svg")),
+        ])
+        .open(open_dropdown == Some("theme"))
+        .opening(opening_dropdown == Some("theme"))
+        .closing(closing_dropdown == Some("theme"))
+        .upward(open_dropdown_upward)
+        .morphing(is_theme_morphing)
+        .hovered(hovered_dropdown == Some("theme"))
+        .hovered_option(theme_hovered_opt)
+        .on_hover_trigger(move |hovered, window, cx| {
+            if let Some(ref h) = on_hover_th {
+                h("theme", hovered, window, cx);
+            }
+        })
+        .on_hover_option(move |opt_val, &hov, window, cx| {
+            if let Some(ref h) = on_hover_opt_th {
+                let static_val = match opt_val {
+                    "system" => "system",
+                    "light" => "light",
+                    _ => "dark",
+                };
+                h("theme", static_val, &hov, window, cx);
+            }
+        })
+        .on_toggle(move |window, cx| {
+            if let Some(ref h) = on_toggle_th {
+                h("theme", window, cx);
+            }
+        })
+        .on_select(move |mode, window, cx| {
+            if let Some(ref h) = on_change_th {
+                h(mode, window, cx);
+            }
+        })
+        .on_close(move |window, cx| {
+            if let Some(ref h) = on_close_th {
+                h(window, cx);
+            }
+        });
 
     let theme_row = settings_row(theme_text, theme_dropdown);
 
@@ -259,49 +257,48 @@ pub(crate) fn build_appearance_card(params: AppearanceCardParams<'_>) -> GroupCa
         None
     };
 
-    let palette_dropdown =
-        Dropdown::new("palette_select", pal_current_label, effective_pal_code)
-            .icon(pal_icon)
-            .localized_options(vec![
-                ("arclate", arclate_label.into(), Some("icons/palette.svg")),
-                ("flexoki", flexoki_label.into(), Some("icons/palette.svg")),
-            ])
-            .open(open_dropdown == Some("palette"))
-            .opening(opening_dropdown == Some("palette"))
-            .closing(closing_dropdown == Some("palette"))
-            .upward(open_dropdown_upward)
-            .morphing(is_pal_morphing)
-            .hovered(hovered_dropdown == Some("palette"))
-            .hovered_option(pal_hovered_opt)
-            .on_hover_trigger(move |hovered, window, cx| {
-                if let Some(ref h) = on_hover_pal {
-                    h("palette", hovered, window, cx);
-                }
-            })
-            .on_hover_option(move |opt_val, &hov, window, cx| {
-                if let Some(ref h) = on_hover_opt_pal {
-                    let static_val = match opt_val {
-                        "flexoki" => "flexoki",
-                        _ => "arclate",
-                    };
-                    h("palette", static_val, &hov, window, cx);
-                }
-            })
-            .on_toggle(move |window, cx| {
-                if let Some(ref h) = on_toggle_pal {
-                    h("palette", window, cx);
-                }
-            })
-            .on_select(move |palette_name, window, cx| {
-                if let Some(ref h) = on_change_pal {
-                    h(palette_name, window, cx);
-                }
-            })
-            .on_close(move |window, cx| {
-                if let Some(ref h) = on_close_pal {
-                    h(window, cx);
-                }
-            });
+    let palette_dropdown = Dropdown::new("palette_select", pal_current_label, effective_pal_code)
+        .icon(pal_icon)
+        .localized_options(vec![
+            ("arclate", arclate_label.into(), Some("icons/palette.svg")),
+            ("flexoki", flexoki_label.into(), Some("icons/palette.svg")),
+        ])
+        .open(open_dropdown == Some("palette"))
+        .opening(opening_dropdown == Some("palette"))
+        .closing(closing_dropdown == Some("palette"))
+        .upward(open_dropdown_upward)
+        .morphing(is_pal_morphing)
+        .hovered(hovered_dropdown == Some("palette"))
+        .hovered_option(pal_hovered_opt)
+        .on_hover_trigger(move |hovered, window, cx| {
+            if let Some(ref h) = on_hover_pal {
+                h("palette", hovered, window, cx);
+            }
+        })
+        .on_hover_option(move |opt_val, &hov, window, cx| {
+            if let Some(ref h) = on_hover_opt_pal {
+                let static_val = match opt_val {
+                    "flexoki" => "flexoki",
+                    _ => "arclate",
+                };
+                h("palette", static_val, &hov, window, cx);
+            }
+        })
+        .on_toggle(move |window, cx| {
+            if let Some(ref h) = on_toggle_pal {
+                h("palette", window, cx);
+            }
+        })
+        .on_select(move |palette_name, window, cx| {
+            if let Some(ref h) = on_change_pal {
+                h(palette_name, window, cx);
+            }
+        })
+        .on_close(move |window, cx| {
+            if let Some(ref h) = on_close_pal {
+                h(window, cx);
+            }
+        });
 
     let palette_row = settings_row(pal_text, palette_dropdown);
 

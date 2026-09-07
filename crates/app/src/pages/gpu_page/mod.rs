@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use gpui::{
-    App, IntoElement, ParentElement, RenderOnce, Styled, Window,
-    div, px,
-};
+use gpui::{App, IntoElement, ParentElement, RenderOnce, Styled, Window, div, px};
 use rust_i18n::t;
 
 use crate::entities::hardware::GpuInfo;
@@ -12,7 +9,6 @@ use crate::shared::ui::{Button, ButtonVariant, Dropdown, GroupCard};
 
 use super::page_header::PageHeader;
 use crate::shared::ui::history_graph::{HistoryGraphPalette, render_stepped_history_graph};
-
 
 pub mod info_card;
 pub(crate) use info_card::*;
@@ -436,7 +432,6 @@ impl RenderOnce for GpuPage {
 
         let info_card = render_gpu_info_card(&gpu, &theme);
 
-
         div()
             .flex()
             .flex_col()
@@ -453,4 +448,3 @@ impl RenderOnce for GpuPage {
             .child(info_card)
     }
 }
-

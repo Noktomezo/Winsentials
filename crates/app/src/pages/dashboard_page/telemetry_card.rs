@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnimationExt, App, ElementId, FontWeight, InteractiveElement, IntoElement, ParentElement, Rgba, SharedString,
-    SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, Transformation, Window, div,
-    point, px, svg,
+    AnimationExt, App, ElementId, FontWeight, InteractiveElement, IntoElement, ParentElement, Rgba,
+    SharedString, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled,
+    Transformation, Window, div, point, px, svg,
 };
 
 use crate::shared::theme::Theme;

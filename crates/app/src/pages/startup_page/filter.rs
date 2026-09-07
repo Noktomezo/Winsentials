@@ -1,9 +1,9 @@
 use gpui::IntoElement;
 
+use super::types::FilterSelectHandler;
 use crate::entities::startup::StartupSource;
 use crate::shared::theme::Theme;
 use crate::shared::ui::Chip;
-use super::types::FilterSelectHandler;
 pub(crate) fn render_filter_pill(
     source: Option<StartupSource>,
     active_filter: Option<StartupSource>,
@@ -35,4 +35,3 @@ pub(crate) fn render_filter_pill(
             }
         })
 }
-

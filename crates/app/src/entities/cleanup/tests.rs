@@ -99,3 +99,54 @@ fn recursive_scan_keeps_zero_byte_matches() {
     assert_eq!(paths.len(), 1);
     fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn category_scanning_and_cleaning_states_track_independently() {
+    let mut state = CleanupState::default();
+    assert!(!state.is_category_scanning(CleanupCategory::Windows));
+    assert!(!state.is_category_cleaning(CleanupCategory::Windows));
+    assert!(!state.is_category_recently_cleaned(CleanupCategory::Windows));
+
+    state.scanning = true;
+    state.scanning_categories.insert(CleanupCategory::Windows);
+    state.scanning_categories.insert(CleanupCategory::Browsers);
+
+    assert!(state.is_category_scanning(CleanupCategory::Windows));
+    assert!(state.is_category_scanning(CleanupCategory::Browsers));
+    assert!(!state.is_category_scanning(CleanupCategory::Games));
+
+    // Windows completes scanning with 1 target
+    state.update_category_targets(
+        CleanupCategory::Windows,
+        vec![CleanupTarget {
+            id: "windows:temp".into(),
+            name: "Temp Files".into(),
+            category: CleanupCategory::Windows,
+            paths: Vec::new(),
+            prune_roots: Vec::new(),
+            device_instance_id: None,
+            bytes: 1024,
+        }],
+    );
+
+    assert!(!state.is_category_scanning(CleanupCategory::Windows));
+    assert!(state.scanned_categories.contains(&CleanupCategory::Windows));
+    assert!(state.is_category_scanning(CleanupCategory::Browsers));
+    assert!(state.scanning); // Still scanning because Browsers is not done
+
+    // Browsers completes scanning with 0 targets
+    state.update_category_targets(CleanupCategory::Browsers, Vec::new());
+    assert!(!state.is_category_scanning(CleanupCategory::Browsers));
+    assert!(!state.scanning); // All done!
+
+    // Mark cleaning
+    state.cleaning = true;
+    state.cleaning_categories.insert(CleanupCategory::Windows);
+    assert!(state.is_category_cleaning(CleanupCategory::Windows));
+
+    // Mark cleaned
+    state.mark_category_cleaned(CleanupCategory::Windows);
+    assert!(!state.is_category_cleaning(CleanupCategory::Windows));
+    assert!(!state.cleaning);
+    assert!(state.is_category_recently_cleaned(CleanupCategory::Windows));
+}

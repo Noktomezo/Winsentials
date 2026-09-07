@@ -1,6 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 use thiserror::Error;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -64,7 +65,7 @@ pub struct CleanupTarget {
     pub name: String,
     pub category: CleanupCategory,
     pub paths: Vec<CleanupPath>,
-    pub(crate) prune_roots: Vec<PathBuf>,
+    pub prune_roots: Vec<PathBuf>,
     pub device_instance_id: Option<String>,
     pub bytes: u64,
 }
@@ -74,7 +75,7 @@ pub struct CleanupSnapshot {
     pub targets: Vec<CleanupTarget>,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct CleanupReport {
     pub removed_bytes: u64,
     pub removed_paths: usize,
@@ -100,12 +101,71 @@ pub struct CleanupState {
     pub snapshot: Arc<CleanupSnapshot>,
     pub selected: HashSet<String>,
     pub expanded: Option<CleanupCategory>,
+    pub scanning_categories: HashSet<CleanupCategory>,
+    pub cleaning_categories: HashSet<CleanupCategory>,
+    pub recently_cleaned: HashMap<CleanupCategory, Instant>,
+    pub scanned_categories: HashSet<CleanupCategory>,
     pub scanning: bool,
     pub cleaning: bool,
     pub scanned_once: bool,
 }
 
 impl CleanupState {
+    #[must_use]
+    pub fn is_category_scanning(&self, category: CleanupCategory) -> bool {
+        self.scanning_categories.contains(&category)
+    }
+
+    #[must_use]
+    pub fn is_category_cleaning(&self, category: CleanupCategory) -> bool {
+        self.cleaning_categories.contains(&category)
+    }
+
+    #[must_use]
+    pub fn is_category_recently_cleaned(&self, category: CleanupCategory) -> bool {
+        self.recently_cleaned
+            .get(&category)
+            .is_some_and(|instant| instant.elapsed() < Duration::from_millis(2000))
+    }
+
+    pub fn update_category_targets(
+        &mut self,
+        category: CleanupCategory,
+        new_targets: Vec<CleanupTarget>,
+    ) {
+        let mut targets: Vec<CleanupTarget> = self
+            .snapshot
+            .targets
+            .iter()
+            .filter(|t| t.category != category)
+            .cloned()
+            .collect();
+        targets.extend(new_targets);
+        targets.sort_by_key(|t| (t.category.id(), t.name.to_lowercase()));
+
+        let available = targets
+            .iter()
+            .map(|t| t.id.as_str())
+            .collect::<HashSet<_>>();
+        self.selected.retain(|id| available.contains(id.as_str()));
+        if let Some(exp) = self.expanded {
+            if !targets.iter().any(|t| t.category == exp) {
+                self.expanded = None;
+            }
+        }
+        self.snapshot = Arc::new(CleanupSnapshot { targets });
+        self.scanning_categories.remove(&category);
+        self.scanned_categories.insert(category);
+        self.scanning = !self.scanning_categories.is_empty();
+        self.scanned_once = true;
+    }
+
+    pub fn mark_category_cleaned(&mut self, category: CleanupCategory) {
+        self.cleaning_categories.remove(&category);
+        self.recently_cleaned.insert(category, Instant::now());
+        self.cleaning = !self.cleaning_categories.is_empty();
+    }
+
     pub fn apply_snapshot(&mut self, snapshot: CleanupSnapshot) {
         let available = snapshot
             .targets
@@ -119,6 +179,8 @@ impl CleanupState {
             }
         }
         self.snapshot = Arc::new(snapshot);
+        self.scanning_categories.clear();
+        self.scanned_categories.extend(CleanupCategory::ALL);
         self.scanning = false;
         self.scanned_once = true;
     }

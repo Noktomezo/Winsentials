@@ -3,14 +3,14 @@ use std::time::Duration;
 
 use gpui::{
     Animation, AnimationExt, App, ElementId, InteractiveElement, IntoElement, MouseButton,
-    ParentElement, RenderOnce, Rgba, SpringAnimation, SpringConfig,
-    StatefulInteractiveElement, Styled, Window, div, ease_in_out, px,
+    ParentElement, RenderOnce, Rgba, SpringAnimation, SpringConfig, StatefulInteractiveElement,
+    Styled, Window, div, ease_in_out, px,
 };
 
-use crate::components::icon::Icon;
-use crate::theme::Theme;
 #[allow(clippy::wildcard_imports)]
 use super::types::*;
+use crate::components::icon::Icon;
+use crate::theme::Theme;
 
 #[derive(IntoElement)]
 pub struct ToastItemView {
@@ -143,12 +143,7 @@ impl RenderOnce for ToastItemView {
         }
 
         let has_desc = self.data.description.is_some();
-        let mut text_stack = div()
-            .flex()
-            .flex_col()
-            .gap(px(2.0))
-            .flex_1()
-            .min_w(px(0.0));
+        let mut text_stack = div().flex().flex_col().gap(px(2.0)).flex_1().min_w(px(0.0));
 
         if !has_desc {
             text_stack = text_stack.min_h(px(32.0)).justify_center();

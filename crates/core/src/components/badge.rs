@@ -2,8 +2,7 @@ use std::time::Duration;
 
 use gpui::{
     Animation, AnimationExt, App, ElementId, FontWeight, InteractiveElement, IntoElement,
-    ParentElement, RenderOnce, SharedString, Styled, Transformation, Window, div, px, radians,
-    svg,
+    ParentElement, RenderOnce, SharedString, Styled, Transformation, Window, div, px, radians, svg,
 };
 
 use crate::components::icon::Icon;
@@ -122,8 +121,12 @@ impl RenderOnce for Badge {
                 )
             }
         } else {
-            self.icon
-                .map(|p| Icon::new(p).size(px(11.0)).color(text_color).into_any_element())
+            self.icon.map(|p| {
+                Icon::new(p)
+                    .size(px(11.0))
+                    .color(text_color)
+                    .into_any_element()
+            })
         };
 
         let id_str = format!("{:?}", self.id);

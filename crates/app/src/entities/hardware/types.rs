@@ -1,6 +1,6 @@
+use gpui::SharedString;
 use std::collections::HashMap;
 use std::time::Instant;
-use gpui::SharedString;
 
 pub const CPU_HISTORY_SAMPLES: usize = 30;
 

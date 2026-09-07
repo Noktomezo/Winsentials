@@ -168,7 +168,12 @@ fn query_disk_kind(letter: char) -> DiskKind {
     {
         #[allow(unsafe_code)]
         // SAFETY: `descriptor_buffer` holds a valid `STORAGE_DEVICE_DESCRIPTOR` prefix.
-        let desc = unsafe { &*descriptor_buffer.0.as_ptr().cast::<STORAGE_DEVICE_DESCRIPTOR>() };
+        let desc = unsafe {
+            &*descriptor_buffer
+                .0
+                .as_ptr()
+                .cast::<STORAGE_DEVICE_DESCRIPTOR>()
+        };
         Some(desc.BusType)
     } else {
         None
@@ -328,8 +333,7 @@ pub(crate) fn sample_disks(
                         if let Some(previous) = disk_snapshots.insert(letter, current) {
                             let delta_query =
                                 current.query_time.saturating_sub(previous.query_time);
-                            let delta_idle =
-                                current.idle_time.saturating_sub(previous.idle_time);
+                            let delta_idle = current.idle_time.saturating_sub(previous.idle_time);
                             if delta_query > 0 {
                                 active_percent = (100.0
                                     * (1.0 - delta_idle as f64 / delta_query as f64))
@@ -340,14 +344,12 @@ pub(crate) fn sample_disks(
                             read_mb_s = (current.bytes_read.saturating_sub(previous.bytes_read)
                                 as f64
                                 / elapsed_secs
-                                / (1024.0 * 1024.0))
-                                as f32;
+                                / (1024.0 * 1024.0)) as f32;
                             write_mb_s =
                                 (current.bytes_written.saturating_sub(previous.bytes_written)
                                     as f64
                                     / elapsed_secs
-                                    / (1024.0 * 1024.0))
-                                    as f32;
+                                    / (1024.0 * 1024.0)) as f32;
 
                             let operations = current
                                 .read_count
@@ -363,8 +365,7 @@ pub(crate) fn sample_disks(
                                         current.write_time.saturating_sub(previous.write_time),
                                     );
                                 average_response_ms =
-                                    (elapsed_io as f64 / f64::from(operations) / 10_000.0)
-                                        as f32;
+                                    (elapsed_io as f64 / f64::from(operations) / 10_000.0) as f32;
                             }
                         }
                     }

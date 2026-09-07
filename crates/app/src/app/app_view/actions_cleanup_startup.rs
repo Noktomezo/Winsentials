@@ -1,4 +1,6 @@
 use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use gpui::{Context, SharedString, Window};
@@ -13,27 +15,32 @@ impl AppView {
             return;
         }
         self.cleanup.scanning = true;
+        self.cleanup.scanning_categories = CleanupCategory::ALL.into_iter().collect();
         cx.notify();
-        cx.spawn(async move |this, cx| {
-            let files = cx
-                .background_executor()
-                .spawn(async { crate::entities::cleanup::scan_cleanup_targets() });
-            let devices = cx
-                .background_executor()
-                .spawn(async { crate::entities::cleanup::scan_unused_devices() });
-            let mut snapshot = files.await;
-            snapshot.targets.extend(devices.await);
-            if let Err(error) = this.update(cx, |this, cx| {
-                this.cleanup.apply_snapshot(snapshot);
-                cx.notify();
-            }) {
-                eprintln!("cleanup scan update failed: {error}");
-            }
-        })
-        .detach();
+
+        for &category in &CleanupCategory::ALL {
+            cx.spawn(async move |this, cx| {
+                let targets = cx
+                    .background_executor()
+                    .spawn(async move { crate::entities::cleanup::scan_category_targets(category) })
+                    .await;
+
+                if let Err(error) = this.update(cx, |this, cx| {
+                    this.cleanup.update_category_targets(category, targets);
+                    cx.notify();
+                }) {
+                    eprintln!("cleanup scan category update failed: {error}");
+                }
+            })
+            .detach();
+        }
     }
 
-    pub(crate) fn clean_cleanup(&mut self, category: Option<CleanupCategory>, cx: &mut Context<Self>) {
+    pub(crate) fn clean_cleanup(
+        &mut self,
+        category: Option<CleanupCategory>,
+        cx: &mut Context<Self>,
+    ) {
         if self.cleanup.scanning || self.cleanup.cleaning {
             return;
         }
@@ -85,49 +92,100 @@ impl AppView {
         selected: std::collections::HashSet<String>,
         cx: &mut Context<Self>,
     ) {
+        let involved: std::collections::HashSet<CleanupCategory> = snapshot
+            .targets
+            .iter()
+            .filter(|target| selected.contains(&target.id))
+            .map(|target| target.category)
+            .collect();
+
+        if involved.is_empty() {
+            return;
+        }
+
         self.cleanup.cleaning = true;
+        self.cleanup
+            .cleaning_categories
+            .extend(involved.iter().copied());
         cx.notify();
 
-        cx.spawn(async move |this, cx| {
-            let report = cx
-                .background_executor()
-                .spawn(async move {
-                    crate::entities::cleanup::clean_selected(&snapshot, &selected)
-                })
-                .await;
-            let files = cx
-                .background_executor()
-                .spawn(async { crate::entities::cleanup::scan_cleanup_targets() });
-            let devices = cx
-                .background_executor()
-                .spawn(async { crate::entities::cleanup::scan_unused_devices() });
-            let mut refreshed = files.await;
-            refreshed.targets.extend(devices.await);
-            if let Err(error) = this.update(cx, |this, cx| {
-                this.cleanup.cleaning = false;
-                this.cleanup.selected.clear();
-                this.cleanup.apply_snapshot(refreshed);
-                let size = crate::entities::cleanup::format_bytes(report.removed_bytes);
-                let title = if report.failures == 0 {
-                    rust_i18n::t!("cleanup.done", size = size).to_string()
-                } else {
-                    rust_i18n::t!(
-                        "cleanup.done_with_errors",
-                        size = size,
-                        count = report.failures
-                    )
-                    .to_string()
-                };
-                this.show_toast(
-                    crate::shared::ui::ToastData::new("cleanup_result", title)
-                        .icon("icons/broom.svg"),
-                    cx,
-                );
-            }) {
-                eprintln!("cleanup result update failed: {error}");
-            }
-        })
-        .detach();
+        let total = involved.len();
+        let reports = Arc::new(Mutex::new(Vec::new()));
+        let finished_counter = Arc::new(AtomicUsize::new(0));
+
+        for category in involved {
+            let cat_selected = selected.clone();
+            let cat_snapshot = snapshot.clone();
+            let reports = reports.clone();
+            let finished_counter = finished_counter.clone();
+
+            cx.spawn(async move |this, cx| {
+                let report = cx
+                    .background_executor()
+                    .spawn(async move {
+                        crate::entities::cleanup::clean_category_selected(
+                            &cat_snapshot,
+                            &cat_selected,
+                            category,
+                        )
+                    })
+                    .await;
+
+                let refreshed = cx
+                    .background_executor()
+                    .spawn(async move { crate::entities::cleanup::scan_category_targets(category) })
+                    .await;
+
+                if let Ok(mut lock) = reports.lock() {
+                    lock.push(report);
+                }
+
+                let finished = finished_counter.fetch_add(1, Ordering::SeqCst) + 1;
+                let is_all_done = finished == total;
+
+                if let Err(error) = this.update(cx, |this, cx| {
+                    this.cleanup.mark_category_cleaned(category);
+                    this.cleanup.update_category_targets(category, refreshed);
+
+                    cx.spawn(async move |this, cx| {
+                        cx.background_executor()
+                            .timer(Duration::from_millis(2100))
+                            .await;
+                        let _ = this.update(cx, |_this, cx| {
+                            cx.notify();
+                        });
+                    })
+                    .detach();
+
+                    if is_all_done {
+                        if let Ok(lock) = reports.lock() {
+                            let total_bytes: u64 = lock.iter().map(|r| r.removed_bytes).sum();
+                            let total_failures: usize = lock.iter().map(|r| r.failures).sum();
+                            let size = crate::entities::cleanup::format_bytes(total_bytes);
+                            let title = if total_failures == 0 {
+                                rust_i18n::t!("cleanup.done", size = size).to_string()
+                            } else {
+                                rust_i18n::t!(
+                                    "cleanup.done_with_errors",
+                                    size = size,
+                                    count = total_failures
+                                )
+                                .to_string()
+                            };
+                            this.show_toast(
+                                crate::shared::ui::ToastData::new("cleanup_result", title)
+                                    .icon("icons/broom.svg"),
+                                cx,
+                            );
+                        }
+                    }
+                    cx.notify();
+                }) {
+                    eprintln!("cleanup category execution update failed: {error}");
+                }
+            })
+            .detach();
+        }
     }
 
     pub fn show_toast(&mut self, mut toast: crate::shared::ui::ToastData, cx: &mut Context<Self>) {

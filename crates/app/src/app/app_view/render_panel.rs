@@ -228,10 +228,11 @@ impl AppView {
         let on_download_and_install_update = cx.listener(|this, _event: &(), _window, cx| {
             this.download_and_install_update(cx);
         });
-        let page_tooltip_listener =
-            cx.listener(|this, tooltip: &Option<crate::shared::ui::TooltipState>, _window, cx| {
+        let page_tooltip_listener = cx.listener(
+            |this, tooltip: &Option<crate::shared::ui::TooltipState>, _window, cx| {
                 this.set_active_tooltip(tooltip.clone(), cx);
-            });
+            },
+        );
 
         let minimize_to_tray = self.config.minimize_to_tray;
         let autostart = self.config.autostart;

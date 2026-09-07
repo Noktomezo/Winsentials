@@ -1,7 +1,7 @@
 use gpui::{
     Context, InteractiveElement, IntoElement, KeyDownEvent, MouseButton, MouseDownEvent,
-    MouseUpEvent, NavigationDirection, ParentElement, Render, SharedString, Styled, Window,
-    div, px,
+    MouseUpEvent, NavigationDirection, ParentElement, Render, SharedString, Styled, Window, div,
+    px,
 };
 
 use crate::features::navigation::AppRoute;

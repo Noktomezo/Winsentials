@@ -1,6 +1,4 @@
-use gpui::{
-    FontWeight, IntoElement, ParentElement, Rgba, SharedString, Styled, div, px,
-};
+use gpui::{FontWeight, IntoElement, ParentElement, Rgba, SharedString, Styled, div, px};
 use rust_i18n::t;
 
 use crate::entities::hardware::GpuInfo;
