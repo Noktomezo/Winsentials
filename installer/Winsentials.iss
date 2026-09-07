@@ -1,5 +1,5 @@
 #ifndef AppVersion
-  #define AppVersion "0.10.1"
+  #define AppVersion "0.11.0"
 #endif
 #ifndef SourceExe
   #define SourceExe "..\target\release\Winsentials.exe"
