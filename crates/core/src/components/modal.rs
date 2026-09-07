@@ -224,8 +224,12 @@ impl RenderOnce for Modal {
             })
             .child(header)
             .child(body)
-            .child(footer)
-            .with_animation(
+            .child(footer);
+
+        let card = if cx.reduce_motion() {
+            card.into_any_element()
+        } else {
+            card.with_animation(
                 ElementId::Name("modal_enter".into()),
                 Animation::new(Duration::from_millis(160)).with_easing(ease_in_out),
                 move |el, delta| {
@@ -233,7 +237,9 @@ impl RenderOnce for Modal {
                     let offset_y = (1.0 - delta) * 12.0;
                     el.opacity(opacity).mt(px(offset_y))
                 },
-            );
+            )
+            .into_any_element()
+        };
 
         div()
             .id("modal_backdrop")

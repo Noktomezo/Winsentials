@@ -169,11 +169,13 @@ pub fn clean_button(
         .icon_left("icons/trash-2.svg")
         .disabled(!enabled);
 
-    if enabled && let Some(handler) = on_click {
-        button = button.on_click(move |event, window, cx| {
-            cx.stop_propagation();
-            handler(event, window, cx);
-        });
+    if enabled {
+        if let Some(handler) = on_click {
+            button = button.on_click(move |event, window, cx| {
+                cx.stop_propagation();
+                handler(event, window, cx);
+            });
+        }
     }
 
     button.into_any_element()
