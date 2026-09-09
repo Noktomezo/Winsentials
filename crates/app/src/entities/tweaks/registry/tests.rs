@@ -7,7 +7,7 @@ fn system_tweaks_only_flag_meaningful_side_effects() {
         .filter(|tweak| tweak.category == TweakCategory::System)
         .collect();
 
-    assert_eq!(system.len(), 7);
+    assert_eq!(system.len(), 8);
     assert_eq!(system[0].side_effect.unwrap().level, SideEffectLevel::Low);
     assert_eq!(
         system[1].side_effect.unwrap().level,
@@ -21,6 +21,7 @@ fn system_tweaks_only_flag_meaningful_side_effects() {
     );
     assert_eq!(system[5].side_effect.unwrap().level, SideEffectLevel::Low);
     assert!(system[6].side_effect.is_none());
+    assert_eq!(system[7].side_effect.unwrap().level, SideEffectLevel::Low);
 }
 
 #[test]
@@ -74,7 +75,35 @@ fn input_tweaks_are_registered() {
         .filter(|tweak| tweak.category == TweakCategory::Input)
         .collect();
 
-    assert_eq!(input.len(), 2);
+    assert_eq!(input.len(), 3);
     assert_eq!(input[0].id, "disable_mouse_acceleration");
     assert_eq!(input[1].id, "csrss_priority");
+    assert_eq!(input[2].id, "raw_mouse_throttle");
+}
+
+#[test]
+fn raw_mouse_throttle_tweak_is_valid() {
+    let tweak = ALL_TWEAKS
+        .iter()
+        .find(|tweak| tweak.id == "raw_mouse_throttle")
+        .unwrap();
+    assert_eq!(tweak.category, TweakCategory::Input);
+    assert_eq!(tweak.restart, RestartRequirement::Logoff);
+    assert_eq!(tweak.min_build, Some(22000));
+    assert!(tweak.side_effect.is_none());
+}
+
+#[test]
+fn disable_usb_power_saving_tweak_is_valid() {
+    let tweak = ALL_TWEAKS
+        .iter()
+        .find(|tweak| tweak.id == "disable_usb_power_saving")
+        .unwrap();
+    assert_eq!(tweak.category, TweakCategory::System);
+    assert_eq!(tweak.restart, RestartRequirement::Reboot);
+    assert_eq!(tweak.side_effect.unwrap().level, SideEffectLevel::Low);
+    assert_eq!(
+        tweak.side_effect.unwrap().description_key,
+        "tweaks.disable_usb_power_saving_side_effect"
+    );
 }
