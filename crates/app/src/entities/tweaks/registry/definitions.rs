@@ -9,8 +9,9 @@ use crate::entities::tweaks::explorer::{
     set_hide_network, set_open_to_this_pc,
 };
 use crate::entities::tweaks::input::{
-    is_csrss_priority_applied, is_disable_mouse_acceleration_applied, set_csrss_priority,
-    set_disable_mouse_acceleration,
+    is_csrss_priority_applied, is_disable_mouse_acceleration_applied,
+    is_raw_mouse_throttle_applied, set_csrss_priority, set_disable_mouse_acceleration,
+    set_raw_mouse_throttle,
 };
 use crate::entities::tweaks::interface_tweak::{
     is_disable_jpeg_compression_applied, is_remove_shortcut_arrows_applied,
@@ -25,9 +26,10 @@ use crate::entities::tweaks::security::{
     are_security_center_notifications_disabled, is_download_warning_disabled,
     is_password_expiration_disabled, is_quick_access_history_disabled,
     is_removable_autoplay_disabled, is_startup_delay_disabled, is_uac_disabled,
-    set_download_warning_disabled, set_password_expiration_disabled,
+    is_usb_power_saving_disabled, set_download_warning_disabled, set_password_expiration_disabled,
     set_quick_access_history_disabled, set_removable_autoplay_disabled,
     set_security_center_notifications_disabled, set_startup_delay_disabled, set_uac_disabled,
+    set_usb_power_saving_disabled,
 };
 
 use super::types::*;
@@ -250,6 +252,20 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         set_applied: set_csrss_priority,
     },
     TweakDefinition {
+        id: "raw_mouse_throttle",
+        category: TweakCategory::Input,
+        icon: "icons/mouse.svg",
+        title_key: "tweaks.raw_mouse_throttle_title",
+        desc_key: "tweaks.raw_mouse_throttle_desc",
+        min_build: Some(22000), // Windows 11 only
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::Logoff,
+        side_effect: None,
+        is_applied: is_raw_mouse_throttle_applied,
+        set_applied: set_raw_mouse_throttle,
+    },
+    TweakDefinition {
         id: "disable_uac",
         category: TweakCategory::System,
         icon: "icons/shield-off.svg",
@@ -358,6 +374,23 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         side_effect: None,
         is_applied: is_password_expiration_disabled,
         set_applied: set_password_expiration_disabled,
+    },
+    TweakDefinition {
+        id: "disable_usb_power_saving",
+        category: TweakCategory::System,
+        icon: "icons/usb.svg",
+        title_key: "tweaks.disable_usb_power_saving_title",
+        desc_key: "tweaks.disable_usb_power_saving_desc",
+        min_build: None,
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::Reboot,
+        side_effect: Some(SideEffect {
+            level: SideEffectLevel::Low,
+            description_key: "tweaks.disable_usb_power_saving_side_effect",
+        }),
+        is_applied: is_usb_power_saving_disabled,
+        set_applied: set_usb_power_saving_disabled,
     },
     TweakDefinition {
         id: "bbr2",

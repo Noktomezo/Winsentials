@@ -2,6 +2,7 @@ pub mod csrss_priority;
 pub mod ctf;
 pub mod keyboard_repeat;
 pub mod mouse_acceleration;
+pub mod mouse_throttle;
 pub mod snapkey;
 
 #[allow(unused_imports)]
@@ -14,6 +15,8 @@ pub use keyboard_repeat::{
 pub use mouse_acceleration::{
     is_disable_mouse_acceleration_applied, set_disable_mouse_acceleration,
 };
+#[allow(unused_imports)]
+pub use mouse_throttle::{is_raw_mouse_throttle_applied, set_raw_mouse_throttle};
 pub use snapkey::{
     SnapKeyPreset, current_snapkey_preset, set_snapkey_preset, shutdown_snapkey,
     snapkey_preset_icon, snapkey_preset_label,

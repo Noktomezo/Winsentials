@@ -7,3 +7,5 @@ codedb.snapshot
 .vscode/
 *.exe
 *.zip
+.agents/
+skills-lock.json

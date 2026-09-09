@@ -1,3 +1,7 @@
+pub mod usb_power;
+
+pub use usb_power::{is_usb_power_saving_disabled, set_usb_power_saving_disabled};
+
 const REG_UAC: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System";
 const REG_ATTACHMENTS: &str = r"Software\Microsoft\Windows\CurrentVersion\Policies\Attachments";
 const REG_EXPLORER_POLICIES: &str = r"Software\Microsoft\Windows\CurrentVersion\Policies\Explorer";

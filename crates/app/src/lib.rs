@@ -89,6 +89,27 @@ mod tests {
         );
         assert_ne!(rust_i18n::t!("tweaks.snapkey_wasd"), "tweaks.snapkey_wasd");
 
+        assert_ne!(
+            rust_i18n::t!("tweaks.raw_mouse_throttle_title"),
+            "tweaks.raw_mouse_throttle_title"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.raw_mouse_throttle_desc"),
+            "tweaks.raw_mouse_throttle_desc"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_usb_power_saving_title"),
+            "tweaks.disable_usb_power_saving_title"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_usb_power_saving_desc"),
+            "tweaks.disable_usb_power_saving_desc"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_usb_power_saving_side_effect"),
+            "tweaks.disable_usb_power_saving_side_effect"
+        );
+
         rust_i18n::set_locale("en");
         assert_ne!(
             rust_i18n::t!("tweaks.disable_mouse_acceleration_title"),
@@ -119,5 +140,25 @@ mod tests {
             "tweaks.snapkey_title"
         );
         assert_ne!(rust_i18n::t!("tweaks.snapkey_wasd"), "tweaks.snapkey_wasd");
+        assert_ne!(
+            rust_i18n::t!("tweaks.raw_mouse_throttle_title"),
+            "tweaks.raw_mouse_throttle_title"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.raw_mouse_throttle_desc"),
+            "tweaks.raw_mouse_throttle_desc"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_usb_power_saving_title"),
+            "tweaks.disable_usb_power_saving_title"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_usb_power_saving_desc"),
+            "tweaks.disable_usb_power_saving_desc"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_usb_power_saving_side_effect"),
+            "tweaks.disable_usb_power_saving_side_effect"
+        );
     }
 }
