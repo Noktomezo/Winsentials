@@ -38,6 +38,18 @@ mod tests {
             rust_i18n::t!("tweaks.disable_ndu_side_effect"),
             "tweaks.disable_ndu_side_effect"
         );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_network_power_saving_title"),
+            "tweaks.disable_network_power_saving_title"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_network_power_saving_desc"),
+            "tweaks.disable_network_power_saving_desc"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_network_power_saving_side_effect"),
+            "tweaks.disable_network_power_saving_side_effect"
+        );
 
         rust_i18n::set_locale("en");
         assert_ne!(rust_i18n::t!("tweaks.bbr2_title"), "tweaks.bbr2_title");
@@ -53,6 +65,18 @@ mod tests {
         assert_ne!(
             rust_i18n::t!("tweaks.disable_ndu_side_effect"),
             "tweaks.disable_ndu_side_effect"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_network_power_saving_title"),
+            "tweaks.disable_network_power_saving_title"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_network_power_saving_desc"),
+            "tweaks.disable_network_power_saving_desc"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_network_power_saving_side_effect"),
+            "tweaks.disable_network_power_saving_side_effect"
         );
     }
 

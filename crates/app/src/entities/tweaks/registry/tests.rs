@@ -61,11 +61,27 @@ fn network_tweaks_are_registered() {
         .filter(|tweak| tweak.category == TweakCategory::Network)
         .collect();
 
-    assert_eq!(network.len(), 4);
+    assert_eq!(network.len(), 5);
     assert_eq!(network[0].id, "bbr2");
     assert_eq!(network[1].id, "rss");
     assert_eq!(network[2].id, "fast_send_copy");
     assert_eq!(network[3].id, "disable_ndu");
+    assert_eq!(network[4].id, "disable_network_power_saving");
+}
+
+#[test]
+fn disable_network_power_saving_tweak_is_valid() {
+    let tweak = ALL_TWEAKS
+        .iter()
+        .find(|tweak| tweak.id == "disable_network_power_saving")
+        .unwrap();
+    assert_eq!(tweak.category, TweakCategory::Network);
+    assert_eq!(tweak.restart, RestartRequirement::Reboot);
+    assert_eq!(tweak.side_effect.unwrap().level, SideEffectLevel::Low);
+    assert_eq!(
+        tweak.side_effect.unwrap().description_key,
+        "tweaks.disable_network_power_saving_side_effect"
+    );
 }
 
 #[test]
