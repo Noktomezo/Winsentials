@@ -319,11 +319,7 @@ impl RenderOnce for CleanupPage {
                 })
                 .child(clean_button(
                     format!("cleanup_{category_id}_clean"),
-                    if category == CleanupCategory::Devices {
-                        rust_i18n::t!("cleanup.remove").to_string()
-                    } else {
-                        rust_i18n::t!("cleanup.clean").to_string()
-                    },
+                    rust_i18n::t!("cleanup.clean").to_string(),
                     checked > 0 && !cat_busy,
                     reduce_motion,
                     &theme,
