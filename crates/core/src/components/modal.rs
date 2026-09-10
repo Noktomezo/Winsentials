@@ -1,10 +1,11 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use gpui::prelude::FluentBuilder;
 use gpui::{
-    Animation, AnimationExt, App, ElementId, FontWeight, InteractiveElement, IntoElement,
-    MouseButton, ParentElement, RenderOnce, SharedString, StatefulInteractiveElement, Styled,
-    Window, div, ease_in_out, px,
+    Animation, AnimationExt, AnyElement, App, ElementId, FontWeight, InteractiveElement,
+    IntoElement, MouseButton, ParentElement, RenderOnce, SharedString, StatefulInteractiveElement,
+    Styled, Window, div, ease_in_out, px,
 };
 
 use crate::components::button::{Button, ButtonVariant};
@@ -29,8 +30,10 @@ pub struct Modal {
     confirm_label: SharedString,
     cancel_label: SharedString,
     variant: ModalVariant,
+    custom_content: Option<AnyElement>,
     on_confirm: Option<ModalActionHandler>,
     on_cancel: Option<ModalActionHandler>,
+    on_close: Option<ModalActionHandler>,
 }
 
 impl Modal {
@@ -43,8 +46,10 @@ impl Modal {
             confirm_label: "Confirm".into(),
             cancel_label: "Cancel".into(),
             variant: ModalVariant::Warning,
+            custom_content: None,
             on_confirm: None,
             on_cancel: None,
+            on_close: None,
         }
     }
 
@@ -73,6 +78,12 @@ impl Modal {
     }
 
     #[must_use]
+    pub fn custom_content(mut self, content: impl IntoElement) -> Self {
+        self.custom_content = Some(content.into_any_element());
+        self
+    }
+
+    #[must_use]
     pub fn on_confirm(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
         self.on_confirm = Some(Arc::new(handler));
         self
@@ -83,12 +94,20 @@ impl Modal {
         self.on_cancel = Some(Arc::new(handler));
         self
     }
+
+    #[must_use]
+    pub fn on_close(mut self, handler: impl Fn(&mut Window, &mut App) + 'static) -> Self {
+        self.on_close = Some(Arc::new(handler));
+        self
+    }
 }
 
 impl RenderOnce for Modal {
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
-        let on_cancel_backdrop = self.on_cancel.clone();
+        let close_action = self.on_close.clone().or_else(|| self.on_cancel.clone());
+        let on_close_backdrop = close_action.clone();
+        let on_close_x = close_action;
         let on_cancel_btn = self.on_cancel.clone();
         let on_confirm_btn = self.on_confirm;
 
@@ -116,7 +135,6 @@ impl RenderOnce for Modal {
             .child(Icon::new(icon_path).size(px(18.0)).color(icon_color));
 
         let close_btn = {
-            let on_cancel_x = on_cancel_btn.clone();
             div()
                 .id("modal_close_btn")
                 .size(px(24.0))
@@ -132,7 +150,7 @@ impl RenderOnce for Modal {
                 })
                 .on_click(move |_, window, cx| {
                     cx.stop_propagation();
-                    if let Some(ref cb) = on_cancel_x {
+                    if let Some(ref cb) = on_close_x {
                         cb(window, cx);
                     }
                 })
@@ -165,11 +183,21 @@ impl RenderOnce for Modal {
             .child(close_btn);
 
         let body = div()
-            .text_size(px(13.0))
-            .line_height(px(18.0))
-            .text_color(theme.text_muted)
+            .flex()
+            .flex_col()
+            .gap(px(12.0))
             .w_full()
-            .child(self.description);
+            .when(!self.description.is_empty(), |this| {
+                this.child(
+                    div()
+                        .text_size(px(13.0))
+                        .line_height(px(18.0))
+                        .text_color(theme.text_muted)
+                        .w_full()
+                        .child(self.description),
+                )
+            })
+            .children(self.custom_content);
 
         let cancel_action = on_cancel_btn;
         let confirm_action = on_confirm_btn;
@@ -254,7 +282,7 @@ impl RenderOnce for Modal {
             })
             .on_click(move |_, window, cx| {
                 cx.stop_propagation();
-                if let Some(ref cb) = on_cancel_backdrop {
+                if let Some(ref cb) = on_close_backdrop {
                     cb(window, cx);
                 }
             })

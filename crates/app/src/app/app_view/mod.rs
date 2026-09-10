@@ -11,6 +11,7 @@ use crate::features::navigation::AppRoute;
 use crate::features::tray::TrayManager;
 use crate::shared::ui::TooltipState;
 
+mod actions_backup;
 mod actions_cleanup_startup;
 mod actions_dropdown;
 mod actions_nav;
@@ -24,6 +25,7 @@ mod render_panel;
 mod tests;
 
 pub type ConfirmModalAction = Arc<dyn Fn(&mut Window, &mut App) + 'static>;
+pub type InputModalAction = Arc<dyn Fn(String, &mut Window, &mut App) + 'static>;
 
 #[derive(Clone)]
 pub struct ConfirmModalState {
@@ -33,6 +35,19 @@ pub struct ConfirmModalState {
     pub cancel_label: SharedString,
     pub is_destructive: bool,
     pub on_confirm: ConfirmModalAction,
+    pub on_cancel: ConfirmModalAction,
+    pub on_close: Option<ConfirmModalAction>,
+}
+
+#[derive(Clone)]
+pub struct InputModalState {
+    pub title: SharedString,
+    pub description: SharedString,
+    pub value: String,
+    pub placeholder: SharedString,
+    pub confirm_label: SharedString,
+    pub cancel_label: SharedString,
+    pub on_confirm: InputModalAction,
     pub on_cancel: ConfirmModalAction,
 }
 
@@ -70,6 +85,8 @@ pub struct AppView {
     pub(crate) hovered_toast_button: Option<(SharedString, usize)>,
     pub(crate) toast_stack_expanded: bool,
     pub(crate) confirm_modal: Option<ConfirmModalState>,
+    pub(crate) input_modal: Option<InputModalState>,
+    pub(crate) tweak_backups: Vec<crate::entities::tweaks::TweakBackup>,
     pub(crate) startup_entries: Vec<crate::entities::startup::StartupEntry>,
     pub(crate) startup_filter: Option<crate::entities::startup::StartupSource>,
     pub(crate) startup_search_query: String,
@@ -150,6 +167,8 @@ impl AppView {
             hovered_toast_button: None,
             toast_stack_expanded: false,
             confirm_modal: None,
+            input_modal: None,
+            tweak_backups: crate::entities::tweaks::backup::load_backups(),
             startup_entries,
             startup_filter: None,
             startup_search_query: String::new(),

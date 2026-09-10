@@ -1,10 +1,11 @@
+use std::sync::Arc;
+
 use gpui::{Context, Window};
 
+use super::{AppView, ConfirmModalState};
 use crate::entities::save_config;
 use crate::features::discord_rpc::DiscordRpcActivity;
 use crate::shared::theme::{Theme, ThemeMode, ThemePalette};
-
-use super::AppView;
 
 impl AppView {
     pub fn set_language(&mut self, lang: &str, cx: &mut Context<Self>) {
@@ -52,6 +53,65 @@ impl AppView {
     }
 
     pub fn toggle_tweak(&mut self, tweak_id: &'static str, enabled: bool, cx: &mut Context<Self>) {
+        let config = crate::entities::load_config();
+        if enabled && !config.first_tweak_backup_prompted && self.tweak_backups.is_empty() {
+            let on_confirm = cx.listener(move |this, _event: &(), _window, cx| {
+                let mut cfg = crate::entities::load_config();
+                cfg.first_tweak_backup_prompted = true;
+                let _ = crate::entities::save_config(&cfg);
+                this.confirm_modal = None;
+
+                let default_name = rust_i18n::t!("tools.first_backup_default_name").to_string();
+                this.execute_create_backup(&default_name, cx);
+                this.toggle_tweak_internal(tweak_id, true, cx);
+            });
+
+            let on_cancel = cx.listener(move |this, _event: &(), _window, cx| {
+                let mut cfg = crate::entities::load_config();
+                cfg.first_tweak_backup_prompted = true;
+                let _ = crate::entities::save_config(&cfg);
+                this.confirm_modal = None;
+                this.toggle_tweak_internal(tweak_id, true, cx);
+            });
+
+            let on_close = cx.listener(move |this, _event: &(), _window, cx| {
+                this.confirm_modal = None;
+                cx.notify();
+            });
+
+            self.confirm_modal = Some(ConfirmModalState {
+                title: rust_i18n::t!("tools.first_backup_title").to_string().into(),
+                description: rust_i18n::t!("tools.first_backup_desc").to_string().into(),
+                confirm_label: rust_i18n::t!("tools.first_backup_confirm")
+                    .to_string()
+                    .into(),
+                cancel_label: rust_i18n::t!("tools.first_backup_cancel")
+                    .to_string()
+                    .into(),
+                is_destructive: false,
+                on_confirm: Arc::new(move |window, cx| {
+                    on_confirm(&(), window, cx);
+                }),
+                on_cancel: Arc::new(move |window, cx| {
+                    on_cancel(&(), window, cx);
+                }),
+                on_close: Some(Arc::new(move |window, cx| {
+                    on_close(&(), window, cx);
+                })),
+            });
+            cx.notify();
+            return;
+        }
+
+        self.toggle_tweak_internal(tweak_id, enabled, cx);
+    }
+
+    pub fn toggle_tweak_internal(
+        &mut self,
+        tweak_id: &'static str,
+        enabled: bool,
+        cx: &mut Context<Self>,
+    ) {
         let all_tweaks = crate::entities::tweaks::get_all_tweaks();
         if let Some(tweak) = all_tweaks.iter().find(|t| t.id == tweak_id) {
             let set_applied = tweak.set_applied;

@@ -12,11 +12,10 @@ use gpui::{
 use crate::components::icon::Icon;
 use crate::theme::Theme;
 
-pub type SearchChangeHandler = Arc<dyn Fn(String, &mut Window, &mut App) + 'static>;
-pub type SearchHoverHandler = Arc<dyn Fn(&bool, &mut Window, &mut App) + 'static>;
-pub type SearchFocusHandler = Arc<dyn Fn(bool, &mut Window, &mut App) + 'static>;
-pub type SearchSelectionHandler =
-    Arc<dyn Fn(Option<(usize, usize)>, &mut Window, &mut App) + 'static>;
+mod key_handling;
+pub mod types;
+
+pub use types::*;
 
 #[derive(IntoElement)]
 pub struct SearchInput {
@@ -29,6 +28,7 @@ pub struct SearchInput {
     hovered: bool,
     selection: Option<(usize, usize)>,
     focus_handle: Option<FocusHandle>,
+    icon: Option<SharedString>,
     on_change: Option<SearchChangeHandler>,
     on_hover: Option<SearchHoverHandler>,
     on_focus_change: Option<SearchFocusHandler>,
@@ -49,11 +49,18 @@ impl SearchInput {
             hovered: false,
             selection: None,
             focus_handle: None,
+            icon: Some("icons/search.svg".into()),
             on_change: None,
             on_hover: None,
             on_focus_change: None,
             on_selection_change: None,
         }
+    }
+
+    #[must_use]
+    pub fn icon(mut self, icon: Option<impl Into<SharedString>>) -> Self {
+        self.icon = icon.map(Into::into);
+        self
     }
 
     #[must_use]
@@ -148,7 +155,6 @@ impl RenderOnce for SearchInput {
         let focus_to_grab = self.focus_handle.clone();
         let id_str = self.id_str.clone();
 
-        // Spring-driven border transition: 1.0 on focused (100%), 0.5 on hovered (50%), 0.0 on idle (0%)
         let trigger_target: f32 = if is_focused {
             1.0
         } else if is_hovered {
@@ -165,7 +171,6 @@ impl RenderOnce for SearchInput {
         let blue_border = theme.accent_blue;
         let hover_blue_border = theme.accent_hover_bg;
 
-        // Smoothly animated blinking caret
         let caret_anim_id = format!("{id_str}_caret_blink");
         let caret_el = div()
             .id(ElementId::Name(format!("{id_str}_caret").into()))
@@ -235,143 +240,16 @@ impl RenderOnce for SearchInput {
         }
 
         input_box = input_box.on_key_down(move |event: &KeyDownEvent, window, cx| {
-            let key = event.keystroke.key.as_str();
-            let is_ctrl = event.keystroke.modifiers.control || event.keystroke.modifiers.platform;
-
-            if is_ctrl && (key == "a" || key == "A" || key == "ф" || key == "Ф") {
-                let count = current_val.chars().count();
-                if count > 0 {
-                    if let Some(ref h) = on_sel_cb {
-                        h(Some((0, count)), window, cx);
-                    }
-                }
-            } else if is_ctrl && (key == "c" || key == "C" || key == "с" || key == "С") {
-                if let Some((s, e)) = current_sel {
-                    let count = current_val.chars().count();
-                    let start = s.min(count);
-                    let end = e.min(count).max(start);
-                    let sel_text: String =
-                        current_val.chars().skip(start).take(end - start).collect();
-                    if !sel_text.is_empty() {
-                        cx.write_to_clipboard(gpui::ClipboardItem::new_string(sel_text));
-                    }
-                }
-            } else if is_ctrl && (key == "x" || key == "X" || key == "ч" || key == "Ч") {
-                if let Some((s, e)) = current_sel {
-                    let chars: Vec<char> = current_val.chars().collect();
-                    let start = s.min(chars.len());
-                    let end = e.min(chars.len()).max(start);
-                    let sel_text: String = chars[start..end].iter().collect();
-                    if !sel_text.is_empty() {
-                        cx.write_to_clipboard(gpui::ClipboardItem::new_string(sel_text));
-                        let mut res = String::new();
-                        res.extend(&chars[..start]);
-                        res.extend(&chars[end..]);
-                        if let Some(ref h) = on_sel_cb {
-                            h(None, window, cx);
-                        }
-                        if let Some(ref h) = on_change_key {
-                            h(res, window, cx);
-                        }
-                    }
-                }
-            } else if is_ctrl && (key == "v" || key == "V" || key == "м" || key == "М") {
-                if let Some(clip) = cx.read_from_clipboard() {
-                    if let Some(text) = clip.text() {
-                        let mut q = if let Some((s, e)) = current_sel {
-                            let chars: Vec<char> = current_val.chars().collect();
-                            let start = s.min(chars.len());
-                            let end = e.min(chars.len()).max(start);
-                            let mut res = String::new();
-                            res.extend(&chars[..start]);
-                            res.push_str(&text);
-                            res.extend(&chars[end..]);
-                            res
-                        } else {
-                            let mut res = current_val.clone();
-                            res.push_str(&text);
-                            res
-                        };
-                        q.retain(|c| c != '\r' && c != '\n');
-                        if let Some(ref h) = on_sel_cb {
-                            h(None, window, cx);
-                        }
-                        if let Some(ref h) = on_change_key {
-                            h(q, window, cx);
-                        }
-                    }
-                }
-            } else if key == "backspace" || key == "delete" {
-                if let Some((s, e)) = current_sel {
-                    let chars: Vec<char> = current_val.chars().collect();
-                    let start = s.min(chars.len());
-                    let end = e.min(chars.len()).max(start);
-                    let mut res = String::new();
-                    res.extend(&chars[..start]);
-                    res.extend(&chars[end..]);
-                    if let Some(ref h) = on_sel_cb {
-                        h(None, window, cx);
-                    }
-                    if let Some(ref h) = on_change_key {
-                        h(res, window, cx);
-                    }
-                } else if key == "backspace" {
-                    let mut q = current_val.clone();
-                    if q.pop().is_some() {
-                        if let Some(ref h) = on_change_key {
-                            h(q, window, cx);
-                        }
-                    }
-                }
-            } else if key == "escape" {
-                if current_sel.is_some() {
-                    if let Some(ref h) = on_sel_cb {
-                        h(None, window, cx);
-                    }
-                } else {
-                    if let Some(ref h) = on_change_key {
-                        h(String::new(), window, cx);
-                    }
-                    if let Some(ref h) = on_escape_cb {
-                        h(false, window, cx);
-                    }
-                }
-            } else {
-                let text_to_insert = event.keystroke.key_char.clone().or_else(|| {
-                    if key.chars().count() == 1
-                        && !event.keystroke.modifiers.control
-                        && !event.keystroke.modifiers.alt
-                        && !event.keystroke.modifiers.platform
-                    {
-                        Some(key.to_string())
-                    } else {
-                        None
-                    }
-                });
-
-                if let Some(text) = text_to_insert {
-                    let q = if let Some((s, e)) = current_sel {
-                        let chars: Vec<char> = current_val.chars().collect();
-                        let start = s.min(chars.len());
-                        let end = e.min(chars.len()).max(start);
-                        let mut res = String::new();
-                        res.extend(&chars[..start]);
-                        res.push_str(&text);
-                        res.extend(&chars[end..]);
-                        res
-                    } else {
-                        let mut res = current_val.clone();
-                        res.push_str(&text);
-                        res
-                    };
-                    if let Some(ref h) = on_sel_cb {
-                        h(None, window, cx);
-                    }
-                    if let Some(ref h) = on_change_key {
-                        h(q, window, cx);
-                    }
-                }
-            }
+            key_handling::handle_key_down(
+                event,
+                &current_val,
+                current_sel,
+                on_change_key.as_ref(),
+                on_sel_cb.as_ref(),
+                on_escape_cb.as_ref(),
+                window,
+                cx,
+            );
         });
 
         let icon_color = if is_focused {
@@ -464,6 +342,10 @@ impl RenderOnce for SearchInput {
                 .into_any_element()
         };
 
+        let icon_el = self
+            .icon
+            .map(|icon_path| Icon::new(icon_path).size(px(14.0)).color(icon_color));
+
         input_box
             .with_spring(
                 ElementId::Name(format!("{id_str}_spring").into()),
@@ -480,11 +362,7 @@ impl RenderOnce for SearchInput {
                     el.border_color(color)
                 },
             )
-            .child(
-                Icon::new("icons/search.svg")
-                    .size(px(14.0))
-                    .color(icon_color),
-            )
+            .children(icon_el)
             .child(
                 div()
                     .flex_1()

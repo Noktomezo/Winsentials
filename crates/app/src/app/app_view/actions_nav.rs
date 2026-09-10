@@ -55,6 +55,11 @@ impl AppView {
             cx.notify();
             return;
         }
+        if self.input_modal.is_some() {
+            self.input_modal = None;
+            cx.notify();
+            return;
+        }
         if self.open_dropdown.is_some() {
             self.close_dropdowns(window, cx);
             return;
@@ -97,6 +102,8 @@ impl AppView {
         self.startup_search_focused = false;
         self.startup_search_selection = None;
         self.startup_open_menu_id = None;
+        self.confirm_modal = None;
+        self.input_modal = None;
         if route == AppRoute::Startup {
             self.startup_entries = crate::entities::startup::fetch_all_startup_entries();
         }

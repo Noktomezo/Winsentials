@@ -82,6 +82,7 @@ impl AppView {
             on_cancel: Arc::new(move |window, cx| {
                 on_cancel(&(), window, cx);
             }),
+            on_close: None,
         });
         cx.notify();
     }
