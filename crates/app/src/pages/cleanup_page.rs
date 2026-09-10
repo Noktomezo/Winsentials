@@ -241,9 +241,9 @@ impl RenderOnce for CleanupPage {
                     let secondary_text = if cat_scanning {
                         rust_i18n::t!("cleanup.scanning").to_string()
                     } else if category == CleanupCategory::Devices {
-                        format!("{checked} / {}", targets.len())
+                        format!("{checked}/{}", targets.len())
                     } else {
-                        format!("{checked} / {} • {}", targets.len(), format_bytes(bytes))
+                        format!("{checked}/{} • {}", targets.len(), format_bytes(bytes))
                     };
                     let secondary_color = if cat_scanning {
                         theme.accent_blue
