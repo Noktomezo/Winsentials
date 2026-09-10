@@ -149,9 +149,9 @@ fn test_input_modal_state(cx: &mut TestAppContext) {
             }
             assert!(!view.input_modal.as_ref().unwrap().focused);
 
-            // Escape closes modal
+            // Escape closes modal (starts exit animation or closes)
             view.handle_escape(window, cx);
-            assert!(view.input_modal.is_none());
+            assert!(view.input_modal.as_ref().map_or(true, |m| m.closing));
         })
         .unwrap();
 }

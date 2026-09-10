@@ -59,7 +59,7 @@ impl AppView {
                 let mut cfg = crate::entities::load_config();
                 cfg.first_tweak_backup_prompted = true;
                 let _ = crate::entities::save_config(&cfg);
-                this.confirm_modal = None;
+                this.close_confirm_modal(cx);
 
                 let default_name = rust_i18n::t!("tools.first_backup_default_name").to_string();
                 this.execute_create_backup(&default_name, cx);
@@ -70,13 +70,12 @@ impl AppView {
                 let mut cfg = crate::entities::load_config();
                 cfg.first_tweak_backup_prompted = true;
                 let _ = crate::entities::save_config(&cfg);
-                this.confirm_modal = None;
+                this.close_confirm_modal(cx);
                 this.toggle_tweak_internal(tweak_id, true, cx);
             });
 
             let on_close = cx.listener(move |this, _event: &(), _window, cx| {
-                this.confirm_modal = None;
-                cx.notify();
+                this.close_confirm_modal(cx);
             });
 
             self.confirm_modal = Some(ConfirmModalState {
@@ -89,6 +88,7 @@ impl AppView {
                     .to_string()
                     .into(),
                 is_destructive: false,
+                closing: false,
                 on_confirm: Arc::new(move |window, cx| {
                     on_confirm(&(), window, cx);
                 }),

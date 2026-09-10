@@ -61,13 +61,12 @@ impl AppView {
 
         let snapshot = self.cleanup.snapshot.clone();
         let on_confirm = cx.listener(move |this, _event: &(), _window, cx| {
-            this.confirm_modal = None;
+            this.close_confirm_modal(cx);
             this.execute_cleanup(snapshot.clone(), selected.clone(), cx);
         });
 
         let on_cancel = cx.listener(|this, _event: &(), _window, cx| {
-            this.confirm_modal = None;
-            cx.notify();
+            this.close_confirm_modal(cx);
         });
 
         self.confirm_modal = Some(ConfirmModalState {
@@ -76,6 +75,7 @@ impl AppView {
             confirm_label: rust_i18n::t!("cleanup.confirm_button").to_string().into(),
             cancel_label: rust_i18n::t!("cleanup.cancel").to_string().into(),
             is_destructive: true,
+            closing: false,
             on_confirm: Arc::new(move |window, cx| {
                 on_confirm(&(), window, cx);
             }),

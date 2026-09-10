@@ -243,6 +243,7 @@ impl Render for AppView {
                     .confirm_label(modal.confirm_label.clone())
                     .cancel_label(modal.cancel_label.clone())
                     .variant(modal_variant)
+                    .closing(modal.closing)
                     .on_confirm(move |window, cx| {
                         on_confirm(window, cx);
                     })
@@ -325,6 +326,7 @@ impl Render for AppView {
                 .confirm_label(modal.confirm_label.clone())
                 .cancel_label(modal.cancel_label.clone())
                 .variant(crate::shared::ui::ModalVariant::Info)
+                .closing(modal.closing)
                 .custom_content(input_el)
                 .on_confirm(move |window, cx| {
                     on_confirm(current_value.clone(), window, cx);

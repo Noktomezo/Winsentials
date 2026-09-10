@@ -19,13 +19,12 @@ impl AppView {
             } else {
                 name.trim().to_string()
             };
-            this.input_modal = None;
+            this.close_input_modal(cx);
             this.execute_create_backup(&backup_name, cx);
         });
 
         let on_cancel = cx.listener(|this, _event: &(), _window, cx| {
-            this.input_modal = None;
-            cx.notify();
+            this.close_input_modal(cx);
         });
 
         self.input_modal = Some(InputModalState {
@@ -41,6 +40,7 @@ impl AppView {
             cancel_label: rust_i18n::t!("cleanup.cancel").to_string().into(),
             focused: true,
             selection: None,
+            closing: false,
             on_confirm: Arc::new(move |val, window, cx| {
                 on_confirm(&val, window, cx);
             }),
@@ -94,13 +94,11 @@ impl AppView {
             if !new_name.is_empty() {
                 this.execute_rename_backup(&id_for_confirm, new_name, cx);
             }
-            this.input_modal = None;
-            cx.notify();
+            this.close_input_modal(cx);
         });
 
         let on_cancel = cx.listener(|this, _event: &(), _window, cx| {
-            this.input_modal = None;
-            cx.notify();
+            this.close_input_modal(cx);
         });
 
         self.input_modal = Some(InputModalState {
@@ -116,6 +114,7 @@ impl AppView {
             cancel_label: rust_i18n::t!("cleanup.cancel").to_string().into(),
             focused: true,
             selection: None,
+            closing: false,
             on_confirm: Arc::new(move |val, window, cx| {
                 on_confirm(&val, window, cx);
             }),
@@ -149,7 +148,7 @@ impl AppView {
         let name_for_toast = backup_name.clone();
 
         let on_confirm = cx.listener(move |this, _event: &(), _window, cx| {
-            this.confirm_modal = None;
+            this.close_confirm_modal(cx);
             if delete_backup(&id_for_delete, &mut this.tweak_backups) {
                 let msg =
                     rust_i18n::t!("tools.toast_backup_deleted", name = name_for_toast).to_string();
@@ -163,8 +162,7 @@ impl AppView {
         });
 
         let on_cancel = cx.listener(|this, _event: &(), _window, cx| {
-            this.confirm_modal = None;
-            cx.notify();
+            this.close_confirm_modal(cx);
         });
 
         self.confirm_modal = Some(ConfirmModalState {
@@ -177,6 +175,7 @@ impl AppView {
             confirm_label: rust_i18n::t!("tools.delete_backup").to_string().into(),
             cancel_label: rust_i18n::t!("cleanup.cancel").to_string().into(),
             is_destructive: true,
+            closing: false,
             on_confirm: Arc::new(move |window, cx| {
                 on_confirm(&(), window, cx);
             }),
@@ -197,13 +196,12 @@ impl AppView {
 
         let id_for_restore = backup_id;
         let on_confirm = cx.listener(move |this, _event: &(), _window, cx| {
-            this.confirm_modal = None;
+            this.close_confirm_modal(cx);
             this.execute_restore_backup(&id_for_restore, cx);
         });
 
         let on_cancel = cx.listener(|this, _event: &(), _window, cx| {
-            this.confirm_modal = None;
-            cx.notify();
+            this.close_confirm_modal(cx);
         });
 
         self.confirm_modal = Some(ConfirmModalState {
@@ -216,6 +214,7 @@ impl AppView {
             confirm_label: rust_i18n::t!("tools.restore_backup").to_string().into(),
             cancel_label: rust_i18n::t!("cleanup.cancel").to_string().into(),
             is_destructive: false,
+            closing: false,
             on_confirm: Arc::new(move |window, cx| {
                 on_confirm(&(), window, cx);
             }),

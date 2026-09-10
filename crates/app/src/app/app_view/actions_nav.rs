@@ -50,14 +50,12 @@ impl AppView {
     }
 
     pub fn handle_escape(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.confirm_modal.is_some() {
-            self.confirm_modal = None;
-            cx.notify();
+        if self.confirm_modal.as_ref().is_some_and(|m| !m.closing) {
+            self.close_confirm_modal(cx);
             return;
         }
-        if self.input_modal.is_some() {
-            self.input_modal = None;
-            cx.notify();
+        if self.input_modal.as_ref().is_some_and(|m| !m.closing) {
+            self.close_input_modal(cx);
             return;
         }
         if self.open_dropdown.is_some() {

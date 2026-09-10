@@ -34,6 +34,7 @@ pub struct ConfirmModalState {
     pub confirm_label: SharedString,
     pub cancel_label: SharedString,
     pub is_destructive: bool,
+    pub closing: bool,
     pub on_confirm: ConfirmModalAction,
     pub on_cancel: ConfirmModalAction,
     pub on_close: Option<ConfirmModalAction>,
@@ -49,6 +50,7 @@ pub struct InputModalState {
     pub cancel_label: SharedString,
     pub focused: bool,
     pub selection: Option<(usize, usize)>,
+    pub closing: bool,
     pub on_confirm: InputModalAction,
     pub on_cancel: ConfirmModalAction,
 }
@@ -305,6 +307,62 @@ impl AppView {
             }
         })
         .detach();
+    }
+
+    pub fn close_confirm_modal(&mut self, cx: &mut Context<Self>) {
+        if let Some(ref mut modal) = self.confirm_modal {
+            if modal.closing {
+                return;
+            }
+            if cx.reduce_motion() {
+                self.confirm_modal = None;
+                cx.notify();
+                return;
+            }
+            modal.closing = true;
+            cx.notify();
+
+            cx.spawn(async move |this, cx| {
+                cx.background_executor()
+                    .timer(Duration::from_millis(140))
+                    .await;
+                let _ = this.update(cx, |this, cx| {
+                    if this.confirm_modal.as_ref().is_some_and(|m| m.closing) {
+                        this.confirm_modal = None;
+                        cx.notify();
+                    }
+                });
+            })
+            .detach();
+        }
+    }
+
+    pub fn close_input_modal(&mut self, cx: &mut Context<Self>) {
+        if let Some(ref mut modal) = self.input_modal {
+            if modal.closing {
+                return;
+            }
+            if cx.reduce_motion() {
+                self.input_modal = None;
+                cx.notify();
+                return;
+            }
+            modal.closing = true;
+            cx.notify();
+
+            cx.spawn(async move |this, cx| {
+                cx.background_executor()
+                    .timer(Duration::from_millis(140))
+                    .await;
+                let _ = this.update(cx, |this, cx| {
+                    if this.input_modal.as_ref().is_some_and(|m| m.closing) {
+                        this.input_modal = None;
+                        cx.notify();
+                    }
+                });
+            })
+            .detach();
+        }
     }
 }
 
