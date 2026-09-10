@@ -1,3 +1,4 @@
+pub mod backups_page;
 pub mod cleanup_page;
 pub mod context_menu_page;
 pub mod cpu_page;
@@ -20,6 +21,9 @@ pub mod tools_page;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
+
+#[allow(unused_imports)]
+pub use backups_page::BackupsPage;
 
 #[allow(unused_imports)]
 pub use cleanup_page::CleanupPage;
@@ -102,6 +106,7 @@ pub fn render_route(
     hovered_startup_card: Option<String>,
     cleanup_page: Option<CleanupPage>,
     tools_page: Option<ToolsPage>,
+    backups_page: Option<BackupsPage>,
     on_navigate: impl Fn(AppRoute, &mut Window, &mut App) + Send + Sync + 'static,
     on_hover_telemetry_card: impl Fn(SharedString, bool, &mut Window, &mut App) + Send + Sync + 'static,
     on_toggle_tweak: impl Fn(&'static str, bool, &mut Window, &mut App) + 'static,
@@ -370,6 +375,9 @@ pub fn render_route(
             .into_any_element(),
         AppRoute::Tools => {
             tools_page.map_or_else(|| div().into_any_element(), IntoElement::into_any_element)
+        }
+        AppRoute::Backups => {
+            backups_page.map_or_else(|| div().into_any_element(), IntoElement::into_any_element)
         }
         AppRoute::Startup => StartupPage::new(
             startup_entries.to_vec(),

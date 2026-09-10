@@ -226,7 +226,7 @@ impl RenderOnce for Titlebar {
                             .current(true),
                     )
             }
-            AppRoute::Startup | AppRoute::Cleanup => {
+            AppRoute::Startup | AppRoute::Cleanup | AppRoute::Backups => {
                 let on_nav_tools = self.on_navigate.clone();
                 let mut tools_item = BreadcrumbItem::new("tools", rust_i18n::t!("nav.tools"))
                     .hovered(hovered_breadcrumb == Some("tools"))

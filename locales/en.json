@@ -16,6 +16,8 @@
     "tools_desc": "Quick launcher for Windows management and administrative tools.",
     "cleanup": "Cleanup",
     "cleanup_desc": "Remove Windows temporary files and application caches without touching personal data.",
+    "backups": "Backups",
+    "backups_desc": "Backup and restore system tweak configurations.",
     "activity": "Activity",
     "activity_desc": "Real-time process telemetry, event streams, and logs.",
     "features": "Features",
@@ -445,6 +447,8 @@
   "tools": {
     "startup_title": "Startup",
     "startup_desc": "Manage applications and services that launch with Windows.",
+    "backups_tool_title": "Restore Points",
+    "backups_tool_desc": "Backup and roll back states of all system tweaks.",
     "system_utilities_title": "System Utilities",
     "create_backup": "Create Backup",
     "backups_title": "Restore Points",
