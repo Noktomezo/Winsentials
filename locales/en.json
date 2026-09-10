@@ -439,7 +439,7 @@
       "development": "Development tools cleanup",
       "games": "Game data cleanup",
       "media": "Media and messenger cleanup",
-      "devices": "Remove unused devices"
+      "devices": "Unused devices cleanup"
     },
     "confirm_button": "Clean",
     "cancel": "Cancel"
