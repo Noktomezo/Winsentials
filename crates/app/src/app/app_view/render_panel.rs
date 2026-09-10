@@ -4,7 +4,7 @@ use gpui::{Context, Div, ParentElement, SharedString, Styled, div, px};
 
 use crate::entities::cleanup::CleanupCategory;
 use crate::features::navigation::AppRoute;
-use crate::pages::{CleanupPage, render_route};
+use crate::pages::{BackupsPage, CleanupPage, ToolsPage, render_route};
 use crate::shared::theme::Theme;
 
 use super::AppView;
@@ -273,6 +273,56 @@ impl AppView {
             None
         };
 
+        let tools_page = if current_route == AppRoute::Tools {
+            let on_nav = cx.listener(|this, route: &AppRoute, window, cx| {
+                this.navigate_to(*route, window, cx);
+            });
+            let on_hover = cx.listener(
+                |this, &(ref card_id, is_hovered): &(SharedString, bool), window, cx| {
+                    this.set_hovered_telemetry_card(card_id.clone(), is_hovered, window, cx);
+                },
+            );
+
+            Some(
+                ToolsPage::new(hovered_telemetry_card.clone())
+                    .on_navigate(move |r, w, cx| on_nav(&r, w, cx))
+                    .on_hover_card(move |id, val, w, cx| on_hover(&(id, val), w, cx)),
+            )
+        } else {
+            None
+        };
+
+        let backups_page = if current_route == AppRoute::Backups {
+            let on_hover = cx.listener(
+                |this, &(ref card_id, is_hovered): &(SharedString, bool), window, cx| {
+                    this.set_hovered_telemetry_card(card_id.clone(), is_hovered, window, cx);
+                },
+            );
+            let on_create =
+                cx.listener(|this, _event: &(), _window, cx| this.open_create_backup_modal(cx));
+            let on_restore = cx.listener(|this, id: &String, _window, cx| {
+                this.confirm_restore_backup(id.clone(), cx);
+            });
+            let on_rename = cx.listener(|this, id: &String, _window, cx| {
+                this.open_rename_backup_modal(id.clone(), cx);
+            });
+            let on_delete = cx.listener(|this, id: &String, _window, cx| {
+                this.confirm_delete_backup(id.clone(), cx);
+            });
+
+            Some(
+                BackupsPage::new(hovered_telemetry_card.clone())
+                    .backups(self.tweak_backups.clone())
+                    .on_hover_card(move |id, val, w, cx| on_hover(&(id, val), w, cx))
+                    .on_create_backup(move |w, cx| on_create(&(), w, cx))
+                    .on_restore_backup(move |id, w, cx| on_restore(&id, w, cx))
+                    .on_rename_backup(move |id, w, cx| on_rename(&id, w, cx))
+                    .on_delete_backup(move |id, w, cx| on_delete(&id, w, cx)),
+            )
+        } else {
+            None
+        };
+
         div()
             .flex()
             .flex_col()
@@ -314,6 +364,8 @@ impl AppView {
                 startup_open_menu_id,
                 hovered_startup_card,
                 cleanup_page,
+                tools_page,
+                backups_page,
                 move |target_route, window, cx| {
                     on_navigate_page(&target_route, window, cx);
                 },

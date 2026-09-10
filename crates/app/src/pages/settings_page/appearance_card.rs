@@ -324,7 +324,7 @@ pub(crate) fn build_appearance_card(params: AppearanceCardParams<'_>) -> GroupCa
         rust_i18n::t!("settings.appearance_title").to_string(),
         rust_i18n::t!("settings.appearance_desc").to_string(),
     )
-    .icon_color(theme.accent_blue)
+    .icon_color(theme.accent_purple)
     .child(language_row)
     .child(theme_row)
     .child(palette_row)

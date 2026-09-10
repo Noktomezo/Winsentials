@@ -24,6 +24,8 @@ pub struct AppConfig {
     pub snapkey: SnapKeyPreset,
     #[serde(default = "default_true")]
     pub check_updates: bool,
+    #[serde(default)]
+    pub first_tweak_backup_prompted: bool,
 }
 
 impl Default for AppConfig {
@@ -35,6 +37,7 @@ impl Default for AppConfig {
             discord_rpc: DiscordRpcActivity::default(),
             snapkey: SnapKeyPreset::default(),
             check_updates: true,
+            first_tweak_backup_prompted: false,
         }
     }
 }

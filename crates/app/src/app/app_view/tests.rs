@@ -130,3 +130,28 @@ fn test_escape_prioritizes_dropdowns_and_search(cx: &mut TestAppContext) {
         })
         .unwrap();
 }
+
+#[gpui::test]
+fn test_input_modal_state(cx: &mut TestAppContext) {
+    let window = cx.open_window(size(px(800.0), px(600.0)), |_window, _cx| AppView::new());
+
+    window
+        .update(cx, |view: &mut AppView, window, cx| {
+            view.open_create_backup_modal(cx);
+            assert!(view.input_modal.is_some());
+            let modal = view.input_modal.as_ref().unwrap();
+            assert!(modal.focused);
+            assert_eq!(modal.selection, None);
+
+            // Simulate losing focus
+            if let Some(ref mut m) = view.input_modal {
+                m.focused = false;
+            }
+            assert!(!view.input_modal.as_ref().unwrap().focused);
+
+            // Escape closes modal (starts exit animation or closes)
+            view.handle_escape(window, cx);
+            assert!(view.input_modal.as_ref().map_or(true, |m| m.closing));
+        })
+        .unwrap();
+}

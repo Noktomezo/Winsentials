@@ -237,16 +237,105 @@ impl Render for AppView {
                 crate::shared::ui::ModalVariant::Warning
             };
 
-            let modal_el = crate::shared::ui::Modal::new("app_confirm_modal", modal.title.clone())
+            let mut modal_el =
+                crate::shared::ui::Modal::new("app_confirm_modal", modal.title.clone())
+                    .description(modal.description.clone())
+                    .confirm_label(modal.confirm_label.clone())
+                    .cancel_label(modal.cancel_label.clone())
+                    .variant(modal_variant)
+                    .closing(modal.closing)
+                    .on_confirm(move |window, cx| {
+                        on_confirm(window, cx);
+                    })
+                    .on_cancel(move |window, cx| {
+                        on_cancel(window, cx);
+                    });
+
+            if let Some(ref on_close) = modal.on_close {
+                let on_close_c = on_close.clone();
+                modal_el = modal_el.on_close(move |window, cx| {
+                    on_close_c(window, cx);
+                });
+            }
+
+            let modal_el = modal_el.into_any_element();
+
+            root = root.child(gpui::deferred(modal_el).with_priority(300));
+        }
+
+        if let Some(ref modal) = self.input_modal {
+            let on_confirm = modal.on_confirm.clone();
+            let on_confirm_enter = modal.on_confirm.clone();
+            let on_cancel = modal.on_cancel.clone();
+            let on_close_cancel = modal.on_cancel.clone();
+            let current_value = modal.value.clone();
+
+            let on_change_input = cx.listener(|this: &mut Self, new_val: &String, _window, cx| {
+                if let Some(ref mut m) = this.input_modal {
+                    m.value.clone_from(new_val);
+                    cx.notify();
+                }
+            });
+
+            let on_focus_input = cx.listener(|this: &mut Self, focused: &bool, _window, cx| {
+                if let Some(ref mut m) = this.input_modal {
+                    if m.focused != *focused {
+                        m.focused = *focused;
+                        cx.notify();
+                    }
+                }
+            });
+
+            let on_selection_input = cx.listener(
+                |this: &mut Self, sel: &Option<(usize, usize)>, _window, cx| {
+                    if let Some(ref mut m) = this.input_modal {
+                        m.selection = *sel;
+                        cx.notify();
+                    }
+                },
+            );
+
+            let input_focus = self
+                .input_modal_focus
+                .get_or_insert_with(|| cx.focus_handle())
+                .clone();
+
+            let input_el =
+                crate::shared::ui::SearchInput::new("app_input_modal_text", &modal.value)
+                    .width(px(408.0))
+                    .placeholder(modal.placeholder.clone())
+                    .focused(modal.focused)
+                    .selection(modal.selection)
+                    .track_focus(&input_focus)
+                    .icon(Some("icons/pencil.svg"))
+                    .on_change(move |new_val, window, cx| {
+                        on_change_input(&new_val, window, cx);
+                    })
+                    .on_focus_change(move |focused, window, cx| {
+                        on_focus_input(&focused, window, cx);
+                    })
+                    .on_selection_change(move |sel, window, cx| {
+                        on_selection_input(&sel, window, cx);
+                    })
+                    .on_submit(move |val, window, cx| {
+                        on_confirm_enter(val, window, cx);
+                    });
+
+            let modal_el = crate::shared::ui::Modal::new("app_input_modal", modal.title.clone())
                 .description(modal.description.clone())
                 .confirm_label(modal.confirm_label.clone())
                 .cancel_label(modal.cancel_label.clone())
-                .variant(modal_variant)
+                .variant(crate::shared::ui::ModalVariant::Info)
+                .closing(modal.closing)
+                .custom_content(input_el)
                 .on_confirm(move |window, cx| {
-                    on_confirm(window, cx);
+                    on_confirm(current_value.clone(), window, cx);
                 })
                 .on_cancel(move |window, cx| {
                     on_cancel(window, cx);
+                })
+                .on_close(move |window, cx| {
+                    on_close_cancel(window, cx);
                 })
                 .into_any_element();
 

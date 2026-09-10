@@ -16,6 +16,7 @@ pub enum AppRoute {
     Tools,
     Startup,
     Cleanup,
+    Backups,
     Settings,
 }
 
@@ -24,7 +25,7 @@ impl AppRoute {
     pub const fn parent(self) -> Option<Self> {
         match self {
             Self::Dashboard => None,
-            Self::Startup | Self::Cleanup => Some(Self::Tools),
+            Self::Startup | Self::Cleanup | Self::Backups => Some(Self::Tools),
             _ => Some(Self::Dashboard),
         }
     }
@@ -47,6 +48,7 @@ impl AppRoute {
             Self::Tools => rust_i18n::t!("nav.tools").to_string(),
             Self::Startup => rust_i18n::t!("startup.title").to_string(),
             Self::Cleanup => rust_i18n::t!("nav.cleanup").to_string(),
+            Self::Backups => rust_i18n::t!("nav.backups").to_string(),
             Self::Settings => rust_i18n::t!("nav.settings").to_string(),
         }
     }
@@ -68,6 +70,7 @@ impl AppRoute {
             Self::Tools => "Tools".to_string(),
             Self::Startup => "Startup".to_string(),
             Self::Cleanup => "Cleanup".to_string(),
+            Self::Backups => "Backups".to_string(),
             Self::Settings => "Settings".to_string(),
         }
     }
@@ -82,7 +85,7 @@ impl AppRoute {
             | Self::GpuDetail(_) => {
                 format!("Dashboard > {}", self.english_name())
             }
-            Self::Startup | Self::Cleanup => {
+            Self::Startup | Self::Cleanup | Self::Backups => {
                 format!("Tools > {}", self.english_name())
             }
             _ => self.english_name(),
@@ -107,6 +110,7 @@ impl AppRoute {
             Self::Tools => rust_i18n::t!("nav.tools_desc").to_string(),
             Self::Startup => rust_i18n::t!("startup.desc").to_string(),
             Self::Cleanup => rust_i18n::t!("nav.cleanup_desc").to_string(),
+            Self::Backups => rust_i18n::t!("nav.backups_desc").to_string(),
             Self::Settings => rust_i18n::t!("nav.settings_desc").to_string(),
         }
     }
@@ -129,6 +133,7 @@ impl AppRoute {
             Self::Tools => "icons/wrench.svg",
             Self::Startup => "icons/rocket.svg",
             Self::Cleanup => "icons/broom.svg",
+            Self::Backups => "icons/archive.svg",
             Self::Settings => "icons/settings.svg",
         }
     }
@@ -151,6 +156,7 @@ impl AppRoute {
             Self::Tools => "nav_tools",
             Self::Startup => "nav_startup",
             Self::Cleanup => "nav_cleanup",
+            Self::Backups => "nav_backups",
             Self::Settings => "nav_settings",
         }
     }
@@ -189,6 +195,7 @@ mod tests {
         assert_eq!(AppRoute::Tools.english_name(), "Tools");
         assert_eq!(AppRoute::Startup.english_name(), "Startup");
         assert_eq!(AppRoute::Cleanup.english_name(), "Cleanup");
+        assert_eq!(AppRoute::Backups.english_name(), "Backups");
         assert_eq!(AppRoute::Settings.english_name(), "Settings");
     }
 
@@ -210,6 +217,7 @@ mod tests {
         assert_eq!(AppRoute::Tools.breadcrumb_english(), "Tools");
         assert_eq!(AppRoute::Startup.breadcrumb_english(), "Tools > Startup");
         assert_eq!(AppRoute::Cleanup.breadcrumb_english(), "Tools > Cleanup");
+        assert_eq!(AppRoute::Backups.breadcrumb_english(), "Tools > Backups");
     }
 
     #[test]
@@ -225,6 +233,7 @@ mod tests {
         assert_eq!(AppRoute::GpuDetail(2).parent(), Some(AppRoute::Dashboard));
         assert_eq!(AppRoute::Startup.parent(), Some(AppRoute::Tools));
         assert_eq!(AppRoute::Cleanup.parent(), Some(AppRoute::Tools));
+        assert_eq!(AppRoute::Backups.parent(), Some(AppRoute::Tools));
         assert_eq!(AppRoute::Tools.parent(), Some(AppRoute::Dashboard));
         assert_eq!(AppRoute::ContextMenu.parent(), Some(AppRoute::Dashboard));
         assert_eq!(AppRoute::Explorer.parent(), Some(AppRoute::Dashboard));

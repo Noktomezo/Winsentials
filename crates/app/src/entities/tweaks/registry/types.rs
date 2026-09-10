@@ -11,7 +11,7 @@ pub enum TweakCategory {
     Performance,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[allow(dead_code)]
 pub enum RestartRequirement {
     None,

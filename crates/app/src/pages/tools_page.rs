@@ -14,6 +14,7 @@ use crate::widgets::sidebar::lerp_rgba;
 
 pub type ToolHoverHandler =
     Arc<dyn Fn(SharedString, bool, &mut Window, &mut App) + Send + Sync + 'static>;
+pub type ToolNavigateHandler = Arc<dyn Fn(AppRoute, &mut Window, &mut App) + Send + Sync + 'static>;
 
 #[derive(Clone, Copy, Debug)]
 pub struct ToolItem {
@@ -24,7 +25,7 @@ pub struct ToolItem {
     pub route: AppRoute,
 }
 
-pub const SYSTEM_TOOLS: [ToolItem; 2] = [
+pub const SYSTEM_TOOLS: [ToolItem; 3] = [
     ToolItem {
         id: "startup",
         icon: "icons/rocket.svg",
@@ -38,6 +39,13 @@ pub const SYSTEM_TOOLS: [ToolItem; 2] = [
         title_key: "cleanup.title",
         desc_key: "cleanup.desc",
         route: AppRoute::Cleanup,
+    },
+    ToolItem {
+        id: "backups",
+        icon: "icons/archive.svg",
+        title_key: "tools.backups_tool_title",
+        desc_key: "tools.backups_tool_desc",
+        route: AppRoute::Backups,
     },
 ];
 
@@ -191,8 +199,6 @@ fn render_tool_card(
         .into_any_element()
 }
 
-pub type ToolNavigateHandler = Arc<dyn Fn(AppRoute, &mut Window, &mut App) + Send + Sync + 'static>;
-
 #[derive(IntoElement)]
 pub struct ToolsPage {
     hovered_card: Option<SharedString>,
@@ -237,7 +243,7 @@ impl RenderOnce for ToolsPage {
         let on_nav = self.on_navigate;
         let hovered_card = self.hovered_card;
 
-        let card_elements: Vec<(&'static str, AnyElement)> = SYSTEM_TOOLS
+        let system_cards: Vec<(&'static str, AnyElement)> = SYSTEM_TOOLS
             .iter()
             .map(|tool| {
                 let tool = *tool;
@@ -260,7 +266,7 @@ impl RenderOnce for ToolsPage {
                     .flex()
                     .flex_col()
                     .gap(px(8.0))
-                    .children(card_elements.into_iter().map(|(_, card)| card)),
+                    .children(system_cards.into_iter().map(|(_, card)| card)),
             )
     }
 }

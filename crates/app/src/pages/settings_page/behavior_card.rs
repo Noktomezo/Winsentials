@@ -212,7 +212,7 @@ pub(crate) fn build_behavior_card(params: BehaviorCardParams<'_>) -> GroupCard {
         rust_i18n::t!("settings.behavior_title").to_string(),
         rust_i18n::t!("settings.behavior_desc").to_string(),
     )
-    .icon_color(theme.accent_blue)
+    .icon_color(theme.accent_orange)
     .child(min_tray_row)
     .child(autostart_row);
 

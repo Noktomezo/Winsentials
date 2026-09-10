@@ -50,9 +50,12 @@ impl AppView {
     }
 
     pub fn handle_escape(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.confirm_modal.is_some() {
-            self.confirm_modal = None;
-            cx.notify();
+        if self.confirm_modal.as_ref().is_some_and(|m| !m.closing) {
+            self.close_confirm_modal(cx);
+            return;
+        }
+        if self.input_modal.as_ref().is_some_and(|m| !m.closing) {
+            self.close_input_modal(cx);
             return;
         }
         if self.open_dropdown.is_some() {
@@ -97,6 +100,8 @@ impl AppView {
         self.startup_search_focused = false;
         self.startup_search_selection = None;
         self.startup_open_menu_id = None;
+        self.confirm_modal = None;
+        self.input_modal = None;
         if route == AppRoute::Startup {
             self.startup_entries = crate::entities::startup::fetch_all_startup_entries();
         }

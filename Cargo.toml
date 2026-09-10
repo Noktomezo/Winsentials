@@ -51,6 +51,7 @@ windows-sys = { version = "0.59", features = [
     "Win32_NetworkManagement_Ndis",
     "Win32_NetworkManagement_NetManagement",
     "Win32_System_Com",
+    "Win32_Globalization",
 ] }
 winres = "0.1"
 clap = { version = "4.5", features = ["derive"] }

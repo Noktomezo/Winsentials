@@ -4,13 +4,15 @@ use std::time::Duration;
 use gpui::prelude::FluentBuilder;
 use gpui::{
     Animation, AnimationExt, AnyElement, App, ClickEvent, ElementId, FontWeight,
-    InteractiveElement, IntoElement, ParentElement, StatefulInteractiveElement, Styled, Window,
-    div, ease_in_out, linear_color_stop, linear_gradient, px,
+    InteractiveElement, IntoElement, ParentElement, Rgba, SpringAnimation, SpringConfig,
+    StatefulInteractiveElement, Styled, Window, div, ease_in_out, linear_color_stop,
+    linear_gradient, px, svg,
 };
 
 use crate::entities::cleanup::format_bytes;
+use crate::shared::motion::lerp_rgba;
 use crate::shared::theme::Theme;
-use crate::shared::ui::{Badge, BadgeVariant, Button, ButtonSize, ButtonVariant, Icon};
+use crate::shared::ui::{Badge, BadgeVariant, Icon};
 
 pub type TargetHandler = Rc<dyn Fn(String, &mut Window, &mut App)>;
 pub type ClickHandler = Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>;
@@ -155,33 +157,109 @@ pub fn clean_button(
     id: String,
     label: String,
     enabled: bool,
-    _theme: &Theme,
+    reduce_motion: bool,
+    theme: &Theme,
     on_click: Option<ClickHandler>,
 ) -> AnyElement {
-    let variant = if enabled {
-        ButtonVariant::Primary
-    } else {
-        ButtonVariant::Outline
-    };
-    let mut button = Button::new(id, label)
-        .size(ButtonSize::Md)
-        .variant(variant)
-        .icon_left("icons/trash-2.svg")
-        .disabled(!enabled);
+    let theme = *theme;
+    let target = if enabled { 1.0 } else { 0.0 };
+
+    let mut base = div()
+        .id(ElementId::Name(format!("{id}_btn").into()))
+        .flex()
+        .items_center()
+        .justify_center()
+        .gap(px(6.0))
+        .h(px(32.0))
+        .px(px(12.0))
+        .rounded(px(6.0))
+        .border_1()
+        .text_size(px(13.0))
+        .font_weight(FontWeight::MEDIUM)
+        .flex_none();
 
     if enabled {
+        base = base
+            .cursor_pointer()
+            .hover(|s| s.bg(theme.accent_blue.opacity(0.88)))
+            .active(|s| s.bg(theme.accent_blue.opacity(0.75)));
+
         if let Some(handler) = on_click {
-            button = button.on_click(move |event, window, cx| {
+            base = base.on_click(move |event, window, cx| {
                 cx.stop_propagation();
                 handler(event, window, cx);
             });
         }
     }
 
-    button.into_any_element()
+    if reduce_motion {
+        let (bg, border, text, opacity) = if enabled {
+            (
+                theme.accent_blue,
+                theme.accent_blue,
+                theme.selected_text,
+                1.0,
+            )
+        } else {
+            (theme.input_bg, theme.card_border, theme.text_muted, 0.45)
+        };
+        base.bg(bg)
+            .border_color(border)
+            .text_color(text)
+            .opacity(opacity)
+            .child(
+                svg()
+                    .path("icons/trash-2.svg")
+                    .size(px(14.0))
+                    .text_color(text)
+                    .flex_none(),
+            )
+            .child(label)
+            .into_any_element()
+    } else {
+        let input_bg = theme.input_bg;
+        let accent_blue = theme.accent_blue;
+        let card_border = theme.card_border;
+        let text_muted = theme.text_muted;
+        let selected_text = theme.selected_text;
+        let spring = SpringAnimation::new(SpringConfig::new(260.0, 24.0, 1.0))
+            .to(target)
+            .with_epsilon(0.005);
+
+        base.with_spring(
+            ElementId::Name(format!("{id}_spring").into()),
+            spring,
+            move |btn, val| {
+                let progress = val.clamp(0.0, 1.0);
+                let current_bg = lerp_rgba(input_bg, accent_blue, progress);
+                let current_border = lerp_rgba(card_border, accent_blue, progress);
+                let current_text = lerp_rgba(text_muted, selected_text, progress);
+                let current_opacity = 0.45 + 0.55 * progress;
+                btn.bg(current_bg)
+                    .border_color(current_border)
+                    .text_color(current_text)
+                    .opacity(current_opacity)
+                    .child(
+                        svg()
+                            .path("icons/trash-2.svg")
+                            .size(px(14.0))
+                            .text_color(current_text)
+                            .flex_none(),
+                    )
+                    .child(label.clone())
+            },
+        )
+        .into_any_element()
+    }
 }
 
-pub fn render_target(target: &TargetRow, theme: &Theme, on_toggle: TargetHandler) -> AnyElement {
+pub fn render_target(
+    target: &TargetRow,
+    icon: &'static str,
+    accent_color: Rgba,
+    theme: &Theme,
+    on_toggle: TargetHandler,
+) -> AnyElement {
     let theme = *theme;
     let id = target.id.clone();
     div()
@@ -202,12 +280,8 @@ pub fn render_target(target: &TargetRow, theme: &Theme, on_toggle: TargetHandler
                 .justify_center()
                 .size(px(24.0))
                 .rounded(px(6.0))
-                .bg(theme.accent_green.opacity(0.12))
-                .child(
-                    Icon::new("icons/check.svg")
-                        .size(px(13.0))
-                        .color(theme.accent_green),
-                ),
+                .bg(accent_color.opacity(0.12))
+                .child(Icon::new(icon).size(px(13.0)).color(accent_color)),
         )
         .child(
             div()
@@ -351,28 +425,46 @@ pub fn render_card(
             .child(card_inner)
             .into_any_element()
     } else {
-        let border_color = if props.recently_cleaned {
-            theme.accent_green
-        } else if props.cleaning {
-            theme.accent_orange
-        } else if props.scanning {
-            theme.accent_blue.opacity(0.6)
-        } else if props.selected {
-            theme.accent_blue
-        } else {
-            theme.card_border
-        };
-        div()
+        let card = div()
             .flex()
             .flex_col()
             .w_full()
             .rounded(px(10.0))
             .border_1()
-            .border_color(border_color)
             .bg(theme.card_bg)
             .overflow_hidden()
             .child(header)
-            .child(body)
+            .child(body);
+
+        if props.recently_cleaned {
+            card.border_color(theme.accent_green).into_any_element()
+        } else if props.cleaning {
+            card.border_color(theme.accent_orange).into_any_element()
+        } else if props.scanning {
+            card.border_color(theme.accent_blue.opacity(0.6))
+                .into_any_element()
+        } else if props.reduce_motion {
+            let border_color = if props.selected {
+                theme.accent_blue
+            } else {
+                theme.card_border
+            };
+            card.border_color(border_color).into_any_element()
+        } else {
+            let base_border = theme.card_border;
+            let active_border = theme.accent_blue;
+            let spring = SpringAnimation::new(SpringConfig::new(260.0, 26.0, 1.0))
+                .to(if props.selected { 1.0 } else { 0.0 })
+                .with_epsilon(0.005);
+            card.with_spring(
+                ElementId::Name(format!("cleanup_card_border_{category_id}").into()),
+                spring,
+                move |c, val| {
+                    let progress = val.clamp(0.0, 1.0);
+                    c.border_color(lerp_rgba(base_border, active_border, progress))
+                },
+            )
             .into_any_element()
+        }
     }
 }
