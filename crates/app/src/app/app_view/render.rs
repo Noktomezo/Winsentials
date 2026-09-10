@@ -264,6 +264,7 @@ impl Render for AppView {
 
         if let Some(ref modal) = self.input_modal {
             let on_confirm = modal.on_confirm.clone();
+            let on_confirm_enter = modal.on_confirm.clone();
             let on_cancel = modal.on_cancel.clone();
             let on_close_cancel = modal.on_cancel.clone();
             let current_value = modal.value.clone();
@@ -275,14 +276,48 @@ impl Render for AppView {
                 }
             });
 
+            let on_focus_input = cx.listener(|this: &mut Self, focused: &bool, _window, cx| {
+                if let Some(ref mut m) = this.input_modal {
+                    if m.focused != *focused {
+                        m.focused = *focused;
+                        cx.notify();
+                    }
+                }
+            });
+
+            let on_selection_input = cx.listener(
+                |this: &mut Self, sel: &Option<(usize, usize)>, _window, cx| {
+                    if let Some(ref mut m) = this.input_modal {
+                        m.selection = *sel;
+                        cx.notify();
+                    }
+                },
+            );
+
+            let input_focus = self
+                .input_modal_focus
+                .get_or_insert_with(|| cx.focus_handle())
+                .clone();
+
             let input_el =
                 crate::shared::ui::SearchInput::new("app_input_modal_text", &modal.value)
-                    .width(px(400.0))
+                    .width(px(408.0))
                     .placeholder(modal.placeholder.clone())
-                    .focused(true)
+                    .focused(modal.focused)
+                    .selection(modal.selection)
+                    .track_focus(&input_focus)
                     .icon(Some("icons/pencil.svg"))
                     .on_change(move |new_val, window, cx| {
                         on_change_input(&new_val, window, cx);
+                    })
+                    .on_focus_change(move |focused, window, cx| {
+                        on_focus_input(&focused, window, cx);
+                    })
+                    .on_selection_change(move |sel, window, cx| {
+                        on_selection_input(&sel, window, cx);
+                    })
+                    .on_submit(move |val, window, cx| {
+                        on_confirm_enter(val, window, cx);
                     });
 
             let modal_el = crate::shared::ui::Modal::new("app_input_modal", modal.title.clone())

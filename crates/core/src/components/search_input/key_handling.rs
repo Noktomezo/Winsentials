@@ -1,6 +1,8 @@
 use gpui::{App, KeyDownEvent, Window};
 
-use super::types::{SearchChangeHandler, SearchFocusHandler, SearchSelectionHandler};
+use super::types::{
+    SearchChangeHandler, SearchFocusHandler, SearchSelectionHandler, SearchSubmitHandler,
+};
 
 #[allow(clippy::too_many_arguments, clippy::cognitive_complexity)]
 pub fn handle_key_down(
@@ -10,6 +12,7 @@ pub fn handle_key_down(
     on_change_key: Option<&SearchChangeHandler>,
     on_sel_cb: Option<&SearchSelectionHandler>,
     on_escape_cb: Option<&SearchFocusHandler>,
+    on_submit_cb: Option<&SearchSubmitHandler>,
     window: &mut Window,
     cx: &mut App,
 ) {
@@ -112,6 +115,10 @@ pub fn handle_key_down(
             if let Some(h) = on_escape_cb {
                 h(false, window, cx);
             }
+        }
+    } else if key == "enter" {
+        if let Some(h) = on_submit_cb {
+            h(current_val.to_string(), window, cx);
         }
     } else {
         let text_to_insert = event.keystroke.key_char.clone().or_else(|| {

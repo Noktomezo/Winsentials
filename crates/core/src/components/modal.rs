@@ -10,6 +10,7 @@ use gpui::{
 
 use crate::components::button::{Button, ButtonVariant};
 use crate::components::icon::Icon;
+use crate::components::icon_button::IconButton;
 use crate::theme::Theme;
 
 pub type ModalActionHandler = Arc<dyn Fn(&mut Window, &mut App) + 'static>;
@@ -134,40 +135,30 @@ impl RenderOnce for Modal {
             .flex_none()
             .child(Icon::new(icon_path).size(px(18.0)).color(icon_color));
 
-        let close_btn = {
-            div()
-                .id("modal_close_btn")
-                .size(px(24.0))
-                .rounded(px(4.0))
-                .flex()
-                .items_center()
-                .justify_center()
-                .cursor_pointer()
-                .text_color(theme.text_muted)
-                .hover(|s| s.text_color(theme.text_primary).bg(theme.input_bg))
-                .on_mouse_down(MouseButton::Left, |_, _, cx| {
-                    cx.stop_propagation();
-                })
-                .on_click(move |_, window, cx| {
-                    cx.stop_propagation();
-                    if let Some(ref cb) = on_close_x {
-                        cb(window, cx);
-                    }
-                })
-                .child(Icon::new("icons/x.svg").size(px(14.0)))
-        };
+        let close_btn = IconButton::new("modal_close_btn", "icons/x.svg")
+            .button_size(px(32.0))
+            .icon_size(px(16.0))
+            .on_mouse_down(move |_window, cx| {
+                cx.stop_propagation();
+            })
+            .on_click(move |_, window, cx| {
+                cx.stop_propagation();
+                if let Some(ref cb) = on_close_x {
+                    cb(window, cx);
+                }
+            });
 
         let header = div()
             .flex()
-            .items_start()
+            .items_center()
             .justify_between()
             .w_full()
-            .gap(px(12.0))
+            .gap(px(16.0))
             .child(
                 div()
                     .flex()
                     .items_center()
-                    .gap(px(12.0))
+                    .gap(px(16.0))
                     .flex_1()
                     .min_w(px(0.0))
                     .child(icon_box)
@@ -185,7 +176,7 @@ impl RenderOnce for Modal {
         let body = div()
             .flex()
             .flex_col()
-            .gap(px(12.0))
+            .gap(px(16.0))
             .w_full()
             .when(!self.description.is_empty(), |this| {
                 this.child(
@@ -208,7 +199,6 @@ impl RenderOnce for Modal {
             .justify_end()
             .gap(px(10.0))
             .w_full()
-            .mt(px(4.0))
             .child(
                 Button::new("modal_cancel_action", self.cancel_label)
                     .variant(ButtonVariant::Secondary)
@@ -232,10 +222,10 @@ impl RenderOnce for Modal {
             .id(self.id)
             .flex()
             .flex_col()
-            .gap(px(14.0))
+            .gap(px(16.0))
             .w(px(440.0))
             .max_w(px(480.0))
-            .p(px(20.0))
+            .p(px(16.0))
             .rounded(px(10.0))
             .bg(theme.card_bg)
             .border_1()
@@ -287,5 +277,25 @@ impl RenderOnce for Modal {
                 }
             })
             .child(card)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_modal_builder() {
+        let modal = Modal::new("test_modal", "Test Title")
+            .description("Test Description")
+            .confirm_label("Yes")
+            .cancel_label("No")
+            .variant(ModalVariant::Destructive);
+
+        assert_eq!(modal.title, "Test Title");
+        assert_eq!(modal.description, "Test Description");
+        assert_eq!(modal.confirm_label, "Yes");
+        assert_eq!(modal.cancel_label, "No");
+        assert_eq!(modal.variant, ModalVariant::Destructive);
     }
 }

@@ -39,6 +39,8 @@ impl AppView {
                 .into(),
             confirm_label: rust_i18n::t!("tools.create_backup").to_string().into(),
             cancel_label: rust_i18n::t!("cleanup.cancel").to_string().into(),
+            focused: true,
+            selection: None,
             on_confirm: Arc::new(move |val, window, cx| {
                 on_confirm(&val, window, cx);
             }),
@@ -112,6 +114,8 @@ impl AppView {
                 .into(),
             confirm_label: rust_i18n::t!("tools.save").to_string().into(),
             cancel_label: rust_i18n::t!("cleanup.cancel").to_string().into(),
+            focused: true,
+            selection: None,
             on_confirm: Arc::new(move |val, window, cx| {
                 on_confirm(&val, window, cx);
             }),

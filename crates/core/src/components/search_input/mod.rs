@@ -33,6 +33,7 @@ pub struct SearchInput {
     on_hover: Option<SearchHoverHandler>,
     on_focus_change: Option<SearchFocusHandler>,
     on_selection_change: Option<SearchSelectionHandler>,
+    on_submit: Option<SearchSubmitHandler>,
 }
 
 impl SearchInput {
@@ -54,6 +55,7 @@ impl SearchInput {
             on_hover: None,
             on_focus_change: None,
             on_selection_change: None,
+            on_submit: None,
         }
     }
 
@@ -129,6 +131,12 @@ impl SearchInput {
         self.on_selection_change = Some(Arc::new(handler));
         self
     }
+
+    #[must_use]
+    pub fn on_submit(mut self, handler: impl Fn(String, &mut Window, &mut App) + 'static) -> Self {
+        self.on_submit = Some(Arc::new(handler));
+        self
+    }
 }
 
 impl RenderOnce for SearchInput {
@@ -151,6 +159,7 @@ impl RenderOnce for SearchInput {
         let on_sel_mouse_cb = self.on_selection_change.clone();
         let on_sel_out_cb = self.on_selection_change.clone();
         let on_sel_clear = self.on_selection_change;
+        let on_submit_cb = self.on_submit;
 
         let focus_to_grab = self.focus_handle.clone();
         let id_str = self.id_str.clone();
@@ -247,6 +256,7 @@ impl RenderOnce for SearchInput {
                 on_change_key.as_ref(),
                 on_sel_cb.as_ref(),
                 on_escape_cb.as_ref(),
+                on_submit_cb.as_ref(),
                 window,
                 cx,
             );
