@@ -6,7 +6,7 @@ use gpui::{
     Animation, AnimationExt, AnyElement, App, ClickEvent, ElementId, FontWeight,
     InteractiveElement, IntoElement, ParentElement, Rgba, SpringAnimation, SpringConfig,
     StatefulInteractiveElement, Styled, Window, div, ease_in_out, linear_color_stop,
-    linear_gradient, px,
+    linear_gradient, px, svg,
 };
 
 use crate::entities::cleanup::format_bytes;
@@ -192,10 +192,6 @@ pub fn clean_button(
         }
     }
 
-    let content = base
-        .child(Icon::new("icons/trash-2.svg").size(px(14.0)))
-        .child(label);
-
     if reduce_motion {
         let (bg, border, text, opacity) = if enabled {
             (
@@ -207,11 +203,18 @@ pub fn clean_button(
         } else {
             (theme.input_bg, theme.card_border, theme.text_muted, 0.45)
         };
-        content
-            .bg(bg)
+        base.bg(bg)
             .border_color(border)
             .text_color(text)
             .opacity(opacity)
+            .child(
+                svg()
+                    .path("icons/trash-2.svg")
+                    .size(px(14.0))
+                    .text_color(text)
+                    .flex_none(),
+            )
+            .child(label)
             .into_any_element()
     } else {
         let input_bg = theme.input_bg;
@@ -223,23 +226,30 @@ pub fn clean_button(
             .to(target)
             .with_epsilon(0.005);
 
-        content
-            .with_spring(
-                ElementId::Name(format!("{id}_spring").into()),
-                spring,
-                move |btn, val| {
-                    let progress = val.clamp(0.0, 1.0);
-                    let current_bg = lerp_rgba(input_bg, accent_blue, progress);
-                    let current_border = lerp_rgba(card_border, accent_blue, progress);
-                    let current_text = lerp_rgba(text_muted, selected_text, progress);
-                    let current_opacity = 0.45 + 0.55 * progress;
-                    btn.bg(current_bg)
-                        .border_color(current_border)
-                        .text_color(current_text)
-                        .opacity(current_opacity)
-                },
-            )
-            .into_any_element()
+        base.with_spring(
+            ElementId::Name(format!("{id}_spring").into()),
+            spring,
+            move |btn, val| {
+                let progress = val.clamp(0.0, 1.0);
+                let current_bg = lerp_rgba(input_bg, accent_blue, progress);
+                let current_border = lerp_rgba(card_border, accent_blue, progress);
+                let current_text = lerp_rgba(text_muted, selected_text, progress);
+                let current_opacity = 0.45 + 0.55 * progress;
+                btn.bg(current_bg)
+                    .border_color(current_border)
+                    .text_color(current_text)
+                    .opacity(current_opacity)
+                    .child(
+                        svg()
+                            .path("icons/trash-2.svg")
+                            .size(px(14.0))
+                            .text_color(current_text)
+                            .flex_none(),
+                    )
+                    .child(label.clone())
+            },
+        )
+        .into_any_element()
     }
 }
 
