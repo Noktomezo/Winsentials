@@ -109,7 +109,7 @@ impl RenderOnce for BackupsPage {
             rust_i18n::t!("tools.create_backup").to_string(),
         )
         .variant(ButtonVariant::Primary)
-        .size(ButtonSize::Sm)
+        .size(ButtonSize::Md)
         .icon_left("icons/plus.svg")
         .on_click(move |_ev, window, cx| {
             if let Some(ref cb) = on_create {

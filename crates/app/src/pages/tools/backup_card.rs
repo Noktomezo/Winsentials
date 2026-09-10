@@ -8,8 +8,9 @@ use gpui::{
 
 use crate::entities::tweaks::TweakBackup;
 use crate::shared::theme::Theme;
+use crate::shared::ui::button::{Button, ButtonSize, ButtonVariant};
 use crate::shared::ui::icon::Icon;
-use crate::shared::ui::icon_button::IconButton;
+use crate::shared::ui::icon_button::{IconButton, IconButtonVariant};
 use crate::widgets::sidebar::lerp_rgba;
 
 pub type BackupHoverHandler =
@@ -143,26 +144,28 @@ pub fn render_backup_card(
             div()
                 .flex()
                 .items_center()
-                .gap(px(4.0))
+                .gap(px(6.0))
                 .flex_none()
                 .on_mouse_down(MouseButton::Left, |_, _, cx| {
                     cx.stop_propagation();
                 })
                 .child(
-                    IconButton::new(format!("restore_{restore_id}"), "icons/archive-restore.svg")
-                        .button_size(px(30.0))
-                        .icon_size(px(14.0))
-                        .tooltip(rust_i18n::t!("tools.restore_backup").to_string())
-                        .on_click(move |_ev, window, cx| {
-                            if let Some(ref cb) = on_restore_cb {
-                                cb(restore_id.clone(), window, cx);
-                            }
-                        }),
+                    Button::new(
+                        format!("restore_{restore_id}"),
+                        rust_i18n::t!("tools.restore_backup").to_string(),
+                    )
+                    .size(ButtonSize::Md)
+                    .variant(ButtonVariant::Primary)
+                    .icon_left("icons/archive-restore.svg")
+                    .on_click(move |_ev, window, cx| {
+                        if let Some(ref cb) = on_restore_cb {
+                            cb(restore_id.clone(), window, cx);
+                        }
+                    }),
                 )
                 .child(
                     IconButton::new(format!("rename_{rename_id}"), "icons/pencil.svg")
-                        .button_size(px(30.0))
-                        .icon_size(px(14.0))
+                        .variant(IconButtonVariant::Outline)
                         .tooltip(rust_i18n::t!("tools.rename_backup").to_string())
                         .on_click(move |_ev, window, cx| {
                             if let Some(ref cb) = on_rename_cb {
@@ -172,8 +175,7 @@ pub fn render_backup_card(
                 )
                 .child(
                     IconButton::new(format!("delete_{delete_id}"), "icons/trash-2.svg")
-                        .button_size(px(30.0))
-                        .icon_size(px(14.0))
+                        .variant(IconButtonVariant::Outline)
                         .destructive(true)
                         .tooltip(rust_i18n::t!("tools.delete_backup").to_string())
                         .on_click(move |_ev, window, cx| {
