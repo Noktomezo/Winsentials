@@ -1,6 +1,7 @@
 pub mod bbr2;
 pub mod fast_send_copy;
 pub mod ndu;
+pub mod power_saving;
 pub mod rss;
 
 #[allow(unused_imports)]
@@ -9,5 +10,7 @@ pub use bbr2::{is_bbr2_applied, set_bbr2};
 pub use fast_send_copy::{is_fast_send_copy_applied, set_fast_send_copy};
 #[allow(unused_imports)]
 pub use ndu::{is_disable_ndu_applied, set_disable_ndu};
+#[allow(unused_imports)]
+pub use power_saving::{is_network_power_saving_disabled, set_network_power_saving_disabled};
 #[allow(unused_imports)]
 pub use rss::{is_rss_applied, set_rss};

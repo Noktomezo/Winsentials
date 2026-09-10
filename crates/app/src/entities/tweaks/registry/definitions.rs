@@ -19,8 +19,9 @@ use crate::entities::tweaks::interface_tweak::{
     set_remove_shortcut_suffix,
 };
 use crate::entities::tweaks::network::{
-    is_bbr2_applied, is_disable_ndu_applied, is_fast_send_copy_applied, is_rss_applied, set_bbr2,
-    set_disable_ndu, set_fast_send_copy, set_rss,
+    is_bbr2_applied, is_disable_ndu_applied, is_fast_send_copy_applied,
+    is_network_power_saving_disabled, is_rss_applied, set_bbr2, set_disable_ndu,
+    set_fast_send_copy, set_network_power_saving_disabled, set_rss,
 };
 use crate::entities::tweaks::security::{
     are_security_center_notifications_disabled, is_download_warning_disabled,
@@ -450,5 +451,22 @@ pub const ALL_TWEAKS: &[TweakDefinition] = &[
         }),
         is_applied: is_disable_ndu_applied,
         set_applied: set_disable_ndu,
+    },
+    TweakDefinition {
+        id: "disable_network_power_saving",
+        category: TweakCategory::Network,
+        icon: "icons/leaf.svg",
+        title_key: "tweaks.disable_network_power_saving_title",
+        desc_key: "tweaks.disable_network_power_saving_desc",
+        min_build: None,
+        max_build: None,
+        custom_support: None,
+        restart: RestartRequirement::Reboot,
+        side_effect: Some(SideEffect {
+            level: SideEffectLevel::Low,
+            description_key: "tweaks.disable_network_power_saving_side_effect",
+        }),
+        is_applied: is_network_power_saving_disabled,
+        set_applied: set_network_power_saving_disabled,
     },
 ];

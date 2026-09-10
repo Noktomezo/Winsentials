@@ -172,7 +172,10 @@
     "fast_send_copy_desc": "Increases AFD fast-path socket buffers (FastSendDatagramThreshold and FastCopyReceiveThreshold) up to 64 KB, bypassing kernel queuing delays for sent and received packets to reduce latency and jitter in games and VoIP",
     "disable_ndu_title": "Disable Network Data Usage (NDU)",
     "disable_ndu_desc": "Disables the Network Diagnostic Usage driver (Ndu.sys) to prevent non-paged pool memory leaks, DPC latency spikes, and micro-stutters during heavy network traffic.",
-    "disable_ndu_side_effect": "Stops data usage tracking in Windows Settings -> Network & Internet -> Data usage and Task Manager App History tab."
+    "disable_ndu_side_effect": "Stops data usage tracking in Windows Settings -> Network & Internet -> Data usage and Task Manager App History tab.",
+    "disable_network_power_saving_title": "Disable Network Adapter Power Saving & EEE",
+    "disable_network_power_saving_desc": "Disables Energy Efficient Ethernet (IEEE 802.3az), Green Ethernet, and PCIe ASPM link power management. Eliminates hardware wake-up jitter (15–30 µs), idle link renegotiation drops, and micro-stutters in real-time network traffic.",
+    "disable_network_power_saving_side_effect": "Slightly increases network adapter power consumption by ~1–2W (mainly relevant for laptops running on battery)."
   },
   "settings": {
     "appearance_title": "Appearance",
