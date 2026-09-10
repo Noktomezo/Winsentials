@@ -228,7 +228,7 @@ impl RenderOnce for CleanupPage {
                         .child(
                             Icon::new(category.icon())
                                 .size(px(16.0))
-                                .color(theme.text_primary),
+                                .color(category.accent_color(&theme)),
                         ),
                 )
                 .child(
@@ -330,6 +330,8 @@ impl RenderOnce for CleanupPage {
                 );
                 let rows_for_list = rows.clone();
                 let target_toggle = self.on_toggle_target.clone();
+                let cat_icon = category.icon();
+                let cat_accent = category.accent_color(&theme);
                 let list = SmoothVirtualList::new(
                     target_list_id(category),
                     rows.len(),
@@ -337,7 +339,13 @@ impl RenderOnce for CleanupPage {
                     px(TARGET_GAP),
                     move |index, _window, cx| {
                         let theme = Theme::get(cx);
-                        render_target(&rows_for_list[index], &theme, target_toggle.clone())
+                        render_target(
+                            &rows_for_list[index],
+                            cat_icon,
+                            cat_accent,
+                            &theme,
+                            target_toggle.clone(),
+                        )
                     },
                 );
 

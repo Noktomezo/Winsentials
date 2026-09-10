@@ -1,8 +1,10 @@
+use gpui::Rgba;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use thiserror::Error;
+use winsentials_core::Theme;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CleanupCategory {
@@ -49,6 +51,19 @@ impl CleanupCategory {
             Self::Games => "icons/gamepad-2.svg",
             Self::Media => "icons/video.svg",
             Self::Devices => "icons/usb.svg",
+        }
+    }
+
+    #[must_use]
+    pub const fn accent_color(self, theme: &Theme) -> Rgba {
+        match self {
+            Self::Windows => theme.accent_blue,
+            Self::Browsers => theme.accent_cyan,
+            Self::Applications => theme.accent_purple,
+            Self::Development => theme.accent_green,
+            Self::Games => theme.accent_orange,
+            Self::Media => theme.accent_magenta,
+            Self::Devices => theme.accent_yellow,
         }
     }
 }

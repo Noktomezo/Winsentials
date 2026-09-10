@@ -4,8 +4,8 @@ use std::time::Duration;
 use gpui::prelude::FluentBuilder;
 use gpui::{
     Animation, AnimationExt, AnyElement, App, ClickEvent, ElementId, FontWeight,
-    InteractiveElement, IntoElement, ParentElement, StatefulInteractiveElement, Styled, Window,
-    div, ease_in_out, linear_color_stop, linear_gradient, px,
+    InteractiveElement, IntoElement, ParentElement, Rgba, StatefulInteractiveElement, Styled,
+    Window, div, ease_in_out, linear_color_stop, linear_gradient, px,
 };
 
 use crate::entities::cleanup::format_bytes;
@@ -181,7 +181,13 @@ pub fn clean_button(
     button.into_any_element()
 }
 
-pub fn render_target(target: &TargetRow, theme: &Theme, on_toggle: TargetHandler) -> AnyElement {
+pub fn render_target(
+    target: &TargetRow,
+    icon: &'static str,
+    accent_color: Rgba,
+    theme: &Theme,
+    on_toggle: TargetHandler,
+) -> AnyElement {
     let theme = *theme;
     let id = target.id.clone();
     div()
@@ -202,12 +208,8 @@ pub fn render_target(target: &TargetRow, theme: &Theme, on_toggle: TargetHandler
                 .justify_center()
                 .size(px(24.0))
                 .rounded(px(6.0))
-                .bg(theme.accent_green.opacity(0.12))
-                .child(
-                    Icon::new("icons/check.svg")
-                        .size(px(13.0))
-                        .color(theme.accent_green),
-                ),
+                .bg(accent_color.opacity(0.12))
+                .child(Icon::new(icon).size(px(13.0)).color(accent_color)),
         )
         .child(
             div()

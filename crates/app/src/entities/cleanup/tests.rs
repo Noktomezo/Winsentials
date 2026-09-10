@@ -150,3 +150,36 @@ fn category_scanning_and_cleaning_states_track_independently() {
     assert!(!state.cleaning);
     assert!(state.is_category_recently_cleaned(CleanupCategory::Windows));
 }
+
+#[test]
+fn test_category_accent_colors() {
+    let theme = winsentials_core::Theme::dark();
+    assert_eq!(
+        CleanupCategory::Windows.accent_color(&theme),
+        theme.accent_blue
+    );
+    assert_eq!(
+        CleanupCategory::Browsers.accent_color(&theme),
+        theme.accent_cyan
+    );
+    assert_eq!(
+        CleanupCategory::Applications.accent_color(&theme),
+        theme.accent_purple
+    );
+    assert_eq!(
+        CleanupCategory::Development.accent_color(&theme),
+        theme.accent_green
+    );
+    assert_eq!(
+        CleanupCategory::Games.accent_color(&theme),
+        theme.accent_orange
+    );
+    assert_eq!(
+        CleanupCategory::Media.accent_color(&theme),
+        theme.accent_magenta
+    );
+    assert_eq!(
+        CleanupCategory::Devices.accent_color(&theme),
+        theme.accent_yellow
+    );
+}
