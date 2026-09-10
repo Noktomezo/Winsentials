@@ -4,7 +4,8 @@ use std::sync::Arc;
 use gpui::prelude::FluentBuilder;
 use gpui::{
     AnimationExt, App, ElementId, FontWeight, InteractiveElement, IntoElement, ParentElement,
-    RenderOnce, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, Window, div, px,
+    RenderOnce, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, Transformation,
+    Window, div, px, radians, svg,
 };
 
 use crate::entities::cleanup::{CleanupCategory, CleanupState, format_bytes};
@@ -130,6 +131,7 @@ impl RenderOnce for CleanupPage {
                     "cleanup_clean_all".into(),
                     rust_i18n::t!("cleanup.clean_all").to_string(),
                     selected_count > 0 && !busy,
+                    reduce_motion,
                     &theme,
                     Some(Rc::new(move |_event, window, cx| {
                         clean_all(None, window, cx);
@@ -179,7 +181,11 @@ impl RenderOnce for CleanupPage {
                     + f32::from(u16::try_from(visible_count.saturating_sub(1)).unwrap_or(u16::MAX))
                         * TARGET_GAP
             };
-            let expanded_height = if expanded { list_height + 1.0 } else { 0.0 };
+            let full_height = if visible_count == 0 {
+                0.0
+            } else {
+                list_height + 1.0
+            };
             let all_checked = has_targets && checked == targets.len();
             let toggle_category = self.on_toggle_category.clone();
             let toggle_category_checkbox = self.on_toggle_category.clone();
@@ -231,61 +237,86 @@ impl RenderOnce for CleanupPage {
                                 .color(category.accent_color(&theme)),
                         ),
                 )
-                .child(
+                .child({
+                    let secondary_text = if cat_scanning {
+                        rust_i18n::t!("cleanup.scanning").to_string()
+                    } else if category == CleanupCategory::Devices {
+                        format!("{checked} / {}", targets.len())
+                    } else {
+                        format!("{checked} / {} • {}", targets.len(), format_bytes(bytes))
+                    };
+                    let secondary_color = if cat_scanning {
+                        theme.accent_blue
+                    } else {
+                        theme.text_muted
+                    };
+
                     div()
                         .flex()
                         .flex_col()
-                        .gap(px(3.0))
+                        .justify_between()
+                        .h(px(32.0))
                         .flex_1()
+                        .min_w(px(0.0))
                         .child(
                             div()
                                 .text_size(px(13.5))
+                                .line_height(px(16.0))
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .text_color(theme.text_primary)
                                 .child(rust_i18n::t!(format!("cleanup.category.{category_id}"))),
                         )
-                        .child(if cat_scanning {
-                            div().flex().gap(px(6.0)).child(
-                                Badge::new(
-                                    format!("cleanup_{category_id}_scanning"),
-                                    rust_i18n::t!("cleanup.scanning"),
-                                )
-                                .variant(BadgeVariant::Accent)
-                                .loading(true),
-                            )
-                        } else {
+                        .child(
                             div()
-                                .flex()
-                                .gap(px(6.0))
-                                .child(badge(
-                                    format!("cleanup_{category_id}_count"),
-                                    format!("{checked} / {}", targets.len()),
-                                    &theme,
-                                ))
-                                .when(category != CleanupCategory::Devices, |row| {
-                                    row.child(badge(
-                                        format!("cleanup_{category_id}_size"),
-                                        format_bytes(bytes),
-                                        &theme,
-                                    ))
-                                })
-                        }),
-                )
-                .child(
-                    Icon::new(if expanded {
-                        "icons/chevron-up.svg"
-                    } else {
-                        "icons/chevron-down.svg"
-                    })
-                    .size(px(16.0))
-                    .color(if !has_targets {
+                                .text_size(px(11.5))
+                                .line_height(px(14.0))
+                                .font_weight(FontWeight::NORMAL)
+                                .text_color(secondary_color)
+                                .child(secondary_text),
+                        )
+                })
+                .child({
+                    let chevron_color = if !has_targets {
                         theme.text_muted.opacity(0.2)
                     } else if cat_busy {
                         theme.text_muted.opacity(0.35)
                     } else {
                         theme.text_muted
-                    }),
-                )
+                    };
+                    let chevron_el = if reduce_motion {
+                        let angle = if expanded { std::f32::consts::PI } else { 0.0 };
+                        svg()
+                            .path("icons/chevron-down.svg")
+                            .size(px(16.0))
+                            .text_color(chevron_color)
+                            .with_transformation(Transformation::rotate(radians(angle)))
+                            .into_any_element()
+                    } else {
+                        let target_angle = if expanded { std::f32::consts::PI } else { 0.0 };
+                        svg()
+                            .path("icons/chevron-down.svg")
+                            .size(px(16.0))
+                            .text_color(chevron_color)
+                            .with_spring(
+                                ElementId::Name(format!("cleanup_chevron_{category_id}").into()),
+                                SpringAnimation::new(SpringConfig::new(300.0, 28.0, 1.0))
+                                    .to(target_angle)
+                                    .with_epsilon(0.01),
+                                |svg_el, angle| {
+                                    svg_el
+                                        .with_transformation(Transformation::rotate(radians(angle)))
+                                },
+                            )
+                            .into_any_element()
+                    };
+                    div()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .size(px(16.0))
+                        .flex_none()
+                        .child(chevron_el)
+                })
                 .child(clean_button(
                     format!("cleanup_{category_id}_clean"),
                     if category == CleanupCategory::Devices {
@@ -294,6 +325,7 @@ impl RenderOnce for CleanupPage {
                         rust_i18n::t!("cleanup.clean").to_string()
                     },
                     checked > 0 && !cat_busy,
+                    reduce_motion,
                     &theme,
                     Some(Rc::new(move |_event, window, cx| {
                         clean_category(Some(category), window, cx);
@@ -312,7 +344,7 @@ impl RenderOnce for CleanupPage {
                     }),
                 );
 
-            let body = if expanded {
+            let body = if has_targets {
                 let rows = Arc::new(
                     targets
                         .iter()
@@ -349,6 +381,8 @@ impl RenderOnce for CleanupPage {
                     },
                 );
 
+                let target_height = if expanded { full_height } else { 0.0 };
+
                 let body_container = div()
                     .id(ElementId::Name(
                         format!("cleanup_{category_id}_targets").into(),
@@ -362,15 +396,22 @@ impl RenderOnce for CleanupPage {
                     .child(div().h(px(list_height)).w_full().min_h(px(0.0)).child(list));
 
                 if reduce_motion {
-                    body_container.h(px(expanded_height)).into_any_element()
+                    body_container.h(px(target_height)).into_any_element()
                 } else {
                     body_container
                         .with_spring(
                             ElementId::Name(format!("cleanup_{category_id}_expand").into()),
-                            SpringAnimation::new(SpringConfig::new(300.0, 30.0, 1.0))
-                                .to(expanded_height)
+                            SpringAnimation::new(SpringConfig::new(320.0, 28.0, 1.0))
+                                .to(target_height)
                                 .with_epsilon(0.5),
-                            |body, height| body.h(px(height)),
+                            move |body, height| {
+                                let opacity = if full_height > 0.0 {
+                                    (height / full_height).clamp(0.0, 1.0)
+                                } else {
+                                    0.0
+                                };
+                                body.h(px(height)).opacity(opacity)
+                            },
                         )
                         .into_any_element()
                 }

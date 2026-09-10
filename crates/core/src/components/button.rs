@@ -151,7 +151,7 @@ impl RenderOnce for Button {
                 theme.accent_blue.opacity(0.88),
                 theme.accent_blue.opacity(0.75),
                 theme.selected_text,
-                None,
+                Some(theme.accent_blue),
             ),
             ButtonVariant::Secondary | ButtonVariant::Outline => (
                 theme.input_bg,
