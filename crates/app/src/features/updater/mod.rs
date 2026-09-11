@@ -337,10 +337,14 @@ where
     #[cfg(windows)]
     {
         // Launch Inno Setup installer
-        std::process::Command::new(&installer_path)
-            .args(["/SILENT", "/CLOSEAPPLICATIONS", "/RESTARTAPPLICATIONS"])
-            .spawn()
-            .map_err(|e| format!("Failed to launch installer: {e}"))?;
+        duct::cmd!(
+            &installer_path,
+            "/SILENT",
+            "/CLOSEAPPLICATIONS",
+            "/RESTARTAPPLICATIONS"
+        )
+        .start()
+        .map_err(|e| format!("Failed to launch installer: {e}"))?;
 
         // Exit cleanly so Inno Setup can replace Winsentials.exe
         std::process::exit(0);

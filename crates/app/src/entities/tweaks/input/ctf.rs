@@ -77,19 +77,21 @@ fn is_ms_ctf_monitor_disabled() -> bool {
 }
 
 #[cfg(target_os = "windows")]
-fn run_hidden_command(program: &str, args: &[&str], action: &str) -> Result<(), String> {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+#[allow(unsafe_code)]
+fn start_ctfmon() {
+    use windows_sys::Win32::UI::Shell::ShellExecuteW;
+    use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
 
-    let status = std::process::Command::new(program)
-        .args(args)
-        .creation_flags(CREATE_NO_WINDOW)
-        .status()
-        .map_err(|error| format!("{action}: {error}"))?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(format!("{action}: process exited with {status}"))
+    let wide_ctfmon: Vec<u16> = "ctfmon.exe".encode_utf16().chain(Some(0)).collect();
+    unsafe {
+        ShellExecuteW(
+            std::ptr::null_mut(),
+            std::ptr::null(),
+            wide_ctfmon.as_ptr(),
+            std::ptr::null(),
+            std::ptr::null(),
+            SW_SHOWNORMAL,
+        );
     }
 }
 
@@ -110,32 +112,16 @@ fn remove_registry_value(
 pub fn set_ctf_preset(preset: CtfOptimizationPreset) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
         match preset {
             CtfOptimizationPreset::Standard => {
-                // Re-enable MsCtfMonitor task
-                run_hidden_command(
-                    "schtasks",
-                    &[
-                        "/change",
-                        "/tn",
-                        r"\Microsoft\Windows\TextServicesFramework\MsCtfMonitor",
-                        "/enable",
-                    ],
-                    "Failed to enable MsCtfMonitor",
-                )?;
-
-                run_hidden_command(
-                    "schtasks",
-                    &[
-                        "/run",
-                        "/tn",
-                        r"\Microsoft\Windows\TextServicesFramework\MsCtfMonitor",
-                    ],
-                    "Failed to run MsCtfMonitor",
-                )?;
+                // Re-enable and run MsCtfMonitor task via native COM Task Scheduler
+                crate::entities::startup::tasks::set_task_enabled_com(
+                    r"\Microsoft\Windows\TextServicesFramework\MsCtfMonitor",
+                    true,
+                );
+                crate::entities::startup::tasks::run_task_com(
+                    r"\Microsoft\Windows\TextServicesFramework\MsCtfMonitor",
+                );
 
                 // Remove registry overrides (using create() to ensure KEY_SET_VALUE write access)
                 let key = windows_registry::CURRENT_USER
@@ -152,24 +138,14 @@ pub fn set_ctf_preset(preset: CtfOptimizationPreset) -> Result<(), String> {
                 remove_registry_value(&key, "CUAS", "Failed to remove CUAS")?;
 
                 // Start ctfmon.exe if not running
-                run_hidden_command(
-                    "cmd",
-                    &["/C", "start", "", "ctfmon.exe"],
-                    "Failed to start ctfmon.exe",
-                )?;
+                start_ctfmon();
             }
             CtfOptimizationPreset::Mild => {
-                // Disable MsCtfMonitor task
-                run_hidden_command(
-                    "schtasks",
-                    &[
-                        "/change",
-                        "/tn",
-                        r"\Microsoft\Windows\TextServicesFramework\MsCtfMonitor",
-                        "/disable",
-                    ],
-                    "Failed to disable MsCtfMonitor",
-                )?;
+                // Disable MsCtfMonitor task via native COM Task Scheduler
+                crate::entities::startup::tasks::set_task_enabled_com(
+                    r"\Microsoft\Windows\TextServicesFramework\MsCtfMonitor",
+                    false,
+                );
 
                 // Remove Disable Thread Input Manager so TSF hooks and language bar remain functional
                 let key = windows_registry::CURRENT_USER
@@ -186,24 +162,14 @@ pub fn set_ctf_preset(preset: CtfOptimizationPreset) -> Result<(), String> {
                 remove_registry_value(&key, "CUAS", "Failed to remove CUAS")?;
 
                 // Ensure ctfmon is running for language switching if it was killed previously in Aggressive mode
-                run_hidden_command(
-                    "cmd",
-                    &["/C", "start", "", "ctfmon.exe"],
-                    "Failed to start ctfmon.exe",
-                )?;
+                start_ctfmon();
             }
             CtfOptimizationPreset::Aggressive => {
-                // Disable MsCtfMonitor task
-                run_hidden_command(
-                    "schtasks",
-                    &[
-                        "/change",
-                        "/tn",
-                        r"\Microsoft\Windows\TextServicesFramework\MsCtfMonitor",
-                        "/disable",
-                    ],
-                    "Failed to disable MsCtfMonitor",
-                )?;
+                // Disable MsCtfMonitor task via native COM Task Scheduler
+                crate::entities::startup::tasks::set_task_enabled_com(
+                    r"\Microsoft\Windows\TextServicesFramework\MsCtfMonitor",
+                    false,
+                );
 
                 // Disable Thread Input Manager in HKCU
                 let key = windows_registry::CURRENT_USER
@@ -222,11 +188,7 @@ pub fn set_ctf_preset(preset: CtfOptimizationPreset) -> Result<(), String> {
                     .map_err(|error| format!("Failed to set CUAS: {error}"))?;
 
                 // Terminate running ctfmon.exe process
-                std::process::Command::new("taskkill")
-                    .args(["/F", "/IM", "ctfmon.exe"])
-                    .creation_flags(CREATE_NO_WINDOW)
-                    .status()
-                    .map_err(|error| format!("Failed to stop ctfmon.exe: {error}"))?;
+                crate::shared::process::kill_process_by_name("ctfmon.exe");
             }
         }
         Ok(())

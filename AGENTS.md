@@ -58,6 +58,13 @@ Apply **Don't Repeat Yourself (DRY)** with active promotion:
   ```
   Keep the overall codebase duplication low (target < 7%) by factoring out repeated layout blocks, card templates, and repetitive iteration logic.
 
+## Native implementations first (Mandatory: no PowerShell, no ad-hoc Command::new)
+
+Always prefer native Rust implementations and Win32 APIs over spawning external processes or shells:
+- **Strict ban on PowerShell and shell scripts**: Never invoke `powershell.exe`, `pwsh.exe`, `cmd.exe`, `wscript.exe`, or external shell scripts (`.ps1`, `.vbs`, `.bat`, `.cmd`). Shell interpreters are slow (hundreds to thousands of milliseconds of startup overhead), brittle across Windows editions and execution policies, trigger false-positive antivirus heuristics, and flash console windows.
+- **Native Win32 & pure Rust**: Implement all system tweaks, hardware scans, registry edits, service management, device queries, and OS integrations natively using Rust and Windows APIs (e.g. `windows-sys` / `windows` crates such as SetupAPI, Registry, Clipboard, Shell, Memory, PnP). Native calls execute in microseconds to single-digit milliseconds with zero process overhead.
+- **Third-party process execution with `duct`**: Spawning raw `std::process::Command::new` is strongly discouraged. In rare scenarios where invoking an external third-party utility or standalone helper tool is strictly unavoidable, launch and compose processes using the [`duct`](https://crates.io/crates/duct) crate for robust, thread-safe, and cross-platform process control.
+
 ## Library-grade GPUI components
 
 Treat reusable GPUI components in `shared/ui` (and interactive sub-elements across `widgets` and `features`) as production-grade library components, comparable to a shadcn component with React Aria-quality ergonomics. Use shadcn as the visual baseline: restrained sizing, spacing, radii, icon proportions, state styling, and component density, adapted to the product theme and native GPUI constraints.

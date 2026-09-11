@@ -37,16 +37,6 @@ pub fn set_classic_context_menu(applied: bool) -> Result<(), String> {
     }
 }
 
-#[cfg(target_os = "windows")]
 pub fn restart_explorer() {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
-    let _ = std::process::Command::new("cmd")
-        .args(["/C", "taskkill /f /im explorer.exe & start explorer.exe"])
-        .creation_flags(CREATE_NO_WINDOW)
-        .spawn();
+    crate::shared::process::restart_explorer();
 }
-
-#[cfg(not(target_os = "windows"))]
-pub fn restart_explorer() {}

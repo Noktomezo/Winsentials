@@ -70,6 +70,37 @@ pub fn delete_startup_entry(entry: &StartupEntry) -> bool {
     }
 }
 
+#[cfg(target_os = "windows")]
+#[allow(unsafe_code)]
+fn shell_open(file: &str, params: Option<&str>) {
+    use windows_sys::Win32::UI::Shell::ShellExecuteW;
+    use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+
+    let wide_file: Vec<u16> = file.encode_utf16().chain(Some(0)).collect();
+    let wide_params: Option<Vec<u16>> = params.map(|p| p.encode_utf16().chain(Some(0)).collect());
+    let params_ptr = wide_params
+        .as_ref()
+        .map_or(std::ptr::null(), std::vec::Vec::as_ptr);
+    let open_verb: [u16; 5] = [
+        u16::from(b'o'),
+        u16::from(b'p'),
+        u16::from(b'e'),
+        u16::from(b'n'),
+        0,
+    ];
+
+    unsafe {
+        ShellExecuteW(
+            std::ptr::null_mut(),
+            open_verb.as_ptr(),
+            wide_file.as_ptr(),
+            params_ptr,
+            std::ptr::null(),
+            SW_SHOWNORMAL,
+        );
+    }
+}
+
 pub fn open_startup_file_location(entry: &StartupEntry) {
     if let Some(ref path) = entry.target_path {
         let p = std::path::Path::new(path);
@@ -77,9 +108,9 @@ pub fn open_startup_file_location(entry: &StartupEntry) {
         if let Some(folder_path) = folder {
             #[cfg(target_os = "windows")]
             {
-                let _ = std::process::Command::new("explorer.exe")
-                    .arg(folder_path)
-                    .spawn();
+                if let Some(folder_str) = folder_path.to_str() {
+                    shell_open(folder_str, None);
+                }
             }
             #[cfg(not(target_os = "windows"))]
             {
@@ -94,22 +125,18 @@ pub fn open_startup_source_manager(entry: &StartupEntry) {
     {
         match entry.source {
             StartupSource::Registry => {
-                let _ = std::process::Command::new("regedit.exe").spawn();
+                shell_open("regedit.exe", None);
             }
             StartupSource::StartupFolder => {
                 if let Some(ref path) = entry.target_path {
-                    let _ = std::process::Command::new("explorer.exe").arg(path).spawn();
+                    shell_open(path, None);
                 }
             }
             StartupSource::Service => {
-                let _ = std::process::Command::new("cmd")
-                    .args(["/c", "start", "", "services.msc"])
-                    .spawn();
+                shell_open("services.msc", None);
             }
             StartupSource::ScheduledTask => {
-                let _ = std::process::Command::new("cmd")
-                    .args(["/c", "start", "", "taskschd.msc"])
-                    .spawn();
+                shell_open("taskschd.msc", None);
             }
         }
     }

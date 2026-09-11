@@ -1,13 +1,7 @@
-use std::process::Command;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-
-#[cfg(target_os = "windows")]
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const CACHE_TTL: Duration = Duration::from_secs(10);
 
 static RSS_CACHED_STATE: AtomicBool = AtomicBool::new(false);
@@ -53,10 +47,11 @@ pub fn is_rss_applied() -> bool {
 
 #[cfg(target_os = "windows")]
 fn query_rss_live() -> bool {
-    let output = Command::new("netsh")
-        .args(["int", "tcp", "show", "global"])
-        .creation_flags(CREATE_NO_WINDOW)
-        .output();
+    let output = duct::cmd!("netsh", "int", "tcp", "show", "global")
+        .stdout_capture()
+        .stderr_null()
+        .unchecked()
+        .run();
 
     output.is_ok_and(|out| {
         let text = String::from_utf8_lossy(&out.stdout).to_lowercase();
@@ -80,13 +75,14 @@ pub fn set_rss(applied: bool) -> Result<(), String> {
         } else {
             "rss=disabled"
         };
-        let status = Command::new("netsh")
-            .args(["int", "tcp", "set", "global", arg])
-            .creation_flags(CREATE_NO_WINDOW)
-            .status()
+        let status = duct::cmd!("netsh", "int", "tcp", "set", "global", arg)
+            .stdout_null()
+            .stderr_null()
+            .unchecked()
+            .run()
             .map_err(|e| format!("Failed to execute netsh: {e}"))?;
 
-        if !status.success() {
+        if !status.status.success() {
             return Err("netsh command failed to set RSS".to_string());
         }
 
