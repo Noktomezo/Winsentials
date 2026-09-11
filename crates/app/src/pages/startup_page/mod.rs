@@ -16,6 +16,7 @@ use crate::shared::ui::smooth_scroll::SmoothVirtualList;
 
 pub mod card;
 pub mod filter;
+pub(crate) mod filter_dropdowns;
 pub mod types;
 
 pub(crate) use card::*;

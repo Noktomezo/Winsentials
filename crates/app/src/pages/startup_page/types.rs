@@ -36,6 +36,7 @@ pub struct StartupFilterState {
     pub status: Option<StartupStatus>,
     pub is_open: bool,
     pub is_closing: bool,
+    pub reset_closing: bool,
 }
 
 impl StartupFilterState {

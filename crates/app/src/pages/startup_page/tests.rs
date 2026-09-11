@@ -35,6 +35,13 @@ fn filter_state_is_any_active() {
         ..Default::default()
     };
     assert!(with_status.is_any_active());
+
+    let closing_reset = types::StartupFilterState {
+        reset_closing: true,
+        ..Default::default()
+    };
+    assert!(!closing_reset.is_any_active());
+    assert!(closing_reset.reset_closing);
 }
 
 fn make_dummy_entry(

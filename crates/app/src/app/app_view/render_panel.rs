@@ -223,6 +223,7 @@ impl AppView {
             status: self.startup_status_filter,
             is_open: self.startup_filters_open,
             is_closing: self.startup_filters_closing,
+            reset_closing: self.startup_reset_closing,
         };
 
         let startup_filter_handlers = crate::pages::startup_page::StartupFilterHandlers {

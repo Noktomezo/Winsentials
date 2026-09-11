@@ -25,6 +25,7 @@ impl AppView {
         if self.startup_filters_open {
             self.startup_filters_open = false;
             self.startup_filters_closing = true;
+            self.startup_reset_closing = false;
             if let Some(open) = self.open_dropdown {
                 if open.starts_with("startup_") {
                     self.start_closing_dropdown(open, cx);
@@ -52,10 +53,44 @@ impl AppView {
         }
     }
 
+    pub(crate) fn is_any_startup_filter_active(&self) -> bool {
+        self.startup_scope_filter.is_some()
+            || self.startup_filter.is_some()
+            || self.startup_status_filter.is_some()
+    }
+
+    pub fn start_closing_startup_reset(&mut self, cx: &mut Context<Self>) {
+        if self.startup_reset_closing {
+            return;
+        }
+        self.startup_reset_closing = true;
+        cx.notify();
+
+        cx.spawn(async move |this, cx| {
+            cx.background_executor()
+                .timer(Duration::from_millis(150))
+                .await;
+            this.update(cx, |this, cx| {
+                if this.startup_reset_closing {
+                    this.startup_reset_closing = false;
+                    cx.notify();
+                }
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     pub fn set_startup_filter(&mut self, filter: Option<StartupSource>, cx: &mut Context<Self>) {
+        let was_active = self.is_any_startup_filter_active();
         self.startup_filter = filter;
         self.startup_search_focused = false;
         self.start_closing_dropdown("startup_source", cx);
+        if was_active && !self.is_any_startup_filter_active() {
+            self.start_closing_startup_reset(cx);
+        } else if self.is_any_startup_filter_active() {
+            self.startup_reset_closing = false;
+        }
         cx.notify();
     }
 
@@ -64,9 +99,15 @@ impl AppView {
         scope: Option<StartupScope>,
         cx: &mut Context<Self>,
     ) {
+        let was_active = self.is_any_startup_filter_active();
         self.startup_scope_filter = scope;
         self.startup_search_focused = false;
         self.start_closing_dropdown("startup_scope", cx);
+        if was_active && !self.is_any_startup_filter_active() {
+            self.start_closing_startup_reset(cx);
+        } else if self.is_any_startup_filter_active() {
+            self.startup_reset_closing = false;
+        }
         cx.notify();
     }
 
@@ -75,17 +116,27 @@ impl AppView {
         status: Option<StartupStatus>,
         cx: &mut Context<Self>,
     ) {
+        let was_active = self.is_any_startup_filter_active();
         self.startup_status_filter = status;
         self.startup_search_focused = false;
         self.start_closing_dropdown("startup_status", cx);
+        if was_active && !self.is_any_startup_filter_active() {
+            self.start_closing_startup_reset(cx);
+        } else if self.is_any_startup_filter_active() {
+            self.startup_reset_closing = false;
+        }
         cx.notify();
     }
 
     pub fn reset_startup_filters(&mut self, cx: &mut Context<Self>) {
+        let was_active = self.is_any_startup_filter_active();
         self.startup_scope_filter = None;
         self.startup_filter = None;
         self.startup_status_filter = None;
         self.close_dropdowns_if_startup(cx);
+        if was_active {
+            self.start_closing_startup_reset(cx);
+        }
         cx.notify();
     }
 
