@@ -79,6 +79,12 @@ impl SearchInput {
     }
 
     #[must_use]
+    pub fn w_full(mut self) -> Self {
+        self.width = gpui::relative(1.0);
+        self
+    }
+
+    #[must_use]
     pub fn focused(mut self, focused: bool) -> Self {
         self.focused = focused;
         self

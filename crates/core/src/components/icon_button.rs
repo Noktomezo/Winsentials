@@ -219,7 +219,12 @@ impl RenderOnce for IconButton {
             .rounded(rounded_radius);
 
         if is_outline {
-            base = base.border_1().border_color(theme.card_border);
+            let outline_border = if self.selected {
+                theme.accent_blue.opacity(0.35)
+            } else {
+                theme.card_border
+            };
+            base = base.border_1().border_color(outline_border);
         }
 
         let hover_state_for_event = hover_state;

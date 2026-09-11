@@ -16,10 +16,12 @@ mod actions_cleanup_startup;
 mod actions_dropdown;
 mod actions_nav;
 mod actions_settings;
+mod actions_startup;
 mod actions_updater;
 mod render;
 mod render_hud;
 mod render_panel;
+mod render_panel_pages;
 
 #[cfg(test)]
 mod tests;
@@ -94,6 +96,10 @@ pub struct AppView {
     pub(crate) tweak_backups: Vec<crate::entities::tweaks::TweakBackup>,
     pub(crate) startup_entries: Vec<crate::entities::startup::StartupEntry>,
     pub(crate) startup_filter: Option<crate::entities::startup::StartupSource>,
+    pub(crate) startup_scope_filter: Option<crate::entities::startup::StartupScope>,
+    pub(crate) startup_status_filter: Option<crate::entities::startup::StartupStatus>,
+    pub(crate) startup_filters_open: bool,
+    pub(crate) startup_filters_closing: bool,
     pub(crate) startup_search_query: String,
     pub(crate) startup_search_focused: bool,
     pub(crate) startup_search_hovered: bool,
@@ -177,6 +183,10 @@ impl AppView {
             tweak_backups: crate::entities::tweaks::backup::load_backups(),
             startup_entries,
             startup_filter: None,
+            startup_scope_filter: None,
+            startup_status_filter: None,
+            startup_filters_open: false,
+            startup_filters_closing: false,
             startup_search_query: String::new(),
             startup_search_focused: false,
             startup_search_hovered: false,

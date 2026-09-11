@@ -6,7 +6,7 @@ use gpui::{
 };
 
 use crate::entities::startup::search::matches_startup_query;
-use crate::entities::startup::{StartupEntry, StartupSource, StartupStatus};
+use crate::entities::startup::{StartupEntry, StartupStatus};
 use crate::features::navigation::AppRoute;
 use crate::pages::page_header::PageHeader;
 use crate::shared::theme::Theme;
@@ -24,7 +24,8 @@ pub use types::*;
 #[derive(IntoElement)]
 pub struct StartupPage {
     entries: Vec<StartupEntry>,
-    active_filter: Option<StartupSource>,
+    filter_state: StartupFilterState,
+    dropdown_state: StartupDropdownState,
     search_query: String,
     search_focused: bool,
     search_hovered: bool,
@@ -39,7 +40,7 @@ pub struct StartupPage {
     on_copy_path: Option<StartupActionHandler>,
     on_hover_tooltip: Option<TooltipHoverHandler>,
     on_toggle_menu: Option<MenuToggleHandler>,
-    on_select_filter: Option<FilterSelectHandler>,
+    filter_handlers: StartupFilterHandlers,
     on_change_search: Option<SearchChangeHandler>,
     on_hover_search: Option<SearchHoverHandler>,
     on_focus_search: Option<SearchFocusHandler>,
@@ -52,7 +53,7 @@ impl StartupPage {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         entries: Vec<StartupEntry>,
-        active_filter: Option<StartupSource>,
+        filter_state: StartupFilterState,
         search_query: impl Into<String>,
         search_focused: bool,
         search_hovered: bool,
@@ -62,7 +63,8 @@ impl StartupPage {
     ) -> Self {
         Self {
             entries,
-            active_filter,
+            filter_state,
+            dropdown_state: StartupDropdownState::default(),
             search_query: search_query.into(),
             search_focused,
             search_hovered,
@@ -77,13 +79,25 @@ impl StartupPage {
             on_copy_path: None,
             on_hover_tooltip: None,
             on_toggle_menu: None,
-            on_select_filter: None,
+            filter_handlers: StartupFilterHandlers::default(),
             on_change_search: None,
             on_hover_search: None,
             on_focus_search: None,
             on_selection_search: None,
             on_hover_card: None,
         }
+    }
+
+    #[must_use]
+    pub fn dropdown_state(mut self, state: StartupDropdownState) -> Self {
+        self.dropdown_state = state;
+        self
+    }
+
+    #[must_use]
+    pub fn filter_handlers(mut self, handlers: StartupFilterHandlers) -> Self {
+        self.filter_handlers = handlers;
+        self
     }
 
     #[must_use]
@@ -199,15 +213,6 @@ impl StartupPage {
         self.on_toggle_menu = Some(Arc::new(handler));
         self
     }
-
-    #[must_use]
-    pub fn on_select_filter(
-        mut self,
-        handler: impl Fn(Option<StartupSource>, &mut Window, &mut App) + 'static,
-    ) -> Self {
-        self.on_select_filter = Some(Arc::new(handler));
-        self
-    }
 }
 
 impl RenderOnce for StartupPage {
@@ -228,8 +233,18 @@ impl RenderOnce for StartupPage {
             .entries
             .into_iter()
             .filter(|e| {
-                if let Some(source) = self.active_filter {
+                if let Some(scope) = self.filter_state.scope {
+                    if e.scope != scope {
+                        return false;
+                    }
+                }
+                if let Some(source) = self.filter_state.source {
                     if e.source != source {
+                        return false;
+                    }
+                }
+                if let Some(status) = self.filter_state.status {
+                    if e.status != status {
                         return false;
                     }
                 }
@@ -303,7 +318,7 @@ impl RenderOnce for StartupPage {
             .child(format!("{total_count}"));
 
         let mut search_input = SearchInput::new("startup_search", &self.search_query)
-            .width(px(220.0))
+            .w_full()
             .focused(self.search_focused)
             .hovered(self.search_hovered)
             .selection(self.search_selection);
@@ -335,48 +350,12 @@ impl RenderOnce for StartupPage {
             });
         }
 
-        let filter_bar = div()
-            .flex()
-            .items_center()
-            .justify_between()
-            .w_full()
-            .child(search_input)
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(8.0))
-                    .child(render_filter_pill(
-                        None,
-                        self.active_filter,
-                        &theme,
-                        self.on_select_filter.clone(),
-                    ))
-                    .child(render_filter_pill(
-                        Some(StartupSource::StartupFolder),
-                        self.active_filter,
-                        &theme,
-                        self.on_select_filter.clone(),
-                    ))
-                    .child(render_filter_pill(
-                        Some(StartupSource::ScheduledTask),
-                        self.active_filter,
-                        &theme,
-                        self.on_select_filter.clone(),
-                    ))
-                    .child(render_filter_pill(
-                        Some(StartupSource::Registry),
-                        self.active_filter,
-                        &theme,
-                        self.on_select_filter.clone(),
-                    ))
-                    .child(render_filter_pill(
-                        Some(StartupSource::Service),
-                        self.active_filter,
-                        &theme,
-                        self.on_select_filter,
-                    )),
-            );
+        let filter_bar = render_filter_bar(
+            search_input,
+            self.filter_state,
+            self.dropdown_state,
+            &self.filter_handlers,
+        );
 
         let total_items = filtered_entries.len();
         let entries_arc = Arc::new(filtered_entries);
@@ -411,19 +390,36 @@ impl RenderOnce for StartupPage {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub fn render_startup_page(params: StartupRouteParams<'_>) -> gpui::AnyElement {
+    let mut page = StartupPage::new(
+        params.entries,
+        params.filter_state,
+        params.search_query,
+        params.search_focused,
+        params.search_hovered,
+        params.search_selection,
+        params.open_menu_id,
+        params.hovered_card_id,
+    )
+    .dropdown_state(params.dropdown_state)
+    .filter_handlers(params.filter_handlers)
+    .search_focus(params.search_focus);
 
-    #[test]
-    fn fallback_app_icon_does_not_duplicate_source_badge() {
-        for source in [
-            StartupSource::Registry,
-            StartupSource::StartupFolder,
-            StartupSource::Service,
-            StartupSource::ScheduledTask,
-        ] {
-            assert_ne!(fallback_app_icon(), source.icon());
-        }
-    }
+    page.on_change_search = Some(params.on_change_search);
+    page.on_hover_search = Some(params.on_hover_search);
+    page.on_focus_search = Some(params.on_focus_search);
+    page.on_selection_search = Some(params.on_selection_search);
+    page.on_hover_card = Some(params.on_hover_card);
+    page.on_toggle = Some(params.on_toggle);
+    page.on_delete = Some(params.on_delete);
+    page.on_open_folder = Some(params.on_open_folder);
+    page.on_open_source = Some(params.on_open_source);
+    page.on_copy_path = Some(params.on_copy_path);
+    page.on_hover_tooltip = Some(params.on_hover_tooltip);
+    page.on_toggle_menu = Some(params.on_toggle_menu);
+
+    page.into_any_element()
 }
+
+#[cfg(test)]
+mod tests;

@@ -271,75 +271,6 @@ impl AppView {
         }
     }
 
-    pub fn refresh_startup_entries(&mut self, cx: &mut Context<Self>) {
-        self.startup_entries = crate::entities::startup::fetch_all_startup_entries();
-        cx.notify();
-    }
-
-    pub fn toggle_startup(
-        &mut self,
-        entry: &crate::entities::startup::StartupEntry,
-        cx: &mut Context<Self>,
-    ) {
-        crate::entities::startup::toggle_startup_entry(entry);
-        self.refresh_startup_entries(cx);
-    }
-
-    pub fn delete_startup(
-        &mut self,
-        entry: &crate::entities::startup::StartupEntry,
-        cx: &mut Context<Self>,
-    ) {
-        crate::entities::startup::delete_startup_entry(entry);
-        self.refresh_startup_entries(cx);
-    }
-
-    pub fn set_startup_filter(
-        &mut self,
-        filter: Option<crate::entities::startup::StartupSource>,
-        cx: &mut Context<Self>,
-    ) {
-        self.startup_filter = filter;
-        self.startup_search_focused = false;
-        cx.notify();
-    }
-
-    pub fn set_startup_search_query(&mut self, query: String, cx: &mut Context<Self>) {
-        self.startup_search_query = query;
-        cx.notify();
-    }
-
-    pub fn set_startup_search_hovered(&mut self, hovered: bool, cx: &mut Context<Self>) {
-        self.startup_search_hovered = hovered;
-        cx.notify();
-    }
-
-    pub fn set_startup_search_focused(&mut self, focused: bool, cx: &mut Context<Self>) {
-        self.startup_search_focused = focused;
-        if !focused {
-            self.startup_search_selection = None;
-        }
-        cx.notify();
-    }
-
-    pub fn set_startup_search_selection(
-        &mut self,
-        selection: Option<(usize, usize)>,
-        cx: &mut Context<Self>,
-    ) {
-        self.startup_search_selection = selection;
-        cx.notify();
-    }
-
-    pub fn set_startup_menu(&mut self, menu_id: Option<String>, cx: &mut Context<Self>) {
-        self.startup_open_menu_id = menu_id;
-        if self.startup_open_menu_id.is_some() {
-            self.startup_search_focused = false;
-            self.startup_search_selection = None;
-        }
-        cx.notify();
-    }
-
     pub fn show_explorer_restart_toast(&mut self, cx: &mut Context<Self>) {
         let restart_toast = crate::shared::ui::ToastData::new(
             "explorer_restart",
@@ -420,13 +351,6 @@ impl AppView {
             }
         } else if self.hovered_telemetry_card.as_ref() == Some(&card_id) {
             self.hovered_telemetry_card = None;
-            cx.notify();
-        }
-    }
-
-    pub fn set_hovered_startup_card(&mut self, card_id: Option<String>, cx: &mut Context<Self>) {
-        if self.hovered_startup_card != card_id {
-            self.hovered_startup_card = card_id;
             cx.notify();
         }
     }

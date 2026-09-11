@@ -1,10 +1,9 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use gpui::{Context, Div, ParentElement, SharedString, Styled, div, px};
 
-use crate::entities::cleanup::CleanupCategory;
 use crate::features::navigation::AppRoute;
-use crate::pages::{BackupsPage, CleanupPage, ToolsPage, render_route};
+use crate::pages::render_route;
 use crate::shared::theme::Theme;
 
 use super::AppView;
@@ -157,11 +156,31 @@ impl AppView {
             this.set_startup_menu(menu_id.clone(), cx);
         });
 
-        let on_select_startup_filter = cx.listener(
-            |this, filter: &Option<crate::entities::startup::StartupSource>, _window, cx| {
-                this.set_startup_filter(*filter, cx);
+        let on_toggle_startup_filters = cx.listener(|this, _event: &(), _window, cx| {
+            this.toggle_startup_filters(cx);
+        });
+
+        let on_select_startup_scope = cx.listener(
+            |this, scope: &Option<crate::entities::startup::StartupScope>, _window, cx| {
+                this.set_startup_scope_filter(*scope, cx);
             },
         );
+
+        let on_select_startup_source = cx.listener(
+            |this, source: &Option<crate::entities::startup::StartupSource>, _window, cx| {
+                this.set_startup_filter(*source, cx);
+            },
+        );
+
+        let on_select_startup_status = cx.listener(
+            |this, status: &Option<crate::entities::startup::StartupStatus>, _window, cx| {
+                this.set_startup_status_filter(*status, cx);
+            },
+        );
+
+        let on_reset_startup_filters = cx.listener(|this, _event: &(), _window, cx| {
+            this.reset_startup_filters(cx);
+        });
 
         let on_change_startup_search = cx.listener(|this, query: &String, _window, cx| {
             this.set_startup_search_query(query.clone(), cx);
@@ -183,42 +202,6 @@ impl AppView {
         let on_hover_startup_card = cx.listener(|this, card_id: &Option<String>, _window, cx| {
             this.set_hovered_startup_card(card_id.clone(), cx);
         });
-
-        let on_cleanup_toggle_target = cx.listener(|this, id: &String, _window, cx| {
-            this.cleanup.toggle_target(id);
-            cx.notify();
-        });
-        let on_cleanup_toggle_category =
-            cx.listener(|this, category: &CleanupCategory, _window, cx| {
-                this.cleanup.toggle_category(*category);
-                cx.notify();
-            });
-        let on_cleanup_toggle_expanded =
-            cx.listener(|this, category: &CleanupCategory, _window, cx| {
-                let has_targets = this
-                    .cleanup
-                    .snapshot
-                    .targets
-                    .iter()
-                    .any(|t| t.category == *category);
-                if !has_targets {
-                    return;
-                }
-                this.cleanup.expanded =
-                    (this.cleanup.expanded != Some(*category)).then_some(*category);
-                cx.notify();
-            });
-        let on_cleanup_toggle_all = cx.listener(|this, _event: &(), _window, cx| {
-            this.cleanup.toggle_all();
-            cx.notify();
-        });
-        let on_cleanup_refresh = cx.listener(|this, _event: &(), _window, cx| {
-            this.refresh_cleanup(cx);
-        });
-        let on_cleanup_clean =
-            cx.listener(|this, category: &Option<CleanupCategory>, _window, cx| {
-                this.clean_cleanup(*category, cx);
-            });
         let on_toggle_check_updates = cx.listener(|this, enabled: &bool, _window, cx| {
             this.toggle_check_updates(*enabled, cx);
         });
@@ -234,94 +217,53 @@ impl AppView {
             },
         );
 
+        let startup_filters = crate::pages::startup_page::StartupFilterState {
+            scope: self.startup_scope_filter,
+            source: self.startup_filter,
+            status: self.startup_status_filter,
+            is_open: self.startup_filters_open,
+            is_closing: self.startup_filters_closing,
+        };
+
+        let startup_filter_handlers = crate::pages::startup_page::StartupFilterHandlers {
+            on_toggle_filters: Some(Arc::new(move |window, cx| {
+                on_toggle_startup_filters(&(), window, cx);
+            })),
+            on_select_scope: Some(Arc::new(move |scope, window, cx| {
+                on_select_startup_scope(&scope, window, cx);
+            })),
+            on_select_source: Some(Arc::new(move |source, window, cx| {
+                on_select_startup_source(&source, window, cx);
+            })),
+            on_select_status: Some(Arc::new(move |status, window, cx| {
+                on_select_startup_status(&status, window, cx);
+            })),
+            on_reset_filters: Some(Arc::new(move |window, cx| {
+                on_reset_startup_filters(&(), window, cx);
+            })),
+            on_toggle_dropdown: None,
+            on_hover_dropdown: None,
+            on_hover_option: None,
+            on_close_dropdowns: None,
+        };
+
         let minimize_to_tray = self.config.minimize_to_tray;
         let autostart = self.config.autostart;
         let autostart_to_tray = self.config.autostart_to_tray;
         let discord_rpc = self.config.discord_rpc;
         let check_updates = self.config.check_updates;
         let update_state = &self.update_state;
-        let startup_filter = self.startup_filter;
         let startup_open_menu_id = self.startup_open_menu_id.as_deref();
         let hovered_startup_card = self.hovered_startup_card.clone();
         let startup_search_focus = self
             .startup_search_focus
             .get_or_insert_with(|| cx.focus_handle())
             .clone();
-        let cleanup_page = if current_route == AppRoute::Cleanup {
-            Some(CleanupPage::new(
-                self.cleanup.clone(),
-                Rc::new(move |id, window, cx| {
-                    on_cleanup_toggle_target(&id, window, cx);
-                }),
-                Rc::new(move |category, window, cx| {
-                    on_cleanup_toggle_category(&category, window, cx);
-                }),
-                Rc::new(move |category, window, cx| {
-                    on_cleanup_toggle_expanded(&category, window, cx);
-                }),
-                Rc::new(move |window, cx| {
-                    on_cleanup_toggle_all(&(), window, cx);
-                }),
-                Rc::new(move |window, cx| {
-                    on_cleanup_refresh(&(), window, cx);
-                }),
-                Rc::new(move |category, window, cx| {
-                    on_cleanup_clean(&category, window, cx);
-                }),
-            ))
-        } else {
-            None
-        };
 
-        let tools_page = if current_route == AppRoute::Tools {
-            let on_nav = cx.listener(|this, route: &AppRoute, window, cx| {
-                this.navigate_to(*route, window, cx);
-            });
-            let on_hover = cx.listener(
-                |this, &(ref card_id, is_hovered): &(SharedString, bool), window, cx| {
-                    this.set_hovered_telemetry_card(card_id.clone(), is_hovered, window, cx);
-                },
-            );
-
-            Some(
-                ToolsPage::new(hovered_telemetry_card.clone())
-                    .on_navigate(move |r, w, cx| on_nav(&r, w, cx))
-                    .on_hover_card(move |id, val, w, cx| on_hover(&(id, val), w, cx)),
-            )
-        } else {
-            None
-        };
-
-        let backups_page = if current_route == AppRoute::Backups {
-            let on_hover = cx.listener(
-                |this, &(ref card_id, is_hovered): &(SharedString, bool), window, cx| {
-                    this.set_hovered_telemetry_card(card_id.clone(), is_hovered, window, cx);
-                },
-            );
-            let on_create =
-                cx.listener(|this, _event: &(), _window, cx| this.open_create_backup_modal(cx));
-            let on_restore = cx.listener(|this, id: &String, _window, cx| {
-                this.confirm_restore_backup(id.clone(), cx);
-            });
-            let on_rename = cx.listener(|this, id: &String, _window, cx| {
-                this.open_rename_backup_modal(id.clone(), cx);
-            });
-            let on_delete = cx.listener(|this, id: &String, _window, cx| {
-                this.confirm_delete_backup(id.clone(), cx);
-            });
-
-            Some(
-                BackupsPage::new(hovered_telemetry_card.clone())
-                    .backups(self.tweak_backups.clone())
-                    .on_hover_card(move |id, val, w, cx| on_hover(&(id, val), w, cx))
-                    .on_create_backup(move |w, cx| on_create(&(), w, cx))
-                    .on_restore_backup(move |id, w, cx| on_restore(&id, w, cx))
-                    .on_rename_backup(move |id, w, cx| on_rename(&id, w, cx))
-                    .on_delete_backup(move |id, w, cx| on_delete(&id, w, cx)),
-            )
-        } else {
-            None
-        };
+        let cleanup_page = self.build_cleanup_page(current_route, cx);
+        let tools_page = Self::build_tools_page(current_route, hovered_telemetry_card.clone(), cx);
+        let backups_page =
+            self.build_backups_page(current_route, hovered_telemetry_card.clone(), cx);
 
         div()
             .flex()
@@ -355,7 +297,8 @@ impl AppView {
                 check_updates,
                 update_state,
                 &self.startup_entries,
-                startup_filter,
+                startup_filters,
+                startup_filter_handlers,
                 &self.startup_search_query,
                 self.startup_search_focused,
                 self.startup_search_hovered,
@@ -455,9 +398,6 @@ impl AppView {
                 },
                 move |menu_id, window, cx| {
                     on_toggle_startup_menu(&menu_id, window, cx);
-                },
-                move |filter, window, cx| {
-                    on_select_startup_filter(&filter, window, cx);
                 },
                 move |q, window, cx| {
                     on_change_startup_search(&q, window, cx);

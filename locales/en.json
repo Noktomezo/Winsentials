@@ -416,7 +416,17 @@
     "disabled": "Disabled",
     "unknown_publisher": "Unknown publisher",
     "search_placeholder": "Search...",
-    "badge_tooltip": "%{total} items (%{enabled} enabled, %{disabled} disabled)"
+    "badge_tooltip": "%{total} items (%{enabled} enabled, %{disabled} disabled)",
+    "filters_tooltip": "Filters",
+    "reset_filters": "Reset filters",
+    "filter_scope_title": "Users",
+    "filter_source_title": "Source",
+    "filter_status_title": "Status",
+    "filter_any": "Any",
+    "filter_user_current": "Current",
+    "filter_user_all": "All",
+    "filter_enabled": "Enabled",
+    "filter_disabled": "Disabled"
   },
   "cleanup": {
     "title": "Cleanup",
