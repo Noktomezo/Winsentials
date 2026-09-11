@@ -51,6 +51,69 @@ pub struct TweakDefinition {
 
 impl TweakDefinition {
     #[must_use]
+    pub const fn new(
+        id: &'static str,
+        category: TweakCategory,
+        icon: &'static str,
+        title_key: &'static str,
+        desc_key: &'static str,
+        is_applied: fn() -> bool,
+        set_applied: fn(bool) -> Result<(), String>,
+    ) -> Self {
+        Self {
+            id,
+            category,
+            icon,
+            title_key,
+            desc_key,
+            min_build: None,
+            max_build: None,
+            custom_support: None,
+            restart: RestartRequirement::None,
+            side_effect: None,
+            is_applied,
+            set_applied,
+        }
+    }
+
+    #[must_use]
+    pub const fn with_min_build(mut self, min: u32) -> Self {
+        self.min_build = Some(min);
+        self
+    }
+
+    #[must_use]
+    pub const fn with_max_build(mut self, max: u32) -> Self {
+        self.max_build = Some(max);
+        self
+    }
+
+    #[must_use]
+    pub const fn with_restart(mut self, restart: RestartRequirement) -> Self {
+        self.restart = restart;
+        self
+    }
+
+    #[must_use]
+    pub const fn with_side_effect(
+        mut self,
+        level: SideEffectLevel,
+        description_key: &'static str,
+    ) -> Self {
+        self.side_effect = Some(SideEffect {
+            level,
+            description_key,
+        });
+        self
+    }
+
+    #[must_use]
+    pub const fn with_custom_support(mut self, check: fn() -> bool) -> Self {
+        self.custom_support = Some(check);
+        self
+    }
+
+    #[must_use]
     pub fn is_supported(&self, current_build: u32) -> bool {
         if let Some(min) = self.min_build {
             if current_build < min {

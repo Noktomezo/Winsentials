@@ -185,4 +185,59 @@ mod tests {
             "tweaks.disable_usb_power_saving_side_effect"
         );
     }
+
+    #[test]
+    fn test_system_gpu_tweaks_i18n_keys() {
+        rust_i18n::set_locale("ru");
+        assert_ne!(
+            rust_i18n::t!("tweaks.gpu_tdr_delay_title"),
+            "tweaks.gpu_tdr_delay_title"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.gpu_tdr_delay_desc"),
+            "tweaks.gpu_tdr_delay_desc"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.gpu_tdr_delay_side_effect"),
+            "tweaks.gpu_tdr_delay_side_effect"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_mpo_title"),
+            "tweaks.disable_mpo_title"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_mpo_desc"),
+            "tweaks.disable_mpo_desc"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_mpo_side_effect"),
+            "tweaks.disable_mpo_side_effect"
+        );
+
+        rust_i18n::set_locale("en");
+        assert_ne!(
+            rust_i18n::t!("tweaks.gpu_tdr_delay_title"),
+            "tweaks.gpu_tdr_delay_title"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.gpu_tdr_delay_desc"),
+            "tweaks.gpu_tdr_delay_desc"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.gpu_tdr_delay_side_effect"),
+            "tweaks.gpu_tdr_delay_side_effect"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_mpo_title"),
+            "tweaks.disable_mpo_title"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_mpo_desc"),
+            "tweaks.disable_mpo_desc"
+        );
+        assert_ne!(
+            rust_i18n::t!("tweaks.disable_mpo_side_effect"),
+            "tweaks.disable_mpo_side_effect"
+        );
+    }
 }
