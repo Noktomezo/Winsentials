@@ -21,6 +21,7 @@ pub(crate) struct DropdownMenuParams {
     pub is_open: bool,
     pub is_closing: bool,
     pub opens_upwards: bool,
+    pub is_full_width: bool,
     pub trigger_width: gpui::Pixels,
     pub dropdown_id_str: String,
     pub theme: Theme,
@@ -128,8 +129,11 @@ pub(crate) fn render_dropdown_menu(params: DropdownMenuParams) -> AnyElement {
             px(0.0)
         };
 
-        let max_opt_label_width =
-            (trigger_width - px(20.0) - px(2.0) - trailing_space - opt_icon_space).max(px(30.0));
+        let max_opt_label_width = if params.is_full_width {
+            px(500.0)
+        } else {
+            (trigger_width - px(20.0) - px(2.0) - trailing_space - opt_icon_space).max(px(30.0))
+        };
 
         let opt_id = format!("{dropdown_id_str}_opt_{val}");
         let is_opt_active = is_opt_hovered && !is_closing;
@@ -327,7 +331,6 @@ pub(crate) fn render_dropdown_menu(params: DropdownMenuParams) -> AnyElement {
             })
             .absolute()
             .left_0()
-            .w(trigger_width)
             .rounded(px(6.0))
             .overflow_hidden()
             .bg(theme.input_bg)
@@ -346,6 +349,12 @@ pub(crate) fn render_dropdown_menu(params: DropdownMenuParams) -> AnyElement {
             .on_click(|_, _, cx| {
                 cx.stop_propagation();
             });
+
+        if params.is_full_width {
+            box_el = box_el.w_full();
+        } else {
+            box_el = box_el.w(trigger_width);
+        }
 
         if let Some(ref close_fn) = on_close {
             let close_cb = close_fn.clone();
@@ -382,7 +391,7 @@ pub(crate) fn render_dropdown_menu(params: DropdownMenuParams) -> AnyElement {
                 .into_any_element()
         }
     } else {
-        let box_el = div()
+        let mut box_el = div()
             .id(ElementId::Name(
                 format!("{dropdown_id_str}_menu_box_close").into(),
             ))
@@ -392,7 +401,6 @@ pub(crate) fn render_dropdown_menu(params: DropdownMenuParams) -> AnyElement {
             })
             .absolute()
             .left_0()
-            .w(trigger_width)
             .rounded(px(6.0))
             .overflow_hidden()
             .bg(theme.input_bg)
@@ -408,6 +416,12 @@ pub(crate) fn render_dropdown_menu(params: DropdownMenuParams) -> AnyElement {
             .on_click(|_, _, cx| {
                 cx.stop_propagation();
             });
+
+        if params.is_full_width {
+            box_el = box_el.w_full();
+        } else {
+            box_el = box_el.w(trigger_width);
+        }
 
         if opens_upwards {
             box_el

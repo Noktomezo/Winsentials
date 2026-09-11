@@ -34,9 +34,9 @@ pub(crate) fn render_filter_bar(
 ) -> impl IntoElement {
     let is_active = filters.is_any_active();
     let filter_icon = if is_active {
-        "icons/list-filter-plus.svg"
+        "icons/filter-x.svg"
     } else {
-        "icons/list-filter.svg"
+        "icons/filter.svg"
     };
 
     let toggle_handler = handlers.on_toggle_filters.clone();
@@ -97,9 +97,9 @@ fn render_filter_panel(
         .items_center()
         .gap(px(8.0))
         .w_full()
-        .child(scope_dd)
-        .child(source_dd)
-        .child(status_dd);
+        .child(div().flex_1().min_w(px(0.0)).child(scope_dd))
+        .child(div().flex_1().min_w(px(0.0)).child(source_dd))
+        .child(div().flex_1().min_w(px(0.0)).child(status_dd));
 
     if filters.is_any_active() {
         panel = panel.child(reset_button);
@@ -162,7 +162,7 @@ fn build_scope_dropdown(
 
     Dropdown::new("startup_scope", scope_label, scope_val)
         .icon(scope_icon)
-        .width(px(180.0))
+        .w_full()
         .localized_options(vec![
             (
                 "any",
@@ -263,7 +263,7 @@ fn build_source_dropdown(
 
     Dropdown::new("startup_source", source_label, source_val)
         .icon(source_icon)
-        .width(px(195.0))
+        .w_full()
         .localized_options(vec![
             (
                 "any",
@@ -375,7 +375,7 @@ fn build_status_dropdown(
 
     Dropdown::new("startup_status", status_label, status_val)
         .icon(status_icon)
-        .width(px(165.0))
+        .w_full()
         .localized_options(vec![
             (
                 "any",
