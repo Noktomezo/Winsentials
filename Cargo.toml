@@ -69,6 +69,13 @@ uuid = { version = "1.10", features = ["v4"] }
 minisign-verify = "0.2"
 tokio = { version = "1", default-features = false, features = ["rt", "rt-multi-thread", "time"] }
 duct = "1.1.2"
+windows = { version = "0.59", default-features = false, features = [
+    "Win32_Foundation",
+    "Win32_System_Com",
+    "Win32_System_Ole",
+    "Win32_System_Variant",
+    "Win32_System_TaskScheduler",
+] }
 
 [workspace.lints.rust]
 unsafe_code = "warn"

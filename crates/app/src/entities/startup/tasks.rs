@@ -188,26 +188,157 @@ fn extract_xml_tag(xml: &str, tag_name: &str) -> Option<String> {
     }
 }
 
+#[cfg(target_os = "windows")]
+#[allow(unsafe_code)]
+pub fn set_task_enabled_com(task_path: &str, enabled: bool) -> bool {
+    use windows::Win32::System::Com::{
+        CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx,
+    };
+    use windows::Win32::System::TaskScheduler::{ITaskService, TaskScheduler};
+    use windows::Win32::System::Variant::VARIANT;
+    use windows::core::BSTR;
+
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+        let Ok(service) =
+            CoCreateInstance::<_, ITaskService>(&TaskScheduler, None, CLSCTX_INPROC_SERVER)
+        else {
+            return false;
+        };
+
+        if service
+            .Connect(
+                &VARIANT::default(),
+                &VARIANT::default(),
+                &VARIANT::default(),
+                &VARIANT::default(),
+            )
+            .is_err()
+        {
+            return false;
+        }
+
+        let Ok(root_folder) = service.GetFolder(&BSTR::from(r"\")) else {
+            return false;
+        };
+
+        let bstr_path = BSTR::from(task_path);
+        if let Ok(task) = root_folder.GetTask(&bstr_path) {
+            return task.SetEnabled(enabled.into()).is_ok();
+        }
+
+        let rel = task_path.trim_start_matches('\\');
+        if let Ok(task) = root_folder.GetTask(&BSTR::from(rel)) {
+            return task.SetEnabled(enabled.into()).is_ok();
+        }
+
+        false
+    }
+}
+
+#[cfg(target_os = "windows")]
+#[allow(unsafe_code)]
+pub fn run_task_com(task_path: &str) -> bool {
+    use windows::Win32::System::Com::{
+        CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx,
+    };
+    use windows::Win32::System::TaskScheduler::{ITaskService, TaskScheduler};
+    use windows::Win32::System::Variant::VARIANT;
+    use windows::core::BSTR;
+
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+        let Ok(service) =
+            CoCreateInstance::<_, ITaskService>(&TaskScheduler, None, CLSCTX_INPROC_SERVER)
+        else {
+            return false;
+        };
+
+        if service
+            .Connect(
+                &VARIANT::default(),
+                &VARIANT::default(),
+                &VARIANT::default(),
+                &VARIANT::default(),
+            )
+            .is_err()
+        {
+            return false;
+        }
+
+        let Ok(root_folder) = service.GetFolder(&BSTR::from(r"\")) else {
+            return false;
+        };
+
+        let bstr_path = BSTR::from(task_path);
+        if let Ok(task) = root_folder.GetTask(&bstr_path) {
+            return task.Run(&VARIANT::default()).is_ok();
+        }
+
+        let rel = task_path.trim_start_matches('\\');
+        if let Ok(task) = root_folder.GetTask(&BSTR::from(rel)) {
+            return task.Run(&VARIANT::default()).is_ok();
+        }
+
+        false
+    }
+}
+
+#[cfg(target_os = "windows")]
+#[allow(unsafe_code)]
+pub fn delete_task_com(task_path: &str) -> bool {
+    use windows::Win32::System::Com::{
+        CLSCTX_INPROC_SERVER, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx,
+    };
+    use windows::Win32::System::TaskScheduler::{ITaskService, TaskScheduler};
+    use windows::Win32::System::Variant::VARIANT;
+    use windows::core::BSTR;
+
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+        let Ok(service) =
+            CoCreateInstance::<_, ITaskService>(&TaskScheduler, None, CLSCTX_INPROC_SERVER)
+        else {
+            return false;
+        };
+
+        if service
+            .Connect(
+                &VARIANT::default(),
+                &VARIANT::default(),
+                &VARIANT::default(),
+                &VARIANT::default(),
+            )
+            .is_err()
+        {
+            return false;
+        }
+
+        let Ok(root_folder) = service.GetFolder(&BSTR::from(r"\")) else {
+            return false;
+        };
+
+        let bstr_path = BSTR::from(task_path);
+        if root_folder.DeleteTask(&bstr_path, 0).is_ok() {
+            return true;
+        }
+
+        let rel = task_path.trim_start_matches('\\');
+        root_folder.DeleteTask(&BSTR::from(rel), 0).is_ok()
+    }
+}
+
 pub fn toggle_task_entry(entry: &StartupEntry) -> bool {
     let task_name = &entry.raw_id;
-    let action = if entry.status == StartupStatus::Enabled {
-        "/disable"
-    } else {
-        "/enable"
-    };
+    let enabled = entry.status != StartupStatus::Enabled;
 
     #[cfg(target_os = "windows")]
     {
-        duct::cmd!("schtasks", "/change", "/tn", task_name, action)
-            .stdout_null()
-            .stderr_null()
-            .unchecked()
-            .run()
-            .is_ok_and(|out| out.status.success())
+        set_task_enabled_com(task_name, enabled)
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let _ = (task_name, action);
+        let _ = (task_name, enabled);
         true
     }
 }
@@ -217,12 +348,7 @@ pub fn delete_task_entry(entry: &StartupEntry) -> bool {
 
     #[cfg(target_os = "windows")]
     {
-        duct::cmd!("schtasks", "/delete", "/tn", task_name, "/f")
-            .stdout_null()
-            .stderr_null()
-            .unchecked()
-            .run()
-            .is_ok_and(|out| out.status.success())
+        delete_task_com(task_name)
     }
     #[cfg(not(target_os = "windows"))]
     {
