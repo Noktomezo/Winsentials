@@ -168,7 +168,7 @@ impl RenderOnce for IconButton {
         let default_color: Hsla = if self.destructive {
             theme.accent_red.into()
         } else if self.selected {
-            theme.accent_blue.into()
+            theme.selected_text.into()
         } else {
             theme.text_primary.into()
         };
@@ -203,7 +203,7 @@ impl RenderOnce for IconButton {
         let (text_color_rest, text_color_hover): (Rgba, Rgba) = if self.destructive {
             (theme.accent_red, theme.accent_red)
         } else if self.selected {
-            (theme.accent_blue, theme.accent_blue)
+            (theme.selected_text, theme.selected_text)
         } else if self.icon_color.is_some() {
             (color.into(), color.into())
         } else {
@@ -219,7 +219,12 @@ impl RenderOnce for IconButton {
             .rounded(rounded_radius);
 
         if is_outline {
-            base = base.border_1().border_color(theme.card_border);
+            let outline_border = if self.selected {
+                theme.accent_blue.opacity(0.35)
+            } else {
+                theme.card_border
+            };
+            base = base.border_1().border_color(outline_border);
         }
 
         let hover_state_for_event = hover_state;
@@ -266,7 +271,9 @@ impl RenderOnce for IconButton {
             color
         } else if self.destructive {
             theme.accent_red.into()
-        } else if self.selected || is_hovered {
+        } else if self.selected {
+            theme.selected_text.into()
+        } else if is_hovered {
             theme.accent_blue.into()
         } else {
             theme.text_primary.into()
@@ -321,17 +328,32 @@ impl RenderOnce for IconButton {
                     text_color_rest
                 });
             if is_outline {
-                el = el.border_color(if is_hovered {
-                    theme.accent_blue.opacity(0.5)
+                let border_col = if is_hovered {
+                    if self.selected {
+                        theme.accent_blue.opacity(0.6)
+                    } else {
+                        theme.accent_blue.opacity(0.5)
+                    }
+                } else if self.selected {
+                    theme.accent_blue.opacity(0.35)
                 } else {
                     theme.card_border
-                });
+                };
+                el = el.border_color(border_col);
             }
             el.into_any_element()
         } else {
             let spring = hover_spring(if is_hovered { 1.0 } else { 0.0 });
-            let border_rest = theme.card_border;
-            let border_hover = theme.accent_blue.opacity(0.5);
+            let border_rest = if self.selected {
+                theme.accent_blue.opacity(0.35)
+            } else {
+                theme.card_border
+            };
+            let border_hover = if self.selected {
+                theme.accent_blue.opacity(0.6)
+            } else {
+                theme.accent_blue.opacity(0.5)
+            };
             content
                 .with_spring(
                     ElementId::Name(spring_id.into()),

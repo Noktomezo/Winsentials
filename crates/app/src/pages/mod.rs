@@ -23,42 +23,15 @@ use std::sync::Arc;
 use std::time::Duration;
 
 #[allow(unused_imports)]
-pub use backups_page::BackupsPage;
-
-#[allow(unused_imports)]
-pub use cleanup_page::CleanupPage;
-#[allow(unused_imports)]
-pub use context_menu_page::ContextMenuPage;
-#[allow(unused_imports)]
-pub use cpu_page::CpuPage;
-#[allow(unused_imports)]
-pub use dashboard_page::DashboardPage;
-#[allow(unused_imports)]
-pub use disk_page::DiskPage;
-#[allow(unused_imports)]
-pub use explorer_page::ExplorerPage;
-#[allow(unused_imports)]
-pub use gpu_page::GpuPage;
-#[allow(unused_imports)]
-pub use input_page::InputPage;
-#[allow(unused_imports)]
-pub use interface_page::InterfacePage;
-#[allow(unused_imports)]
-pub use network_page::NetworkPage;
-#[allow(unused_imports)]
-pub use network_tweaks_page::NetworkTweaksPage;
-#[allow(unused_imports)]
-pub use page_header::PageHeader;
-#[allow(unused_imports)]
-pub use ram_page::RamPage;
-#[allow(unused_imports)]
-pub use security_page::SystemPage;
-#[allow(unused_imports)]
-pub use settings_page::SettingsPage;
-#[allow(unused_imports)]
-pub use startup_page::StartupPage;
-#[allow(unused_imports)]
-pub use tools_page::ToolsPage;
+pub use {
+    backups_page::BackupsPage, cleanup_page::CleanupPage, context_menu_page::ContextMenuPage,
+    cpu_page::CpuPage, dashboard_page::DashboardPage, disk_page::DiskPage,
+    explorer_page::ExplorerPage, gpu_page::GpuPage, input_page::InputPage,
+    interface_page::InterfacePage, network_page::NetworkPage,
+    network_tweaks_page::NetworkTweaksPage, page_header::PageHeader, ram_page::RamPage,
+    security_page::SystemPage, settings_page::SettingsPage, startup_page::StartupPage,
+    tools_page::ToolsPage,
+};
 
 use gpui::{
     Animation, AnimationExt, AnyElement, App, ElementId, IntoElement, ParentElement, SharedString,
@@ -96,7 +69,8 @@ pub fn render_route(
     check_updates: bool,
     update_state: &crate::features::updater::UpdateState,
     startup_entries: &[crate::entities::startup::StartupEntry],
-    startup_filter: Option<crate::entities::startup::StartupSource>,
+    startup_filters: startup_page::StartupFilterState,
+    startup_filter_handlers: startup_page::StartupFilterHandlers,
     startup_search_query: &str,
     startup_search_focused: bool,
     startup_search_hovered: bool,
@@ -140,11 +114,6 @@ pub fn render_route(
     on_copy_startup_path: impl Fn(&crate::entities::startup::StartupEntry, &mut Window, &mut App)
     + 'static,
     on_toggle_startup_menu: impl Fn(Option<String>, &mut Window, &mut App) + 'static,
-    on_select_startup_filter: impl Fn(
-        Option<crate::entities::startup::StartupSource>,
-        &mut Window,
-        &mut App,
-    ) + 'static,
     on_change_startup_search: impl Fn(String, &mut Window, &mut App) + 'static,
     on_hover_startup_search: impl Fn(&bool, &mut Window, &mut App) + 'static,
     on_focus_startup_search: impl Fn(bool, &mut Window, &mut App) + 'static,
@@ -171,21 +140,25 @@ pub fn render_route(
     let on_toggle_dropdown_arc = Arc::new(on_toggle_dropdown);
     let on_toggle_dd_set = on_toggle_dropdown_arc.clone();
     let on_toggle_dd_gpu = on_toggle_dropdown_arc.clone();
+    let on_toggle_dd_startup = on_toggle_dropdown_arc.clone();
     let on_toggle_dd_input = on_toggle_dropdown_arc;
 
     let on_hover_dropdown_arc = Arc::new(on_hover_dropdown);
     let on_hover_dd_set = on_hover_dropdown_arc.clone();
     let on_hover_dd_gpu = on_hover_dropdown_arc.clone();
+    let on_hover_dd_startup = on_hover_dropdown_arc.clone();
     let on_hover_dd_input = on_hover_dropdown_arc;
 
     let on_hover_option_arc = Arc::new(on_hover_option);
     let on_hover_opt_set = on_hover_option_arc.clone();
     let on_hover_opt_gpu = on_hover_option_arc.clone();
+    let on_hover_opt_startup = on_hover_option_arc.clone();
     let on_hover_opt_input = on_hover_option_arc;
 
     let on_close_dropdowns_arc = Arc::new(on_close_dropdowns);
     let on_close_dd_set = on_close_dropdowns_arc.clone();
     let on_close_dd_gpu = on_close_dropdowns_arc.clone();
+    let on_close_dd_startup = on_close_dropdowns_arc.clone();
     let on_close_dd_input = on_close_dropdowns_arc;
 
     let on_hover_tooltip_arc = Arc::new(on_hover_tooltip);
@@ -379,33 +352,54 @@ pub fn render_route(
         AppRoute::Backups => {
             backups_page.map_or_else(|| div().into_any_element(), IntoElement::into_any_element)
         }
-        AppRoute::Startup => StartupPage::new(
-            startup_entries.to_vec(),
-            startup_filter,
-            startup_search_query,
-            startup_search_focused,
-            startup_search_hovered,
-            startup_search_selection,
-            startup_open_menu_id.map(ToString::to_string),
-            hovered_startup_card,
-        )
-        .search_focus(startup_search_focus)
-        .on_change_search(on_change_startup_search)
-        .on_hover_search(on_hover_startup_search)
-        .on_focus_search(on_focus_startup_search)
-        .on_selection_search(on_selection_startup_search)
-        .on_hover_card(on_hover_startup_card)
-        .on_toggle(on_toggle_startup)
-        .on_delete(on_delete_startup)
-        .on_open_folder(on_open_startup_folder)
-        .on_open_source(on_open_startup_source)
-        .on_copy_path(on_copy_startup_path)
-        .on_hover_tooltip(move |tt, window, cx| {
-            on_hover_tt_startup(tt, window, cx);
-        })
-        .on_toggle_menu(on_toggle_startup_menu)
-        .on_select_filter(on_select_startup_filter)
-        .into_any_element(),
+        AppRoute::Startup => {
+            let mut filter_handlers = startup_filter_handlers;
+            let on_hover_dd = on_hover_dd_startup.clone();
+            let on_hover_opt = on_hover_opt_startup.clone();
+            filter_handlers.on_toggle_dropdown = Some(on_toggle_dd_startup);
+            filter_handlers.on_hover_dropdown = Some(Arc::new(move |id, hov, window, cx| {
+                on_hover_dd(id, &hov, window, cx);
+            }));
+            filter_handlers.on_hover_option = Some(Arc::new(move |d_id, opt, hov, window, cx| {
+                on_hover_opt(d_id, opt, &hov, window, cx);
+            }));
+            filter_handlers.on_close_dropdowns = Some(on_close_dd_startup);
+
+            let dropdown_state = startup_page::StartupDropdownState {
+                open_dropdown,
+                open_dropdown_upward,
+                opening_dropdown,
+                closing_dropdown,
+                hovered_dropdown,
+                hovered_option,
+            };
+
+            startup_page::render_startup_page(startup_page::StartupRouteParams {
+                entries: startup_entries.to_vec(),
+                filter_state: startup_filters,
+                dropdown_state,
+                search_query: startup_search_query,
+                search_focused: startup_search_focused,
+                search_hovered: startup_search_hovered,
+                search_selection: startup_search_selection,
+                search_focus: startup_search_focus,
+                open_menu_id: startup_open_menu_id.map(ToString::to_string),
+                hovered_card_id: hovered_startup_card,
+                filter_handlers,
+                on_change_search: Arc::new(on_change_startup_search),
+                on_hover_search: Arc::new(on_hover_startup_search),
+                on_focus_search: Arc::new(on_focus_startup_search),
+                on_selection_search: Arc::new(on_selection_startup_search),
+                on_hover_card: Arc::new(on_hover_startup_card),
+                on_toggle: Arc::new(on_toggle_startup),
+                on_delete: Arc::new(on_delete_startup),
+                on_open_folder: Arc::new(on_open_startup_folder),
+                on_open_source: Arc::new(on_open_startup_source),
+                on_copy_path: Arc::new(on_copy_startup_path),
+                on_hover_tooltip: on_hover_tt_startup,
+                on_toggle_menu: Arc::new(on_toggle_startup_menu),
+            })
+        }
         AppRoute::Cleanup => {
             cleanup_page.map_or_else(|| div().into_any_element(), IntoElement::into_any_element)
         }

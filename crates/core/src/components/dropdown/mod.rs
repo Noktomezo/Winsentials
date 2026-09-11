@@ -34,6 +34,7 @@ pub struct Dropdown {
     hovered: bool,
     upward: bool,
     width: Option<gpui::Pixels>,
+    full_width: bool,
     hovered_option: Option<&'static str>,
     on_toggle: Option<DropdownToggleHandler>,
     on_select: Option<DropdownSelectHandler>,
@@ -63,6 +64,7 @@ impl Dropdown {
             hovered: false,
             upward: false,
             width: None,
+            full_width: false,
             hovered_option: None,
             on_toggle: None,
             on_select: None,
@@ -76,6 +78,12 @@ impl Dropdown {
     #[must_use]
     pub fn width(mut self, width: gpui::Pixels) -> Self {
         self.width = Some(width);
+        self
+    }
+
+    #[must_use]
+    pub fn w_full(mut self) -> Self {
+        self.full_width = true;
         self
     }
 
@@ -223,6 +231,7 @@ impl RenderOnce for Dropdown {
             .replace("\")", "")
             .replace('\"', "")
             .replace(' ', "_");
+        let is_full_width = self.full_width;
         let trigger_width = self.width.unwrap_or(px(150.0));
 
         let icon_el = self
@@ -271,8 +280,11 @@ impl RenderOnce for Dropdown {
         } else {
             px(0.0)
         };
-        let max_label_width =
-            (trigger_width - px(20.0) - px(2.0) - px(14.0) - px(8.0) - icon_space).max(px(30.0));
+        let max_label_width = if is_full_width {
+            px(500.0)
+        } else {
+            (trigger_width - px(20.0) - px(2.0) - px(14.0) - px(8.0) - icon_space).max(px(30.0))
+        };
 
         let base_left_stack = div()
             .id(ElementId::Name(
@@ -319,7 +331,7 @@ impl RenderOnce for Dropdown {
             base_left_stack.into_any_element()
         };
 
-        let trigger = div()
+        let mut trigger = div()
             .id(self.id)
             .debug_selector({
                 let id_clone = dropdown_id_str.clone();
@@ -330,12 +342,19 @@ impl RenderOnce for Dropdown {
             .justify_between()
             .gap(px(8.0))
             .h(px(32.0))
-            .w(trigger_width)
             .px(px(10.0))
             .rounded(px(6.0))
             .border_1()
             .bg(theme.input_bg)
-            .cursor_pointer()
+            .cursor_pointer();
+
+        if is_full_width {
+            trigger = trigger.w_full();
+        } else {
+            trigger = trigger.w(trigger_width);
+        }
+
+        let trigger = trigger
             .on_hover(move |&hovered, window, cx| {
                 if let Some(ref h) = on_hover {
                     h(&hovered, window, cx);
@@ -371,9 +390,14 @@ impl RenderOnce for Dropdown {
                 let id_clone = dropdown_id_str.clone();
                 move || format!("{id_clone}_root")
             })
-            .relative()
-            .w(trigger_width)
-            .child(trigger);
+            .relative();
+
+        if is_full_width {
+            root_container = root_container.w_full().flex_1();
+        } else {
+            root_container = root_container.w(trigger_width);
+        }
+        root_container = root_container.child(trigger);
 
         if is_open || is_closing {
             let menu_content = render_dropdown_menu(DropdownMenuParams {
@@ -383,6 +407,7 @@ impl RenderOnce for Dropdown {
                 is_open,
                 is_closing,
                 opens_upwards: self.upward,
+                is_full_width,
                 trigger_width,
                 dropdown_id_str: dropdown_id_str.clone(),
                 theme,

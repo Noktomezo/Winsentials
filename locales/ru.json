@@ -422,7 +422,17 @@
     "disabled": "Отключено",
     "unknown_publisher": "Неизвестный издатель",
     "search_placeholder": "Поиск...",
-    "badge_tooltip": "%{total} элементов (%{enabled} включено, %{disabled} отключено)"
+    "badge_tooltip": "%{total} элементов (%{enabled} включено, %{disabled} отключено)",
+    "filters_tooltip": "Фильтры",
+    "reset_filters": "Сбросить фильтры",
+    "filter_scope_title": "Пользователи",
+    "filter_source_title": "Источник",
+    "filter_status_title": "Статус",
+    "filter_any": "Любой",
+    "filter_user_current": "Этот",
+    "filter_user_all": "Все",
+    "filter_enabled": "Вкл",
+    "filter_disabled": "Выкл"
   },
   "cleanup": {
     "title": "Очистка",

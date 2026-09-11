@@ -187,8 +187,8 @@ impl AppView {
     fn dropdown_required_space_below(name: &str) -> gpui::Pixels {
         let item_count: f32 = match name {
             "language" | "transparency" => 2.0,
-            "theme" | "ctf_optimization" => 3.0,
-            "snapkey" => 5.0,
+            "theme" | "ctf_optimization" | "startup_scope" | "startup_status" => 3.0,
+            "snapkey" | "startup_source" => 5.0,
             "palette" => 6.0,
             _ => 4.0,
         };
