@@ -2,8 +2,9 @@ use std::collections::HashSet;
 use std::env;
 use std::fs;
 
+use super::devices::parse_unused_devices;
 use super::rules::{CATALOG, Exclusion, Rule, is_broad_rule, parse_catalog};
-use super::scanner::{parse_unused_devices, resolve_rule};
+use super::scanner::resolve_rule;
 use super::types::{CleanupCategory, CleanupSnapshot, CleanupState, CleanupTarget};
 
 #[test]

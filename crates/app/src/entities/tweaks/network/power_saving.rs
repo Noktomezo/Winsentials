@@ -1,14 +1,11 @@
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-use std::process::Command;
-
-#[cfg(target_os = "windows")]
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
 const REG_NET_CLASS: &str =
     r"SYSTEM\CurrentControlSet\Control\Class\{4d36e972-e325-11ce-bfc1-08002be10318}";
 const REG_NET_POWER_BACKUP: &str = r"Software\Winsentials\NetworkPowerSavingBackup";
 const MAX_ADAPTER_SLOTS: u32 = 64;
+
+const PROP_PNP_CAPABILITIES: &str = "PnPCapabilities";
+/// Bitmask value 24 (0x18) in NDIS `PnPCapabilities` disables "Allow the computer to turn off this device to save power".
+const PNP_CAP_DISABLE_POWER_OFF: u32 = 24;
 
 const TARGET_NET_PROPERTIES: &[&str] = &[
     "SipsEnabled",
@@ -82,6 +79,15 @@ pub fn set_network_power_saving_disabled(applied: bool) -> Result<(), String> {
                             entries.push((sub.clone(), prop, None, Some(v)));
                         }
                     }
+
+                    // Manage OS-level power saving checkbox via PnPCapabilities directly in registry
+                    if key.get_string("NetCfgInstanceId").is_ok() {
+                        if let Ok(cap) = key.get_u32(PROP_PNP_CAPABILITIES) {
+                            entries.push((sub.clone(), PROP_PNP_CAPABILITIES, None, Some(cap)));
+                        } else {
+                            entries.push((sub.clone(), PROP_PNP_CAPABILITIES, None, Some(0)));
+                        }
+                    }
                 }
             }
 
@@ -103,12 +109,14 @@ pub fn set_network_power_saving_disabled(applied: bool) -> Result<(), String> {
                 }
             }
 
-            // 2. Set all found properties to 0 (preserving string vs dword format)
+            // 2. Set all found properties (target props to 0, PnPCapabilities to 24)
             let mut success_count = 0;
             let mut error_count = 0;
             for (path, prop, str_val, _) in &entries {
                 if let Ok(key) = windows_registry::LOCAL_MACHINE.create(path) {
-                    let res = if str_val.is_some() {
+                    let res = if *prop == PROP_PNP_CAPABILITIES {
+                        key.set_u32(prop, PNP_CAP_DISABLE_POWER_OFF)
+                    } else if str_val.is_some() {
                         key.set_string(prop, "0")
                     } else {
                         key.set_u32(prop, 0)
@@ -129,16 +137,6 @@ pub fn set_network_power_saving_disabled(applied: bool) -> Result<(), String> {
                         .to_string(),
                 );
             }
-
-            // 3. Disable OS-level "Allow the computer to turn off this device to save power"
-            let _ = Command::new("powershell")
-                .args([
-                    "-NoProfile",
-                    "-Command",
-                    "Get-NetAdapter -Physical | Get-NetAdapterPowerManagement -ErrorAction SilentlyContinue | Where-Object AllowComputerToTurnOffDevice -ne 'Unsupported' | ForEach-Object { $_.AllowComputerToTurnOffDevice = 'Disabled'; $_ | Set-NetAdapterPowerManagement }",
-                ])
-                .creation_flags(CREATE_NO_WINDOW)
-                .status();
         } else {
             // Revert: restore from backup if present
             let mut restored = false;
@@ -158,7 +156,11 @@ pub fn set_network_power_saving_disabled(applied: bool) -> Result<(), String> {
                             if let Some((path, prop)) = rest.split_once("::") {
                                 if let Ok(orig_val) = backup_key.get_u32(&item_name) {
                                     if let Ok(key) = windows_registry::LOCAL_MACHINE.create(path) {
-                                        let _ = key.set_u32(prop, orig_val);
+                                        if prop == PROP_PNP_CAPABILITIES && orig_val == 0 {
+                                            let _ = key.remove_value(prop);
+                                        } else {
+                                            let _ = key.set_u32(prop, orig_val);
+                                        }
                                         restored = true;
                                     }
                                 }
@@ -169,11 +171,12 @@ pub fn set_network_power_saving_disabled(applied: bool) -> Result<(), String> {
                 let _ = windows_registry::CURRENT_USER.remove_tree(REG_NET_POWER_BACKUP);
             }
 
-            // Fallback if no backup: restore known defaults to "1"
+            // Fallback if no backup: restore known defaults to "1" and remove PnPCapabilities override
             if !restored {
                 for i in 0..MAX_ADAPTER_SLOTS {
                     let sub = format!(r"{REG_NET_CLASS}\{i:04}");
                     if let Ok(key) = windows_registry::LOCAL_MACHINE.create(&sub) {
+                        let _ = key.remove_value(PROP_PNP_CAPABILITIES);
                         for &prop in TARGET_NET_PROPERTIES {
                             if key.get_string(prop).is_ok() {
                                 let _ = key.set_string(prop, "1");
@@ -184,16 +187,6 @@ pub fn set_network_power_saving_disabled(applied: bool) -> Result<(), String> {
                     }
                 }
             }
-
-            // Restore OS-level power saving checkbox
-            let _ = Command::new("powershell")
-                .args([
-                    "-NoProfile",
-                    "-Command",
-                    "Get-NetAdapter -Physical | Get-NetAdapterPowerManagement -ErrorAction SilentlyContinue | Where-Object AllowComputerToTurnOffDevice -ne 'Unsupported' | ForEach-Object { $_.AllowComputerToTurnOffDevice = 'Enabled'; $_ | Set-NetAdapterPowerManagement }",
-                ])
-                .creation_flags(CREATE_NO_WINDOW)
-                .status();
         }
         Ok(())
     }
