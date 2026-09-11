@@ -13,6 +13,25 @@ use windows_sys::Win32::UI::Shell::ShellExecuteW;
 #[cfg(target_os = "windows")]
 use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
 
+/// Creates a `duct::Expression` configured with `CREATE_NO_WINDOW` (`0x0800_0000`) on Windows,
+/// completely suppressing console/terminal window creation when launching console executables
+/// from a GUI subsystem application.
+pub fn hidden_cmd<T, U>(program: T, args: U) -> duct::Expression
+where
+    T: duct::IntoExecutablePath,
+    U: IntoIterator,
+    U::Item: Into<std::ffi::OsString>,
+{
+    let expr = duct::cmd(program, args);
+    #[cfg(target_os = "windows")]
+    let expr = expr.before_spawn(|cmd| {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x0800_0000);
+        Ok(())
+    });
+    expr
+}
+
 /// Terminates all processes matching `target_name` (case-insensitive, e.g. "explorer.exe", "ctfmon.exe").
 /// Returns the number of processes successfully terminated.
 pub fn kill_process_by_name(target_name: &str) -> usize {
