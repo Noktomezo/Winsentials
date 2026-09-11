@@ -6,6 +6,7 @@ pub mod interface_tweak;
 pub mod network;
 pub mod registry;
 pub mod security;
+pub mod system;
 
 pub use backup::TweakBackup;
 #[allow(unused_imports)]

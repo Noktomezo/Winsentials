@@ -7,7 +7,7 @@ fn system_tweaks_only_flag_meaningful_side_effects() {
         .filter(|tweak| tweak.category == TweakCategory::System)
         .collect();
 
-    assert_eq!(system.len(), 8);
+    assert_eq!(system.len(), 10);
     assert_eq!(system[0].side_effect.unwrap().level, SideEffectLevel::Low);
     assert_eq!(
         system[1].side_effect.unwrap().level,
@@ -22,6 +22,8 @@ fn system_tweaks_only_flag_meaningful_side_effects() {
     assert_eq!(system[5].side_effect.unwrap().level, SideEffectLevel::Low);
     assert!(system[6].side_effect.is_none());
     assert_eq!(system[7].side_effect.unwrap().level, SideEffectLevel::Low);
+    assert_eq!(system[8].side_effect.unwrap().level, SideEffectLevel::Low);
+    assert_eq!(system[9].side_effect.unwrap().level, SideEffectLevel::Low);
 }
 
 #[test]
@@ -121,5 +123,35 @@ fn disable_usb_power_saving_tweak_is_valid() {
     assert_eq!(
         tweak.side_effect.unwrap().description_key,
         "tweaks.disable_usb_power_saving_side_effect"
+    );
+}
+
+#[test]
+fn gpu_tdr_delay_tweak_is_valid() {
+    let tweak = ALL_TWEAKS
+        .iter()
+        .find(|tweak| tweak.id == "gpu_tdr_delay")
+        .unwrap();
+    assert_eq!(tweak.category, TweakCategory::System);
+    assert_eq!(tweak.restart, RestartRequirement::Reboot);
+    assert_eq!(tweak.side_effect.unwrap().level, SideEffectLevel::Low);
+    assert_eq!(
+        tweak.side_effect.unwrap().description_key,
+        "tweaks.gpu_tdr_delay_side_effect"
+    );
+}
+
+#[test]
+fn disable_mpo_tweak_is_valid() {
+    let tweak = ALL_TWEAKS
+        .iter()
+        .find(|tweak| tweak.id == "disable_mpo")
+        .unwrap();
+    assert_eq!(tweak.category, TweakCategory::System);
+    assert_eq!(tweak.restart, RestartRequirement::Reboot);
+    assert_eq!(tweak.side_effect.unwrap().level, SideEffectLevel::Low);
+    assert_eq!(
+        tweak.side_effect.unwrap().description_key,
+        "tweaks.disable_mpo_side_effect"
     );
 }
