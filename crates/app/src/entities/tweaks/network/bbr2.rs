@@ -11,6 +11,20 @@ static BBR2_LAST_CHECK: Mutex<Option<Instant>> = Mutex::new(None);
 pub fn is_bbr2_applied() -> bool {
     #[cfg(target_os = "windows")]
     {
+        // 1. Instant registry check (1 microsecond) via NSI TCP templates
+        if let Ok(key) = windows_registry::LOCAL_MACHINE
+            .open(r"SYSTEM\CurrentControlSet\Control\Nsi\{eb004a03-9b1a-11d4-9123-0050047759bc}\26")
+        {
+            if let Ok(bytes) = key.get_value("00000000") {
+                if bytes.len() > 12 {
+                    let applied = bytes[12] == 6;
+                    BBR2_CACHED_STATE.store(applied, Ordering::Relaxed);
+                    return applied;
+                }
+            }
+        }
+
+        // 2. TTL cache for fallback netsh check
         let now = Instant::now();
         if let Ok(mut last) = BBR2_LAST_CHECK.lock() {
             if let Some(instant) = *last {
