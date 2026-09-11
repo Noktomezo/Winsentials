@@ -2,24 +2,19 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, OpenOptions};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
 
 use glob::{MatchOptions, Pattern};
 
+use super::devices::{remove_unused_device, scan_unused_devices};
 use super::rules::{
     Exclusion, Rule, parse_catalog, parse_exclusions, resolve_roots, rules_detected,
 };
 use super::types::{
     CleanupCategory, CleanupError, CleanupPath, CleanupReport, CleanupSnapshot, CleanupTarget,
 };
-
-#[cfg(target_os = "windows")]
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 pub fn scan_category_targets(category: CleanupCategory) -> Vec<CleanupTarget> {
     if category == CleanupCategory::Devices {
@@ -141,87 +136,6 @@ fn clean_target(target: &CleanupTarget, report: &mut CleanupReport) {
     for root in &target.prune_roots {
         prune_empty_dirs(root);
     }
-}
-
-#[cfg(target_os = "windows")]
-fn base64_encode(bytes: &[u8]) -> String {
-    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut buf = String::with_capacity(bytes.len().div_ceil(3) * 4);
-    for chunk in bytes.chunks(3) {
-        let b0 = chunk[0];
-        let b1 = chunk.get(1).copied().unwrap_or(0);
-        let b2 = chunk.get(2).copied().unwrap_or(0);
-        let n = (u32::from(b0) << 16) | (u32::from(b1) << 8) | u32::from(b2);
-        buf.push(TABLE[((n >> 18) & 0x3F) as usize] as char);
-        buf.push(TABLE[((n >> 12) & 0x3F) as usize] as char);
-        if chunk.len() > 1 {
-            buf.push(TABLE[((n >> 6) & 0x3F) as usize] as char);
-        } else {
-            buf.push('=');
-        }
-        if chunk.len() > 2 {
-            buf.push(TABLE[(n & 0x3F) as usize] as char);
-        } else {
-            buf.push('=');
-        }
-    }
-    buf
-}
-
-pub fn scan_unused_devices() -> Vec<CleanupTarget> {
-    #[cfg(target_os = "windows")]
-    {
-        const SCRIPT: &str = "$ProgressPreference = 'SilentlyContinue'; [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-PnpDevice | Where-Object { -not $_.Present } | ForEach-Object { $n = if ($_.FriendlyName) { $_.FriendlyName } else { $_.Class }; \"{0}`t{1}\" -f ($n -replace '[\\t\\n\\r]', ' '), $_.InstanceId }";
-        let utf16_bytes: Vec<u8> = SCRIPT.encode_utf16().flat_map(u16::to_le_bytes).collect();
-        let encoded = base64_encode(&utf16_bytes);
-        let output = Command::new("powershell")
-            .args(["-NoProfile", "-NonInteractive", "-EncodedCommand", &encoded])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output();
-        let Ok(output) = output else {
-            return Vec::new();
-        };
-        if !output.status.success() {
-            return Vec::new();
-        }
-        parse_unused_devices(&output.stdout)
-    }
-    #[cfg(not(target_os = "windows"))]
-    Vec::new()
-}
-
-pub(crate) fn parse_unused_devices(output: &[u8]) -> Vec<CleanupTarget> {
-    String::from_utf8_lossy(output)
-        .lines()
-        .filter_map(|line| line.split_once('\t'))
-        .filter(|(name, instance_id)| !name.is_empty() && !instance_id.is_empty())
-        .map(|(name, instance_id)| CleanupTarget {
-            id: format!("devices:{instance_id}"),
-            name: name.to_owned(),
-            category: CleanupCategory::Devices,
-            paths: Vec::new(),
-            prune_roots: Vec::new(),
-            device_instance_id: Some(instance_id.to_owned()),
-            bytes: 0,
-        })
-        .collect()
-}
-
-fn remove_unused_device(instance_id: &str) -> Result<(), CleanupError> {
-    #[cfg(target_os = "windows")]
-    {
-        let status = Command::new("pnputil")
-            .args(["/remove-device", instance_id])
-            .creation_flags(CREATE_NO_WINDOW)
-            .status()
-            .map_err(|_| CleanupError::DeviceRemoval(instance_id.to_owned()))?;
-        status
-            .success()
-            .then_some(())
-            .ok_or_else(|| CleanupError::DeviceRemoval(instance_id.to_owned()))
-    }
-    #[cfg(not(target_os = "windows"))]
-    Err(CleanupError::DeviceRemoval(instance_id.to_owned()))
 }
 
 pub(crate) fn resolve_rule(

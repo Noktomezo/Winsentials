@@ -11,7 +11,54 @@ use winsentials::features;
 use winsentials::shared::assets::EmbeddedAssetSource;
 use winsentials::shared::theme::Theme;
 
+fn handle_cli_args() -> bool {
+    let mut args = std::env::args().skip(1);
+    while let Some(arg) = args.next() {
+        if arg == "--copy-image" {
+            if let Some(path) = args.next() {
+                winsentials::entities::tweaks::context_menu::copy_image::handle_cli_copy_image(
+                    &path,
+                );
+            }
+            return true;
+        }
+    }
+    false
+}
+
+fn app_fonts() -> Vec<std::borrow::Cow<'static, [u8]>> {
+    vec![
+        std::borrow::Cow::Borrowed(
+            include_bytes!("../../../assets/fonts/IBM Plex Sans/static/IBMPlexSans-Regular.ttf")
+                .as_slice(),
+        ),
+        std::borrow::Cow::Borrowed(
+            include_bytes!("../../../assets/fonts/IBM Plex Sans/static/IBMPlexSans-Medium.ttf")
+                .as_slice(),
+        ),
+        std::borrow::Cow::Borrowed(
+            include_bytes!("../../../assets/fonts/IBM Plex Sans/static/IBMPlexSans-SemiBold.ttf")
+                .as_slice(),
+        ),
+        std::borrow::Cow::Borrowed(
+            include_bytes!("../../../assets/fonts/IBM Plex Sans/static/IBMPlexSans-Bold.ttf")
+                .as_slice(),
+        ),
+        std::borrow::Cow::Borrowed(
+            include_bytes!("../../../assets/fonts/IBM Plex Mono/IBMPlexMono-Regular.ttf")
+                .as_slice(),
+        ),
+        std::borrow::Cow::Borrowed(
+            include_bytes!("../../../assets/fonts/IBM Plex Mono/IBMPlexMono-Medium.ttf").as_slice(),
+        ),
+    ]
+}
+
 fn main() {
+    if handle_cli_args() {
+        return;
+    }
+
     let Some(_single_instance) = features::single_instance::try_acquire_single_instance() else {
         return;
     };
@@ -24,41 +71,7 @@ fn main() {
     Application::with_platform(Rc::new(platform))
         .with_assets(EmbeddedAssetSource)
         .run(|cx: &mut App| {
-            let fonts = vec![
-                std::borrow::Cow::Borrowed(
-                    include_bytes!(
-                        "../../../assets/fonts/IBM Plex Sans/static/IBMPlexSans-Regular.ttf"
-                    )
-                    .as_slice(),
-                ),
-                std::borrow::Cow::Borrowed(
-                    include_bytes!(
-                        "../../../assets/fonts/IBM Plex Sans/static/IBMPlexSans-Medium.ttf"
-                    )
-                    .as_slice(),
-                ),
-                std::borrow::Cow::Borrowed(
-                    include_bytes!(
-                        "../../../assets/fonts/IBM Plex Sans/static/IBMPlexSans-SemiBold.ttf"
-                    )
-                    .as_slice(),
-                ),
-                std::borrow::Cow::Borrowed(
-                    include_bytes!(
-                        "../../../assets/fonts/IBM Plex Sans/static/IBMPlexSans-Bold.ttf"
-                    )
-                    .as_slice(),
-                ),
-                std::borrow::Cow::Borrowed(
-                    include_bytes!("../../../assets/fonts/IBM Plex Mono/IBMPlexMono-Regular.ttf")
-                        .as_slice(),
-                ),
-                std::borrow::Cow::Borrowed(
-                    include_bytes!("../../../assets/fonts/IBM Plex Mono/IBMPlexMono-Medium.ttf")
-                        .as_slice(),
-                ),
-            ];
-            cx.text_system().add_fonts(fonts).ok();
+            cx.text_system().add_fonts(app_fonts()).ok();
 
             cx.set_global(Theme::dark());
             cx.set_global(winsentials::entities::tweaks::TweakStates::load_initial());
