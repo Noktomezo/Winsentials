@@ -1,45 +1,37 @@
-use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Duration, Instant};
-
-const CACHE_TTL: Duration = Duration::from_secs(10);
-
-static BBR2_CACHED_STATE: AtomicBool = AtomicBool::new(false);
-static BBR2_LAST_CHECK: Mutex<Option<Instant>> = Mutex::new(None);
+const REG_WINSENTIALS: &str = r"Software\Winsentials";
+const REG_BBR2_ENABLED: &str = "Bbr2Enabled";
 
 #[must_use]
 pub fn is_bbr2_applied() -> bool {
     #[cfg(target_os = "windows")]
     {
-        // 1. Instant registry check (1 microsecond) via NSI TCP templates
+        // 1. Check Winsentials recorded state
+        if let Ok(key) = windows_registry::LOCAL_MACHINE.open(REG_WINSENTIALS) {
+            if let Ok(val) = key.get_u32(REG_BBR2_ENABLED) {
+                return val == 1;
+            }
+        }
+        if let Ok(key) = windows_registry::CURRENT_USER.open(REG_WINSENTIALS) {
+            if let Ok(val) = key.get_u32(REG_BBR2_ENABLED) {
+                return val == 1;
+            }
+        }
+
+        // 2. Instant registry check via NSI TCP templates (byte 12 == 6 corresponds to BBR2)
         if let Ok(key) = windows_registry::LOCAL_MACHINE
             .open(r"SYSTEM\CurrentControlSet\Control\Nsi\{eb004a03-9b1a-11d4-9123-0050047759bc}\26")
         {
             if let Ok(bytes) = key.get_value("00000000") {
-                if bytes.len() > 12 {
-                    let applied = bytes[12] == 6;
-                    BBR2_CACHED_STATE.store(applied, Ordering::Relaxed);
-                    return applied;
+                if bytes.len() > 12 && bytes[12] == 6 {
+                    return true;
                 }
             }
         }
 
-        // 2. TTL cache for fallback netsh check
-        let now = Instant::now();
-        if let Ok(mut last) = BBR2_LAST_CHECK.lock() {
-            if let Some(instant) = *last {
-                if now.duration_since(instant) < CACHE_TTL {
-                    return BBR2_CACHED_STATE.load(Ordering::Relaxed);
-                }
-            }
-
-            let applied = query_bbr2_live();
-            BBR2_CACHED_STATE.store(applied, Ordering::Relaxed);
-            *last = Some(now);
-            applied
-        } else {
-            BBR2_CACHED_STATE.load(Ordering::Relaxed)
-        }
+        // On Windows 10/11, BBR2 is NEVER enabled by default (default is CUBIC/NewReno).
+        // Never spawn netsh.exe to query state, as process spawning freezes the UI thread
+        // and causes terminal flashes in GUI subsystem applications.
+        false
     }
     #[cfg(not(target_os = "windows"))]
     {
@@ -48,29 +40,8 @@ pub fn is_bbr2_applied() -> bool {
 }
 
 #[cfg(target_os = "windows")]
-fn query_bbr2_live() -> bool {
-    let output = duct::cmd!(
-        "netsh",
-        "int",
-        "tcp",
-        "show",
-        "supplemental",
-        "template=Internet"
-    )
-    .stdout_capture()
-    .stderr_null()
-    .unchecked()
-    .run();
-
-    output.is_ok_and(|out| {
-        let text = String::from_utf8_lossy(&out.stdout).to_lowercase();
-        text.contains("bbr2")
-    })
-}
-
-#[cfg(target_os = "windows")]
 fn run_netsh(args: &[&str], action: &str) -> Result<(), String> {
-    duct::cmd("netsh", args)
+    crate::shared::process::hidden_cmd("netsh", args)
         .stdout_null()
         .stderr_null()
         .unchecked()
@@ -164,9 +135,12 @@ pub fn set_bbr2(applied: bool) -> Result<(), String> {
             )?;
         }
 
-        BBR2_CACHED_STATE.store(applied, Ordering::Relaxed);
-        if let Ok(mut last) = BBR2_LAST_CHECK.lock() {
-            *last = Some(Instant::now());
+        let val = u32::from(applied);
+        if let Ok(key) = windows_registry::LOCAL_MACHINE.create(REG_WINSENTIALS) {
+            let _ = key.set_u32(REG_BBR2_ENABLED, val);
+        }
+        if let Ok(key) = windows_registry::CURRENT_USER.create(REG_WINSENTIALS) {
+            let _ = key.set_u32(REG_BBR2_ENABLED, val);
         }
 
         Ok(())

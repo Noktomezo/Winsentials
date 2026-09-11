@@ -267,9 +267,15 @@ impl AppView {
         let activity = DiscordRpcActivity::from_str(activity_str);
         self.config.discord_rpc = activity;
         let _ = save_config(&self.config);
-        if let Ok(mut mgr) = self.discord_rpc_manager.lock() {
-            mgr.set_activity(activity);
-        }
+        let rpc = Arc::clone(&self.discord_rpc_manager);
+        cx.background_executor()
+            .spawn(async move {
+                if let Ok(mut mgr) = rpc.lock() {
+                    mgr.set_activity(activity);
+                }
+            })
+            .detach();
+
         let static_str = match activity {
             DiscordRpcActivity::Playing => "playing",
             DiscordRpcActivity::Listening => "listening",

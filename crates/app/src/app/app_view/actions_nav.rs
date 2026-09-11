@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use gpui::{Context, Window};
 
 use crate::features::navigation::AppRoute;
@@ -86,9 +88,15 @@ impl AppView {
 
     pub(crate) fn set_route_internal(&mut self, route: AppRoute, cx: &mut Context<Self>) {
         self.current_route = route;
-        if let Ok(mut mgr) = self.discord_rpc_manager.lock() {
-            mgr.set_route(route);
-        }
+        let rpc = Arc::clone(&self.discord_rpc_manager);
+        cx.background_executor()
+            .spawn(async move {
+                if let Ok(mut mgr) = rpc.lock() {
+                    mgr.set_route(route);
+                }
+            })
+            .detach();
+
         self.open_dropdown = None;
         self.closing_dropdown = None;
         self.hovered_dropdown = None;
