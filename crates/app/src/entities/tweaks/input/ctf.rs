@@ -78,19 +78,17 @@ fn is_ms_ctf_monitor_disabled() -> bool {
 
 #[cfg(target_os = "windows")]
 fn run_hidden_command(program: &str, args: &[&str], action: &str) -> Result<(), String> {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
-    let status = std::process::Command::new(program)
-        .args(args)
-        .creation_flags(CREATE_NO_WINDOW)
-        .status()
-        .map_err(|error| format!("{action}: {error}"))?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(format!("{action}: process exited with {status}"))
-    }
+    duct::cmd(program, args)
+        .unchecked()
+        .run()
+        .map_err(|error| format!("{action}: {error}"))
+        .and_then(|output| {
+            if output.status.success() {
+                Ok(())
+            } else {
+                Err(format!("{action}: process exited with {}", output.status))
+            }
+        })
 }
 
 #[cfg(target_os = "windows")]
@@ -110,9 +108,6 @@ fn remove_registry_value(
 pub fn set_ctf_preset(preset: CtfOptimizationPreset) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
         match preset {
             CtfOptimizationPreset::Standard => {
                 // Re-enable MsCtfMonitor task
@@ -222,11 +217,7 @@ pub fn set_ctf_preset(preset: CtfOptimizationPreset) -> Result<(), String> {
                     .map_err(|error| format!("Failed to set CUAS: {error}"))?;
 
                 // Terminate running ctfmon.exe process
-                std::process::Command::new("taskkill")
-                    .args(["/F", "/IM", "ctfmon.exe"])
-                    .creation_flags(CREATE_NO_WINDOW)
-                    .status()
-                    .map_err(|error| format!("Failed to stop ctfmon.exe: {error}"))?;
+                crate::shared::process::kill_process_by_name("ctfmon.exe");
             }
         }
         Ok(())

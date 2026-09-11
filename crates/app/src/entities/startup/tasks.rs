@@ -198,10 +198,12 @@ pub fn toggle_task_entry(entry: &StartupEntry) -> bool {
 
     #[cfg(target_os = "windows")]
     {
-        let status = std::process::Command::new("schtasks")
-            .args(["/change", "/tn", task_name, action])
-            .status();
-        matches!(status, Ok(s) if s.success())
+        duct::cmd!("schtasks", "/change", "/tn", task_name, action)
+            .stdout_null()
+            .stderr_null()
+            .unchecked()
+            .run()
+            .is_ok_and(|out| out.status.success())
     }
     #[cfg(not(target_os = "windows"))]
     {
@@ -215,10 +217,12 @@ pub fn delete_task_entry(entry: &StartupEntry) -> bool {
 
     #[cfg(target_os = "windows")]
     {
-        let status = std::process::Command::new("schtasks")
-            .args(["/delete", "/tn", task_name, "/f"])
-            .status();
-        matches!(status, Ok(s) if s.success())
+        duct::cmd!("schtasks", "/delete", "/tn", task_name, "/f")
+            .stdout_null()
+            .stderr_null()
+            .unchecked()
+            .run()
+            .is_ok_and(|out| out.status.success())
     }
     #[cfg(not(target_os = "windows"))]
     {

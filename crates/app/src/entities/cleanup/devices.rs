@@ -3,14 +3,6 @@
 use super::types::{CleanupCategory, CleanupError, CleanupTarget};
 
 #[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-#[cfg(target_os = "windows")]
-use std::process::Command;
-
-#[cfg(target_os = "windows")]
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-
-#[cfg(target_os = "windows")]
 use windows_sys::Win32::Devices::DeviceAndDriverInstallation::{
     DIGCF_ALLCLASSES, HDEVINFO, SP_DEVINFO_DATA, SPDRP_CLASS, SPDRP_DEVICEDESC, SPDRP_FRIENDLYNAME,
     SetupDiDestroyDeviceInfoList, SetupDiEnumDeviceInfo, SetupDiGetClassDevsW,
@@ -170,19 +162,53 @@ unsafe fn get_device_registry_string(
     None
 }
 
-/// Removes a disconnected `PnP` device by instance ID.
+/// Removes a disconnected `PnP` device by instance ID natively via Windows `SetupAPI`.
 pub fn remove_unused_device(instance_id: &str) -> Result<(), CleanupError> {
     #[cfg(target_os = "windows")]
     {
-        let status = Command::new("pnputil")
-            .args(["/remove-device", instance_id])
-            .creation_flags(CREATE_NO_WINDOW)
-            .status()
-            .map_err(|_| CleanupError::DeviceRemoval(instance_id.to_owned()))?;
-        status
-            .success()
-            .then_some(())
-            .ok_or_else(|| CleanupError::DeviceRemoval(instance_id.to_owned()))
+        use windows_sys::Win32::Devices::DeviceAndDriverInstallation::{
+            DiUninstallDevice, SP_DEVINFO_DATA, SetupDiCreateDeviceInfoList, SetupDiOpenDeviceInfoW,
+        };
+
+        let wide_id: Vec<u16> = instance_id.encode_utf16().chain(Some(0)).collect();
+        unsafe {
+            let dev_info = SetupDiCreateDeviceInfoList(std::ptr::null(), std::ptr::null_mut());
+            if dev_info == -1_isize as HDEVINFO || dev_info == 0 {
+                return Err(CleanupError::DeviceRemoval(instance_id.to_owned()));
+            }
+            let _guard = DevInfoGuard(dev_info);
+
+            let mut dev_info_data: SP_DEVINFO_DATA = std::mem::zeroed();
+            dev_info_data.cbSize =
+                u32::try_from(std::mem::size_of::<SP_DEVINFO_DATA>()).unwrap_or(0);
+
+            let opened = SetupDiOpenDeviceInfoW(
+                dev_info,
+                wide_id.as_ptr(),
+                std::ptr::null_mut(),
+                0,
+                &raw mut dev_info_data,
+            );
+
+            if opened == 0 {
+                return Err(CleanupError::DeviceRemoval(instance_id.to_owned()));
+            }
+
+            let mut need_reboot = 0;
+            let success = DiUninstallDevice(
+                std::ptr::null_mut(),
+                dev_info,
+                &raw mut dev_info_data,
+                0,
+                &raw mut need_reboot,
+            );
+
+            if success != 0 {
+                Ok(())
+            } else {
+                Err(CleanupError::DeviceRemoval(instance_id.to_owned()))
+            }
+        }
     }
     #[cfg(not(target_os = "windows"))]
     {

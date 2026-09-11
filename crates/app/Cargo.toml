@@ -40,6 +40,7 @@ serde_json = { workspace = true }
 uuid = { workspace = true }
 minisign-verify = { workspace = true }
 tokio = { workspace = true }
+duct = { workspace = true }
 
 [build-dependencies]
 winres = { workspace = true }

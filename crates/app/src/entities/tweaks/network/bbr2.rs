@@ -1,13 +1,7 @@
-use std::process::Command;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-
-#[cfg(target_os = "windows")]
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const CACHE_TTL: Duration = Duration::from_secs(10);
 
 static BBR2_CACHED_STATE: AtomicBool = AtomicBool::new(false);
@@ -41,10 +35,18 @@ pub fn is_bbr2_applied() -> bool {
 
 #[cfg(target_os = "windows")]
 fn query_bbr2_live() -> bool {
-    let output = Command::new("netsh")
-        .args(["int", "tcp", "show", "supplemental", "template=Internet"])
-        .creation_flags(CREATE_NO_WINDOW)
-        .output();
+    let output = duct::cmd!(
+        "netsh",
+        "int",
+        "tcp",
+        "show",
+        "supplemental",
+        "template=Internet"
+    )
+    .stdout_capture()
+    .stderr_null()
+    .unchecked()
+    .run();
 
     output.is_ok_and(|out| {
         let text = String::from_utf8_lossy(&out.stdout).to_lowercase();
@@ -54,16 +56,19 @@ fn query_bbr2_live() -> bool {
 
 #[cfg(target_os = "windows")]
 fn run_netsh(args: &[&str], action: &str) -> Result<(), String> {
-    let status = Command::new("netsh")
-        .args(args)
-        .creation_flags(CREATE_NO_WINDOW)
-        .status()
-        .map_err(|error| format!("{action}: {error}"))?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(format!("{action}: netsh exited with {status}"))
-    }
+    duct::cmd("netsh", args)
+        .stdout_null()
+        .stderr_null()
+        .unchecked()
+        .run()
+        .map_err(|error| format!("{action}: {error}"))
+        .and_then(|output| {
+            if output.status.success() {
+                Ok(())
+            } else {
+                Err(format!("{action}: netsh exited with {}", output.status))
+            }
+        })
 }
 
 pub fn set_bbr2(applied: bool) -> Result<(), String> {

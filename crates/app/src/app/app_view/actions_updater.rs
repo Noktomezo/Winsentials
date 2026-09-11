@@ -313,7 +313,7 @@ impl AppView {
                     .timer(Duration::from_millis(800))
                     .await;
                 if let Ok(current_exe) = std::env::current_exe() {
-                    let _ = std::process::Command::new(current_exe).spawn();
+                    let _ = duct::cmd!(current_exe).start();
                     std::process::exit(0);
                 }
             }

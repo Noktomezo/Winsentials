@@ -216,37 +216,92 @@ fn is_per_user_service_name(name: &str) -> bool {
     }
 }
 
+#[allow(unsafe_code)]
 pub fn toggle_service_entry(entry: &StartupEntry) -> bool {
     let service_name = &entry.raw_id;
-    let new_mode = if entry.status == StartupStatus::Enabled {
-        "demand"
-    } else {
-        "auto"
-    };
 
     #[cfg(target_os = "windows")]
     {
-        let status = std::process::Command::new("sc.exe")
-            .args(["config", service_name, &format!("start={new_mode}")])
-            .status();
-        matches!(status, Ok(s) if s.success())
+        use windows_sys::Win32::System::Services::{
+            ChangeServiceConfigW, CloseServiceHandle, OpenSCManagerW, OpenServiceW,
+            SC_MANAGER_CONNECT, SERVICE_AUTO_START, SERVICE_CHANGE_CONFIG, SERVICE_DEMAND_START,
+            SERVICE_NO_CHANGE,
+        };
+
+        let new_start = if entry.status == StartupStatus::Enabled {
+            SERVICE_DEMAND_START
+        } else {
+            SERVICE_AUTO_START
+        };
+
+        let wide_name: Vec<u16> = service_name.encode_utf16().chain(Some(0)).collect();
+        unsafe {
+            let scm = OpenSCManagerW(std::ptr::null(), std::ptr::null(), SC_MANAGER_CONNECT);
+            if scm.is_null() {
+                return false;
+            }
+
+            let service = OpenServiceW(scm, wide_name.as_ptr(), SERVICE_CHANGE_CONFIG);
+            if service.is_null() {
+                CloseServiceHandle(scm);
+                return false;
+            }
+
+            let res = ChangeServiceConfigW(
+                service,
+                SERVICE_NO_CHANGE,
+                new_start,
+                SERVICE_NO_CHANGE,
+                std::ptr::null(),
+                std::ptr::null(),
+                std::ptr::null_mut(),
+                std::ptr::null(),
+                std::ptr::null(),
+                std::ptr::null(),
+                std::ptr::null(),
+            );
+
+            CloseServiceHandle(service);
+            CloseServiceHandle(scm);
+            res != 0
+        }
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let _ = (service_name, new_mode);
+        let _ = service_name;
         true
     }
 }
 
+#[allow(unsafe_code)]
 pub fn delete_service_entry(entry: &StartupEntry) -> bool {
     let service_name = &entry.raw_id;
 
     #[cfg(target_os = "windows")]
     {
-        let status = std::process::Command::new("sc.exe")
-            .args(["delete", service_name])
-            .status();
-        matches!(status, Ok(s) if s.success())
+        const DELETE: u32 = 0x0001_0000;
+        use windows_sys::Win32::System::Services::{
+            CloseServiceHandle, DeleteService, OpenSCManagerW, OpenServiceW, SC_MANAGER_CONNECT,
+        };
+
+        let wide_name: Vec<u16> = service_name.encode_utf16().chain(Some(0)).collect();
+        unsafe {
+            let scm = OpenSCManagerW(std::ptr::null(), std::ptr::null(), SC_MANAGER_CONNECT);
+            if scm.is_null() {
+                return false;
+            }
+
+            let service = OpenServiceW(scm, wide_name.as_ptr(), DELETE);
+            if service.is_null() {
+                CloseServiceHandle(scm);
+                return false;
+            }
+
+            let res = DeleteService(service);
+            CloseServiceHandle(service);
+            CloseServiceHandle(scm);
+            res != 0
+        }
     }
     #[cfg(not(target_os = "windows"))]
     {

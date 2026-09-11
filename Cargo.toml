@@ -55,6 +55,8 @@ windows-sys = { version = "0.59", features = [
     "Win32_Devices_DeviceAndDriverInstallation",
     "Win32_System_DataExchange",
     "Win32_System_Memory",
+    "Win32_System_Services",
+    "Win32_System_Diagnostics_ToolHelp",
 ] }
 winres = "0.1"
 clap = { version = "4.5", features = ["derive"] }
@@ -66,6 +68,7 @@ serde_json = "1.0"
 uuid = { version = "1.10", features = ["v4"] }
 minisign-verify = "0.2"
 tokio = { version = "1", default-features = false, features = ["rt", "rt-multi-thread", "time"] }
+duct = "1.1.2"
 
 [workspace.lints.rust]
 unsafe_code = "warn"
