@@ -33,6 +33,7 @@ pub struct SideEffect {
     pub description_key: &'static str,
 }
 
+#[derive(Clone, Copy)]
 #[allow(dead_code)]
 pub struct TweakDefinition {
     pub id: &'static str,

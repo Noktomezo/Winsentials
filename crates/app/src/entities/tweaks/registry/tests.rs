@@ -155,3 +155,40 @@ fn disable_mpo_tweak_is_valid() {
         "tweaks.disable_mpo_side_effect"
     );
 }
+
+#[test]
+fn privacy_tweaks_are_registered() {
+    let privacy: Vec<_> = ALL_TWEAKS
+        .iter()
+        .filter(|tweak| tweak.category == TweakCategory::Privacy)
+        .collect();
+
+    assert_eq!(privacy.len(), 18);
+    assert_eq!(privacy[0].id, "telemetry_and_diagnostics");
+    assert_eq!(privacy[1].id, "app_compat_telemetry");
+    assert_eq!(privacy[2].id, "ceip_sqm");
+    assert_eq!(privacy[3].id, "windows_error_reporting");
+    assert_eq!(privacy[4].id, "advertising_id");
+    assert_eq!(privacy[5].id, "activity_history");
+    assert_eq!(privacy[6].id, "input_telemetry");
+    assert_eq!(privacy[7].id, "cloud_speech_cortana");
+    assert_eq!(privacy[8].id, "search_bing_integration");
+    assert_eq!(privacy[9].id, "cloud_sync");
+    assert_eq!(privacy[10].id, "location_and_sensors");
+    assert_eq!(privacy[11].id, "developer_telemetry");
+    assert_eq!(privacy[12].id, "feedback_notifications");
+    assert_eq!(privacy[13].id, "website_language_access");
+    assert_eq!(privacy[14].id, "wifi_sense");
+    assert_eq!(privacy[15].id, "app_camera_mic_access");
+    assert_eq!(privacy[16].id, "app_personal_data_access");
+    assert_eq!(privacy[17].id, "app_file_system_access");
+
+    // Check restart requirement and side effect flags on selected privacy tweaks
+    assert_eq!(privacy[0].restart, RestartRequirement::Reboot);
+    assert_eq!(privacy[5].restart, RestartRequirement::Explorer);
+    assert_eq!(privacy[11].restart, RestartRequirement::Logoff);
+    assert_eq!(
+        privacy[15].side_effect.unwrap().level,
+        SideEffectLevel::Medium
+    );
+}

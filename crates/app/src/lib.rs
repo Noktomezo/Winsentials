@@ -240,4 +240,39 @@ mod tests {
             "tweaks.disable_mpo_side_effect"
         );
     }
+
+    #[test]
+    fn test_privacy_tweaks_i18n_keys() {
+        use crate::entities::tweaks::registry::PRIVACY_TWEAKS;
+
+        for locale in ["ru", "en"] {
+            rust_i18n::set_locale(locale);
+            assert_ne!(rust_i18n::t!("nav.privacy"), "nav.privacy");
+            assert_ne!(rust_i18n::t!("nav.privacy_desc"), "nav.privacy_desc");
+
+            for tweak in PRIVACY_TWEAKS {
+                let title = rust_i18n::t!(tweak.title_key);
+                assert_ne!(
+                    title, tweak.title_key,
+                    "Missing title for {} in {locale}",
+                    tweak.id
+                );
+                let desc = rust_i18n::t!(tweak.desc_key);
+                assert_ne!(
+                    desc, tweak.desc_key,
+                    "Missing desc for {} in {locale}",
+                    tweak.id
+                );
+
+                if let Some(side_effect) = tweak.side_effect {
+                    let se_text = rust_i18n::t!(side_effect.description_key);
+                    assert_ne!(
+                        se_text, side_effect.description_key,
+                        "Missing side effect for {} in {locale}",
+                        tweak.id
+                    );
+                }
+            }
+        }
+    }
 }

@@ -12,6 +12,7 @@ pub enum AppRoute {
     Interface,
     Input,
     System,
+    Privacy,
     NetworkTweaks,
     Tools,
     Startup,
@@ -44,6 +45,7 @@ impl AppRoute {
             Self::Interface => rust_i18n::t!("nav.interface").to_string(),
             Self::Input => rust_i18n::t!("nav.input").to_string(),
             Self::System => rust_i18n::t!("nav.system").to_string(),
+            Self::Privacy => rust_i18n::t!("nav.privacy").to_string(),
             Self::NetworkTweaks => rust_i18n::t!("nav.network_tweaks").to_string(),
             Self::Tools => rust_i18n::t!("nav.tools").to_string(),
             Self::Startup => rust_i18n::t!("startup.title").to_string(),
@@ -67,6 +69,7 @@ impl AppRoute {
             Self::Interface => "Interface".to_string(),
             Self::Input => "Input".to_string(),
             Self::System => "System".to_string(),
+            Self::Privacy => "Privacy".to_string(),
             Self::Tools => "Tools".to_string(),
             Self::Startup => "Startup".to_string(),
             Self::Cleanup => "Cleanup".to_string(),
@@ -106,6 +109,7 @@ impl AppRoute {
             Self::Interface => rust_i18n::t!("nav.interface_desc").to_string(),
             Self::Input => rust_i18n::t!("nav.input_desc").to_string(),
             Self::System => rust_i18n::t!("nav.system_desc").to_string(),
+            Self::Privacy => rust_i18n::t!("nav.privacy_desc").to_string(),
             Self::NetworkTweaks => rust_i18n::t!("nav.network_tweaks_desc").to_string(),
             Self::Tools => rust_i18n::t!("nav.tools_desc").to_string(),
             Self::Startup => rust_i18n::t!("startup.desc").to_string(),
@@ -129,6 +133,7 @@ impl AppRoute {
             Self::Interface => "icons/layout-grid.svg",
             Self::Input => "icons/mouse.svg",
             Self::System => "icons/monitor-cog.svg",
+            Self::Privacy => "icons/eye-off.svg",
             Self::NetworkTweaks => "icons/globe.svg",
             Self::Tools => "icons/wrench.svg",
             Self::Startup => "icons/rocket.svg",
@@ -152,6 +157,7 @@ impl AppRoute {
             Self::Interface => "nav_interface",
             Self::Input => "nav_input",
             Self::System => "nav_system",
+            Self::Privacy => "nav_privacy",
             Self::NetworkTweaks => "nav_network_tweaks",
             Self::Tools => "nav_tools",
             Self::Startup => "nav_startup",
@@ -161,13 +167,14 @@ impl AppRoute {
         }
     }
 
-    pub const TOP_NAV: [Self; 7] = [
+    pub const TOP_NAV: [Self; 8] = [
         Self::Dashboard,
         Self::ContextMenu,
         Self::Explorer,
         Self::Interface,
         Self::Input,
         Self::System,
+        Self::Privacy,
         Self::NetworkTweaks,
     ];
 
@@ -191,6 +198,7 @@ mod tests {
         assert_eq!(AppRoute::Interface.english_name(), "Interface");
         assert_eq!(AppRoute::Input.english_name(), "Input");
         assert_eq!(AppRoute::System.english_name(), "System");
+        assert_eq!(AppRoute::Privacy.english_name(), "Privacy");
         assert_eq!(AppRoute::NetworkTweaks.english_name(), "Network");
         assert_eq!(AppRoute::Tools.english_name(), "Tools");
         assert_eq!(AppRoute::Startup.english_name(), "Startup");
@@ -213,6 +221,7 @@ mod tests {
         assert_eq!(AppRoute::ContextMenu.breadcrumb_english(), "Context Menu");
         assert_eq!(AppRoute::Input.breadcrumb_english(), "Input");
         assert_eq!(AppRoute::System.breadcrumb_english(), "System");
+        assert_eq!(AppRoute::Privacy.breadcrumb_english(), "Privacy");
         assert_eq!(AppRoute::NetworkTweaks.breadcrumb_english(), "Network");
         assert_eq!(AppRoute::Tools.breadcrumb_english(), "Tools");
         assert_eq!(AppRoute::Startup.breadcrumb_english(), "Tools > Startup");
@@ -240,6 +249,7 @@ mod tests {
         assert_eq!(AppRoute::Interface.parent(), Some(AppRoute::Dashboard));
         assert_eq!(AppRoute::Input.parent(), Some(AppRoute::Dashboard));
         assert_eq!(AppRoute::System.parent(), Some(AppRoute::Dashboard));
+        assert_eq!(AppRoute::Privacy.parent(), Some(AppRoute::Dashboard));
         assert_eq!(AppRoute::NetworkTweaks.parent(), Some(AppRoute::Dashboard));
         assert_eq!(AppRoute::Settings.parent(), Some(AppRoute::Dashboard));
     }

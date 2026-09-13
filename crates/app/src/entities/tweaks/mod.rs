@@ -4,6 +4,7 @@ pub mod explorer;
 pub mod input;
 pub mod interface_tweak;
 pub mod network;
+pub mod privacy;
 pub mod registry;
 pub mod security;
 pub mod system;

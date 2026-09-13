@@ -23,6 +23,9 @@ use crate::entities::tweaks::network::{
     is_network_power_saving_disabled, is_rss_applied, set_bbr2, set_disable_ndu,
     set_fast_send_copy, set_network_power_saving_disabled, set_rss,
 };
+use crate::entities::tweaks::registry::types::{
+    RestartRequirement, SideEffectLevel, TweakCategory, TweakDefinition,
+};
 use crate::entities::tweaks::security::{
     are_security_center_notifications_disabled, is_download_warning_disabled,
     is_password_expiration_disabled, is_quick_access_history_disabled,
@@ -36,9 +39,7 @@ use crate::entities::tweaks::system::{
     is_disable_mpo_applied, is_gpu_tdr_delay_applied, set_disable_mpo, set_gpu_tdr_delay,
 };
 
-use super::types::*;
-
-pub const ALL_TWEAKS: &[TweakDefinition] = &[
+pub const GENERAL_TWEAKS: [TweakDefinition; 31] = [
     TweakDefinition::new(
         "classic_context_menu",
         TweakCategory::ContextMenu,
