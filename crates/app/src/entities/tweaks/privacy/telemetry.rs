@@ -43,8 +43,8 @@ pub fn set_telemetry_and_diagnostics_disabled(applied: bool) -> Result<(), Strin
     #[cfg(target_os = "windows")]
     {
         // 1. Service DiagTrack (Automatic by default) & dmwappushservice (Manual/Demand by default)
-        let _ = set_service_disabled("DiagTrack", applied, 2);
-        let _ = set_service_disabled("dmwappushservice", applied, 3);
+        set_service_disabled("DiagTrack", applied, 2)?;
+        set_service_disabled("dmwappushservice", applied, 3)?;
 
         // 2. Registry Policies
         let pol_key = windows_registry::LOCAL_MACHINE
@@ -203,7 +203,7 @@ pub fn is_windows_error_reporting_disabled() -> bool {
 pub fn set_windows_error_reporting_disabled(applied: bool) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        let _ = set_service_disabled("WerSvc", applied, 3);
+        set_service_disabled("WerSvc", applied, 3)?;
 
         let pol_key = windows_registry::LOCAL_MACHINE
             .create(REG_WER_POLICIES)

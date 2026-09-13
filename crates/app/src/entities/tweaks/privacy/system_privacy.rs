@@ -153,7 +153,7 @@ pub fn is_location_and_sensors_disabled() -> bool {
 pub fn set_location_and_sensors_disabled(applied: bool) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        let _ = set_service_disabled("lfsvc", applied, 3);
+        set_service_disabled("lfsvc", applied, 3)?;
 
         let key = windows_registry::LOCAL_MACHINE
             .create(REG_LOCATION_POLICIES)

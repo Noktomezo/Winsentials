@@ -1,6 +1,30 @@
+#[cfg(target_os = "windows")]
+use super::service_helper::{remove_reg_value, set_reg_u32};
+
 const REG_APP_PRIVACY_POLICIES: &str = r"SOFTWARE\Policies\Microsoft\Windows\AppPrivacy";
 
 const VALUE_FORCE_DENY: u32 = 2;
+
+#[cfg(target_os = "windows")]
+const PERMISSION_VALUES: [&str; 8] = [
+    "LetAppsAccessContacts",
+    "LetAppsAccessCalendar",
+    "LetAppsAccessEmail",
+    "LetAppsAccessTasks",
+    "LetAppsAccessMessaging",
+    "LetAppsAccessPhone",
+    "LetAppsAccessCallHistory",
+    "LetAppsAccessAccountInfo",
+];
+
+#[cfg(target_os = "windows")]
+const FS_VALUES: [&str; 5] = [
+    "LetAppsAccessDocumentsLibrary",
+    "LetAppsAccessPicturesLibrary",
+    "LetAppsAccessVideosLibrary",
+    "LetAppsAccessBroadFileSystemAccess",
+    "LetAppsAccessDiagnosticInfo",
+];
 
 // ----------------------------------------------------------------------------
 // 16. App Permissions: Camera & Microphone
@@ -30,13 +54,28 @@ pub fn set_app_camera_mic_access_disabled(applied: bool) -> Result<(), String> {
             .map_err(|e| format!("Failed to open AppPrivacy policy: {e}"))?;
 
         if applied {
-            let _ = key.set_u32("LetAppsAccessCamera", VALUE_FORCE_DENY);
-            let _ = key.set_u32("LetAppsAccessMicrophone", VALUE_FORCE_DENY);
-            let _ = key.set_u32("LetAppsAccessWebcam", VALUE_FORCE_DENY);
+            set_reg_u32(
+                &key,
+                REG_APP_PRIVACY_POLICIES,
+                "LetAppsAccessCamera",
+                VALUE_FORCE_DENY,
+            )?;
+            set_reg_u32(
+                &key,
+                REG_APP_PRIVACY_POLICIES,
+                "LetAppsAccessMicrophone",
+                VALUE_FORCE_DENY,
+            )?;
+            set_reg_u32(
+                &key,
+                REG_APP_PRIVACY_POLICIES,
+                "LetAppsAccessWebcam",
+                VALUE_FORCE_DENY,
+            )?;
         } else {
-            let _ = key.remove_value("LetAppsAccessCamera");
-            let _ = key.remove_value("LetAppsAccessMicrophone");
-            let _ = key.remove_value("LetAppsAccessWebcam");
+            remove_reg_value(&key, REG_APP_PRIVACY_POLICIES, "LetAppsAccessCamera")?;
+            remove_reg_value(&key, REG_APP_PRIVACY_POLICIES, "LetAppsAccessMicrophone")?;
+            remove_reg_value(&key, REG_APP_PRIVACY_POLICIES, "LetAppsAccessWebcam")?;
         }
         Ok(())
     }
@@ -75,23 +114,13 @@ pub fn set_app_personal_data_access_disabled(applied: bool) -> Result<(), String
             .map_err(|e| format!("Failed to open AppPrivacy policy: {e}"))?;
 
         if applied {
-            let _ = key.set_u32("LetAppsAccessContacts", VALUE_FORCE_DENY);
-            let _ = key.set_u32("LetAppsAccessCalendar", VALUE_FORCE_DENY);
-            let _ = key.set_u32("LetAppsAccessEmail", VALUE_FORCE_DENY);
-            let _ = key.set_u32("LetAppsAccessTasks", VALUE_FORCE_DENY);
-            let _ = key.set_u32("LetAppsAccessMessaging", VALUE_FORCE_DENY);
-            let _ = key.set_u32("LetAppsAccessPhone", VALUE_FORCE_DENY);
-            let _ = key.set_u32("LetAppsAccessCallHistory", VALUE_FORCE_DENY);
-            let _ = key.set_u32("LetAppsAccessAccountInfo", VALUE_FORCE_DENY);
+            for val in PERMISSION_VALUES {
+                set_reg_u32(&key, REG_APP_PRIVACY_POLICIES, val, VALUE_FORCE_DENY)?;
+            }
         } else {
-            let _ = key.remove_value("LetAppsAccessContacts");
-            let _ = key.remove_value("LetAppsAccessCalendar");
-            let _ = key.remove_value("LetAppsAccessEmail");
-            let _ = key.remove_value("LetAppsAccessTasks");
-            let _ = key.remove_value("LetAppsAccessMessaging");
-            let _ = key.remove_value("LetAppsAccessPhone");
-            let _ = key.remove_value("LetAppsAccessCallHistory");
-            let _ = key.remove_value("LetAppsAccessAccountInfo");
+            for val in PERMISSION_VALUES {
+                remove_reg_value(&key, REG_APP_PRIVACY_POLICIES, val)?;
+            }
         }
         Ok(())
     }
@@ -130,17 +159,13 @@ pub fn set_app_file_system_access_disabled(applied: bool) -> Result<(), String> 
             .map_err(|e| format!("Failed to open AppPrivacy policy: {e}"))?;
 
         if applied {
-            let _ = key.set_u32("LetAppsAccessDocumentsLibrary", VALUE_FORCE_DENY);
-            let _ = key.set_u32("LetAppsAccessPicturesLibrary", VALUE_FORCE_DENY);
-            let _ = key.set_u32("LetAppsAccessVideosLibrary", VALUE_FORCE_DENY);
-            let _ = key.set_u32("LetAppsAccessBroadFileSystemAccess", VALUE_FORCE_DENY);
-            let _ = key.set_u32("LetAppsAccessDiagnosticInfo", VALUE_FORCE_DENY);
+            for val in FS_VALUES {
+                set_reg_u32(&key, REG_APP_PRIVACY_POLICIES, val, VALUE_FORCE_DENY)?;
+            }
         } else {
-            let _ = key.remove_value("LetAppsAccessDocumentsLibrary");
-            let _ = key.remove_value("LetAppsAccessPicturesLibrary");
-            let _ = key.remove_value("LetAppsAccessVideosLibrary");
-            let _ = key.remove_value("LetAppsAccessBroadFileSystemAccess");
-            let _ = key.remove_value("LetAppsAccessDiagnosticInfo");
+            for val in FS_VALUES {
+                remove_reg_value(&key, REG_APP_PRIVACY_POLICIES, val)?;
+            }
         }
         Ok(())
     }
