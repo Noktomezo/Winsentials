@@ -83,6 +83,21 @@ Treat motion as an intrinsic part of the user experience rather than optional po
 - **Lifecycle hygiene**: Keep animations event-driven or reactive. Never spawn unbounded animation loops or active tick handlers inside standard `render()` callbacks that force perpetual VSync redraws.
 - **Reduced motion**: Respect system accessibility preferences unconditionally. When reduced motion is enabled, replace large translations, smooth scrolling, spring overshoots, and morphs with immediate swaps or subtle fades. Preserve hierarchy, focus, and feedback with less motion, not slower motion.
 
+## GPUI context and concurrency hygiene
+
+- **Context argument order**: In functions and methods taking window and context, `window: &mut Window` must always precede `cx: &mut Context<T>` (or `&mut App`). Event handlers and callbacks come strictly *after* `cx`.
+- **Closure context scoping**: Within `entity.update(cx, |this, cx| ...)`, always use the inner `cx` passed into the closure. Never capture or call through the outer `cx`, which triggers runtime double-borrow panics (`RefCell already borrowed`). Avoid re-entrant entity updates.
+- **Variable shadowing in async spawns**: Use variable shadowing to scope clones in async tasks, keeping borrowed lifetimes minimal and variable names clean without verbose suffixes:
+  ```rust
+  cx.spawn({
+      let state = state.clone();
+      async move {
+          // cleanly scoped clone
+      }
+  });
+  ```
+- **Deterministic timers in GPUI tests**: In GPUI tests, always use `cx.background_executor().timer(duration).await` (or `cx.background_executor.timer(...)` in `TestAppContext`) rather than external timers (`smol::Timer` or `tokio::time::sleep`). This ensures elapsed time and timeouts are tracked deterministically by GPUI's virtual dispatcher during `run_until_parked()`.
+
 ## Measured performance and concurrency
 
 Measure before optimizing. Profile and benchmark release builds against an explicit latency, throughput, or memory target, then improve algorithms, data layout, allocations, and batching before adding concurrency. Keep before/after benchmark evidence for nontrivial performance work.
@@ -96,8 +111,19 @@ Classify work before choosing an executor:
 
 Keep GPUI render, prepaint, paint, and input callbacks free of I/O, blocking calls, long locks, and heavy computation. Compute off-thread, return results to the foreground executor, update entities there, and coalesce state changes into the fewest necessary `notify` calls and animation frames.
 
-## Error handling
+## Error handling and fallible operations
 
 Use both crates by layer. Public APIs in `shared`, `entities`, reusable components, and domain boundaries return typed `thiserror` enums when callers may inspect, recover from, or present distinct failures. Application orchestration and top-level tasks may return `anyhow::Result`; add `anyhow::Context` at I/O and subsystem boundaries, and convert typed errors to `anyhow` only at the application boundary. Preserve each error's `source` instead of flattening failures into strings.
 
-Use `Option` only for normal absence and `Result` for expected failure. Reserve `panic!`, `assert!`, `unreachable!`, and `expect` for documented programmer invariants; handle user input, I/O, network, parsing, and cancellation without panicking. Never discard a `Result` from a detached GPUI task: map it to explicit UI state, log the technical chain once, and show a user-facing message without internal details. Treat cancellation as control flow, and use bounded retries only for idempotent transient failures.
+- **Zero silent error suppression**: Never use `let _ =` to blindly discard errors on fallible operations (`Result`). Always handle errors intentionally:
+  - Propagate with `?` whenever the calling function should handle or report the error.
+  - Log with diagnostic context (`log::warn!`, `tracing`) when an error is non-fatal and operation should continue.
+  - Handle with `match` or `if let Err(...)` for expected no-op conditions (e.g., safely ignoring an already-absent registry value or stopped service).
+- **Surface errors to the user**: Never discard a `Result` from a detached GPUI task. Map failures to explicit UI state, log the technical chain once, and show a user-facing message without leaking internal details.
+- **Failures vs invariants**: Use `Option` only for normal absence and `Result` for expected failure. Reserve `panic!`, `assert!`, `unreachable!`, and `expect` for documented programmer invariants. Prefer `?` over `unwrap()`. Handle user input, I/O, network, parsing, and cancellation without panicking. Avoid unchecked slice indexing `slice[i]`; use `.get()` or pattern matching when bounds are dynamic.
+
+## Code clarity and documentation hygiene
+
+- **Explain "why", not "what"**: Do not write organizational comments or comments that merely narrate what the next line of code does. Comments should only explain the "why" — tricky non-obvious logic, Win32 API quirks, registry caveats, hardware workarounds, or essential safety invariants.
+- **Full words for identifiers**: Avoid cryptic abbreviations (use `queue` instead of `q`, `handler` instead of `h`, `index` instead of `idx` where clarity improves readability).
+- **Zero speculative additions**: Implement only what solves the current requirements or design contract. Avoid unsolicited speculative helpers or over-engineered abstractions.
