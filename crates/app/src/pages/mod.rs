@@ -11,6 +11,7 @@ pub mod interface_page;
 pub mod network_page;
 pub mod network_tweaks_page;
 pub mod page_header;
+pub mod privacy_page;
 pub mod ram_page;
 pub mod security_page;
 pub mod settings_page;
@@ -28,9 +29,9 @@ pub use {
     cpu_page::CpuPage, dashboard_page::DashboardPage, disk_page::DiskPage,
     explorer_page::ExplorerPage, gpu_page::GpuPage, input_page::InputPage,
     interface_page::InterfacePage, network_page::NetworkPage,
-    network_tweaks_page::NetworkTweaksPage, page_header::PageHeader, ram_page::RamPage,
-    security_page::SystemPage, settings_page::SettingsPage, startup_page::StartupPage,
-    tools_page::ToolsPage,
+    network_tweaks_page::NetworkTweaksPage, page_header::PageHeader, privacy_page::PrivacyPage,
+    ram_page::RamPage, security_page::SystemPage, settings_page::SettingsPage,
+    startup_page::StartupPage, tools_page::ToolsPage,
 };
 
 use gpui::{
@@ -135,6 +136,7 @@ pub fn render_route(
     let on_toggle_tweak_iface = on_toggle_tweak_arc.clone();
     let on_toggle_tweak_input = on_toggle_tweak_arc.clone();
     let on_toggle_tweak_security = on_toggle_tweak_arc.clone();
+    let on_toggle_tweak_privacy = on_toggle_tweak_arc.clone();
     let on_toggle_tweak_net = on_toggle_tweak_arc;
 
     let on_toggle_dropdown_arc = Arc::new(on_toggle_dropdown);
@@ -167,6 +169,7 @@ pub fn render_route(
     let on_hover_tt_iface = on_hover_tooltip_arc.clone();
     let on_hover_tt_input = on_hover_tooltip_arc.clone();
     let on_hover_tt_security = on_hover_tooltip_arc.clone();
+    let on_hover_tt_privacy = on_hover_tooltip_arc.clone();
     let on_hover_tt_net = on_hover_tooltip_arc.clone();
     let on_hover_tt_startup = on_hover_tooltip_arc.clone();
     let on_hover_tt_settings = on_hover_tooltip_arc;
@@ -336,6 +339,14 @@ pub fn render_route(
             })
             .on_hover_tooltip(move |tt, window, cx| {
                 on_hover_tt_security(tt, window, cx);
+            })
+            .into_any_element(),
+        AppRoute::Privacy => PrivacyPage::new(windows_build)
+            .on_toggle_tweak(move |id, val, window, cx| {
+                on_toggle_tweak_privacy(id, val, window, cx);
+            })
+            .on_hover_tooltip(move |tt, window, cx| {
+                on_hover_tt_privacy(tt, window, cx);
             })
             .into_any_element(),
         AppRoute::NetworkTweaks => NetworkTweaksPage::new(windows_build)

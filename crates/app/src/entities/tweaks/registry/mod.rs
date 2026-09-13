@@ -5,7 +5,7 @@ use gpui::Global;
 pub mod definitions;
 pub mod types;
 
-pub use definitions::ALL_TWEAKS;
+pub use definitions::{ALL_TWEAKS, GENERAL_TWEAKS, PRIVACY_TWEAKS};
 pub use types::*;
 
 #[must_use]
