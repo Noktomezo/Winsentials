@@ -39,23 +39,9 @@ pub fn set_service_disabled(
             SERVICE_START_TYPE, SERVICE_STATUS, SERVICE_STOP,
         };
 
-        let reg_path = format!(r"SYSTEM\CurrentControlSet\Services\{service_name}");
+        let wide_name: Vec<u16> = service_name.encode_utf16().chain(Some(0)).collect();
         let new_start: SERVICE_START_TYPE = if disabled { 4 } else { default_start };
 
-        match windows_registry::LOCAL_MACHINE.open(&reg_path) {
-            Ok(key) => {
-                key.set_u32("Start", new_start)
-                    .map_err(|e| format!("Failed to set 'Start' in '{reg_path}': {e}"))?;
-            }
-            Err(e) if e.code().0 == HRESULT_FILE_NOT_FOUND => {
-                return Ok(());
-            }
-            Err(e) => {
-                return Err(format!("Failed to open service key '{reg_path}': {e}"));
-            }
-        }
-
-        let wide_name: Vec<u16> = service_name.encode_utf16().chain(Some(0)).collect();
         unsafe {
             let scm = OpenSCManagerW(std::ptr::null(), std::ptr::null(), SC_MANAGER_CONNECT);
             if scm.is_null() {
@@ -65,11 +51,18 @@ pub fn set_service_disabled(
                 ));
             }
 
-            let service = OpenServiceW(
-                scm,
-                wide_name.as_ptr(),
-                SERVICE_CHANGE_CONFIG | SERVICE_STOP,
-            );
+            let desired_access = if disabled {
+                SERVICE_CHANGE_CONFIG | SERVICE_STOP
+            } else {
+                SERVICE_CHANGE_CONFIG
+            };
+
+            let mut service = OpenServiceW(scm, wide_name.as_ptr(), desired_access);
+            if service.is_null() && disabled {
+                // Fallback to config change only if stopping rights are restricted.
+                service = OpenServiceW(scm, wide_name.as_ptr(), SERVICE_CHANGE_CONFIG);
+            }
+
             if service.is_null() {
                 let err = GetLastError();
                 CloseServiceHandle(scm);
@@ -109,11 +102,9 @@ pub fn set_service_disabled(
                 if ctrl_res == 0 {
                     let err = GetLastError();
                     if err != ERROR_SERVICE_NOT_ACTIVE {
-                        CloseServiceHandle(service);
-                        CloseServiceHandle(scm);
-                        return Err(format!(
-                            "Failed to stop service '{service_name}': error code {err}"
-                        ));
+                        eprintln!(
+                            "Note: service '{service_name}' set to disabled, but stop control returned code {err}"
+                        );
                     }
                 }
             }
