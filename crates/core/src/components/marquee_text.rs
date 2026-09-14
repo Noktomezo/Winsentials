@@ -62,6 +62,15 @@ pub fn marquee_shift(text_width: Pixels, viewport_width: Pixels) -> Pixels {
     }
 }
 
+/// Animation sync mode for the marquee overflow fog layer during parent container transitions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum MarqueeFadeMode {
+    #[default]
+    Steady,
+    Opening(Duration),
+    Closing(Duration),
+}
+
 /// Production-grade `MarqueeText` component with smooth back-and-forth motion and edge fog ("туман").
 ///
 /// Features:
@@ -81,6 +90,7 @@ pub struct MarqueeText {
     fade_width: Pixels,
     active: bool,
     fade_enabled: bool,
+    fade_mode: MarqueeFadeMode,
     duration: Duration,
     debug_name: Option<SharedString>,
 }
@@ -99,6 +109,7 @@ impl MarqueeText {
             fade_width: DEFAULT_FADE_WIDTH,
             active: false,
             fade_enabled: true,
+            fade_mode: MarqueeFadeMode::Steady,
             duration: DEFAULT_MARQUEE_DURATION,
             debug_name: None,
         }
@@ -149,6 +160,12 @@ impl MarqueeText {
     #[must_use]
     pub const fn fade_enabled(mut self, enabled: bool) -> Self {
         self.fade_enabled = enabled;
+        self
+    }
+
+    #[must_use]
+    pub const fn fade_mode(mut self, mode: MarqueeFadeMode) -> Self {
+        self.fade_mode = mode;
         self
     }
 
@@ -245,12 +262,29 @@ impl RenderOnce for MarqueeText {
             }
 
             if self.fade_enabled {
-                let fade_anim_id = format!("{}_fog_layer", self.id);
-                let animated_fade_layer = fade_layer.with_animation(
-                    ElementId::Name(fade_anim_id.into()),
-                    Animation::new(Duration::from_millis(120)).with_easing(ease_in_out),
-                    gpui::Styled::opacity,
-                );
+                let animated_fade_layer = match self.fade_mode {
+                    MarqueeFadeMode::Steady => fade_layer.into_any_element(),
+                    MarqueeFadeMode::Opening(duration) => {
+                        let fade_anim_id = format!("{}_fog_open", self.id);
+                        fade_layer
+                            .with_animation(
+                                ElementId::Name(fade_anim_id.into()),
+                                Animation::new(duration).with_easing(ease_in_out),
+                                gpui::Styled::opacity,
+                            )
+                            .into_any_element()
+                    }
+                    MarqueeFadeMode::Closing(duration) => {
+                        let fade_anim_id = format!("{}_fog_close", self.id);
+                        fade_layer
+                            .with_animation(
+                                ElementId::Name(fade_anim_id.into()),
+                                Animation::new(duration).with_easing(ease_in_out),
+                                move |layer, delta| layer.opacity(1.0 - delta),
+                            )
+                            .into_any_element()
+                    }
+                };
                 viewport = viewport.child(animated_fade_layer);
             }
 

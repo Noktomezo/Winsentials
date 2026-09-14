@@ -41,7 +41,7 @@ pub use icon::Icon;
 #[allow(unused_imports)]
 pub use icon_button::{IconButton, IconButtonVariant};
 #[allow(unused_imports)]
-pub use marquee_text::MarqueeText;
+pub use marquee_text::{MarqueeFadeMode, MarqueeText};
 #[allow(unused_imports)]
 pub use menu_item::MenuItem;
 #[allow(unused_imports)]

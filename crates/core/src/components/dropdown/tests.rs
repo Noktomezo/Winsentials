@@ -216,11 +216,11 @@ fn dropdown_animation_opening_and_closing_maintains_continuous_bounds(cx: &mut T
         .expect("overflowing option marquee anchor must be rendered");
     assert!(opt_marquee.size.width > px(0.0));
 
-    // Fog is suppressed during open animation to prevent multi-layer superposition
-    assert!(
-        cx.debug_bounds("test_dd_opt_marquee_aggressive_fade_right")
-            .is_none()
-    );
+    // Fog is rendered and dynamically animated in sync during open animation
+    let opt_fog_opening = cx
+        .debug_bounds("test_dd_opt_marquee_aggressive_fade_right")
+        .expect("overflowing option fog must be rendered during open animation");
+    assert!(opt_fog_opening.size.width > px(0.0));
 
     // 2. Closing phase: open is false, closing is true
     let window_close = cx.open_window(size(px(600.0), px(400.0)), |_, _| TestDropdownView {
@@ -243,10 +243,9 @@ fn dropdown_animation_opening_and_closing_maintains_continuous_bounds(cx: &mut T
         .expect("overflowing option marquee anchor must remain stable during close animation");
     assert_eq!(opt_marquee_close.size.width, opt_marquee.size.width);
 
-    // Fog is suppressed during close animation to prevent multi-layer superposition
-    assert!(
-        cx_close
-            .debug_bounds("test_dd_opt_marquee_aggressive_fade_right")
-            .is_none()
-    );
+    // Fog is rendered and dynamically animated in sync during close animation
+    let opt_fog_closing = cx_close
+        .debug_bounds("test_dd_opt_marquee_aggressive_fade_right")
+        .expect("overflowing option fog must be rendered during close animation");
+    assert!(opt_fog_closing.size.width > px(0.0));
 }

@@ -7,7 +7,7 @@ use gpui::{
     Window, deferred, div, ease_in_out, px,
 };
 
-use crate::components::marquee_text::MarqueeText;
+use crate::components::marquee_text::{MarqueeFadeMode, MarqueeText};
 use crate::theme::Theme;
 
 pub mod render;
@@ -315,7 +315,11 @@ impl RenderOnce for Dropdown {
                 .text_color(theme.text_primary)
                 .fade_color(theme.input_bg)
                 .fade_width(px(8.0))
-                .fade_enabled(!is_morphing)
+                .fade_mode(if is_morphing {
+                    MarqueeFadeMode::Opening(Duration::from_millis(180))
+                } else {
+                    MarqueeFadeMode::Steady
+                })
                 .active(is_trigger_marquee_active)
             });
 
