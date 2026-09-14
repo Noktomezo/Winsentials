@@ -217,7 +217,7 @@ impl RenderOnce for MarqueeText {
                         .flex()
                         .items_center()
                         .with_animation(
-                            self.id,
+                            self.id.clone(),
                             Animation::new(self.duration)
                                 .repeat()
                                 .with_easing(marquee_ping_pong_easing),
@@ -245,7 +245,13 @@ impl RenderOnce for MarqueeText {
             }
 
             if self.fade_enabled {
-                viewport = viewport.child(fade_layer);
+                let fade_anim_id = format!("{}_fog_layer", self.id);
+                let animated_fade_layer = fade_layer.with_animation(
+                    ElementId::Name(fade_anim_id.into()),
+                    Animation::new(Duration::from_millis(120)).with_easing(ease_in_out),
+                    gpui::Styled::opacity,
+                );
+                viewport = viewport.child(animated_fade_layer);
             }
 
             anchor.child(viewport)

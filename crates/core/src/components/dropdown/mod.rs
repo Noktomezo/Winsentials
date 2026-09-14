@@ -315,6 +315,7 @@ impl RenderOnce for Dropdown {
                 .text_color(theme.text_primary)
                 .fade_color(theme.input_bg)
                 .fade_width(px(8.0))
+                .fade_enabled(!is_morphing)
                 .active(is_trigger_marquee_active)
             });
 
@@ -405,6 +406,7 @@ impl RenderOnce for Dropdown {
                 selected_value,
                 hovered_opt,
                 is_open,
+                is_opening: self.opening,
                 is_closing,
                 opens_upwards: self.upward,
                 is_full_width,

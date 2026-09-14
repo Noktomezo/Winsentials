@@ -19,6 +19,7 @@ pub(crate) struct DropdownMenuParams {
     pub selected_value: &'static str,
     pub hovered_opt: Option<&'static str>,
     pub is_open: bool,
+    pub is_opening: bool,
     pub is_closing: bool,
     pub opens_upwards: bool,
     pub is_full_width: bool,
@@ -78,7 +79,9 @@ pub(crate) fn render_dropdown_chevron(
 pub(crate) fn render_dropdown_menu(params: DropdownMenuParams) -> AnyElement {
     let theme = params.theme;
     let is_open = params.is_open;
+    let is_opening = params.is_opening;
     let is_closing = params.is_closing;
+    let is_opt_fade_enabled = !is_opening && !is_closing;
     let hovered_opt = params.hovered_opt;
     let on_select = params.on_select;
     let on_delete = params.on_delete;
@@ -223,6 +226,7 @@ pub(crate) fn render_dropdown_menu(params: DropdownMenuParams) -> AnyElement {
                             .text_color(current_text_color)
                             .fade_color(current_fade)
                             .fade_width(px(8.0))
+                            .fade_enabled(is_opt_fade_enabled)
                             .active(is_opt_active),
                         );
 
