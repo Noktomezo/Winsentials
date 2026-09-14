@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, App, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px,
+    AnyElement, App, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div,
+    img, px,
 };
 use rust_i18n::t;
 
 use crate::entities::{SystemInfo, TelemetryData};
 use crate::features::navigation::AppRoute;
-use crate::pages::page_header::PageHeader;
 use crate::shared::theme::Theme;
 use crate::shared::ui::icon::Icon;
 
@@ -67,7 +67,6 @@ impl RenderOnce for DashboardPage {
     #[allow(clippy::too_many_lines, clippy::cast_precision_loss)]
     fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
-        let route = AppRoute::Dashboard;
         let info = SystemInfo::fetch();
         let telemetry = self.telemetry;
         let hovered_card = self.hovered_card;
@@ -292,7 +291,15 @@ impl RenderOnce for DashboardPage {
             .w_full()
             .p(px(16.0))
             .gap(px(16.0))
-            .child(PageHeader::new(route.title(), route.description()))
+            .child(
+                div()
+                    .flex()
+                    .w_full()
+                    .justify_center()
+                    .items_center()
+                    .py(px(4.0))
+                    .child(img("app-name.png").w(px(429.0)).h(px(32.0)).flex_none()),
+            )
             .child(system_card)
             .child(telemetry_grid)
     }

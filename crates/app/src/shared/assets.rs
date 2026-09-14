@@ -10,6 +10,7 @@ use std::borrow::Cow;
 #[include = "icons/**/*.png"]
 #[include = "icons/blank.ico"]
 #[include = "app-logo.png"]
+#[include = "app-name.png"]
 pub struct EmbeddedAssetSource;
 
 impl AssetSource for EmbeddedAssetSource {
@@ -55,6 +56,7 @@ mod tests {
             "icons/tv.svg",
             "icons/trophy.svg",
             "icons/sliders-horizontal.svg",
+            "app-name.png",
         ];
         let embedded = icons.map(|path| {
             EmbeddedAssetSource
