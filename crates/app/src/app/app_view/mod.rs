@@ -111,6 +111,8 @@ pub struct AppView {
     pub(crate) cleanup: CleanupState,
     pub(crate) update_state: crate::features::updater::UpdateState,
     pub(crate) http_client: reqwest::Client,
+    pub(crate) sparks: Vec<crate::shared::ui::ClickSparkBurst>,
+    pub(crate) next_spark_id: usize,
     #[cfg(debug_assertions)]
     pub dev_perf_monitor: crate::widgets::dev_perf_monitor::DevPerfMonitorState,
 }
@@ -203,6 +205,8 @@ impl AppView {
                 .timeout(Duration::from_secs(15))
                 .build()
                 .unwrap_or_default(),
+            sparks: Vec::new(),
+            next_spark_id: 1,
             #[cfg(debug_assertions)]
             dev_perf_monitor: crate::widgets::dev_perf_monitor::DevPerfMonitorState::new(),
         }
@@ -375,6 +379,17 @@ impl AppView {
             })
             .detach();
         }
+    }
+
+    pub fn add_spark_burst(&mut self, origin: gpui::Point<gpui::Pixels>, cx: &mut Context<Self>) {
+        if !self.config.click_spark || cx.reduce_motion() {
+            return;
+        }
+        let id = self.next_spark_id;
+        self.next_spark_id = self.next_spark_id.wrapping_add(1);
+        self.sparks
+            .push(crate::shared::ui::ClickSparkBurst::new(id, origin));
+        cx.notify();
     }
 }
 

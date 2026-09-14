@@ -249,6 +249,8 @@
     "transparency_desc": "Enable blur and translucent acrylic effects on sidebar and titlebar headers.",
     "transparency_enabled": "Enabled",
     "transparency_disabled": "Disabled",
+    "click_spark_title": "Click Sparks",
+    "click_spark_desc": "Spark particle burst animation on mouse click.",
     "behavior_title": "Behavior",
     "behavior_desc": "System tray, startup behavior, and integrations.",
     "minimize_to_tray_title": "Minimize to tray on close",

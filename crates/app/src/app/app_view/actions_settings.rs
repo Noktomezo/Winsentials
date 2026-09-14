@@ -244,6 +244,17 @@ impl AppView {
         cx.notify();
     }
 
+    pub fn toggle_click_spark(&mut self, enabled: bool, cx: &mut Context<Self>) {
+        self.config.click_spark = enabled;
+        if let Err(error) = save_config(&self.config) {
+            self.show_setting_error("click_spark", &error, cx);
+        }
+        if !enabled {
+            self.sparks.clear();
+        }
+        cx.notify();
+    }
+
     pub fn toggle_autostart(&mut self, enabled: bool, cx: &mut Context<Self>) {
         self.config.autostart = enabled;
         let _ = crate::features::autostart::set_autostart(enabled, self.config.autostart_to_tray);

@@ -17,6 +17,8 @@ pub(crate) struct AppearanceCardParams<'a> {
     pub on_change_language: Option<StringHandler>,
     pub on_change_theme: Option<StringHandler>,
     pub on_change_transparency: Option<BoolHandler>,
+    pub click_spark: bool,
+    pub on_change_click_spark: Option<BoolHandler>,
     pub on_toggle_dropdown: Option<DropdownToggleHandler>,
     pub on_hover_dropdown: Option<DropdownHoverHandler>,
     pub on_hover_option: Option<OptionHoverHandler>,
@@ -319,6 +321,24 @@ pub(crate) fn build_appearance_card(params: AppearanceCardParams<'_>) -> GroupCa
 
     let transparency_row = settings_row(trans_text, switch_el);
 
+    // 5. Click Spark Row
+    let click_spark_text = settings_row_text(
+        rust_i18n::t!("settings.click_spark_title"),
+        rust_i18n::t!("settings.click_spark_desc"),
+        theme,
+    );
+
+    let on_toggle_click_spark = params.on_change_click_spark;
+    let click_spark_switch = Switch::new("click_spark_switch", params.click_spark).on_toggle(
+        move |new_val, window, cx| {
+            if let Some(ref h) = on_toggle_click_spark {
+                h(new_val, window, cx);
+            }
+        },
+    );
+
+    let click_spark_row = settings_row(click_spark_text, click_spark_switch);
+
     GroupCard::new(
         "icons/palette.svg",
         rust_i18n::t!("settings.appearance_title").to_string(),
@@ -329,4 +349,5 @@ pub(crate) fn build_appearance_card(params: AppearanceCardParams<'_>) -> GroupCa
     .child(theme_row)
     .child(palette_row)
     .child(transparency_row)
+    .child(click_spark_row)
 }

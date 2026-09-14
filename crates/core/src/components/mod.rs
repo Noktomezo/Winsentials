@@ -2,6 +2,7 @@ pub mod badge;
 pub mod breadcrumb;
 pub mod button;
 pub mod chip;
+pub mod click_spark;
 pub mod dropdown;
 pub mod group_card;
 pub mod history_graph;
@@ -24,6 +25,8 @@ pub use breadcrumb::{BreadcrumbItem, Breadcrumbs};
 pub use button::{Button, ButtonSize, ButtonVariant};
 #[allow(unused_imports)]
 pub use chip::Chip;
+#[allow(unused_imports)]
+pub use click_spark::{ClickSparkBurst, render_click_sparks};
 #[allow(unused_imports)]
 pub use dropdown::{Dropdown, DropdownItem};
 #[allow(unused_imports)]

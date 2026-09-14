@@ -26,6 +26,8 @@ pub struct AppConfig {
     pub check_updates: bool,
     #[serde(default)]
     pub first_tweak_backup_prompted: bool,
+    #[serde(default = "default_true")]
+    pub click_spark: bool,
 }
 
 impl Default for AppConfig {
@@ -38,6 +40,7 @@ impl Default for AppConfig {
             snapkey: SnapKeyPreset::default(),
             check_updates: true,
             first_tweak_backup_prompted: false,
+            click_spark: true,
         }
     }
 }

@@ -39,6 +39,8 @@ pub struct SettingsPage {
     on_change_language: Option<StringHandler>,
     on_change_theme: Option<StringHandler>,
     on_change_transparency: Option<BoolHandler>,
+    click_spark: bool,
+    on_toggle_click_spark: Option<BoolHandler>,
     on_toggle_minimize_to_tray: Option<BoolHandler>,
     on_toggle_autostart: Option<BoolHandler>,
     on_toggle_autostart_to_tray: Option<BoolHandler>,
@@ -112,6 +114,8 @@ impl SettingsPage {
             on_change_language: None,
             on_change_theme: None,
             on_change_transparency: None,
+            click_spark: true,
+            on_toggle_click_spark: None,
             on_toggle_minimize_to_tray: None,
             on_toggle_autostart: None,
             on_toggle_autostart_to_tray: None,
@@ -160,6 +164,21 @@ impl SettingsPage {
         handler: impl Fn(bool, &mut Window, &mut App) + 'static,
     ) -> Self {
         self.on_change_transparency = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    pub fn click_spark(mut self, enabled: bool) -> Self {
+        self.click_spark = enabled;
+        self
+    }
+
+    #[must_use]
+    pub fn on_toggle_click_spark(
+        mut self,
+        handler: impl Fn(bool, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_toggle_click_spark = Some(Arc::new(handler));
         self
     }
 
@@ -284,6 +303,8 @@ impl RenderOnce for SettingsPage {
             on_change_language: self.on_change_language,
             on_change_theme: self.on_change_theme,
             on_change_transparency: self.on_change_transparency,
+            click_spark: self.click_spark,
+            on_change_click_spark: self.on_toggle_click_spark,
             on_toggle_dropdown: self.on_toggle_dropdown.clone(),
             on_hover_dropdown: self.on_hover_dropdown.clone(),
             on_hover_option: self.on_hover_option.clone(),

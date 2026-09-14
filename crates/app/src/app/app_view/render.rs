@@ -20,6 +20,9 @@ impl Render for AppView {
         #[cfg(debug_assertions)]
         let render_start = std::time::Instant::now();
 
+        let now = std::time::Instant::now();
+        self.sparks.retain(|s| s.is_alive(now));
+
         let theme = Theme::get(cx);
         let sidebar_expanded = self.sidebar_expanded;
         let sidebar_toggle_hovered = self.sidebar_toggle_hovered;
@@ -156,6 +159,9 @@ impl Render for AppView {
             .size_full()
             .bg(theme.window_bg)
             .capture_any_mouse_down(cx.listener(|this, event: &MouseDownEvent, window, cx| {
+                if this.config.click_spark && matches!(event.button, MouseButton::Left) {
+                    this.add_spark_burst(event.position, cx);
+                }
                 match event.button {
                     MouseButton::Navigate(NavigationDirection::Back) => {
                         cx.stop_propagation();
@@ -340,6 +346,13 @@ impl Render for AppView {
                 .into_any_element();
 
             root = root.child(gpui::deferred(modal_el).with_priority(300));
+        }
+
+        if !self.sparks.is_empty() && self.config.click_spark && !cx.reduce_motion() {
+            let spark_el =
+                crate::shared::ui::render_click_sparks(&self.sparks, theme.accent_cyan, now)
+                    .into_any_element();
+            root = root.child(gpui::deferred(spark_el).with_priority(350));
         }
 
         #[cfg(debug_assertions)]

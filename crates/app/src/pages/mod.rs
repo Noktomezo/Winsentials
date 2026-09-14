@@ -63,6 +63,7 @@ pub fn render_route(
     hovered_option: Option<(&'static str, &'static str)>,
     pending_selection: Option<(&'static str, &'static str)>,
     gpu_engine_slots: &HashMap<(usize, usize), &'static str>,
+    click_spark: bool,
     minimize_to_tray: bool,
     autostart: bool,
     autostart_to_tray: bool,
@@ -92,6 +93,7 @@ pub fn render_route(
     on_change_language: impl Fn(&str, &mut Window, &mut App) + 'static,
     on_change_theme: impl Fn(&str, &mut Window, &mut App) + 'static,
     on_change_transparency: impl Fn(bool, &mut Window, &mut App) + 'static,
+    on_toggle_click_spark: impl Fn(bool, &mut Window, &mut App) + 'static,
     on_toggle_minimize_to_tray: impl Fn(bool, &mut Window, &mut App) + 'static,
     on_toggle_autostart: impl Fn(bool, &mut Window, &mut App) + 'static,
     on_toggle_autostart_to_tray: impl Fn(bool, &mut Window, &mut App) + 'static,
@@ -434,6 +436,8 @@ pub fn render_route(
         .on_change_language(on_change_language)
         .on_change_theme(on_change_theme)
         .on_change_transparency(on_change_transparency)
+        .click_spark(click_spark)
+        .on_toggle_click_spark(on_toggle_click_spark)
         .on_toggle_minimize_to_tray(on_toggle_minimize_to_tray)
         .on_toggle_autostart(on_toggle_autostart)
         .on_toggle_autostart_to_tray(on_toggle_autostart_to_tray)
