@@ -327,9 +327,10 @@ impl RenderOnce for Titlebar {
             .flex()
             .items_center()
             .justify_between()
-            .h(px(40.0))
+            .h(px(41.0))
             .px(px(4.0))
-            .py(px(4.0))
+            .pt(px(5.0))
+            .pb(px(4.0))
             .bg(theme.titlebar_bg)
             .w_full()
             // Left container matches the two window controls on the right.
