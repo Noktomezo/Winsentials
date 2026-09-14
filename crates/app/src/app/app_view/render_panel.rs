@@ -64,6 +64,10 @@ impl AppView {
             this.set_transparency(*enabled, cx);
         });
 
+        let on_toggle_click_spark = cx.listener(|this, enabled: &bool, _window, cx| {
+            this.toggle_click_spark(*enabled, cx);
+        });
+
         let on_toggle_min_tray = cx.listener(|this, enabled: &bool, _window, cx| {
             this.toggle_minimize_to_tray(*enabled, cx);
         });
@@ -248,6 +252,7 @@ impl AppView {
             on_close_dropdowns: None,
         };
 
+        let click_spark = self.config.click_spark;
         let minimize_to_tray = self.config.minimize_to_tray;
         let autostart = self.config.autostart;
         let autostart_to_tray = self.config.autostart_to_tray;
@@ -291,6 +296,7 @@ impl AppView {
                 hovered_option,
                 pending_selection,
                 &self.gpu_engine_slots,
+                click_spark,
                 minimize_to_tray,
                 autostart,
                 autostart_to_tray,
@@ -339,6 +345,9 @@ impl AppView {
                 },
                 move |enabled, window, cx| {
                     on_change_trans(&enabled, window, cx);
+                },
+                move |enabled, window, cx| {
+                    on_toggle_click_spark(&enabled, window, cx);
                 },
                 move |enabled, window, cx| {
                     on_toggle_min_tray(&enabled, window, cx);

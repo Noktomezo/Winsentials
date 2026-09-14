@@ -249,6 +249,8 @@
     "transparency_desc": "Включение эффекта размытия и полупрозрачности для бокового меню и заголовка окна.",
     "transparency_enabled": "Включена",
     "transparency_disabled": "Выключена",
+    "click_spark_title": "Эффект клика",
+    "click_spark_desc": "Анимация искр при нажатии мыши.",
     "behavior_title": "Поведение",
     "behavior_desc": "Системный трей, параметры автозапуска и интеграции.",
     "minimize_to_tray_title": "Сворачивание в трей при закрытии",
