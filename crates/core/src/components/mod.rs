@@ -11,6 +11,7 @@ pub mod marquee_text;
 pub mod menu_item;
 pub mod modal;
 pub mod search_input;
+pub mod shiny_text;
 pub mod smooth_scroll;
 pub mod switch;
 pub mod toast;
@@ -44,6 +45,8 @@ pub use menu_item::MenuItem;
 pub use modal::{Modal, ModalVariant};
 #[allow(unused_imports)]
 pub use search_input::SearchInput;
+#[allow(unused_imports)]
+pub use shiny_text::ShinyText;
 #[allow(unused_imports)]
 pub use smooth_scroll::SmoothScroll;
 #[allow(unused_imports)]
