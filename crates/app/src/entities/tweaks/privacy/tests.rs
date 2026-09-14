@@ -33,3 +33,10 @@ fn test_privacy_app_permissions_queries_run_without_panic() {
     let _ = is_app_personal_data_access_disabled();
     let _ = is_app_file_system_access_disabled();
 }
+
+#[test]
+fn test_service_disabled_nonexistent() {
+    // A nonexistent service should return Ok(()) without error
+    let res = service_helper::set_service_disabled("NonExistentTestService12345", true, 3);
+    assert!(res.is_ok());
+}
