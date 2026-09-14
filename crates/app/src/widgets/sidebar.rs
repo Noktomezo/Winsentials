@@ -170,7 +170,9 @@ impl RenderOnce for Sidebar {
             .justify_between()
             .items_center()
             .h_full()
-            .p(px(4.0))
+            .px(px(4.0))
+            .pb(px(4.0))
+            .pt(px(0.0))
             .bg(theme.sidebar_bg)
             .overflow_hidden()
             .with_spring("sidebar_spring", spring, move |sidebar, width| {
