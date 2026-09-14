@@ -1,14 +1,11 @@
 use std::time::Duration;
 
-use gpui::{
-    Animation, AnimationExt, ElementId, FontWeight, IntoElement, ParentElement, SharedString,
-    Styled, div, pulsating_between, px,
-};
+use gpui::{FontWeight, IntoElement, ParentElement, SharedString, Styled, div, px};
 use rust_i18n::t;
 
 use crate::entities::SystemInfo;
 use crate::shared::theme::Theme;
-use crate::shared::ui::GroupCard;
+use crate::shared::ui::{GroupCard, ShinyText};
 
 fn render_info_row(
     label: impl Into<SharedString>,
@@ -52,27 +49,27 @@ fn render_text_val(text: impl Into<SharedString>, theme: &Theme) -> impl IntoEle
 }
 
 fn render_activation_val(is_activated: bool, theme: &Theme) -> impl IntoElement {
-    let (color, text_key) = if is_activated {
-        (theme.accent_green, "system.activated")
+    let (base_color, shine_color, text_key) = if is_activated {
+        (
+            theme.accent_green,
+            gpui::rgb(0x00ff_ffff),
+            "system.activated",
+        )
     } else {
-        (theme.accent_red, "system.not_activated")
+        (
+            theme.accent_red,
+            gpui::rgb(0x00ff_ffff),
+            "system.not_activated",
+        )
     };
 
-    // Smooth organic breathing pulsation between 40% and 100% opacity
-    let pulse_animation = Animation::new(Duration::from_millis(2200))
-        .repeat()
-        .with_easing(pulsating_between(0.4, 1.0));
-
-    div()
-        .text_size(px(12.0))
+    ShinyText::new("activation_status", t!(text_key).to_string())
+        .font_size(px(12.0))
         .font_weight(FontWeight::MEDIUM)
-        .text_color(color)
-        .child(t!(text_key))
-        .with_animation(
-            ElementId::Name("activation_pulse".into()),
-            pulse_animation,
-            gpui::Styled::opacity,
-        )
+        .base_color(base_color)
+        .shine_color(shine_color)
+        .speed(Duration::from_millis(2600))
+        .spread(px(28.0))
 }
 
 pub(crate) fn render_system_card(info: &SystemInfo, theme: &Theme) -> impl IntoElement {
