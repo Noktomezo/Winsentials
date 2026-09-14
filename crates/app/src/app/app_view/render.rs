@@ -350,7 +350,7 @@ impl Render for AppView {
 
         if !self.sparks.is_empty() && self.config.click_spark && !cx.reduce_motion() {
             let spark_el =
-                crate::shared::ui::render_click_sparks(&self.sparks, theme.accent_cyan, now)
+                crate::shared::ui::render_click_sparks(&self.sparks, theme.accent_blue, now)
                     .into_any_element();
             root = root.child(gpui::deferred(spark_el).with_priority(350));
         }
