@@ -4,20 +4,23 @@ use std::sync::Arc;
 use gpui::prelude::FluentBuilder;
 use gpui::{
     AnimationExt, App, ElementId, FontWeight, InteractiveElement, IntoElement, ParentElement,
-    RenderOnce, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, Transformation,
-    Window, div, px, radians, svg,
+    RenderOnce, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, Window, div, px,
 };
 
 use crate::entities::cleanup::{CleanupCategory, CleanupState, format_bytes};
 use crate::pages::PageHeader;
 use crate::shared::theme::Theme;
 use crate::shared::ui::smooth_scroll::SmoothVirtualList;
-use crate::shared::ui::{Badge, BadgeVariant, Icon, IconButton, IconButtonVariant};
+use crate::shared::ui::{
+    Badge, BadgeVariant, Checkbox, Icon, IconButton, IconButtonVariant, TooltipHoverHandler,
+    TooltipState,
+};
 
 #[path = "cleanup/widgets.rs"]
 mod widgets;
 use widgets::{
-    CardProps, TargetHandler, TargetRow, badge, checkbox, clean_button, render_card, render_target,
+    CardProps, CategoryChevronProps, TargetHandler, TargetRow, badge, category_chevron,
+    clean_button, render_card, render_target,
 };
 
 const TARGET_HEIGHT: f32 = 50.0;
@@ -37,6 +40,7 @@ pub struct CleanupPage {
     on_toggle_all: SimpleHandler,
     on_refresh: SimpleHandler,
     on_clean: CleanHandler,
+    on_hover_tooltip: Option<TooltipHoverHandler>,
 }
 
 impl CleanupPage {
@@ -58,7 +62,23 @@ impl CleanupPage {
             on_toggle_all,
             on_refresh,
             on_clean,
+            on_hover_tooltip: None,
         }
+    }
+
+    #[must_use]
+    pub fn on_hover_tooltip(
+        mut self,
+        handler: impl Fn(Option<TooltipState>, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_hover_tooltip = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    pub fn on_hover_tooltip_opt(mut self, handler: Option<TooltipHoverHandler>) -> Self {
+        self.on_hover_tooltip = handler;
+        self
     }
 }
 
@@ -95,6 +115,17 @@ impl RenderOnce for CleanupPage {
         let clean_all = self.on_clean.clone();
         let toggle_all = self.on_toggle_all.clone();
         let refresh = self.on_refresh.clone();
+
+        let on_hover_tooltip = self.on_hover_tooltip.clone();
+        let all_selected = total > 0 && selected_count == total;
+        let (check_all_icon, check_all_tooltip) = if all_selected {
+            ("icons/square-x.svg", rust_i18n::t!("cleanup.uncheck_all"))
+        } else {
+            (
+                "icons/square-check-big.svg",
+                rust_i18n::t!("cleanup.check_all"),
+            )
+        };
 
         let header = PageHeader::new(
             rust_i18n::t!("cleanup.title"),
@@ -138,8 +169,11 @@ impl RenderOnce for CleanupPage {
                     })),
                 ))
                 .child(
-                    IconButton::new("cleanup_check_all", "icons/square-check-big.svg")
+                    IconButton::new("cleanup_check_all", check_all_icon)
                         .variant(IconButtonVariant::Outline)
+                        .selected(all_selected)
+                        .tooltip(check_all_tooltip)
+                        .on_hover_tooltip_opt(on_hover_tooltip.clone())
                         .disabled(total == 0 || busy)
                         .on_click(move |_event, window, cx| {
                             toggle_all(window, cx);
@@ -148,6 +182,8 @@ impl RenderOnce for CleanupPage {
                 .child(
                     IconButton::new("cleanup_refresh", "icons/refresh-cw.svg")
                         .variant(IconButtonVariant::Outline)
+                        .tooltip(rust_i18n::t!("cleanup.refresh"))
+                        .on_hover_tooltip_opt(on_hover_tooltip.clone())
                         .disabled(busy)
                         .loading(is_scanning)
                         .on_click(move |_event, window, cx| {
@@ -187,6 +223,7 @@ impl RenderOnce for CleanupPage {
                 list_height + 1.0
             };
             let all_checked = has_targets && checked == targets.len();
+            let some_checked = has_targets && checked > 0 && checked < targets.len();
             let toggle_category = self.on_toggle_category.clone();
             let toggle_category_checkbox = self.on_toggle_category.clone();
             let toggle_expanded = self.on_toggle_expanded.clone();
@@ -198,9 +235,16 @@ impl RenderOnce for CleanupPage {
             let category_id = category.id();
             let can_expand = !cat_busy && has_targets;
 
-            let category_checkbox_handler: TargetHandler = Rc::new(move |_id, window, cx| {
-                toggle_category_checkbox(category, window, cx);
-            });
+            let cat_checkbox_tooltip = if all_checked {
+                rust_i18n::t!("cleanup.deselect_category")
+            } else {
+                rust_i18n::t!("cleanup.select_category")
+            };
+            let cat_check_icon = if all_checked {
+                "icons/square-x.svg"
+            } else {
+                "icons/square-check-big.svg"
+            };
 
             let header = div()
                 .id(ElementId::Name(format!("cleanup_{category_id}").into()))
@@ -214,13 +258,17 @@ impl RenderOnce for CleanupPage {
                         toggle_expanded(category, window, cx);
                     })
                 })
-                .child(checkbox(
-                    format!("cleanup_category_{category_id}"),
-                    all_checked,
-                    has_targets && !cat_busy,
-                    &theme,
-                    category_checkbox_handler,
-                ))
+                .child(
+                    Checkbox::new(format!("cleanup_category_{category_id}"))
+                        .checked(all_checked)
+                        .indeterminate(some_checked)
+                        .disabled(!has_targets || cat_busy)
+                        .tooltip(cat_checkbox_tooltip.clone())
+                        .on_hover_tooltip_opt(on_hover_tooltip.clone())
+                        .on_toggle(move |_new_checked, window, cx| {
+                            toggle_category_checkbox(category, window, cx);
+                        }),
+                )
                 .child(
                     div()
                         .flex()
@@ -275,48 +323,14 @@ impl RenderOnce for CleanupPage {
                                 .child(secondary_text),
                         )
                 })
-                .child({
-                    let chevron_color = if !has_targets {
-                        theme.text_muted.opacity(0.2)
-                    } else if cat_busy {
-                        theme.text_muted.opacity(0.35)
-                    } else {
-                        theme.text_muted
-                    };
-                    let chevron_el = if reduce_motion {
-                        let angle = if expanded { std::f32::consts::PI } else { 0.0 };
-                        svg()
-                            .path("icons/chevron-down.svg")
-                            .size(px(16.0))
-                            .text_color(chevron_color)
-                            .with_transformation(Transformation::rotate(radians(angle)))
-                            .into_any_element()
-                    } else {
-                        let target_angle = if expanded { std::f32::consts::PI } else { 0.0 };
-                        svg()
-                            .path("icons/chevron-down.svg")
-                            .size(px(16.0))
-                            .text_color(chevron_color)
-                            .with_spring(
-                                ElementId::Name(format!("cleanup_chevron_{category_id}").into()),
-                                SpringAnimation::new(SpringConfig::new(300.0, 28.0, 1.0))
-                                    .to(target_angle)
-                                    .with_epsilon(0.01),
-                                |svg_el, angle| {
-                                    svg_el
-                                        .with_transformation(Transformation::rotate(radians(angle)))
-                                },
-                            )
-                            .into_any_element()
-                    };
-                    div()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .size(px(16.0))
-                        .flex_none()
-                        .child(chevron_el)
-                })
+                .child(category_chevron(CategoryChevronProps {
+                    category_id,
+                    expanded,
+                    has_targets,
+                    cat_busy,
+                    reduce_motion,
+                    theme: &theme,
+                }))
                 .child(clean_button(
                     format!("cleanup_{category_id}_clean"),
                     rust_i18n::t!("cleanup.clean").to_string(),
@@ -328,16 +342,16 @@ impl RenderOnce for CleanupPage {
                     })),
                 ))
                 .child(
-                    IconButton::new(
-                        format!("cleanup_{category_id}_check"),
-                        "icons/square-check-big.svg",
-                    )
-                    .variant(IconButtonVariant::Outline)
-                    .disabled(!has_targets || cat_busy)
-                    .on_click(move |_event, window, cx| {
-                        cx.stop_propagation();
-                        toggle_category(category, window, cx);
-                    }),
+                    IconButton::new(format!("cleanup_{category_id}_check"), cat_check_icon)
+                        .variant(IconButtonVariant::Outline)
+                        .selected(all_checked)
+                        .tooltip(cat_checkbox_tooltip)
+                        .on_hover_tooltip_opt(on_hover_tooltip.clone())
+                        .disabled(!has_targets || cat_busy)
+                        .on_click(move |_event, window, cx| {
+                            cx.stop_propagation();
+                            toggle_category(category, window, cx);
+                        }),
                 );
 
             let body = if has_targets {
@@ -360,6 +374,7 @@ impl RenderOnce for CleanupPage {
                 let target_toggle = self.on_toggle_target.clone();
                 let cat_icon = category.icon();
                 let cat_accent = category.accent_color(&theme);
+                let target_hover_tooltip = on_hover_tooltip.clone();
                 let list = SmoothVirtualList::new(
                     target_list_id(category),
                     rows.len(),
@@ -373,6 +388,7 @@ impl RenderOnce for CleanupPage {
                             cat_accent,
                             &theme,
                             target_toggle.clone(),
+                            target_hover_tooltip.clone(),
                         )
                     },
                 );

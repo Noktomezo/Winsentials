@@ -1,6 +1,7 @@
 pub mod badge;
 pub mod breadcrumb;
 pub mod button;
+pub mod checkbox;
 pub mod chip;
 pub mod click_spark;
 pub mod dropdown;
@@ -24,6 +25,8 @@ pub use badge::{Badge, BadgeVariant};
 pub use breadcrumb::{BreadcrumbItem, Breadcrumbs};
 #[allow(unused_imports)]
 pub use button::{Button, ButtonSize, ButtonVariant};
+#[allow(unused_imports)]
+pub use checkbox::Checkbox;
 #[allow(unused_imports)]
 pub use chip::Chip;
 #[allow(unused_imports)]
@@ -60,4 +63,4 @@ pub use toast::{
     ToastStack, ToastVariant,
 };
 #[allow(unused_imports)]
-pub use tooltip::{Tooltip, TooltipState};
+pub use tooltip::{Tooltip, TooltipHoverHandler, TooltipState};
