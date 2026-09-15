@@ -12,12 +12,12 @@ use crate::entities::cleanup::{CleanupCategory, CleanupState, format_bytes};
 use crate::pages::PageHeader;
 use crate::shared::theme::Theme;
 use crate::shared::ui::smooth_scroll::SmoothVirtualList;
-use crate::shared::ui::{Badge, BadgeVariant, Icon, IconButton, IconButtonVariant};
+use crate::shared::ui::{Badge, BadgeVariant, Checkbox, Icon, IconButton, IconButtonVariant};
 
 #[path = "cleanup/widgets.rs"]
 mod widgets;
 use widgets::{
-    CardProps, TargetHandler, TargetRow, badge, checkbox, clean_button, render_card, render_target,
+    CardProps, TargetHandler, TargetRow, badge, clean_button, render_card, render_target,
 };
 
 const TARGET_HEIGHT: f32 = 50.0;
@@ -187,6 +187,7 @@ impl RenderOnce for CleanupPage {
                 list_height + 1.0
             };
             let all_checked = has_targets && checked == targets.len();
+            let some_checked = has_targets && checked > 0 && checked < targets.len();
             let toggle_category = self.on_toggle_category.clone();
             let toggle_category_checkbox = self.on_toggle_category.clone();
             let toggle_expanded = self.on_toggle_expanded.clone();
@@ -197,10 +198,6 @@ impl RenderOnce for CleanupPage {
             let cat_busy = cat_scanning || cat_cleaning;
             let category_id = category.id();
             let can_expand = !cat_busy && has_targets;
-
-            let category_checkbox_handler: TargetHandler = Rc::new(move |_id, window, cx| {
-                toggle_category_checkbox(category, window, cx);
-            });
 
             let header = div()
                 .id(ElementId::Name(format!("cleanup_{category_id}").into()))
@@ -214,13 +211,15 @@ impl RenderOnce for CleanupPage {
                         toggle_expanded(category, window, cx);
                     })
                 })
-                .child(checkbox(
-                    format!("cleanup_category_{category_id}"),
-                    all_checked,
-                    has_targets && !cat_busy,
-                    &theme,
-                    category_checkbox_handler,
-                ))
+                .child(
+                    Checkbox::new(format!("cleanup_category_{category_id}"))
+                        .checked(all_checked)
+                        .indeterminate(some_checked)
+                        .disabled(!has_targets || cat_busy)
+                        .on_toggle(move |_new_checked, window, cx| {
+                            toggle_category_checkbox(category, window, cx);
+                        }),
+                )
                 .child(
                     div()
                         .flex()

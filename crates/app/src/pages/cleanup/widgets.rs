@@ -1,7 +1,6 @@
 use std::rc::Rc;
 use std::time::Duration;
 
-use gpui::prelude::FluentBuilder;
 use gpui::{
     Animation, AnimationExt, AnyElement, App, ClickEvent, ElementId, FontWeight,
     InteractiveElement, IntoElement, ParentElement, Rgba, SpringAnimation, SpringConfig,
@@ -12,7 +11,7 @@ use gpui::{
 use crate::entities::cleanup::format_bytes;
 use crate::shared::motion::lerp_rgba;
 use crate::shared::theme::Theme;
-use crate::shared::ui::{Badge, BadgeVariant, Icon};
+use crate::shared::ui::{Badge, BadgeVariant, Checkbox, Icon};
 
 pub type TargetHandler = Rc<dyn Fn(String, &mut Window, &mut App)>;
 pub type ClickHandler = Rc<dyn Fn(&ClickEvent, &mut Window, &mut App)>;
@@ -36,38 +35,15 @@ pub fn checkbox(
     id: String,
     checked: bool,
     enabled: bool,
-    theme: &Theme,
+    _theme: &Theme,
     on_toggle: TargetHandler,
 ) -> AnyElement {
-    let theme = *theme;
     let click_id = id.clone();
-    div()
-        .id(ElementId::Name(format!("cb_{id}").into()))
-        .flex()
-        .items_center()
-        .justify_center()
-        .size(px(18.0))
-        .rounded(px(5.0))
-        .border_1()
-        .when(checked, |d| {
-            d.bg(theme.accent_blue).border_color(theme.accent_blue)
-        })
-        .when(!checked, |d| {
-            d.bg(theme.input_bg).border_color(theme.card_border)
-        })
-        .when(enabled, |d| {
-            d.cursor_pointer().on_click(move |_event, window, cx| {
-                cx.stop_propagation();
-                on_toggle(click_id.clone(), window, cx);
-            })
-        })
-        .when(!enabled, |d| d.opacity(0.45))
-        .when(checked, |d| {
-            d.child(
-                Icon::new("icons/check.svg")
-                    .size(px(12.0))
-                    .color(theme.selected_text),
-            )
+    Checkbox::new(format!("cb_{id}"))
+        .checked(checked)
+        .disabled(!enabled)
+        .on_toggle(move |_new_checked, window, cx| {
+            on_toggle(click_id.clone(), window, cx);
         })
         .into_any_element()
 }
@@ -113,42 +89,15 @@ pub fn header_checkbox(
     id: String,
     checked: bool,
     enabled: bool,
-    theme: &Theme,
+    _theme: &Theme,
     on_toggle: ClickHandler,
 ) -> AnyElement {
-    let theme = *theme;
-    div()
-        .id(ElementId::Name(format!("hcb_{id}").into()))
-        .flex()
-        .items_center()
-        .justify_center()
-        .size(px(18.0))
-        .rounded(px(5.0))
-        .border_1()
-        .when(checked, |d| {
-            d.bg(theme.accent_blue).border_color(theme.accent_blue)
-        })
-        .when(!checked, |d| {
-            d.bg(theme.input_bg).border_color(theme.card_border)
-        })
-        .when(checked, |d| {
-            d.child(
-                Icon::new("icons/check.svg")
-                    .size(px(12.0))
-                    .color(theme.selected_text),
-            )
-        })
-        .when(!enabled, |d| d.opacity(0.45))
-        .when(enabled, |d| {
-            d.cursor_pointer().on_hover(move |hovered, _window, _cx| {
-                let _ = hovered;
-            })
-        })
-        .when(enabled, |d| {
-            d.on_click(move |event, window, cx| {
-                cx.stop_propagation();
-                on_toggle(event, window, cx);
-            })
+    Checkbox::new(format!("hcb_{id}"))
+        .checked(checked)
+        .disabled(!enabled)
+        .on_toggle(move |_new_checked, window, cx| {
+            let event = ClickEvent::default();
+            on_toggle(&event, window, cx);
         })
         .into_any_element()
 }
