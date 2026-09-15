@@ -155,3 +155,18 @@ fn test_input_modal_state(cx: &mut TestAppContext) {
         })
         .unwrap();
 }
+
+#[gpui::test]
+fn test_dashboard_page_gradient_title_renders(cx: &mut TestAppContext) {
+    let window = cx.open_window(size(px(900.0), px(700.0)), |_window, _cx| AppView::new());
+
+    let mut visual_cx = gpui::VisualTestContext::from_window(window.into(), cx);
+    visual_cx.run_until_parked();
+
+    let bounds = visual_cx
+        .debug_bounds("dashboard_app_name_title")
+        .expect("dashboard gradient title must be rendered in main page header");
+
+    assert!(bounds.size.width > px(0.0));
+    assert!(bounds.size.height > px(0.0));
+}

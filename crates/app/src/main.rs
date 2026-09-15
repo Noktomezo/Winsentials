@@ -51,6 +51,10 @@ fn app_fonts() -> Vec<std::borrow::Cow<'static, [u8]>> {
         std::borrow::Cow::Borrowed(
             include_bytes!("../../../assets/fonts/IBM Plex Mono/IBMPlexMono-Medium.ttf").as_slice(),
         ),
+        std::borrow::Cow::Borrowed(
+            include_bytes!("../../../assets/fonts/PermanentMarker/PermanentMarker-Regular.ttf")
+                .as_slice(),
+        ),
     ]
 }
 
