@@ -5,8 +5,8 @@ use gpui::{Pixels, Rgba, px};
 /// Default duration for a complete gradient shimmer cycle.
 pub const DEFAULT_GRADIENT_DURATION: Duration = Duration::from_secs(7);
 
-/// Default base font size for the gradient text.
-pub const DEFAULT_FONT_SIZE: Pixels = px(56.0);
+/// Default base font size for the gradient text (128 / 3 = 42.67px from Figma @3x).
+pub const DEFAULT_FONT_SIZE: Pixels = px(43.0);
 
 /// Default letter spacing ratio (30% of font size, matching Figma design).
 pub const DEFAULT_LETTER_SPACING_RATIO: f32 = 0.3;
