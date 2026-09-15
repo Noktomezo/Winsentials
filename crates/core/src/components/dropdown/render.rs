@@ -7,7 +7,7 @@ use gpui::{
 };
 
 use crate::components::icon::Icon;
-use crate::components::marquee_text::MarqueeText;
+use crate::components::marquee_text::{MarqueeFadeMode, MarqueeText};
 use crate::motion::{lerp_item_bg, lerp_item_text};
 use crate::theme::Theme;
 
@@ -19,6 +19,7 @@ pub(crate) struct DropdownMenuParams {
     pub selected_value: &'static str,
     pub hovered_opt: Option<&'static str>,
     pub is_open: bool,
+    pub is_opening: bool,
     pub is_closing: bool,
     pub opens_upwards: bool,
     pub is_full_width: bool,
@@ -78,7 +79,15 @@ pub(crate) fn render_dropdown_chevron(
 pub(crate) fn render_dropdown_menu(params: DropdownMenuParams) -> AnyElement {
     let theme = params.theme;
     let is_open = params.is_open;
+    let is_opening = params.is_opening;
     let is_closing = params.is_closing;
+    let opt_fade_mode = if is_opening {
+        MarqueeFadeMode::Opening(Duration::from_millis(160))
+    } else if is_closing {
+        MarqueeFadeMode::Closing(Duration::from_millis(140))
+    } else {
+        MarqueeFadeMode::Steady
+    };
     let hovered_opt = params.hovered_opt;
     let on_select = params.on_select;
     let on_delete = params.on_delete;
@@ -223,6 +232,7 @@ pub(crate) fn render_dropdown_menu(params: DropdownMenuParams) -> AnyElement {
                             .text_color(current_text_color)
                             .fade_color(current_fade)
                             .fade_width(px(8.0))
+                            .fade_mode(opt_fade_mode)
                             .active(is_opt_active),
                         );
 

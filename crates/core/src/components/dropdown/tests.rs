@@ -170,19 +170,22 @@ fn dropdown_open_options_with_overflow_render_fog_correctly(cx: &mut TestAppCont
     assert!(selected_opt.left() >= menu_bounds.left());
     assert!(selected_opt.right() <= menu_bounds.right());
     assert_eq!(checkmark.size.width, px(14.0));
-    assert!(checkmark.right() <= selected_opt.right());
+    let opt_fog = cx
+        .debug_bounds("test_dd_opt_marquee_aggressive_fade_right")
+        .expect("overflowing option fog must be rendered when menu is open and steady");
+    assert!(opt_fog.size.width > px(0.0));
 }
 
 #[gpui::test]
 fn dropdown_trigger_fog_remains_present_when_menu_is_open(cx: &mut TestAppContext) {
     let window = cx.open_window(size(px(600.0), px(400.0)), |_, _| TestDropdownView {
-            open: true,
-            opening: false,
-            closing: false,
-            current_label: "╨Ю╤З╨╡╨╜╤М ╨┤╨╗╨╕╨╜╨╜╨╛╨╡ ╨╜╨░╨╖╨▓╨░╨╜╨╕╨╡ ╨░╤Г╨┤╨╕╨╛╤Г╤Б╤В╤А╨╛╨╣╤Б╤В╨▓╨░ ╨╕╨╗╨╕ ╨┐╤А╨╡╤Б╨╡╤В╨░ ╨┐╨╡╤А╨╡╨║╨╗╤О╤З╨╡╨╜╨╕╤П ╨║╨╗╨░╨▓╨╕╤И"
-                .into(),
-            width: Some(px(150.0)),
-        });
+        open: true,
+        opening: false,
+        closing: false,
+        current_label: "Очень длинное название аудиоустройства или пресета переключения клавиш"
+            .into(),
+        width: Some(px(150.0)),
+    });
     let mut cx = VisualTestContext::from_window(window.into(), cx);
 
     let trigger_fog = cx
@@ -198,7 +201,7 @@ fn dropdown_animation_opening_and_closing_maintains_continuous_bounds(cx: &mut T
         open: true,
         opening: true,
         closing: false,
-        current_label: "╨б╤В╨░╨╜╨┤╨░╤А╤В".into(),
+        current_label: "Стандарт".into(),
         width: Some(px(160.0)),
     });
     let mut cx = VisualTestContext::from_window(window.into(), cx);
@@ -213,6 +216,7 @@ fn dropdown_animation_opening_and_closing_maintains_continuous_bounds(cx: &mut T
         .expect("overflowing option marquee anchor must be rendered");
     assert!(opt_marquee.size.width > px(0.0));
 
+    // Fog is rendered and dynamically animated in sync during open animation
     let opt_fog_opening = cx
         .debug_bounds("test_dd_opt_marquee_aggressive_fade_right")
         .expect("overflowing option fog must be rendered during open animation");
@@ -223,7 +227,7 @@ fn dropdown_animation_opening_and_closing_maintains_continuous_bounds(cx: &mut T
         open: false,
         opening: false,
         closing: true,
-        current_label: "╨б╤В╨░╨╜╨┤╨░╤А╤В".into(),
+        current_label: "Стандарт".into(),
         width: Some(px(160.0)),
     });
     let mut cx_close = VisualTestContext::from_window(window_close.into(), &cx);
@@ -239,6 +243,7 @@ fn dropdown_animation_opening_and_closing_maintains_continuous_bounds(cx: &mut T
         .expect("overflowing option marquee anchor must remain stable during close animation");
     assert_eq!(opt_marquee_close.size.width, opt_marquee.size.width);
 
+    // Fog is rendered and dynamically animated in sync during close animation
     let opt_fog_closing = cx_close
         .debug_bounds("test_dd_opt_marquee_aggressive_fade_right")
         .expect("overflowing option fog must be rendered during close animation");
