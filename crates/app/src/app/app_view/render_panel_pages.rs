@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::sync::Arc;
 
 use gpui::{Context, SharedString};
 
@@ -6,6 +7,7 @@ use super::AppView;
 use crate::entities::cleanup::CleanupCategory;
 use crate::features::navigation::AppRoute;
 use crate::pages::{BackupsPage, CleanupPage, ToolsPage};
+use crate::shared::ui::{TooltipHoverHandler, TooltipState};
 
 impl AppView {
     pub(super) fn build_cleanup_page(
@@ -52,28 +54,38 @@ impl AppView {
             cx.listener(|this, category: &Option<CleanupCategory>, _window, cx| {
                 this.clean_cleanup(*category, cx);
             });
+        let page_tooltip_listener =
+            cx.listener(|this, tooltip: &Option<TooltipState>, _window, cx| {
+                this.set_active_tooltip(tooltip.clone(), cx);
+            });
+        let on_hover_tooltip: TooltipHoverHandler = Arc::new(move |tooltip, window, cx| {
+            page_tooltip_listener(&tooltip, window, cx);
+        });
 
-        Some(CleanupPage::new(
-            self.cleanup.clone(),
-            Rc::new(move |id, window, cx| {
-                on_cleanup_toggle_target(&id, window, cx);
-            }),
-            Rc::new(move |category, window, cx| {
-                on_cleanup_toggle_category(&category, window, cx);
-            }),
-            Rc::new(move |category, window, cx| {
-                on_cleanup_toggle_expanded(&category, window, cx);
-            }),
-            Rc::new(move |window, cx| {
-                on_cleanup_toggle_all(&(), window, cx);
-            }),
-            Rc::new(move |window, cx| {
-                on_cleanup_refresh(&(), window, cx);
-            }),
-            Rc::new(move |category, window, cx| {
-                on_cleanup_clean(&category, window, cx);
-            }),
-        ))
+        Some(
+            CleanupPage::new(
+                self.cleanup.clone(),
+                Rc::new(move |id, window, cx| {
+                    on_cleanup_toggle_target(&id, window, cx);
+                }),
+                Rc::new(move |category, window, cx| {
+                    on_cleanup_toggle_category(&category, window, cx);
+                }),
+                Rc::new(move |category, window, cx| {
+                    on_cleanup_toggle_expanded(&category, window, cx);
+                }),
+                Rc::new(move |window, cx| {
+                    on_cleanup_toggle_all(&(), window, cx);
+                }),
+                Rc::new(move |window, cx| {
+                    on_cleanup_refresh(&(), window, cx);
+                }),
+                Rc::new(move |category, window, cx| {
+                    on_cleanup_clean(&category, window, cx);
+                }),
+            )
+            .on_hover_tooltip_opt(Some(on_hover_tooltip)),
+        )
     }
 
     pub(super) fn build_tools_page(

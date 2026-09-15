@@ -8,6 +8,7 @@ use gpui::{
 };
 
 use crate::components::icon::Icon;
+use crate::components::tooltip::{TooltipHoverHandler, TooltipState};
 use crate::motion::{hover_spring, lerp_item_bg, lerp_rgba};
 use crate::theme::Theme;
 
@@ -45,6 +46,7 @@ pub struct IconButton {
     on_click: Option<ClickHandler>,
     on_mouse_down: Option<MouseDownHandler>,
     on_hover: Option<HoverHandler>,
+    on_hover_tooltip: Option<TooltipHoverHandler>,
 }
 
 #[allow(dead_code)]
@@ -66,6 +68,7 @@ impl IconButton {
             on_click: None,
             on_mouse_down: None,
             on_hover: None,
+            on_hover_tooltip: None,
         }
     }
 
@@ -159,6 +162,21 @@ impl IconButton {
         self.on_hover = Some(Arc::new(handler));
         self
     }
+
+    #[must_use]
+    pub fn on_hover_tooltip(
+        mut self,
+        handler: impl Fn(Option<TooltipState>, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_hover_tooltip = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    pub fn on_hover_tooltip_opt(mut self, handler: Option<TooltipHoverHandler>) -> Self {
+        self.on_hover_tooltip = handler;
+        self
+    }
 }
 
 impl RenderOnce for IconButton {
@@ -230,6 +248,9 @@ impl RenderOnce for IconButton {
         let hover_state_for_event = hover_state;
         let on_hover_cb = self.on_hover;
         let is_disabled = self.disabled;
+        let tooltip_for_hover = self.tooltip.clone();
+        let on_hover_tooltip_for_hover = self.on_hover_tooltip.clone();
+        let on_hover_tooltip_for_click = self.on_hover_tooltip.clone();
 
         base = base.on_hover(move |&hov, window, cx| {
             let active_hov = hov && !is_disabled;
@@ -242,7 +263,39 @@ impl RenderOnce for IconButton {
             if let Some(ref h) = on_hover_cb {
                 h(hov, window, cx);
             }
+            if let (Some(tt), Some(th)) = (&tooltip_for_hover, &on_hover_tooltip_for_hover) {
+                if active_hov {
+                    let pos = window.mouse_position();
+                    th(
+                        Some(TooltipState {
+                            text: tt.clone(),
+                            cursor_pos: pos,
+                        }),
+                        window,
+                        cx,
+                    );
+                } else {
+                    th(None, window, cx);
+                }
+            }
         });
+
+        if let (Some(tooltip_for_move), Some(on_hover_tooltip_for_move)) =
+            (self.tooltip.clone(), self.on_hover_tooltip.clone())
+        {
+            base = base.on_mouse_move(move |event, window, cx| {
+                if !is_disabled {
+                    on_hover_tooltip_for_move(
+                        Some(TooltipState {
+                            text: tooltip_for_move.clone(),
+                            cursor_pos: event.position,
+                        }),
+                        window,
+                        cx,
+                    );
+                }
+            });
+        }
 
         if self.disabled {
             if !self.loading {
@@ -254,7 +307,11 @@ impl RenderOnce for IconButton {
                 .active(move |s| s.bg(theme.accent_active_bg));
 
             if let Some(on_click) = self.on_click {
+                let th_click = on_hover_tooltip_for_click.clone();
                 base = base.on_click(move |event, window, cx| {
+                    if let Some(ref th) = th_click {
+                        th(None, window, cx);
+                    }
                     (on_click)(event, window, cx);
                 });
             }
@@ -376,10 +433,20 @@ impl RenderOnce for IconButton {
 
 #[cfg(test)]
 mod tests {
-    use super::spinner_angle;
+    use super::*;
 
     #[test]
     fn spinner_completes_one_turn() {
         assert!((spinner_angle(1.0) - std::f32::consts::TAU).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_icon_button_tooltip_builder() {
+        let btn = IconButton::new("btn_tt", "icons/refresh-cw.svg")
+            .tooltip("Refresh")
+            .on_hover_tooltip(|_tt, _window, _cx| {});
+
+        assert_eq!(btn.tooltip, Some("Refresh".into()));
+        assert!(btn.on_hover_tooltip.is_some());
     }
 }

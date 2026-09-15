@@ -2,10 +2,11 @@ use std::sync::Arc;
 
 use gpui::{
     AnimationExt, App, ElementId, InteractiveElement, IntoElement, ParentElement, RenderOnce,
-    SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, Transformation, Window, div,
-    px, size, svg,
+    SharedString, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled,
+    Transformation, Window, div, px, size, svg,
 };
 
+use crate::components::tooltip::{TooltipHoverHandler, TooltipState};
 use crate::motion::{hover_spring, lerp_rgba};
 use crate::theme::Theme;
 
@@ -25,7 +26,9 @@ pub struct Checkbox {
     checked: bool,
     indeterminate: bool,
     disabled: bool,
+    tooltip: Option<SharedString>,
     on_toggle: Option<CheckboxToggleHandler>,
+    on_hover_tooltip: Option<TooltipHoverHandler>,
 }
 
 impl Checkbox {
@@ -36,7 +39,9 @@ impl Checkbox {
             checked: false,
             indeterminate: false,
             disabled: false,
+            tooltip: None,
             on_toggle: None,
+            on_hover_tooltip: None,
         }
     }
 
@@ -59,8 +64,29 @@ impl Checkbox {
     }
 
     #[must_use]
+    pub fn tooltip(mut self, tooltip: impl Into<SharedString>) -> Self {
+        self.tooltip = Some(tooltip.into());
+        self
+    }
+
+    #[must_use]
     pub fn on_toggle(mut self, handler: impl Fn(bool, &mut Window, &mut App) + 'static) -> Self {
         self.on_toggle = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    pub fn on_hover_tooltip(
+        mut self,
+        handler: impl Fn(Option<TooltipState>, &mut Window, &mut App) + 'static,
+    ) -> Self {
+        self.on_hover_tooltip = Some(Arc::new(handler));
+        self
+    }
+
+    #[must_use]
+    pub fn on_hover_tooltip_opt(mut self, handler: Option<TooltipHoverHandler>) -> Self {
+        self.on_hover_tooltip = handler;
         self
     }
 }
@@ -106,6 +132,10 @@ impl RenderOnce for Checkbox {
         };
 
         let hover_state_for_event = hover_state;
+        let tooltip_for_hover = self.tooltip.clone();
+        let on_hover_tooltip_for_hover = self.on_hover_tooltip.clone();
+        let on_hover_tooltip_for_click = self.on_hover_tooltip.clone();
+
         let mut container = div()
             .id(id)
             .debug_selector({
@@ -124,18 +154,52 @@ impl RenderOnce for Checkbox {
             container = container
                 .cursor_pointer()
                 .active(|s| s.opacity(0.85))
-                .on_hover(move |&hov, _window, cx| {
+                .on_hover(move |&hov, window, cx| {
                     hover_state_for_event.update(cx, |state, cx| {
                         if *state != hov {
                             *state = hov;
                             cx.notify();
                         }
                     });
+                    if let (Some(tt), Some(th)) = (&tooltip_for_hover, &on_hover_tooltip_for_hover)
+                    {
+                        if hov {
+                            let pos = window.mouse_position();
+                            th(
+                                Some(TooltipState {
+                                    text: tt.clone(),
+                                    cursor_pos: pos,
+                                }),
+                                window,
+                                cx,
+                            );
+                        } else {
+                            th(None, window, cx);
+                        }
+                    }
                 })
                 .on_click(move |_event, window, cx| {
                     cx.stop_propagation();
+                    if let Some(ref th) = on_hover_tooltip_for_click {
+                        th(None, window, cx);
+                    }
                     click_action(window, cx);
                 });
+
+            if let (Some(tooltip_for_move), Some(on_hover_tooltip_for_move)) =
+                (self.tooltip.clone(), self.on_hover_tooltip.clone())
+            {
+                container = container.on_mouse_move(move |event, window, cx| {
+                    on_hover_tooltip_for_move(
+                        Some(TooltipState {
+                            text: tooltip_for_move.clone(),
+                            cursor_pos: event.position,
+                        }),
+                        window,
+                        cx,
+                    );
+                });
+            }
         }
 
         if reduce_motion {

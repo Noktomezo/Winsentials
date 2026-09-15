@@ -41,6 +41,13 @@ fn test_checkbox_builder() {
     assert!(!cb_ind.checked);
     assert!(cb_ind.indeterminate);
     assert!(cb_ind.disabled);
+
+    let cb_tt = Checkbox::new("cb_tt")
+        .tooltip("Sample tooltip")
+        .on_hover_tooltip(|_tt, _window, _cx| {});
+
+    assert_eq!(cb_tt.tooltip, Some("Sample tooltip".into()));
+    assert!(cb_tt.on_hover_tooltip.is_some());
 }
 
 #[gpui::test]

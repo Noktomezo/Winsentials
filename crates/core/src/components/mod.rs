@@ -63,4 +63,4 @@ pub use toast::{
     ToastStack, ToastVariant,
 };
 #[allow(unused_imports)]
-pub use tooltip::{Tooltip, TooltipState};
+pub use tooltip::{Tooltip, TooltipHoverHandler, TooltipState};
