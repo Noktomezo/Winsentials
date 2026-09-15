@@ -297,12 +297,14 @@ impl RenderOnce for DashboardPage {
                     .w_full()
                     .justify_center()
                     .items_center()
-                    .py(px(4.0))
+                    .h(px(42.0))
                     .child(
                         GradientText::new("dashboard_app_name_title", "WINSENTIALS")
                             .debug_selector("dashboard_app_name_title")
                             .font_family("Permanent Marker")
                             .font_size(px(43.0))
+                            .line_height(px(42.0))
+                            .h(px(42.0))
                             .letter_spacing(px(43.0 * 0.3)),
                     ),
             )

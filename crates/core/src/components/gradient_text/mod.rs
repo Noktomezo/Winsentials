@@ -23,6 +23,8 @@ pub struct GradientText {
     font_family: Option<SharedString>,
     font_size: Pixels,
     font_weight: FontWeight,
+    line_height: Option<Pixels>,
+    height: Option<Pixels>,
     letter_spacing: Option<Pixels>,
     colors: Vec<Rgba>,
     duration: Duration,
@@ -43,6 +45,8 @@ impl GradientText {
             font_family: None,
             font_size: DEFAULT_FONT_SIZE,
             font_weight: FontWeight::NORMAL,
+            line_height: None,
+            height: None,
             letter_spacing: None,
             colors: vec![TAILWIND_BLUE_400, TAILWIND_BLUE_600],
             duration: DEFAULT_GRADIENT_DURATION,
@@ -72,6 +76,27 @@ impl GradientText {
     #[must_use]
     pub const fn font_weight(mut self, weight: FontWeight) -> Self {
         self.font_weight = weight;
+        self
+    }
+
+    /// Sets the line height for glyph elements.
+    #[must_use]
+    pub const fn line_height(mut self, line_height: Pixels) -> Self {
+        self.line_height = Some(line_height);
+        self
+    }
+
+    /// Sets explicit container height.
+    #[must_use]
+    pub const fn h(mut self, height: Pixels) -> Self {
+        self.height = Some(height);
+        self
+    }
+
+    /// Sets explicit container height (alias for `h`).
+    #[must_use]
+    pub const fn height(mut self, height: Pixels) -> Self {
+        self.height = Some(height);
         self
     }
 
@@ -144,8 +169,11 @@ impl RenderOnce for GradientText {
             .unwrap_or(self.font_size * DEFAULT_LETTER_SPACING_RATIO);
         let debug_sel = self.debug_selector.clone();
 
+        let line_height = self.line_height;
+        let height = self.height;
+
         if !self.animated || is_reduced_motion {
-            let container = make_container(self.id, spacing, debug_sel);
+            let container = make_container(self.id, spacing, height, debug_sel);
 
             return container
                 .children(chars.into_iter().enumerate().map(|(i, c)| {
@@ -163,6 +191,7 @@ impl RenderOnce for GradientText {
                         &self.font_family,
                         self.font_size,
                         self.font_weight,
+                        line_height,
                     )
                 }))
                 .into_any_element();
@@ -176,7 +205,7 @@ impl RenderOnce for GradientText {
         let shift_amplitude = self.shift_amplitude;
         let yoyo = self.yoyo;
 
-        let container = make_container(self.id, spacing, debug_sel);
+        let container = make_container(self.id, spacing, height, debug_sel);
 
         container
             .with_animation(
@@ -189,13 +218,27 @@ impl RenderOnce for GradientText {
                             let sample_t =
                                 character_sample_pos(i, total_chars, progress, shift_amplitude);
                             let color = multi_stop_color(&colors, sample_t);
-                            render_char_element(c, color, &font_family, font_size, font_weight)
+                            render_char_element(
+                                c,
+                                color,
+                                &font_family,
+                                font_size,
+                                font_weight,
+                                line_height,
+                            )
                         }))
                     } else {
                         container.children(chars.iter().enumerate().map(|(i, &c)| {
                             let phase = character_seamless_phase(i, total_chars, delta);
                             let color = seamless_multi_stop_color(&colors, phase);
-                            render_char_element(c, color, &font_family, font_size, font_weight)
+                            render_char_element(
+                                c,
+                                color,
+                                &font_family,
+                                font_size,
+                                font_weight,
+                                line_height,
+                            )
                         }))
                     }
                 },
@@ -207,6 +250,7 @@ impl RenderOnce for GradientText {
 fn make_container(
     id: ElementId,
     spacing: Pixels,
+    height: Option<Pixels>,
     debug_sel: Option<SharedString>,
 ) -> gpui::Stateful<gpui::Div> {
     let mut container = div()
@@ -215,6 +259,10 @@ fn make_container(
         .items_center()
         .justify_center()
         .gap(spacing);
+
+    if let Some(h) = height {
+        container = container.h(h);
+    }
 
     if let Some(sel) = debug_sel {
         container = container.debug_selector(move || sel.to_string());
@@ -229,6 +277,7 @@ fn render_char_element(
     font_family: &Option<SharedString>,
     font_size: Pixels,
     font_weight: FontWeight,
+    line_height: Option<Pixels>,
 ) -> impl IntoElement {
     let mut el = div()
         .text_size(font_size)
@@ -240,6 +289,10 @@ fn render_char_element(
 
     if let Some(family) = font_family {
         el = el.font_family(family.clone());
+    }
+
+    if let Some(lh) = line_height {
+        el = el.line_height(lh);
     }
 
     el

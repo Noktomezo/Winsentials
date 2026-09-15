@@ -168,5 +168,5 @@ fn test_dashboard_page_gradient_title_renders(cx: &mut TestAppContext) {
         .expect("dashboard gradient title must be rendered in main page header");
 
     assert!(bounds.size.width > px(0.0));
-    assert!(bounds.size.height > px(0.0));
+    assert_eq!(bounds.size.height, px(42.0));
 }

@@ -121,6 +121,8 @@ fn test_gradient_text_builder() {
         .font_family("CustomFont")
         .font_size(px(32.0))
         .font_weight(FontWeight::BOLD)
+        .line_height(px(28.0))
+        .h(px(30.0))
         .letter_spacing(px(10.0))
         .colors(vec![rgb(0xff0000), rgb(0x0000ff)])
         .duration(Duration::from_secs(5))
@@ -132,6 +134,8 @@ fn test_gradient_text_builder() {
     assert_eq!(gt.font_family.as_deref(), Some("CustomFont"));
     assert_eq!(gt.font_size, px(32.0));
     assert_eq!(gt.font_weight, FontWeight::BOLD);
+    assert_eq!(gt.line_height, Some(px(28.0)));
+    assert_eq!(gt.height, Some(px(30.0)));
     assert_eq!(gt.letter_spacing, Some(px(10.0)));
     assert_eq!(gt.duration, Duration::from_secs(5));
     assert!((gt.shift_amplitude - 0.4).abs() < 1e-5);
