@@ -48,7 +48,7 @@ impl GradientText {
             duration: DEFAULT_GRADIENT_DURATION,
             shift_amplitude: DEFAULT_SHIFT_AMPLITUDE,
             direction: GradientDirection::Diagonal,
-            yoyo: true,
+            yoyo: false,
             animated: true,
             debug_selector: None,
         }
@@ -145,14 +145,18 @@ impl RenderOnce for GradientText {
         let debug_sel = self.debug_selector.clone();
 
         if !self.animated || is_reduced_motion {
-            let progress = 0.5;
             let container = make_container(self.id, spacing, debug_sel);
 
             return container
                 .children(chars.into_iter().enumerate().map(|(i, c)| {
-                    let sample_t =
-                        character_sample_pos(i, total_chars, progress, self.shift_amplitude);
-                    let color = multi_stop_color(&self.colors, sample_t);
+                    let color = if self.yoyo {
+                        let sample_t =
+                            character_sample_pos(i, total_chars, 0.5, self.shift_amplitude);
+                        multi_stop_color(&self.colors, sample_t)
+                    } else {
+                        let phase = character_seamless_phase(i, total_chars, 0.0);
+                        seamless_multi_stop_color(&self.colors, phase)
+                    };
                     render_char_element(
                         c,
                         color,
@@ -179,13 +183,21 @@ impl RenderOnce for GradientText {
                 anim_id,
                 Animation::new(self.duration).repeat(),
                 move |container, delta| {
-                    let progress = if yoyo { yoyo_progress(delta) } else { delta };
-                    container.children(chars.iter().enumerate().map(|(i, &c)| {
-                        let sample_t =
-                            character_sample_pos(i, total_chars, progress, shift_amplitude);
-                        let color = multi_stop_color(&colors, sample_t);
-                        render_char_element(c, color, &font_family, font_size, font_weight)
-                    }))
+                    if yoyo {
+                        let progress = yoyo_progress(delta);
+                        container.children(chars.iter().enumerate().map(|(i, &c)| {
+                            let sample_t =
+                                character_sample_pos(i, total_chars, progress, shift_amplitude);
+                            let color = multi_stop_color(&colors, sample_t);
+                            render_char_element(c, color, &font_family, font_size, font_weight)
+                        }))
+                    } else {
+                        container.children(chars.iter().enumerate().map(|(i, &c)| {
+                            let phase = character_seamless_phase(i, total_chars, delta);
+                            let color = seamless_multi_stop_color(&colors, phase);
+                            render_char_element(c, color, &font_family, font_size, font_weight)
+                        }))
+                    }
                 },
             )
             .into_any_element()

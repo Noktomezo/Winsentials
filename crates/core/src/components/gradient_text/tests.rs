@@ -84,7 +84,39 @@ fn test_character_sample_pos() {
 }
 
 #[test]
+fn test_seamless_two_stop_color() {
+    let c1 = TAILWIND_BLUE_400;
+    let c2 = TAILWIND_BLUE_600;
+
+    let start = seamless_two_stop_color(c1, c2, 0.0);
+    let end = seamless_two_stop_color(c1, c2, 1.0);
+    assert!((start.r - end.r).abs() < 1e-5);
+    assert!((start.g - end.g).abs() < 1e-5);
+    assert!((start.b - end.b).abs() < 1e-5);
+
+    let mid = seamless_two_stop_color(c1, c2, 0.5);
+    assert!((mid.r - c2.r).abs() < 1e-5);
+    assert!((mid.g - c2.g).abs() < 1e-5);
+    assert!((mid.b - c2.b).abs() < 1e-5);
+}
+
+#[test]
+fn test_character_seamless_phase() {
+    let phase_0 = character_seamless_phase(0, 11, 0.0);
+    let phase_last = character_seamless_phase(10, 11, 0.0);
+    assert!((phase_0 - 0.0).abs() < 1e-5);
+    assert!((phase_last - 0.5).abs() < 1e-5);
+
+    // Full loop continuity: phase at progress 1.0 matches progress 0.0
+    let phase_wrap = character_seamless_phase(0, 11, 1.0);
+    assert!((phase_wrap - phase_0).abs() < 1e-5);
+}
+
+#[test]
 fn test_gradient_text_builder() {
+    let default_gt = GradientText::new("def", "TEXT");
+    assert!(!default_gt.yoyo);
+
     let gt = GradientText::new("custom_title", "TEST")
         .font_family("CustomFont")
         .font_size(px(32.0))
@@ -94,7 +126,7 @@ fn test_gradient_text_builder() {
         .duration(Duration::from_secs(5))
         .shift_amplitude(0.4)
         .direction(GradientDirection::Horizontal)
-        .yoyo(false)
+        .yoyo(true)
         .animated(false);
 
     assert_eq!(gt.font_family.as_deref(), Some("CustomFont"));
@@ -104,7 +136,7 @@ fn test_gradient_text_builder() {
     assert_eq!(gt.duration, Duration::from_secs(5));
     assert!((gt.shift_amplitude - 0.4).abs() < 1e-5);
     assert_eq!(gt.direction, GradientDirection::Horizontal);
-    assert!(!gt.yoyo);
+    assert!(gt.yoyo);
     assert!(!gt.animated);
 }
 

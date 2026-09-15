@@ -45,6 +45,50 @@ pub fn yoyo_progress(delta: f32) -> f32 {
     (1.0 - (triangle * PI).cos()) * 0.5
 }
 
+/// Smooth continuous cosine blend between two colors in a seamless loop where `phase in [0.0, 1.0]`.
+/// Phase 0.0 corresponds to `c1`, phase 0.5 corresponds to `c2`, and phase 1.0 wraps seamlessly back to `c1`.
+#[must_use]
+pub fn seamless_two_stop_color(c1: Rgba, c2: Rgba, phase: f32) -> Rgba {
+    let phase = phase.rem_euclid(1.0);
+    let t = (1.0 - (phase * 2.0 * PI).cos()) * 0.5;
+    lerp_color(c1, c2, t)
+}
+
+/// Evaluates a multi-stop color gradient along a periodic seamless loop where `phase in [0.0, 1.0]`.
+#[must_use]
+pub fn seamless_multi_stop_color(stops: &[Rgba], phase: f32) -> Rgba {
+    if stops.is_empty() {
+        return Rgba::default();
+    }
+    if stops.len() == 1 {
+        return stops[0];
+    }
+    if stops.len() == 2 {
+        return seamless_two_stop_color(stops[0], stops[1], phase);
+    }
+
+    let phase = phase.rem_euclid(1.0);
+    let count = stops.len();
+    let scaled = phase * count as f32;
+    let index = (scaled.floor() as usize) % count;
+    let next_index = (index + 1) % count;
+    let local_t = scaled - scaled.floor();
+
+    lerp_color(stops[index], stops[next_index], local_t)
+}
+
+/// Calculates the seamless phase coordinate `[0.0, 1.0)` for character at `index` given animation `progress in [0.0, 1.0]`.
+#[must_use]
+pub fn character_seamless_phase(index: usize, total_chars: usize, progress: f32) -> f32 {
+    let u = if total_chars <= 1 {
+        0.0
+    } else {
+        index as f32 / (2.0 * (total_chars - 1) as f32)
+    };
+
+    (u - progress).rem_euclid(1.0)
+}
+
 /// Calculates the gradient sample coordinate `[0.0, 1.0]` for character at `index`.
 #[must_use]
 pub fn character_sample_pos(
