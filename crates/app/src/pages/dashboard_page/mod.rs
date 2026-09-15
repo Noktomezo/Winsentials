@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnyElement, App, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div,
-    img, px,
+    AnyElement, App, IntoElement, ParentElement, RenderOnce, SharedString, Styled, Window, div, px,
 };
 use rust_i18n::t;
 
 use crate::entities::{SystemInfo, TelemetryData};
 use crate::features::navigation::AppRoute;
 use crate::shared::theme::Theme;
+use crate::shared::ui::GradientText;
 use crate::shared::ui::icon::Icon;
 
 pub mod system_card;
@@ -298,7 +298,13 @@ impl RenderOnce for DashboardPage {
                     .justify_center()
                     .items_center()
                     .py(px(4.0))
-                    .child(img("app-name.png").w(px(429.0)).h(px(32.0)).flex_none()),
+                    .child(
+                        GradientText::new("dashboard_app_name_title", "WINSENTIALS")
+                            .debug_selector("dashboard_app_name_title")
+                            .font_family("Permanent Marker")
+                            .font_size(px(28.0))
+                            .letter_spacing(px(28.0 * 0.3)),
+                    ),
             )
             .child(system_card)
             .child(telemetry_grid)

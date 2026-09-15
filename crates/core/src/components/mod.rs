@@ -5,6 +5,7 @@ pub mod checkbox;
 pub mod chip;
 pub mod click_spark;
 pub mod dropdown;
+pub mod gradient_text;
 pub mod group_card;
 pub mod history_graph;
 pub mod icon;
@@ -33,6 +34,8 @@ pub use chip::Chip;
 pub use click_spark::{ClickSparkBurst, render_click_sparks};
 #[allow(unused_imports)]
 pub use dropdown::{Dropdown, DropdownItem};
+#[allow(unused_imports)]
+pub use gradient_text::{GradientDirection, GradientText};
 #[allow(unused_imports)]
 pub use group_card::GroupCard;
 #[allow(unused_imports)]
