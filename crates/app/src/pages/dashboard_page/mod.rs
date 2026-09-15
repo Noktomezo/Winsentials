@@ -302,8 +302,8 @@ impl RenderOnce for DashboardPage {
                         GradientText::new("dashboard_app_name_title", "WINSENTIALS")
                             .debug_selector("dashboard_app_name_title")
                             .font_family("Permanent Marker")
-                            .font_size(px(28.0))
-                            .letter_spacing(px(28.0 * 0.3)),
+                            .font_size(px(56.0))
+                            .letter_spacing(px(56.0 * 0.3)),
                     ),
             )
             .child(system_card)
