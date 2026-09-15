@@ -7,6 +7,7 @@ use rust_i18n::t;
 
 use crate::entities::{SystemInfo, TelemetryData};
 use crate::features::navigation::AppRoute;
+use crate::pages::PageHeader;
 use crate::shared::theme::Theme;
 use crate::shared::ui::GradientText;
 use crate::shared::ui::icon::Icon;
@@ -285,29 +286,23 @@ impl RenderOnce for DashboardPage {
             .gap(px(12.0))
             .children(card_items.into_iter().map(|(_, card)| card));
 
+        let route = AppRoute::Dashboard;
+        let page_header = PageHeader::new(route.title(), route.description()).custom_title(
+            GradientText::new("dashboard_app_name_title", "WINSENTIALS")
+                .debug_selector("dashboard_app_name_title")
+                .font_family("Permanent Marker")
+                .font_size(px(28.0))
+                .line_height(px(24.0))
+                .letter_spacing(px(28.0 * 0.3)),
+        );
+
         div()
             .flex()
             .flex_col()
             .w_full()
             .p(px(16.0))
             .gap(px(16.0))
-            .child(
-                div()
-                    .flex()
-                    .w_full()
-                    .justify_center()
-                    .items_center()
-                    .h(px(42.0))
-                    .child(
-                        GradientText::new("dashboard_app_name_title", "WINSENTIALS")
-                            .debug_selector("dashboard_app_name_title")
-                            .font_family("Permanent Marker")
-                            .font_size(px(43.0))
-                            .line_height(px(42.0))
-                            .h(px(42.0))
-                            .letter_spacing(px(43.0 * 0.3)),
-                    ),
-            )
+            .child(page_header)
             .child(system_card)
             .child(telemetry_grid)
     }

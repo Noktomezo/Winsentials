@@ -8,6 +8,7 @@ use crate::shared::theme::Theme;
 #[derive(IntoElement)]
 pub struct PageHeader {
     title: SharedString,
+    custom_title: Option<AnyElement>,
     description: SharedString,
     badge: Option<AnyElement>,
     actions: Option<AnyElement>,
@@ -18,10 +19,17 @@ impl PageHeader {
     pub fn new(title: impl Into<SharedString>, description: impl Into<SharedString>) -> Self {
         Self {
             title: title.into(),
+            custom_title: None,
             description: description.into(),
             badge: None,
             actions: None,
         }
+    }
+
+    #[must_use]
+    pub fn custom_title(mut self, title: impl IntoElement) -> Self {
+        self.custom_title = Some(title.into_any_element());
+        self
     }
 
     #[must_use]
@@ -42,6 +50,19 @@ impl RenderOnce for PageHeader {
         let theme = Theme::get(cx);
         let badge = self.badge.map(|badge| div().flex_none().child(badge));
         let actions = self.actions.map(|actions| div().flex_none().child(actions));
+        let title_node = self.custom_title.unwrap_or_else(|| {
+            div()
+                .min_w(px(0.0))
+                .text_size(px(20.0))
+                .line_height(px(24.0))
+                .font_weight(FontWeight::BOLD)
+                .text_color(theme.text_primary)
+                .text_ellipsis()
+                .overflow_hidden()
+                .whitespace_nowrap()
+                .child(self.title)
+                .into_any_element()
+        });
 
         div()
             .flex()
@@ -63,18 +84,7 @@ impl RenderOnce for PageHeader {
                             .flex()
                             .items_center()
                             .gap(px(8.0))
-                            .child(
-                                div()
-                                    .min_w(px(0.0))
-                                    .text_size(px(20.0))
-                                    .line_height(px(24.0))
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_color(theme.text_primary)
-                                    .text_ellipsis()
-                                    .overflow_hidden()
-                                    .whitespace_nowrap()
-                                    .child(self.title),
-                            )
+                            .child(title_node)
                             .children(badge),
                     )
                     .child(
@@ -90,5 +100,35 @@ impl RenderOnce for PageHeader {
                     ),
             )
             .children(actions)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gpui::{Context, InteractiveElement, Render, TestAppContext, size};
+
+    struct TestPageHeaderView;
+
+    impl Render for TestPageHeaderView {
+        fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+            PageHeader::new("Default Title", "Description").custom_title(
+                div()
+                    .debug_selector(|| "custom_header_title".to_string())
+                    .child("CUSTOM"),
+            )
+        }
+    }
+
+    #[gpui::test]
+    fn test_page_header_custom_title_renders(cx: &mut TestAppContext) {
+        let window = cx.open_window(size(px(400.0), px(100.0)), |_window, _cx| {
+            TestPageHeaderView
+        });
+
+        let mut visual_cx = gpui::VisualTestContext::from_window(window.into(), cx);
+        visual_cx.run_until_parked();
+
+        assert!(visual_cx.debug_bounds("custom_header_title").is_some());
     }
 }
