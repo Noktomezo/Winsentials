@@ -5,8 +5,8 @@ use gpui::prelude::FluentBuilder;
 use gpui::{
     Animation, AnimationExt, App, DefiniteLength, ElementId, FocusHandle, FontWeight,
     InteractiveElement, IntoElement, KeyDownEvent, MouseButton, ParentElement, RenderOnce,
-    SharedString, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, Window, div,
-    ease_in_out, px,
+    SharedString, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, TextRun,
+    Window, div, ease_in_out, px, rems,
 };
 
 use crate::components::icon::Icon;
@@ -147,7 +147,7 @@ impl SearchInput {
 
 impl RenderOnce for SearchInput {
     #[allow(clippy::too_many_lines)]
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
         let is_focused = self.focused;
         let is_hovered = self.hovered;
@@ -185,35 +185,7 @@ impl RenderOnce for SearchInput {
         let neutral_border = theme.input_border;
         let blue_border = theme.accent_blue;
         let hover_blue_border = theme.accent_hover_bg;
-
         let caret_anim_id = format!("{id_str}_caret_blink");
-        let caret_el = div()
-            .id(ElementId::Name(format!("{id_str}_caret").into()))
-            .w(px(0.0))
-            .h(px(16.0))
-            .relative()
-            .flex()
-            .items_center()
-            .child(
-                div()
-                    .absolute()
-                    .left(px(-0.75))
-                    .w(px(1.5))
-                    .h(px(14.0))
-                    .bg(theme.accent_blue)
-                    .rounded(px(1.0))
-                    .with_animation(
-                        ElementId::Name(caret_anim_id.into()),
-                        Animation::new(Duration::from_millis(850))
-                            .repeat()
-                            .with_easing(ease_in_out),
-                        move |el, delta| {
-                            let wave = (delta * std::f32::consts::PI * 2.0).cos();
-                            let alpha = (0.5 + 0.5 * wave).clamp(0.0, 1.0);
-                            el.opacity(alpha)
-                        },
-                    ),
-            );
 
         let mut input_box = div()
             .id(self.id)
@@ -289,11 +261,35 @@ impl RenderOnce for SearchInput {
         };
 
         let content_el = if self.value.is_empty() {
+            let caret_anim_id = caret_anim_id.clone();
             div()
                 .relative()
                 .flex()
                 .items_center()
-                .when(is_focused, |this| this.child(caret_el))
+                .when(is_focused, |this| {
+                    this.child(
+                        div()
+                            .id(ElementId::Name(format!("{id_str}_caret").into()))
+                            .absolute()
+                            .left(px(0.0))
+                            .top(px(1.0))
+                            .w(px(1.5))
+                            .h(px(14.0))
+                            .bg(theme.accent_blue)
+                            .rounded(px(1.0))
+                            .with_animation(
+                                ElementId::Name(caret_anim_id.into()),
+                                Animation::new(Duration::from_millis(850))
+                                    .repeat()
+                                    .with_easing(ease_in_out),
+                                move |el, delta| {
+                                    let wave = (delta * std::f32::consts::PI * 2.0).cos();
+                                    let alpha = (0.5 + 0.5 * wave).clamp(0.0, 1.0);
+                                    el.opacity(alpha)
+                                },
+                            ),
+                    )
+                })
                 .child(
                     div()
                         .text_xs()
@@ -304,85 +300,72 @@ impl RenderOnce for SearchInput {
                         .child(self.placeholder.clone()),
                 )
                 .into_any_element()
-        } else if let Some((anchor, head)) = self.selection {
+        } else {
             let char_count = self.value.chars().count();
+            let (anchor, head) = self.selection.unwrap_or((char_count, char_count));
             let s = anchor.min(head).min(char_count);
             let e = anchor.max(head).min(char_count);
-            let chars: Vec<char> = self.value.chars().collect();
+            let has_selection = s != e;
 
-            if s == e {
-                let before: String = chars[..s].iter().collect();
-                let after: String = chars[s..].iter().collect();
+            let font_size = rems(0.75).to_pixels(window.rem_size());
+            let mut font = window.text_style().font();
+            font.weight = FontWeight::NORMAL;
+            let text_run = TextRun {
+                len: self.value.len(),
+                font,
+                color: theme.text_primary.into(),
+                ..Default::default()
+            };
+            let shaped_line = window.text_system().shape_line(
+                self.value.clone().into(),
+                font_size,
+                &[text_run],
+                None,
+            );
 
-                div()
-                    .flex()
-                    .items_center()
-                    .when(!before.is_empty(), |this| {
-                        this.child(
-                            div()
-                                .text_xs()
-                                .line_height(px(16.0))
-                                .font_weight(FontWeight::NORMAL)
-                                .text_color(theme.text_primary)
-                                .child(before),
-                        )
-                    })
-                    .when(is_focused, |this| this.child(caret_el))
-                    .when(!after.is_empty(), |this| {
-                        this.child(
-                            div()
-                                .text_xs()
-                                .line_height(px(16.0))
-                                .font_weight(FontWeight::NORMAL)
-                                .text_color(theme.text_primary)
-                                .child(after),
-                        )
-                    })
-                    .into_any_element()
+            let s_byte = self
+                .value
+                .char_indices()
+                .nth(s)
+                .map_or(self.value.len(), |(b, _)| b);
+            let e_byte = self
+                .value
+                .char_indices()
+                .nth(e)
+                .map_or(self.value.len(), |(b, _)| b);
+            let sel_x = shaped_line.x_for_index(s_byte);
+            let sel_w = shaped_line.x_for_index(e_byte) - sel_x;
+
+            let head_clamped = head.min(char_count);
+            let head_byte = self
+                .value
+                .char_indices()
+                .nth(head_clamped)
+                .map_or(self.value.len(), |(b, _)| b);
+            let caret_x = shaped_line.x_for_index(head_byte);
+            let caret_left = if head_clamped == 0 {
+                px(0.0)
             } else {
-                let before: String = chars[..s].iter().collect();
-                let sel: String = chars[s..e].iter().collect();
-                let after: String = chars[e..].iter().collect();
+                (caret_x - px(0.75)).max(px(0.0))
+            };
 
-                div()
-                    .flex()
-                    .items_center()
-                    .when(!before.is_empty(), |this| {
-                        this.child(
-                            div()
-                                .text_xs()
-                                .line_height(px(16.0))
-                                .font_weight(FontWeight::NORMAL)
-                                .text_color(theme.text_primary)
-                                .child(before),
-                        )
-                    })
-                    .child(
-                        div()
-                            .rounded(px(2.0))
-                            .bg(theme.accent_blue.opacity(0.35))
-                            .text_xs()
-                            .line_height(px(16.0))
-                            .font_weight(FontWeight::NORMAL)
-                            .text_color(theme.text_primary)
-                            .child(sel),
-                    )
-                    .when(!after.is_empty(), |this| {
-                        this.child(
-                            div()
-                                .text_xs()
-                                .line_height(px(16.0))
-                                .font_weight(FontWeight::NORMAL)
-                                .text_color(theme.text_primary)
-                                .child(after),
-                        )
-                    })
-                    .into_any_element()
-            }
-        } else {
+            let caret_anim_id = caret_anim_id.clone();
             div()
+                .relative()
                 .flex()
                 .items_center()
+                .when(has_selection, |this| {
+                    this.child(
+                        div()
+                            .absolute()
+                            .left(sel_x)
+                            .top(px(0.0))
+                            .w(sel_w)
+                            .h(px(16.0))
+                            .rounded(px(2.0))
+                            .bg(theme.accent_blue.opacity(0.35)),
+                    )
+                })
                 .child(
                     div()
                         .text_xs()
@@ -391,7 +374,30 @@ impl RenderOnce for SearchInput {
                         .text_color(theme.text_primary)
                         .child(self.value.clone()),
                 )
-                .when(is_focused, |this| this.child(caret_el))
+                .when(is_focused && !has_selection, |this| {
+                    this.child(
+                        div()
+                            .id(ElementId::Name(format!("{id_str}_caret").into()))
+                            .absolute()
+                            .left(caret_left)
+                            .top(px(1.0))
+                            .w(px(1.5))
+                            .h(px(14.0))
+                            .bg(theme.accent_blue)
+                            .rounded(px(1.0))
+                            .with_animation(
+                                ElementId::Name(caret_anim_id.into()),
+                                Animation::new(Duration::from_millis(850))
+                                    .repeat()
+                                    .with_easing(ease_in_out),
+                                move |el, delta| {
+                                    let wave = (delta * std::f32::consts::PI * 2.0).cos();
+                                    let alpha = (0.5 + 0.5 * wave).clamp(0.0, 1.0);
+                                    el.opacity(alpha)
+                                },
+                            ),
+                    )
+                })
                 .into_any_element()
         };
 
