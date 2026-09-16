@@ -37,6 +37,14 @@ pub struct TweakStates {
 
 impl Global for TweakStates {}
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct HighlightedTweak {
+    pub tweak_id: Option<&'static str>,
+    pub needs_scroll: bool,
+}
+
+impl Global for HighlightedTweak {}
+
 impl TweakStates {
     #[must_use]
     pub fn load_initial() -> Self {

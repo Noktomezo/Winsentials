@@ -5,8 +5,8 @@ use gpui::prelude::FluentBuilder;
 use gpui::{
     Animation, AnimationExt, App, DefiniteLength, ElementId, FocusHandle, FontWeight,
     InteractiveElement, IntoElement, KeyDownEvent, MouseButton, ParentElement, RenderOnce,
-    SharedString, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, Window, div,
-    ease_in_out, px,
+    SharedString, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled, TextRun,
+    Window, div, ease_in_out, px, rems,
 };
 
 use crate::components::icon::Icon;
@@ -27,6 +27,7 @@ pub struct SearchInput {
     focused: bool,
     hovered: bool,
     selection: Option<(usize, usize)>,
+    max_length: Option<usize>,
     focus_handle: Option<FocusHandle>,
     icon: Option<SharedString>,
     on_change: Option<SearchChangeHandler>,
@@ -49,6 +50,7 @@ impl SearchInput {
             focused: false,
             hovered: false,
             selection: None,
+            max_length: None,
             focus_handle: None,
             icon: Some("icons/search.svg".into()),
             on_change: None,
@@ -103,6 +105,12 @@ impl SearchInput {
     }
 
     #[must_use]
+    pub fn max_length(mut self, max: impl Into<Option<usize>>) -> Self {
+        self.max_length = max.into();
+        self
+    }
+
+    #[must_use]
     pub fn track_focus(mut self, focus_handle: &FocusHandle) -> Self {
         self.focus_handle = Some(focus_handle.clone());
         self
@@ -147,11 +155,12 @@ impl SearchInput {
 
 impl RenderOnce for SearchInput {
     #[allow(clippy::too_many_lines)]
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
         let is_focused = self.focused;
         let is_hovered = self.hovered;
         let current_sel = self.selection;
+        let max_length = self.max_length;
 
         let current_val = self.value.clone();
         let current_val_mouse = self.value.clone();
@@ -185,25 +194,7 @@ impl RenderOnce for SearchInput {
         let neutral_border = theme.input_border;
         let blue_border = theme.accent_blue;
         let hover_blue_border = theme.accent_hover_bg;
-
         let caret_anim_id = format!("{id_str}_caret_blink");
-        let caret_el = div()
-            .id(ElementId::Name(format!("{id_str}_caret").into()))
-            .w(px(1.5))
-            .h(px(14.0))
-            .bg(theme.accent_blue)
-            .rounded(px(1.0))
-            .with_animation(
-                ElementId::Name(caret_anim_id.into()),
-                Animation::new(Duration::from_millis(850))
-                    .repeat()
-                    .with_easing(ease_in_out),
-                move |el, delta| {
-                    let wave = (delta * std::f32::consts::PI * 2.0).cos();
-                    let alpha = (0.5 + 0.5 * wave).clamp(0.0, 1.0);
-                    el.opacity(alpha)
-                },
-            );
 
         let mut input_box = div()
             .id(self.id)
@@ -237,7 +228,9 @@ impl RenderOnce for SearchInput {
                         }
                     }
                 } else if let Some(ref h) = on_sel_mouse_cb {
-                    h(None, window, cx);
+                    let count = current_val_mouse.chars().count();
+                    let target_pos = current_sel.map_or(count, |(_, head)| head.min(count));
+                    h(Some((target_pos, target_pos)), window, cx);
                 }
                 cx.stop_propagation();
             })
@@ -259,6 +252,7 @@ impl RenderOnce for SearchInput {
                 event,
                 &current_val,
                 current_sel,
+                max_length,
                 on_change_key.as_ref(),
                 on_sel_cb.as_ref(),
                 on_escape_cb.as_ref(),
@@ -277,6 +271,7 @@ impl RenderOnce for SearchInput {
         };
 
         let content_el = if self.value.is_empty() {
+            let caret_anim_id = caret_anim_id.clone();
             div()
                 .relative()
                 .flex()
@@ -284,77 +279,135 @@ impl RenderOnce for SearchInput {
                 .when(is_focused, |this| {
                     this.child(
                         div()
+                            .id(ElementId::Name(format!("{id_str}_caret").into()))
                             .absolute()
                             .left(px(0.0))
-                            .top(px(0.0))
-                            .bottom(px(0.0))
-                            .flex()
-                            .items_center()
-                            .child(caret_el),
+                            .top(px(1.0))
+                            .w(px(1.5))
+                            .h(px(14.0))
+                            .bg(theme.accent_blue)
+                            .rounded(px(1.0))
+                            .with_animation(
+                                ElementId::Name(caret_anim_id.into()),
+                                Animation::new(Duration::from_millis(850))
+                                    .repeat()
+                                    .with_easing(ease_in_out),
+                                move |el, delta| {
+                                    let wave = (delta * std::f32::consts::PI * 2.0).cos();
+                                    let alpha = (0.5 + 0.5 * wave).clamp(0.0, 1.0);
+                                    el.opacity(alpha)
+                                },
+                            ),
                     )
                 })
                 .child(
                     div()
                         .text_xs()
+                        .line_height(px(16.0))
                         .font_weight(FontWeight::NORMAL)
                         .text_color(theme.text_muted)
                         .truncate()
                         .child(self.placeholder.clone()),
                 )
                 .into_any_element()
-        } else if let Some((start, end)) = self.selection {
-            let char_count = self.value.chars().count();
-            let s = start.min(char_count);
-            let e = end.min(char_count).max(s);
-            let chars: Vec<char> = self.value.chars().collect();
-            let before: String = chars[..s].iter().collect();
-            let sel: String = chars[s..e].iter().collect();
-            let after: String = chars[e..].iter().collect();
-
-            div()
-                .flex()
-                .items_center()
-                .when(!before.is_empty(), |this| {
-                    this.child(
-                        div()
-                            .text_xs()
-                            .font_weight(FontWeight::NORMAL)
-                            .text_color(theme.text_primary)
-                            .child(before),
-                    )
-                })
-                .child(
-                    div()
-                        .px(px(1.0))
-                        .rounded(px(2.0))
-                        .bg(theme.accent_blue.opacity(0.35))
-                        .text_xs()
-                        .font_weight(FontWeight::NORMAL)
-                        .text_color(theme.text_primary)
-                        .child(sel),
-                )
-                .when(!after.is_empty(), |this| {
-                    this.child(
-                        div()
-                            .text_xs()
-                            .font_weight(FontWeight::NORMAL)
-                            .text_color(theme.text_primary)
-                            .child(after),
-                    )
-                })
-                .into_any_element()
         } else {
+            let char_count = self.value.chars().count();
+            let (anchor, head) = self.selection.unwrap_or((char_count, char_count));
+            let s = anchor.min(head).min(char_count);
+            let e = anchor.max(head).min(char_count);
+            let has_selection = s != e;
+
+            let font_size = rems(0.75).to_pixels(window.rem_size());
+            let mut font = window.text_style().font();
+            font.weight = FontWeight::NORMAL;
+            let text_run = TextRun {
+                len: self.value.len(),
+                font,
+                color: theme.text_primary.into(),
+                ..Default::default()
+            };
+            let shaped_line = window.text_system().shape_line(
+                self.value.clone().into(),
+                font_size,
+                &[text_run],
+                None,
+            );
+
+            let s_byte = self
+                .value
+                .char_indices()
+                .nth(s)
+                .map_or(self.value.len(), |(b, _)| b);
+            let e_byte = self
+                .value
+                .char_indices()
+                .nth(e)
+                .map_or(self.value.len(), |(b, _)| b);
+            let sel_x = shaped_line.x_for_index(s_byte);
+            let sel_w = shaped_line.x_for_index(e_byte) - sel_x;
+
+            let head_clamped = head.min(char_count);
+            let head_byte = self
+                .value
+                .char_indices()
+                .nth(head_clamped)
+                .map_or(self.value.len(), |(b, _)| b);
+            let caret_x = shaped_line.x_for_index(head_byte);
+            let caret_left = if head_clamped == 0 {
+                px(0.0)
+            } else {
+                (caret_x - px(0.75)).max(px(0.0))
+            };
+
+            let caret_anim_id = caret_anim_id.clone();
             div()
+                .relative()
                 .flex()
                 .items_center()
+                .when(has_selection, |this| {
+                    this.child(
+                        div()
+                            .absolute()
+                            .left(sel_x)
+                            .top(px(0.0))
+                            .w(sel_w)
+                            .h(px(16.0))
+                            .rounded(px(2.0))
+                            .bg(theme.accent_blue.opacity(0.35)),
+                    )
+                })
                 .child(
                     div()
                         .text_xs()
+                        .line_height(px(16.0))
                         .font_weight(FontWeight::NORMAL)
                         .text_color(theme.text_primary)
                         .child(self.value.clone()),
                 )
-                .when(is_focused, |this| this.child(caret_el))
+                .when(is_focused && !has_selection, |this| {
+                    this.child(
+                        div()
+                            .id(ElementId::Name(format!("{id_str}_caret").into()))
+                            .absolute()
+                            .left(caret_left)
+                            .top(px(1.0))
+                            .w(px(1.5))
+                            .h(px(14.0))
+                            .bg(theme.accent_blue)
+                            .rounded(px(1.0))
+                            .with_animation(
+                                ElementId::Name(caret_anim_id.into()),
+                                Animation::new(Duration::from_millis(850))
+                                    .repeat()
+                                    .with_easing(ease_in_out),
+                                move |el, delta| {
+                                    let wave = (delta * std::f32::consts::PI * 2.0).cos();
+                                    let alpha = (0.5 + 0.5 * wave).clamp(0.0, 1.0);
+                                    el.opacity(alpha)
+                                },
+                            ),
+                    )
+                })
                 .into_any_element()
         };
 

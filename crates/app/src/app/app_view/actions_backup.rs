@@ -14,10 +14,14 @@ impl AppView {
         let default_name = rust_i18n::t!("tools.create_backup_placeholder").to_string();
 
         let on_confirm = cx.listener(|this, name: &String, _window, cx| {
-            let backup_name = if name.trim().is_empty() {
+            let trimmed = name.trim();
+            let backup_name = if trimmed.is_empty() {
                 rust_i18n::t!("tools.create_backup_placeholder").to_string()
             } else {
-                name.trim().to_string()
+                trimmed
+                    .chars()
+                    .take(crate::entities::tweaks::MAX_BACKUP_NAME_LEN)
+                    .collect()
             };
             this.close_input_modal(cx);
             this.execute_create_backup(&backup_name, cx);
@@ -38,6 +42,7 @@ impl AppView {
                 .into(),
             confirm_label: rust_i18n::t!("tools.create_backup").to_string().into(),
             cancel_label: rust_i18n::t!("cleanup.cancel").to_string().into(),
+            max_length: Some(crate::entities::tweaks::MAX_BACKUP_NAME_LEN),
             focused: true,
             selection: None,
             closing: false,
@@ -90,9 +95,13 @@ impl AppView {
 
         let id_for_confirm = backup_id;
         let on_confirm = cx.listener(move |this, name: &String, _window, cx| {
-            let new_name = name.trim();
-            if !new_name.is_empty() {
-                this.execute_rename_backup(&id_for_confirm, new_name, cx);
+            let trimmed = name.trim();
+            if !trimmed.is_empty() {
+                let new_name: String = trimmed
+                    .chars()
+                    .take(crate::entities::tweaks::MAX_BACKUP_NAME_LEN)
+                    .collect();
+                this.execute_rename_backup(&id_for_confirm, &new_name, cx);
             }
             this.close_input_modal(cx);
         });
@@ -112,6 +121,7 @@ impl AppView {
                 .into(),
             confirm_label: rust_i18n::t!("tools.save").to_string().into(),
             cancel_label: rust_i18n::t!("cleanup.cancel").to_string().into(),
+            max_length: Some(crate::entities::tweaks::MAX_BACKUP_NAME_LEN),
             focused: true,
             selection: None,
             closing: false,

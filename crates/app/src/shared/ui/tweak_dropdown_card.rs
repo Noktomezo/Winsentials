@@ -16,6 +16,7 @@ pub struct TweakDropdownCard {
     description: SharedString,
     dropdown: Dropdown,
     badges: Vec<TweakBadge>,
+    highlighted: bool,
     on_hover_tooltip: Option<TooltipHoverHandler>,
 }
 
@@ -36,6 +37,7 @@ impl TweakDropdownCard {
             description: description.into(),
             dropdown,
             badges: Vec::new(),
+            highlighted: false,
             on_hover_tooltip: None,
         }
     }
@@ -54,6 +56,12 @@ impl TweakDropdownCard {
     }
 
     #[must_use]
+    pub fn highlighted(mut self, highlighted: bool) -> Self {
+        self.highlighted = highlighted;
+        self
+    }
+
+    #[must_use]
     pub fn on_hover_tooltip(
         mut self,
         handler: impl Fn(Option<TooltipState>, &mut Window, &mut App) + 'static,
@@ -67,6 +75,11 @@ impl RenderOnce for TweakDropdownCard {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
         let id_str = self.id;
+        let is_highlighted = self.highlighted
+            || cx
+                .try_global::<crate::entities::tweaks::HighlightedTweak>()
+                .and_then(|h| h.tweak_id)
+                == Some(id_str);
         let hover_state = window.use_keyed_state((id_str, 2usize), cx, |_, _| false);
         let hovered = *hover_state.read(cx);
 
@@ -80,6 +93,7 @@ impl RenderOnce for TweakDropdownCard {
             self.dropdown,
             hover_state,
             hovered,
+            is_highlighted,
             &theme,
             cx.reduce_motion(),
         )

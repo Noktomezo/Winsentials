@@ -57,6 +57,6 @@ impl RenderOnce for PrivacyPage {
             self.on_hover_tooltip.as_ref(),
             cx,
         );
-        render_tweak_page(AppRoute::Privacy, tweak_items)
+        render_tweak_page(AppRoute::Privacy, tweak_items, cx)
     }
 }

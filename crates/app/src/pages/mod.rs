@@ -46,7 +46,8 @@ use crate::shared::ui::{SmoothScroll, TooltipState};
 #[allow(
     clippy::too_many_arguments,
     clippy::too_many_lines,
-    clippy::fn_params_excessive_bools
+    clippy::fn_params_excessive_bools,
+    clippy::type_complexity
 )]
 #[must_use]
 pub fn render_route(
@@ -84,6 +85,7 @@ pub fn render_route(
     tools_page: Option<ToolsPage>,
     backups_page: Option<BackupsPage>,
     on_navigate: impl Fn(AppRoute, &mut Window, &mut App) + Send + Sync + 'static,
+    on_navigate_tweak: impl Fn(AppRoute, &'static str, &mut Window, &mut App) + Send + Sync + 'static,
     on_hover_telemetry_card: impl Fn(SharedString, bool, &mut Window, &mut App) + Send + Sync + 'static,
     on_toggle_tweak: impl Fn(&'static str, bool, &mut Window, &mut App) + 'static,
     on_change_keyboard_repeat: impl Fn(&str, &mut Window, &mut App) + 'static,
@@ -126,65 +128,50 @@ pub fn render_route(
     let on_nav_arc = Arc::new(on_navigate);
     let on_nav_dash = on_nav_arc.clone();
     let on_nav_cpu = on_nav_arc;
+    let on_nav_tw_dash = Arc::new(on_navigate_tweak);
 
     let on_hover_card_dash = on_hover_telemetry_card;
 
     let on_select_gpu_engine_arc = Arc::new(on_select_gpu_engine);
     let on_reset_gpu_slots_arc = Arc::new(on_reset_gpu_slots);
-
     let on_toggle_tweak_arc = Arc::new(on_toggle_tweak);
-    let on_toggle_tweak_ctx = on_toggle_tweak_arc.clone();
-    let on_toggle_tweak_exp = on_toggle_tweak_arc.clone();
-    let on_toggle_tweak_iface = on_toggle_tweak_arc.clone();
-    let on_toggle_tweak_input = on_toggle_tweak_arc.clone();
-    let on_toggle_tweak_security = on_toggle_tweak_arc.clone();
-    let on_toggle_tweak_privacy = on_toggle_tweak_arc.clone();
-    let on_toggle_tweak_net = on_toggle_tweak_arc;
-
-    let on_toggle_dropdown_arc = Arc::new(on_toggle_dropdown);
-    let on_toggle_dd_set = on_toggle_dropdown_arc.clone();
-    let on_toggle_dd_gpu = on_toggle_dropdown_arc.clone();
-    let on_toggle_dd_startup = on_toggle_dropdown_arc.clone();
-    let on_toggle_dd_input = on_toggle_dropdown_arc;
-
+    let on_toggle_dropdown_arc: Arc<dyn Fn(&'static str, &mut Window, &mut App)> =
+        Arc::new(on_toggle_dropdown);
     let on_hover_dropdown_arc = Arc::new(on_hover_dropdown);
-    let on_hover_dd_set = on_hover_dropdown_arc.clone();
-    let on_hover_dd_gpu = on_hover_dropdown_arc.clone();
-    let on_hover_dd_startup = on_hover_dropdown_arc.clone();
-    let on_hover_dd_input = on_hover_dropdown_arc;
-
     let on_hover_option_arc = Arc::new(on_hover_option);
-    let on_hover_opt_set = on_hover_option_arc.clone();
-    let on_hover_opt_gpu = on_hover_option_arc.clone();
-    let on_hover_opt_startup = on_hover_option_arc.clone();
-    let on_hover_opt_input = on_hover_option_arc;
+    let on_close_dropdowns_arc: Arc<dyn Fn(&mut Window, &mut App)> = Arc::new(on_close_dropdowns);
+    let on_hover_tooltip_arc: Arc<dyn Fn(Option<TooltipState>, &mut Window, &mut App)> =
+        Arc::new(on_hover_tooltip);
 
-    let on_close_dropdowns_arc = Arc::new(on_close_dropdowns);
-    let on_close_dd_set = on_close_dropdowns_arc.clone();
-    let on_close_dd_gpu = on_close_dropdowns_arc.clone();
-    let on_close_dd_startup = on_close_dropdowns_arc.clone();
-    let on_close_dd_input = on_close_dropdowns_arc;
-
-    let on_hover_tooltip_arc = Arc::new(on_hover_tooltip);
-    let on_hover_tt_ctx = on_hover_tooltip_arc.clone();
-    let on_hover_tt_exp = on_hover_tooltip_arc.clone();
-    let on_hover_tt_iface = on_hover_tooltip_arc.clone();
-    let on_hover_tt_input = on_hover_tooltip_arc.clone();
-    let on_hover_tt_security = on_hover_tooltip_arc.clone();
-    let on_hover_tt_privacy = on_hover_tooltip_arc.clone();
-    let on_hover_tt_net = on_hover_tooltip_arc.clone();
-    let on_hover_tt_startup = on_hover_tooltip_arc.clone();
-    let on_hover_tt_settings = on_hover_tooltip_arc;
+    macro_rules! render_standard_tweak_page {
+        ($page_ctor:expr) => {{
+            let on_toggle = on_toggle_tweak_arc.clone();
+            let on_hover = on_hover_tooltip_arc.clone();
+            $page_ctor
+                .on_toggle_tweak(move |id, val, window, cx| {
+                    on_toggle(id, val, window, cx);
+                })
+                .on_hover_tooltip(move |tt, window, cx| {
+                    on_hover(tt, window, cx);
+                })
+                .into_any_element()
+        }};
+    }
 
     let page_element = match route {
-        AppRoute::Dashboard => DashboardPage::new(telemetry, hovered_telemetry_card.clone())
-            .on_hover_card(move |id, val, window, cx| {
-                on_hover_card_dash(id, val, window, cx);
-            })
-            .on_navigate(move |target_route, window, cx| {
-                on_nav_dash(target_route, window, cx);
-            })
-            .into_any_element(),
+        AppRoute::Dashboard => {
+            DashboardPage::new(telemetry, windows_build, hovered_telemetry_card.clone())
+                .on_hover_card(move |id, val, window, cx| {
+                    on_hover_card_dash(id, val, window, cx);
+                })
+                .on_navigate(move |target_route, window, cx| {
+                    on_nav_dash(target_route, window, cx);
+                })
+                .on_navigate_tweak(move |target_route, tweak_id, window, cx| {
+                    on_nav_tw_dash(target_route, tweak_id, window, cx);
+                })
+                .into_any_element()
+        }
         AppRoute::CpuDetail => CpuPage::new(telemetry.cpu_detail)
             .on_navigate(move |target_route, window, cx| {
                 on_nav_cpu(target_route, window, cx);
@@ -243,10 +230,10 @@ pub fn render_route(
 
                     let on_select_eng = on_select_gpu_engine_arc.clone();
                     let on_reset_sl = on_reset_gpu_slots_arc.clone();
-                    let on_toggle_dd = on_toggle_dd_gpu.clone();
-                    let on_hover_dd = on_hover_dd_gpu.clone();
-                    let on_hover_opt = on_hover_opt_gpu.clone();
-                    let on_close_dd = on_close_dd_gpu.clone();
+                    let on_toggle_dd = on_toggle_dropdown_arc.clone();
+                    let on_hover_dd = on_hover_dropdown_arc.clone();
+                    let on_hover_opt = on_hover_option_arc.clone();
+                    let on_close_dd = on_close_dropdowns_arc.clone();
                     let gpu_id = gpu.id;
 
                     GpuPage::new(
@@ -279,86 +266,54 @@ pub fn render_route(
                     .into_any_element()
                 },
             ),
-        AppRoute::ContextMenu => ContextMenuPage::new(windows_build)
+        AppRoute::ContextMenu => render_standard_tweak_page!(ContextMenuPage::new(windows_build)),
+        AppRoute::Explorer => render_standard_tweak_page!(ExplorerPage::new(windows_build)),
+        AppRoute::Interface => render_standard_tweak_page!(InterfacePage::new(windows_build)),
+        AppRoute::Input => {
+            let on_toggle = on_toggle_tweak_arc.clone();
+            let on_toggle_dd = on_toggle_dropdown_arc.clone();
+            let on_hover_dd = on_hover_dropdown_arc.clone();
+            let on_hover_opt = on_hover_option_arc.clone();
+            let on_close_dd = on_close_dropdowns_arc.clone();
+            let on_hover_tt = on_hover_tooltip_arc.clone();
+            InputPage::new(
+                windows_build,
+                open_dropdown,
+                open_dropdown_upward,
+                opening_dropdown,
+                closing_dropdown,
+                hovered_dropdown,
+                hovered_option,
+                pending_selection,
+            )
             .on_toggle_tweak(move |id, val, window, cx| {
-                on_toggle_tweak_ctx(id, val, window, cx);
+                on_toggle(id, val, window, cx);
+            })
+            .on_select_preset(on_change_keyboard_repeat)
+            .on_select_ctf_preset(on_change_ctf_optimization)
+            .on_select_snapkey_preset(on_change_snapkey)
+            .on_toggle_dropdown(move |id, window, cx| {
+                on_toggle_dd(id, window, cx);
+            })
+            .on_hover_dropdown(move |id, hovered, window, cx| {
+                on_hover_dd(id, hovered, window, cx);
+            })
+            .on_hover_option(move |id, option, hovered, window, cx| {
+                on_hover_opt(id, option, hovered, window, cx);
+            })
+            .on_close_dropdowns(move |window, cx| {
+                on_close_dd(window, cx);
             })
             .on_hover_tooltip(move |tt, window, cx| {
-                on_hover_tt_ctx(tt, window, cx);
+                on_hover_tt(tt, window, cx);
             })
-            .into_any_element(),
-        AppRoute::Explorer => ExplorerPage::new(windows_build)
-            .on_toggle_tweak(move |id, val, window, cx| {
-                on_toggle_tweak_exp(id, val, window, cx);
-            })
-            .on_hover_tooltip(move |tt, window, cx| {
-                on_hover_tt_exp(tt, window, cx);
-            })
-            .into_any_element(),
-        AppRoute::Interface => InterfacePage::new(windows_build)
-            .on_toggle_tweak(move |id, val, window, cx| {
-                on_toggle_tweak_iface(id, val, window, cx);
-            })
-            .on_hover_tooltip(move |tt, window, cx| {
-                on_hover_tt_iface(tt, window, cx);
-            })
-            .into_any_element(),
-        AppRoute::Input => InputPage::new(
-            windows_build,
-            open_dropdown,
-            open_dropdown_upward,
-            opening_dropdown,
-            closing_dropdown,
-            hovered_dropdown,
-            hovered_option,
-            pending_selection,
-        )
-        .on_toggle_tweak(move |id, val, window, cx| {
-            on_toggle_tweak_input(id, val, window, cx);
-        })
-        .on_select_preset(on_change_keyboard_repeat)
-        .on_select_ctf_preset(on_change_ctf_optimization)
-        .on_select_snapkey_preset(on_change_snapkey)
-        .on_toggle_dropdown(move |id, window, cx| {
-            on_toggle_dd_input(id, window, cx);
-        })
-        .on_hover_dropdown(move |id, hovered, window, cx| {
-            on_hover_dd_input(id, hovered, window, cx);
-        })
-        .on_hover_option(move |id, option, hovered, window, cx| {
-            on_hover_opt_input(id, option, hovered, window, cx);
-        })
-        .on_close_dropdowns(move |window, cx| {
-            on_close_dd_input(window, cx);
-        })
-        .on_hover_tooltip(move |tt, window, cx| {
-            on_hover_tt_input(tt, window, cx);
-        })
-        .into_any_element(),
-        AppRoute::System => SystemPage::new(windows_build)
-            .on_toggle_tweak(move |id, val, window, cx| {
-                on_toggle_tweak_security(id, val, window, cx);
-            })
-            .on_hover_tooltip(move |tt, window, cx| {
-                on_hover_tt_security(tt, window, cx);
-            })
-            .into_any_element(),
-        AppRoute::Privacy => PrivacyPage::new(windows_build)
-            .on_toggle_tweak(move |id, val, window, cx| {
-                on_toggle_tweak_privacy(id, val, window, cx);
-            })
-            .on_hover_tooltip(move |tt, window, cx| {
-                on_hover_tt_privacy(tt, window, cx);
-            })
-            .into_any_element(),
-        AppRoute::NetworkTweaks => NetworkTweaksPage::new(windows_build)
-            .on_toggle_tweak(move |id, val, window, cx| {
-                on_toggle_tweak_net(id, val, window, cx);
-            })
-            .on_hover_tooltip(move |tt, window, cx| {
-                on_hover_tt_net(tt, window, cx);
-            })
-            .into_any_element(),
+            .into_any_element()
+        }
+        AppRoute::System => render_standard_tweak_page!(SystemPage::new(windows_build)),
+        AppRoute::Privacy => render_standard_tweak_page!(PrivacyPage::new(windows_build)),
+        AppRoute::NetworkTweaks => {
+            render_standard_tweak_page!(NetworkTweaksPage::new(windows_build))
+        }
         AppRoute::Tools => {
             tools_page.map_or_else(|| div().into_any_element(), IntoElement::into_any_element)
         }
@@ -367,16 +322,16 @@ pub fn render_route(
         }
         AppRoute::Startup => {
             let mut filter_handlers = startup_filter_handlers;
-            let on_hover_dd = on_hover_dd_startup.clone();
-            let on_hover_opt = on_hover_opt_startup.clone();
-            filter_handlers.on_toggle_dropdown = Some(on_toggle_dd_startup);
+            let on_hover_dd = on_hover_dropdown_arc.clone();
+            let on_hover_opt = on_hover_option_arc.clone();
+            filter_handlers.on_toggle_dropdown = Some(on_toggle_dropdown_arc.clone());
             filter_handlers.on_hover_dropdown = Some(Arc::new(move |id, hov, window, cx| {
                 on_hover_dd(id, &hov, window, cx);
             }));
             filter_handlers.on_hover_option = Some(Arc::new(move |d_id, opt, hov, window, cx| {
                 on_hover_opt(d_id, opt, &hov, window, cx);
             }));
-            filter_handlers.on_close_dropdowns = Some(on_close_dd_startup);
+            filter_handlers.on_close_dropdowns = Some(on_close_dropdowns_arc.clone());
 
             let dropdown_state = startup_page::StartupDropdownState {
                 open_dropdown,
@@ -409,58 +364,65 @@ pub fn render_route(
                 on_open_folder: Arc::new(on_open_startup_folder),
                 on_open_source: Arc::new(on_open_startup_source),
                 on_copy_path: Arc::new(on_copy_startup_path),
-                on_hover_tooltip: on_hover_tt_startup,
+                on_hover_tooltip: on_hover_tooltip_arc.clone(),
                 on_toggle_menu: Arc::new(on_toggle_startup_menu),
             })
         }
         AppRoute::Cleanup => {
             cleanup_page.map_or_else(|| div().into_any_element(), IntoElement::into_any_element)
         }
-        AppRoute::Settings => SettingsPage::new(
-            current_locale,
-            minimize_to_tray,
-            autostart,
-            autostart_to_tray,
-            discord_rpc,
-            check_updates,
-            update_state.clone(),
-            open_dropdown,
-            open_dropdown_upward,
-            opening_dropdown,
-            closing_dropdown,
-            hovered_dropdown,
-            hovered_option,
-            pending_selection,
-        )
-        .on_change_palette(on_change_palette)
-        .on_change_language(on_change_language)
-        .on_change_theme(on_change_theme)
-        .on_change_transparency(on_change_transparency)
-        .click_spark(click_spark)
-        .on_toggle_click_spark(on_toggle_click_spark)
-        .on_toggle_minimize_to_tray(on_toggle_minimize_to_tray)
-        .on_toggle_autostart(on_toggle_autostart)
-        .on_toggle_autostart_to_tray(on_toggle_autostart_to_tray)
-        .on_change_discord_rpc(on_change_discord_rpc)
-        .on_toggle_check_updates(on_toggle_check_updates)
-        .on_check_update(on_check_update)
-        .on_download_and_install_update(on_download_and_install_update)
-        .on_toggle_dropdown(move |id, window, cx| {
-            on_toggle_dd_set(id, window, cx);
-        })
-        .on_hover_dropdown(move |id, hov, window, cx| {
-            on_hover_dd_set(id, hov, window, cx);
-        })
-        .on_hover_option(move |d_id, opt, hov, window, cx| {
-            on_hover_opt_set(d_id, opt, hov, window, cx);
-        })
-        .on_close_dropdowns(move |window, cx| {
-            on_close_dd_set(window, cx);
-        })
-        .on_hover_tooltip(move |tt, window, cx| {
-            on_hover_tt_settings(tt, window, cx);
-        })
-        .into_any_element(),
+        AppRoute::Settings => {
+            let on_toggle_dd = on_toggle_dropdown_arc.clone();
+            let on_hover_dd = on_hover_dropdown_arc.clone();
+            let on_hover_opt = on_hover_option_arc.clone();
+            let on_close_dd = on_close_dropdowns_arc.clone();
+            let on_hover_tt = on_hover_tooltip_arc.clone();
+            SettingsPage::new(
+                current_locale,
+                minimize_to_tray,
+                autostart,
+                autostart_to_tray,
+                discord_rpc,
+                check_updates,
+                update_state.clone(),
+                open_dropdown,
+                open_dropdown_upward,
+                opening_dropdown,
+                closing_dropdown,
+                hovered_dropdown,
+                hovered_option,
+                pending_selection,
+            )
+            .on_change_palette(on_change_palette)
+            .on_change_language(on_change_language)
+            .on_change_theme(on_change_theme)
+            .on_change_transparency(on_change_transparency)
+            .click_spark(click_spark)
+            .on_toggle_click_spark(on_toggle_click_spark)
+            .on_toggle_minimize_to_tray(on_toggle_minimize_to_tray)
+            .on_toggle_autostart(on_toggle_autostart)
+            .on_toggle_autostart_to_tray(on_toggle_autostart_to_tray)
+            .on_change_discord_rpc(on_change_discord_rpc)
+            .on_toggle_check_updates(on_toggle_check_updates)
+            .on_check_update(on_check_update)
+            .on_download_and_install_update(on_download_and_install_update)
+            .on_toggle_dropdown(move |id, window, cx| {
+                on_toggle_dd(id, window, cx);
+            })
+            .on_hover_dropdown(move |id, hov, window, cx| {
+                on_hover_dd(id, hov, window, cx);
+            })
+            .on_hover_option(move |d_id, opt, hov, window, cx| {
+                on_hover_opt(d_id, opt, hov, window, cx);
+            })
+            .on_close_dropdowns(move |window, cx| {
+                on_close_dd(window, cx);
+            })
+            .on_hover_tooltip(move |tt, window, cx| {
+                on_hover_tt(tt, window, cx);
+            })
+            .into_any_element()
+        }
     };
     let anim_id = format!("page_enter_{}", route.id());
 

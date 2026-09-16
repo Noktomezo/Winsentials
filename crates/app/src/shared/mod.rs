@@ -1,5 +1,6 @@
 pub mod assets;
 pub mod async_runtime;
+pub mod fuzzy;
 pub mod process;
 pub mod shell_notify;
 
