@@ -4,8 +4,9 @@ use gpui::{App, IntoElement, RenderOnce, Window};
 
 use crate::entities::tweaks::TweakCategory;
 use crate::entities::tweaks::input::{
-    CtfOptimizationPreset, KeyboardRepeatPreset, SnapKeyPreset, current_ctf_preset,
-    current_keyboard_repeat_preset, current_snapkey_preset, snapkey_preset_icon,
+    CtfOptimizationPreset, KeyboardRepeatPreset, SnapKeyPreset, ctf_preset_icon, ctf_preset_label,
+    current_ctf_preset, current_keyboard_repeat_preset, current_snapkey_preset,
+    keyboard_repeat_preset_icon, keyboard_repeat_preset_label, snapkey_preset_icon,
     snapkey_preset_label,
 };
 use crate::features::navigation::AppRoute;
@@ -484,41 +485,5 @@ impl RenderOnce for InputPage {
         tweak_items.push(snapkey_card.into_any_element());
 
         render_tweak_page(route, tweak_items)
-    }
-}
-
-fn keyboard_repeat_preset_label(preset: KeyboardRepeatPreset) -> String {
-    let key = match preset {
-        KeyboardRepeatPreset::Standard => "tweaks.keyboard_repeat_standard",
-        KeyboardRepeatPreset::Balanced => "tweaks.keyboard_repeat_balanced",
-        KeyboardRepeatPreset::Fast => "tweaks.keyboard_repeat_fast",
-        KeyboardRepeatPreset::Ultra => "tweaks.keyboard_repeat_ultra",
-    };
-    rust_i18n::t!(key).to_string()
-}
-
-const fn keyboard_repeat_preset_icon(preset: KeyboardRepeatPreset) -> &'static str {
-    match preset {
-        KeyboardRepeatPreset::Standard => "icons/keyboard.svg",
-        KeyboardRepeatPreset::Balanced => "icons/gauge.svg",
-        KeyboardRepeatPreset::Fast => "icons/rabbit.svg",
-        KeyboardRepeatPreset::Ultra => "icons/zap.svg",
-    }
-}
-
-fn ctf_preset_label(preset: CtfOptimizationPreset) -> String {
-    let key = match preset {
-        CtfOptimizationPreset::Standard => "tweaks.ctf_preset_standard",
-        CtfOptimizationPreset::Mild => "tweaks.ctf_preset_mild",
-        CtfOptimizationPreset::Aggressive => "tweaks.ctf_preset_aggressive",
-    };
-    rust_i18n::t!(key).to_string()
-}
-
-const fn ctf_preset_icon(preset: CtfOptimizationPreset) -> &'static str {
-    match preset {
-        CtfOptimizationPreset::Standard => "icons/shield-check.svg",
-        CtfOptimizationPreset::Mild => "icons/feather.svg",
-        CtfOptimizationPreset::Aggressive => "icons/flame.svg",
     }
 }

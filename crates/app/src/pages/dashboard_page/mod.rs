@@ -12,36 +12,49 @@ use crate::shared::theme::Theme;
 use crate::shared::ui::GradientText;
 use crate::shared::ui::icon::Icon;
 
+pub mod shuffle;
 pub mod system_card;
 pub mod telemetry_card;
 
+pub use shuffle::*;
 pub(crate) use system_card::*;
 pub use telemetry_card::*;
 
 pub type DashboardNavigateHandler =
     Arc<dyn Fn(AppRoute, &mut Window, &mut App) + Send + Sync + 'static>;
+pub type DashboardNavigateTweakHandler =
+    Arc<dyn Fn(AppRoute, &'static str, &mut Window, &mut App) + Send + Sync + 'static>;
+
 #[derive(IntoElement)]
 pub struct DashboardPage {
     telemetry: TelemetryData,
+    windows_build: u32,
     hovered_card: Option<SharedString>,
     on_hover_card: Option<TelemetryCardHoverHandler>,
     on_navigate: Option<DashboardNavigateHandler>,
+    on_navigate_tweak: Option<DashboardNavigateTweakHandler>,
 }
 
 impl Default for DashboardPage {
     fn default() -> Self {
-        Self::new(TelemetryData::fetch(), None)
+        Self::new(TelemetryData::fetch(), 22631, None)
     }
 }
 
 impl DashboardPage {
     #[must_use]
-    pub fn new(telemetry: TelemetryData, hovered_card: Option<SharedString>) -> Self {
+    pub fn new(
+        telemetry: TelemetryData,
+        windows_build: u32,
+        hovered_card: Option<SharedString>,
+    ) -> Self {
         Self {
             telemetry,
+            windows_build,
             hovered_card,
             on_hover_card: None,
             on_navigate: None,
+            on_navigate_tweak: None,
         }
     }
 
@@ -62,11 +75,20 @@ impl DashboardPage {
         self.on_navigate = Some(Arc::new(handler));
         self
     }
+
+    #[must_use]
+    pub fn on_navigate_tweak(
+        mut self,
+        handler: impl Fn(AppRoute, &'static str, &mut Window, &mut App) + Send + Sync + 'static,
+    ) -> Self {
+        self.on_navigate_tweak = Some(Arc::new(handler));
+        self
+    }
 }
 
 impl RenderOnce for DashboardPage {
     #[allow(clippy::too_many_lines, clippy::cast_precision_loss)]
-    fn render(self, _window: &mut Window, cx: &mut App) -> impl IntoElement {
+    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let theme = Theme::get(cx);
         let info = SystemInfo::fetch();
         let telemetry = self.telemetry;
@@ -280,21 +302,69 @@ impl RenderOnce for DashboardPage {
             ));
         }
 
+        let mut current_slots = std::collections::HashMap::with_capacity(card_items.len());
+        for (idx, (id, _)) in card_items.iter().enumerate() {
+            current_slots.insert((*id).to_string(), idx);
+        }
+
+        let tracker = window.use_keyed_state("dashboard_grid_shuffle", cx, |_, _| {
+            GridShuffleState::default()
+        });
+        let prev_slots = tracker.read(cx).slots.clone();
+
+        let window_width = window.viewport_size().width;
+        let content_width = (window_width - px(220.0) - px(32.0)).max(px(320.0));
+        let col_gap = px(12.0);
+        let cell_width = (content_width - col_gap) / 2.0;
+        let col_stride = cell_width + col_gap;
+        let row_stride = px(76.0);
+        let reduce_motion = cx.reduce_motion();
+
+        let wrapped_cards: Vec<AnyElement> = card_items
+            .into_iter()
+            .enumerate()
+            .map(|(idx, (card_id, card_el))| {
+                wrap_shuffled_card(
+                    card_id,
+                    card_el,
+                    idx,
+                    &prev_slots,
+                    col_stride,
+                    row_stride,
+                    reduce_motion,
+                )
+            })
+            .collect();
+
+        update_shuffle_tracker(window, cx, current_slots);
+
         let telemetry_grid = div()
             .grid()
             .grid_cols(2)
             .gap(px(12.0))
-            .children(card_items.into_iter().map(|(_, card)| card));
+            .children(wrapped_cards);
+
+        let on_nav_tw = self.on_navigate_tweak;
+        let search_widget = crate::widgets::tweak_search::TweakSearchWidget::new(
+            self.windows_build,
+        )
+        .on_select(move |result, window, cx| {
+            if let Some(ref h) = on_nav_tw {
+                h(result.route, result.tweak_id, window, cx);
+            }
+        });
 
         let route = AppRoute::Dashboard;
-        let page_header = PageHeader::new(route.title(), route.description()).custom_title(
-            GradientText::new("dashboard_app_name_title", "WINSENTIALS")
-                .debug_selector("dashboard_app_name_title")
-                .font_family("Permanent Marker")
-                .font_size(px(28.0))
-                .line_height(px(24.0))
-                .letter_spacing(px(28.0 * 0.3)),
-        );
+        let page_header = PageHeader::new(route.title(), route.description())
+            .custom_title(
+                GradientText::new("dashboard_app_name_title", "WINSENTIALS")
+                    .debug_selector("dashboard_app_name_title")
+                    .font_family("Permanent Marker")
+                    .font_size(px(28.0))
+                    .line_height(px(24.0))
+                    .letter_spacing(px(28.0 * 0.3)),
+            )
+            .actions(search_widget);
 
         div()
             .flex()

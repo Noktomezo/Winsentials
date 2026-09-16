@@ -120,6 +120,13 @@ pub(crate) fn render_tweak_cards_for_category(
     cx: &App,
 ) -> Vec<AnyElement> {
     let all_tweaks = get_all_tweaks();
+    let highlighted_tweak_id = cx
+        .has_global::<crate::entities::tweaks::HighlightedTweak>()
+        .then(|| {
+            cx.global::<crate::entities::tweaks::HighlightedTweak>()
+                .tweak_id
+        })
+        .flatten();
     let mut tweak_items: Vec<AnyElement> = Vec::new();
 
     for tweak in all_tweaks {
@@ -132,6 +139,7 @@ pub(crate) fn render_tweak_cards_for_category(
                 (tweak.is_applied)()
             };
             let tweak_id = tweak.id;
+            let is_highlighted = highlighted_tweak_id == Some(tweak.id);
             let toggle_cb = on_toggle.cloned();
 
             let mut card = TweakCard::new(
@@ -142,6 +150,7 @@ pub(crate) fn render_tweak_cards_for_category(
                 is_applied,
             )
             .badges(badges)
+            .highlighted(is_highlighted)
             .on_toggle(move |new_val, window, cx| {
                 if let Some(ref h) = toggle_cb {
                     h(tweak_id, new_val, window, cx);

@@ -121,6 +121,7 @@ pub struct TweakCard {
     description: SharedString,
     badges: Vec<TweakBadge>,
     is_applied: bool,
+    highlighted: bool,
     on_toggle: Option<TweakCardToggleHandler>,
     on_hover_tooltip: Option<TooltipHoverHandler>,
 }
@@ -141,6 +142,7 @@ impl TweakCard {
             description: description.into(),
             badges: Vec::new(),
             is_applied,
+            highlighted: false,
             on_toggle: None,
             on_hover_tooltip: None,
         }
@@ -156,6 +158,12 @@ impl TweakCard {
     #[must_use]
     pub fn badges(mut self, badges: Vec<TweakBadge>) -> Self {
         self.badges = badges;
+        self
+    }
+
+    #[must_use]
+    pub fn highlighted(mut self, highlighted: bool) -> Self {
+        self.highlighted = highlighted;
         self
     }
 
@@ -186,6 +194,7 @@ pub fn render_tweak_card_shell(
     action_element: impl IntoElement,
     hover_state: Entity<bool>,
     hovered: bool,
+    is_highlighted: bool,
     theme: &Theme,
     reduce_motion: bool,
 ) -> AnyElement {
@@ -273,18 +282,28 @@ pub fn render_tweak_card_shell(
         .child(header_row)
         .child(desc_row);
 
+    let target = if is_highlighted || hovered { 1.0 } else { 0.0 };
     let spring = SpringAnimation::new(SpringConfig::new(260.0, 26.0, 1.0))
-        .to(if hovered { 1.0 } else { 0.0 })
+        .to(target)
         .with_epsilon(0.01);
     let card_bg = theme.card_bg;
-    let hover_bg = theme.input_bg.opacity(0.3);
+    let hover_bg = if is_highlighted {
+        theme.accent_blue.opacity(0.12)
+    } else {
+        theme.input_bg.opacity(0.3)
+    };
     let card_border = theme.card_border;
-    let hover_border = theme.accent_blue.opacity(0.5);
+    let hover_border = if is_highlighted {
+        theme.accent_blue
+    } else {
+        theme.accent_blue.opacity(0.5)
+    };
 
     if reduce_motion {
+        let active = is_highlighted || hovered;
         return card
-            .bg(if hovered { hover_bg } else { card_bg })
-            .border_color(if hovered { hover_border } else { card_border })
+            .bg(if active { hover_bg } else { card_bg })
+            .border_color(if active { hover_border } else { card_border })
             .into_any_element();
     }
 
@@ -305,6 +324,7 @@ impl RenderOnce for TweakCard {
         let theme = Theme::get(cx);
         let id_str = self.id;
         let is_applied = self.is_applied;
+        let is_highlighted = self.highlighted;
         let on_toggle = self.on_toggle;
         let hover_state = window.use_keyed_state((id_str, 1usize), cx, |_, _| false);
         let hovered = *hover_state.read(cx);
@@ -327,6 +347,7 @@ impl RenderOnce for TweakCard {
             switch_el,
             hover_state,
             hovered,
+            is_highlighted,
             &theme,
             cx.reduce_motion(),
         )

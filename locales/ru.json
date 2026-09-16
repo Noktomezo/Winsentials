@@ -31,6 +31,10 @@
     "network_tweaks": "Сеть",
     "network_tweaks_desc": "Оптимизация сетевого стека, параметров TCP/IP и очередей приема данных"
   },
+  "dashboard": {
+    "search_tweaks_placeholder": "Быстрый поиск твиков...",
+    "no_tweaks_found": "Твики не найдены"
+  },
   "titlebar": {
     "toggle_sidebar_expand": "Развернуть боковое меню",
     "toggle_sidebar_collapse": "Свернуть боковое меню",

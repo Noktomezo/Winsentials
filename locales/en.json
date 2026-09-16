@@ -31,6 +31,10 @@
     "network_tweaks": "Network",
     "network_tweaks_desc": "Network stack, TCP/IP congestion, and receive queue optimizations"
   },
+  "dashboard": {
+    "search_tweaks_placeholder": "Search tweaks...",
+    "no_tweaks_found": "No tweaks found"
+  },
   "titlebar": {
     "toggle_sidebar_expand": "Expand sidebar",
     "toggle_sidebar_collapse": "Collapse sidebar",

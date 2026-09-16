@@ -200,6 +200,25 @@ pub fn set_ctf_preset(preset: CtfOptimizationPreset) -> Result<(), String> {
     }
 }
 
+#[must_use]
+pub fn ctf_preset_label(preset: CtfOptimizationPreset) -> String {
+    let key = match preset {
+        CtfOptimizationPreset::Standard => "tweaks.ctf_preset_standard",
+        CtfOptimizationPreset::Mild => "tweaks.ctf_preset_mild",
+        CtfOptimizationPreset::Aggressive => "tweaks.ctf_preset_aggressive",
+    };
+    rust_i18n::t!(key).to_string()
+}
+
+#[must_use]
+pub const fn ctf_preset_icon(preset: CtfOptimizationPreset) -> &'static str {
+    match preset {
+        CtfOptimizationPreset::Standard => "icons/shield-check.svg",
+        CtfOptimizationPreset::Mild => "icons/feather.svg",
+        CtfOptimizationPreset::Aggressive => "icons/flame.svg",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

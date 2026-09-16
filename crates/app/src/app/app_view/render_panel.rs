@@ -121,6 +121,12 @@ impl AppView {
             this.navigate_to(*route, window, cx);
         });
 
+        let on_navigate_tweak_page = cx.listener(
+            |this, &(route, tweak_id): &(AppRoute, &'static str), window, cx| {
+                this.navigate_to_tweak(route, tweak_id, window, cx);
+            },
+        );
+
         let on_toggle_startup = cx.listener(
             |this, entry: &crate::entities::startup::StartupEntry, _window, cx| {
                 this.toggle_startup(entry, cx);
@@ -318,6 +324,9 @@ impl AppView {
                 backups_page,
                 move |target_route, window, cx| {
                     on_navigate_page(&target_route, window, cx);
+                },
+                move |target_route, tweak_id, window, cx| {
+                    on_navigate_tweak_page(&(target_route, tweak_id), window, cx);
                 },
                 move |card_id, is_hovered, window, cx| {
                     on_hover_telemetry_card(&(card_id, is_hovered), window, cx);

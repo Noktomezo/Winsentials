@@ -70,7 +70,6 @@ impl RenderOnce for PageHeader {
             .justify_between()
             .gap(px(16.0))
             .w_full()
-            .overflow_hidden()
             .child(
                 div()
                     .flex()

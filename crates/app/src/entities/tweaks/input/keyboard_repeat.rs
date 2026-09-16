@@ -103,6 +103,27 @@ pub fn set_keyboard_repeat_preset(preset: KeyboardRepeatPreset) -> Result<(), St
     }
 }
 
+#[must_use]
+pub fn keyboard_repeat_preset_label(preset: KeyboardRepeatPreset) -> String {
+    let key = match preset {
+        KeyboardRepeatPreset::Standard => "tweaks.keyboard_repeat_standard",
+        KeyboardRepeatPreset::Balanced => "tweaks.keyboard_repeat_balanced",
+        KeyboardRepeatPreset::Fast => "tweaks.keyboard_repeat_fast",
+        KeyboardRepeatPreset::Ultra => "tweaks.keyboard_repeat_ultra",
+    };
+    rust_i18n::t!(key).to_string()
+}
+
+#[must_use]
+pub const fn keyboard_repeat_preset_icon(preset: KeyboardRepeatPreset) -> &'static str {
+    match preset {
+        KeyboardRepeatPreset::Standard => "icons/keyboard.svg",
+        KeyboardRepeatPreset::Balanced => "icons/gauge.svg",
+        KeyboardRepeatPreset::Fast => "icons/rabbit.svg",
+        KeyboardRepeatPreset::Ultra => "icons/zap.svg",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
