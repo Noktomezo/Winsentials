@@ -6,7 +6,7 @@ use gpui::{
     StatefulInteractiveElement, Styled, Window, div, px,
 };
 
-use crate::entities::tweaks::TweakBackup;
+use crate::entities::tweaks::{BackupDiff, TweakBackup};
 use crate::shared::theme::Theme;
 use crate::shared::ui::button::{Button, ButtonSize, ButtonVariant};
 use crate::shared::ui::icon::Icon;
@@ -22,6 +22,7 @@ pub fn render_backup_card(
     backup: &TweakBackup,
     theme: &Theme,
     is_hovered: bool,
+    diff: BackupDiff,
     on_hover: Option<&BackupHoverHandler>,
     on_restore: Option<&BackupActionHandler>,
     on_rename: Option<&BackupActionHandler>,
@@ -52,9 +53,67 @@ pub fn render_backup_card(
     let on_delete_cb = on_delete.cloned();
 
     let active = backup.active_count();
-    let total = backup.total_count();
-    let subtitle =
-        rust_i18n::t!("tools.backup_active_tweaks", active = active, total = total).to_string();
+    let in_backup_text = rust_i18n::t!("tools.backup_diff_in_backup", active = active).to_string();
+
+    let subtitle_row = if diff.is_empty() {
+        div()
+            .flex()
+            .items_center()
+            .gap(px(6.0))
+            .text_size(px(11.5))
+            .line_height(px(14.0))
+            .text_color(theme.text_muted)
+            .child(rust_i18n::t!("tools.backup_diff_none").to_string())
+            .child("•")
+            .child(in_backup_text)
+    } else {
+        let mut row = div()
+            .flex()
+            .items_center()
+            .gap(px(4.0))
+            .text_size(px(11.5))
+            .line_height(px(14.0));
+
+        if diff.to_enable > 0 {
+            row = row
+                .child(
+                    div()
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(theme.accent_green)
+                        .child(format!("+{}", diff.to_enable)),
+                )
+                .child(
+                    div()
+                        .text_color(theme.text_muted)
+                        .child(rust_i18n::t!("tools.backup_diff_enable_label").to_string()),
+                );
+        }
+
+        if diff.to_enable > 0 && diff.to_disable > 0 {
+            row = row.child(div().text_color(theme.text_muted).child(","));
+        }
+
+        if diff.to_disable > 0 {
+            row = row
+                .child(
+                    div()
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(theme.accent_yellow)
+                        .child(format!("-{}", diff.to_disable)),
+                )
+                .child(
+                    div()
+                        .text_color(theme.text_muted)
+                        .child(rust_i18n::t!("tools.backup_diff_disable_label").to_string()),
+                );
+        }
+
+        row.child(
+            div()
+                .text_color(theme.text_muted)
+                .child(format!("• {in_backup_text}")),
+        )
+    };
 
     let title_line = format!("{} • {}", backup.name, backup.created_at);
 
@@ -127,17 +186,7 @@ pub fn render_backup_card(
                                 .whitespace_nowrap()
                                 .child(title_line),
                         )
-                        .child(
-                            div()
-                                .text_size(px(11.5))
-                                .line_height(px(14.0))
-                                .font_weight(FontWeight::NORMAL)
-                                .text_color(theme.text_muted)
-                                .text_ellipsis()
-                                .overflow_hidden()
-                                .whitespace_nowrap()
-                                .child(subtitle),
-                        ),
+                        .child(subtitle_row),
                 ),
         )
         .child(

@@ -10,7 +10,7 @@ pub mod search;
 pub mod security;
 pub mod system;
 
-pub use backup::TweakBackup;
+pub use backup::{BackupDiff, TweakBackup};
 #[allow(unused_imports)]
 pub use registry::{
     ALL_TWEAKS, HighlightedTweak, RestartRequirement, SideEffect, SideEffectLevel, TweakCategory,
