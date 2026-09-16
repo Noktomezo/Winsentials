@@ -53,7 +53,13 @@ pub fn render_backup_card(
     let on_delete_cb = on_delete.cloned();
 
     let active = backup.active_count();
-    let in_backup_text = rust_i18n::t!("tools.backup_diff_in_backup", active = active).to_string();
+    let total = backup.total_count();
+    let in_backup_text = rust_i18n::t!(
+        "tools.backup_diff_in_backup",
+        active = active,
+        total = total
+    )
+    .to_string();
 
     let subtitle_row = if diff.is_empty() {
         div()

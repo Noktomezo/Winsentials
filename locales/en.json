@@ -530,7 +530,7 @@
     "backup_diff_none": "No changes",
     "backup_diff_enable_label": "to enable",
     "backup_diff_disable_label": "to disable",
-    "backup_diff_in_backup": "%{active} in backup",
+    "backup_diff_in_backup": "%{active} of %{total} enabled",
     "restore_backup": "Restore",
     "rename_backup": "Rename",
     "delete_backup": "Delete",

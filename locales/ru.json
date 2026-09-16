@@ -530,7 +530,7 @@
     "backup_diff_none": "Без изменений",
     "backup_diff_enable_label": "включит",
     "backup_diff_disable_label": "выключит",
-    "backup_diff_in_backup": "%{active} в бэкапе",
+    "backup_diff_in_backup": "%{active} из %{total} включено",
     "restore_backup": "Восстановить",
     "rename_backup": "Переименовать",
     "delete_backup": "Удалить",
