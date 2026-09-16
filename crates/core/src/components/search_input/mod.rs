@@ -189,20 +189,30 @@ impl RenderOnce for SearchInput {
         let caret_anim_id = format!("{id_str}_caret_blink");
         let caret_el = div()
             .id(ElementId::Name(format!("{id_str}_caret").into()))
-            .w(px(1.5))
-            .h(px(14.0))
-            .bg(theme.accent_blue)
-            .rounded(px(1.0))
-            .with_animation(
-                ElementId::Name(caret_anim_id.into()),
-                Animation::new(Duration::from_millis(850))
-                    .repeat()
-                    .with_easing(ease_in_out),
-                move |el, delta| {
-                    let wave = (delta * std::f32::consts::PI * 2.0).cos();
-                    let alpha = (0.5 + 0.5 * wave).clamp(0.0, 1.0);
-                    el.opacity(alpha)
-                },
+            .w(px(0.0))
+            .h(px(16.0))
+            .relative()
+            .flex()
+            .items_center()
+            .child(
+                div()
+                    .absolute()
+                    .left(px(-0.75))
+                    .w(px(1.5))
+                    .h(px(14.0))
+                    .bg(theme.accent_blue)
+                    .rounded(px(1.0))
+                    .with_animation(
+                        ElementId::Name(caret_anim_id.into()),
+                        Animation::new(Duration::from_millis(850))
+                            .repeat()
+                            .with_easing(ease_in_out),
+                        move |el, delta| {
+                            let wave = (delta * std::f32::consts::PI * 2.0).cos();
+                            let alpha = (0.5 + 0.5 * wave).clamp(0.0, 1.0);
+                            el.opacity(alpha)
+                        },
+                    ),
             );
 
         let mut input_box = div()
@@ -237,7 +247,9 @@ impl RenderOnce for SearchInput {
                         }
                     }
                 } else if let Some(ref h) = on_sel_mouse_cb {
-                    h(None, window, cx);
+                    let count = current_val_mouse.chars().count();
+                    let target_pos = current_sel.map_or(count, |(_, head)| head.min(count));
+                    h(Some((target_pos, target_pos)), window, cx);
                 }
                 cx.stop_propagation();
             })
@@ -281,68 +293,92 @@ impl RenderOnce for SearchInput {
                 .relative()
                 .flex()
                 .items_center()
-                .when(is_focused, |this| {
-                    this.child(
-                        div()
-                            .absolute()
-                            .left(px(0.0))
-                            .top(px(0.0))
-                            .bottom(px(0.0))
-                            .flex()
-                            .items_center()
-                            .child(caret_el),
-                    )
-                })
+                .when(is_focused, |this| this.child(caret_el))
                 .child(
                     div()
                         .text_xs()
+                        .line_height(px(16.0))
                         .font_weight(FontWeight::NORMAL)
                         .text_color(theme.text_muted)
                         .truncate()
                         .child(self.placeholder.clone()),
                 )
                 .into_any_element()
-        } else if let Some((start, end)) = self.selection {
+        } else if let Some((anchor, head)) = self.selection {
             let char_count = self.value.chars().count();
-            let s = start.min(char_count);
-            let e = end.min(char_count).max(s);
+            let s = anchor.min(head).min(char_count);
+            let e = anchor.max(head).min(char_count);
             let chars: Vec<char> = self.value.chars().collect();
-            let before: String = chars[..s].iter().collect();
-            let sel: String = chars[s..e].iter().collect();
-            let after: String = chars[e..].iter().collect();
 
-            div()
-                .flex()
-                .items_center()
-                .when(!before.is_empty(), |this| {
-                    this.child(
+            if s == e {
+                let before: String = chars[..s].iter().collect();
+                let after: String = chars[s..].iter().collect();
+
+                div()
+                    .flex()
+                    .items_center()
+                    .when(!before.is_empty(), |this| {
+                        this.child(
+                            div()
+                                .text_xs()
+                                .line_height(px(16.0))
+                                .font_weight(FontWeight::NORMAL)
+                                .text_color(theme.text_primary)
+                                .child(before),
+                        )
+                    })
+                    .when(is_focused, |this| this.child(caret_el))
+                    .when(!after.is_empty(), |this| {
+                        this.child(
+                            div()
+                                .text_xs()
+                                .line_height(px(16.0))
+                                .font_weight(FontWeight::NORMAL)
+                                .text_color(theme.text_primary)
+                                .child(after),
+                        )
+                    })
+                    .into_any_element()
+            } else {
+                let before: String = chars[..s].iter().collect();
+                let sel: String = chars[s..e].iter().collect();
+                let after: String = chars[e..].iter().collect();
+
+                div()
+                    .flex()
+                    .items_center()
+                    .when(!before.is_empty(), |this| {
+                        this.child(
+                            div()
+                                .text_xs()
+                                .line_height(px(16.0))
+                                .font_weight(FontWeight::NORMAL)
+                                .text_color(theme.text_primary)
+                                .child(before),
+                        )
+                    })
+                    .child(
                         div()
+                            .rounded(px(2.0))
+                            .bg(theme.accent_blue.opacity(0.35))
                             .text_xs()
+                            .line_height(px(16.0))
                             .font_weight(FontWeight::NORMAL)
                             .text_color(theme.text_primary)
-                            .child(before),
+                            .child(sel),
                     )
-                })
-                .child(
-                    div()
-                        .px(px(1.0))
-                        .rounded(px(2.0))
-                        .bg(theme.accent_blue.opacity(0.35))
-                        .text_xs()
-                        .font_weight(FontWeight::NORMAL)
-                        .text_color(theme.text_primary)
-                        .child(sel),
-                )
-                .when(!after.is_empty(), |this| {
-                    this.child(
-                        div()
-                            .text_xs()
-                            .font_weight(FontWeight::NORMAL)
-                            .text_color(theme.text_primary)
-                            .child(after),
-                    )
-                })
-                .into_any_element()
+                    .when(!after.is_empty(), |this| {
+                        this.child(
+                            div()
+                                .text_xs()
+                                .line_height(px(16.0))
+                                .font_weight(FontWeight::NORMAL)
+                                .text_color(theme.text_primary)
+                                .child(after),
+                        )
+                    })
+                    .into_any_element()
+            }
         } else {
             div()
                 .flex()
@@ -350,6 +386,7 @@ impl RenderOnce for SearchInput {
                 .child(
                     div()
                         .text_xs()
+                        .line_height(px(16.0))
                         .font_weight(FontWeight::NORMAL)
                         .text_color(theme.text_primary)
                         .child(self.value.clone()),
