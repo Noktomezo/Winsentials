@@ -540,6 +540,7 @@
     "create_backup_title": "Создать резервную копию",
     "create_backup_desc": "Введите название для новой точки восстановления:",
     "create_backup_placeholder": "Точка восстановления",
+    "backup_name_limit_reached": "Максимум %{max} символов",
     "rename_backup_title": "Переименовать бэкап",
     "rename_backup_desc": "Введите новое название точки восстановления:",
     "delete_backup_title": "Удалить резервную копию?",

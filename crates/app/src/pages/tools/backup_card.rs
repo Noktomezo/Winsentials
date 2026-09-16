@@ -202,23 +202,24 @@ pub fn render_backup_card(
                                 .min_w(px(0.0))
                                 .child(
                                     div()
-                                        .flex_none()
+                                        .flex_shrink(1.0)
+                                        .min_w(px(0.0))
                                         .text_size(px(13.0))
                                         .line_height(px(16.0))
                                         .font_weight(FontWeight::SEMIBOLD)
                                         .text_color(theme.text_primary)
+                                        .text_ellipsis()
+                                        .overflow_hidden()
                                         .whitespace_nowrap()
                                         .child(backup.name.clone()),
                                 )
                                 .child(
                                     div()
-                                        .flex_1()
+                                        .flex_none()
                                         .text_size(px(11.5))
                                         .line_height(px(16.0))
                                         .font_weight(FontWeight::NORMAL)
                                         .text_color(theme.text_muted)
-                                        .text_ellipsis()
-                                        .overflow_hidden()
                                         .whitespace_nowrap()
                                         .child(format!("({})", backup.created_at)),
                                 ),

@@ -1,7 +1,7 @@
 use gpui::{
-    Context, InteractiveElement, IntoElement, KeyDownEvent, MouseButton, MouseDownEvent,
-    MouseUpEvent, NavigationDirection, ParentElement, Render, SharedString, Styled, Window, div,
-    px,
+    Context, FontWeight, InteractiveElement, IntoElement, KeyDownEvent, MouseButton,
+    MouseDownEvent, MouseUpEvent, NavigationDirection, ParentElement, Render, SharedString, Styled,
+    Window, div, px,
 };
 
 use crate::features::navigation::AppRoute;
@@ -275,13 +275,20 @@ impl Render for AppView {
             let on_cancel = modal.on_cancel.clone();
             let on_close_cancel = modal.on_cancel.clone();
             let current_value = modal.value.clone();
+            let max_len = modal
+                .max_length
+                .unwrap_or(crate::entities::tweaks::MAX_BACKUP_NAME_LEN);
+            let char_count = modal.value.chars().count();
+            let is_at_limit = char_count >= max_len;
 
-            let on_change_input = cx.listener(|this: &mut Self, new_val: &String, _window, cx| {
-                if let Some(ref mut m) = this.input_modal {
-                    m.value.clone_from(new_val);
-                    cx.notify();
-                }
-            });
+            let on_change_input =
+                cx.listener(move |this: &mut Self, new_val: &String, _window, cx| {
+                    if let Some(ref mut m) = this.input_modal {
+                        let clamped: String = new_val.chars().take(max_len).collect();
+                        m.value = clamped;
+                        cx.notify();
+                    }
+                });
 
             let on_focus_input = cx.listener(|this: &mut Self, focused: &bool, _window, cx| {
                 if let Some(ref mut m) = this.input_modal {
@@ -327,13 +334,53 @@ impl Render for AppView {
                         on_confirm_enter(val, window, cx);
                     });
 
+            let counter_color = if is_at_limit {
+                theme.accent_yellow
+            } else {
+                theme.text_muted
+            };
+
+            let limit_warning = if is_at_limit {
+                rust_i18n::t!("tools.backup_name_limit_reached", max = max_len).to_string()
+            } else {
+                String::new()
+            };
+
+            let custom_content = div().flex().flex_col().w(px(408.0)).child(input_el).child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .w_full()
+                    .mt(px(6.0))
+                    .px(px(2.0))
+                    .text_size(px(11.5))
+                    .line_height(px(14.0))
+                    .child(
+                        div()
+                            .font_weight(FontWeight::MEDIUM)
+                            .text_color(theme.accent_yellow)
+                            .child(limit_warning),
+                    )
+                    .child(
+                        div()
+                            .font_weight(if is_at_limit {
+                                FontWeight::MEDIUM
+                            } else {
+                                FontWeight::NORMAL
+                            })
+                            .text_color(counter_color)
+                            .child(format!("{char_count} / {max_len}")),
+                    ),
+            );
+
             let modal_el = crate::shared::ui::Modal::new("app_input_modal", modal.title.clone())
                 .description(modal.description.clone())
                 .confirm_label(modal.confirm_label.clone())
                 .cancel_label(modal.cancel_label.clone())
                 .variant(crate::shared::ui::ModalVariant::Info)
                 .closing(modal.closing)
-                .custom_content(input_el)
+                .custom_content(custom_content)
                 .on_confirm(move |window, cx| {
                     on_confirm(current_value.clone(), window, cx);
                 })
