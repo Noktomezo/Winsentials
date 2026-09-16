@@ -22,3 +22,20 @@ fn damping_and_thumb_geometry_stay_stable() {
         Some(px(-20.0))
     );
 }
+
+#[test]
+fn test_scroll_to_unmeasured_max_offset() {
+    let mut state = super::SmoothScrollState::default();
+    assert_eq!(state.handle.max_offset().y, px(0.0));
+
+    // When max_offset is 0, scroll_to should still accept negative target_y
+    let animating = state.scroll_to(px(-500.0), false);
+    assert!(animating);
+    assert_eq!(state.target_y, px(-500.0));
+
+    // When reduce motion is enabled
+    let mut rm_state = super::SmoothScrollState::default();
+    let rm_animating = rm_state.scroll_to(px(-500.0), true);
+    assert!(!rm_animating);
+    assert_eq!(rm_state.target_y, px(-500.0));
+}

@@ -217,22 +217,6 @@ pub(crate) fn render_tweak_page(
                     tweak_id: target_tweak,
                     needs_scroll: false,
                 });
-            } else {
-                window.on_next_frame(move |window, cx| {
-                    let scrolled = crate::shared::ui::SmoothScroll::scroll_bounds_into_view(
-                        route_id,
-                        card_bounds,
-                        px(24.0),
-                        window,
-                        cx,
-                    );
-                    if scrolled {
-                        cx.set_global(crate::entities::tweaks::HighlightedTweak {
-                            tweak_id: target_tweak,
-                            needs_scroll: false,
-                        });
-                    }
-                });
             }
         });
     }
