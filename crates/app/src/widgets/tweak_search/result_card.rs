@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnimationExt, App, ElementId, FontWeight, InteractiveElement, IntoElement, ParentElement,
-    RenderOnce, Rgba, SpringAnimation, SpringConfig, StatefulInteractiveElement, Styled,
-    Transformation, Window, div, point, px, svg,
+    AnimationExt, App, ElementId, FontWeight, InteractiveElement, IntoElement, MouseButton,
+    ParentElement, RenderOnce, Rgba, SpringAnimation, SpringConfig, StatefulInteractiveElement,
+    Styled, Transformation, Window, div, point, px, svg,
 };
 
 use crate::entities::tweaks::TweakSearchResult;
@@ -113,8 +113,10 @@ impl RenderOnce for TweakResultCard {
             theme.text_primary,
         );
 
-        let on_select = self.on_select;
+        let on_select_down = self.on_select.clone();
+        let on_select_click = self.on_select;
         let on_hover = self.on_hover;
+        let res_for_down = result.clone();
         let res_for_click = result.clone();
 
         let icon_box = div()
@@ -188,8 +190,15 @@ impl RenderOnce for TweakResultCard {
                     h(index, hov, window, cx);
                 }
             })
+            .on_mouse_down(MouseButton::Left, move |_, window, cx| {
+                cx.stop_propagation();
+                if let Some(ref h) = on_select_down {
+                    h(res_for_down.clone(), window, cx);
+                }
+            })
             .on_click(move |_, window, cx| {
-                if let Some(ref h) = on_select {
+                cx.stop_propagation();
+                if let Some(ref h) = on_select_click {
                     h(res_for_click.clone(), window, cx);
                 }
             })

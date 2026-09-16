@@ -3,8 +3,8 @@ use std::time::Duration;
 
 use gpui::{
     Animation, AnimationExt, AnyElement, App, ElementId, InteractiveElement, IntoElement,
-    KeyDownEvent, MouseButton, ParentElement, RenderOnce, StatefulInteractiveElement, Styled,
-    Window, deferred, div, ease_in_out, px,
+    KeyDownEvent, ParentElement, RenderOnce, StatefulInteractiveElement, Styled, Window, deferred,
+    div, ease_in_out, px,
 };
 
 use crate::entities::tweaks::{TweakSearchResult, search_tweaks};
@@ -163,15 +163,20 @@ impl RenderOnce for TweakSearchWidget {
 
         let state_for_focus = state_entity.clone();
         let on_focus_change = move |is_focused: bool, _window: &mut Window, cx: &mut App| {
-            let was_open = {
+            let (was_open, is_hovering) = {
                 let s = state_for_focus.read(cx);
-                s.focused && !s.query.trim().is_empty()
+                (
+                    s.focused && !s.query.trim().is_empty(),
+                    s.hovered_index.is_some(),
+                )
             };
             if was_open && !is_focused {
-                state_for_focus.update(cx, |s, _| {
-                    s.focused = false;
-                });
-                start_closing(&state_for_focus, cx);
+                if !is_hovering {
+                    state_for_focus.update(cx, |s, _| {
+                        s.focused = false;
+                    });
+                    start_closing(&state_for_focus, cx);
+                }
             } else {
                 state_for_focus.update(cx, |s, cx| {
                     s.focused = is_focused;
@@ -254,13 +259,14 @@ impl RenderOnce for TweakSearchWidget {
                     let is_sel = selected_index == Some(idx);
                     let is_hov = hovered_index == Some(idx);
                     let state_for_item_select = state_entity.clone();
-                    let on_select_handler = self.on_select.clone();
-                    let is_closing = state.is_closing;
-
                     let state_for_item_hov = state_entity.clone();
+                    let on_select_handler = self.on_select.clone();
                     let card = TweakResultCard::new(idx, result, is_sel, is_hov)
                         .on_select(move |res, window, cx| {
-                            if is_closing {
+                            let is_already_handled =
+                                state_for_item_select.read(cx).cached_results.is_empty()
+                                    && state_for_item_select.read(cx).query.is_empty();
+                            if is_already_handled {
                                 return;
                             }
                             state_for_item_select.update(cx, |s, cx| {
@@ -297,10 +303,7 @@ impl RenderOnce for TweakSearchWidget {
                 .bg(theme.card_bg)
                 .border_1()
                 .border_color(theme.card_border)
-                .shadow_lg()
-                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                .on_mouse_down(MouseButton::Right, |_, _, cx| cx.stop_propagation())
-                .on_click(|_, _, cx| cx.stop_propagation());
+                .shadow_lg();
 
             let state_for_out = state_entity.clone();
             box_el = box_el.on_mouse_down_out(move |_, _window, cx| {
