@@ -1,46 +1,7 @@
 use strsim::levenshtein;
 
 use crate::entities::startup::types::StartupEntry;
-
-/// Splits text into searchable word tokens, splitting by whitespace, punctuation, and camelCase boundaries.
-fn extract_word_tokens(text: &str) -> Vec<String> {
-    let mut tokens = Vec::new();
-    let mut current = String::new();
-    let chars: Vec<char> = text.chars().collect();
-
-    for i in 0..chars.len() {
-        let c = chars[i];
-        if c.is_alphanumeric() {
-            // Check camelCase boundary (e.g. EdgeRemoval -> Edge, Removal; AMDInstall -> AMD, Install)
-            if c.is_uppercase() && !current.is_empty() {
-                let prev = chars[i - 1];
-                let next_is_lower = i + 1 < chars.len() && chars[i + 1].is_lowercase();
-                if prev.is_lowercase() || (current.len() > 1 && next_is_lower) {
-                    tokens.push(current.to_lowercase());
-                    current.clear();
-                }
-            }
-            current.push(c);
-        } else if !current.is_empty() {
-            tokens.push(current.to_lowercase());
-            current.clear();
-        }
-    }
-    if !current.is_empty() {
-        tokens.push(current.to_lowercase());
-    }
-    tokens
-}
-
-/// Computes the maximum allowed Levenshtein distance scaled by query word length (up to max 3).
-fn max_allowed_distance(query_len: usize) -> usize {
-    match query_len {
-        0..=2 => 0,
-        3..=4 => 1,
-        5..=7 => 2,
-        _ => 3,
-    }
-}
+use crate::shared::fuzzy::{extract_word_tokens, max_allowed_distance};
 
 /// Checks if a startup entry matches the search query strictly by its name / display name.
 #[must_use]

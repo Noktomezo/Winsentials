@@ -1,10 +1,9 @@
-pub mod aliases;
 #[cfg(test)]
 mod tests;
 
 use crate::entities::tweaks::{TweakCategory, get_all_tweaks};
 use crate::features::navigation::AppRoute;
-pub use aliases::{DROPDOWN_TWEAKS, get_tweak_keywords};
+use crate::shared::fuzzy::{extract_word_tokens, score_token_match};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TweakSearchResult {
@@ -31,91 +30,44 @@ pub const fn category_to_route(category: TweakCategory) -> AppRoute {
 
 pub const MAX_SEARCH_RESULTS: usize = 5;
 
+pub struct DropdownTweakMeta {
+    pub id: &'static str,
+    pub route: AppRoute,
+    pub icon: &'static str,
+    pub title_key: &'static str,
+    pub desc_key: &'static str,
+}
+
+pub const DROPDOWN_TWEAKS: [DropdownTweakMeta; 3] = [
+    DropdownTweakMeta {
+        id: "keyboard_repeat",
+        route: AppRoute::Input,
+        icon: "icons/keyboard.svg",
+        title_key: "tweaks.keyboard_repeat_title",
+        desc_key: "tweaks.keyboard_repeat_desc",
+    },
+    DropdownTweakMeta {
+        id: "ctf_optimization",
+        route: AppRoute::Input,
+        icon: "icons/type.svg",
+        title_key: "tweaks.ctf_optimization_title",
+        desc_key: "tweaks.ctf_optimization_desc",
+    },
+    DropdownTweakMeta {
+        id: "snapkey",
+        route: AppRoute::Input,
+        icon: "icons/crosshair-2.svg",
+        title_key: "tweaks.snapkey_title",
+        desc_key: "tweaks.snapkey_desc",
+    },
+];
+
 struct SearchCandidate {
     id: &'static str,
     title_key: &'static str,
     desc_key: &'static str,
     route: AppRoute,
     icon: &'static str,
-}
-
-fn score_candidate(
-    query: &str,
-    q_words: &[&str],
-    candidate_id: &str,
-    candidate_id_spaced: &str,
-    title_active: &str,
-    title_en: &str,
-    title_ru: &str,
-    desc_active: &str,
-    desc_en: &str,
-    desc_ru: &str,
-    cat_name: &str,
-    cat_en: &str,
-    keywords: &[&str],
-) -> i32 {
-    // 1. Exact match on id, id_spaced, titles, or keywords
-    if query == candidate_id || query == candidate_id_spaced {
-        return 2000;
-    }
-    if query == title_active || query == title_en || query == title_ru {
-        return 1800;
-    }
-    if keywords.contains(&query) {
-        return 1700;
-    }
-
-    // 2. Starts with query
-    if title_active.starts_with(query) || title_en.starts_with(query) || title_ru.starts_with(query)
-    {
-        return 1400 - i32::try_from(title_active.len()).unwrap_or(0);
-    }
-    if candidate_id.starts_with(query) || candidate_id_spaced.starts_with(query) {
-        return 1300 - i32::try_from(candidate_id.len()).unwrap_or(0);
-    }
-    if keywords.iter().any(|kw| kw.starts_with(query)) {
-        return 1200;
-    }
-
-    // 3. Substring contained in titles, id, or keywords
-    if title_active.contains(query) || title_en.contains(query) || title_ru.contains(query) {
-        return 1000 - i32::try_from(title_active.len()).unwrap_or(0);
-    }
-    if candidate_id_spaced.contains(query) || candidate_id.contains(query) {
-        return 900;
-    }
-    if keywords.iter().any(|kw| kw.contains(query)) {
-        return 850;
-    }
-
-    // 4. Multi-word match: each query word is found in titles, id, keywords, or descriptions
-    if q_words.len() > 1 {
-        let all_words_match = q_words.iter().all(|qw| {
-            title_active.contains(qw)
-                || title_en.contains(qw)
-                || title_ru.contains(qw)
-                || candidate_id_spaced.contains(qw)
-                || keywords.iter().any(|kw| kw.contains(qw))
-                || desc_active.contains(qw)
-                || desc_en.contains(qw)
-                || desc_ru.contains(qw)
-        });
-        if all_words_match {
-            return 750;
-        }
-    }
-
-    // 5. Category match
-    if cat_name.contains(query) || cat_en.contains(query) {
-        return 400;
-    }
-
-    // 6. Description match
-    if desc_active.contains(query) || desc_en.contains(query) || desc_ru.contains(query) {
-        return 250;
-    }
-
-    0
 }
 
 #[must_use]
@@ -143,57 +95,103 @@ pub fn search_tweaks(query: &str, windows_build: u32) -> Vec<TweakSearchResult> 
 
     // Dropdown input tweaks (SnapKey, CTF, Keyboard Repeat)
     for dt in &DROPDOWN_TWEAKS {
-        if dt.min_build.is_none_or(|min| windows_build >= min) {
-            candidates.push(SearchCandidate {
-                id: dt.id,
-                title_key: dt.title_key,
-                desc_key: dt.desc_key,
-                route: dt.route,
-                icon: dt.icon,
-            });
-        }
+        candidates.push(SearchCandidate {
+            id: dt.id,
+            title_key: dt.title_key,
+            desc_key: dt.desc_key,
+            route: dt.route,
+            icon: dt.icon,
+        });
     }
 
     let mut scored_results: Vec<(i32, TweakSearchResult)> = Vec::new();
 
     for candidate in candidates {
-        let title = rust_i18n::t!(candidate.title_key).to_string();
-        let description = rust_i18n::t!(candidate.desc_key).to_string();
-        let category_name = candidate.route.title();
-        let category_en = candidate.route.english_name();
+        let mut candidate_tokens: Vec<String> = Vec::new();
+        let mut localized_titles: Vec<String> = Vec::new();
+        let mut localized_descs: Vec<String> = Vec::new();
 
-        let title_en = rust_i18n::t!(candidate.title_key, locale = "en").to_string();
-        let desc_en = rust_i18n::t!(candidate.desc_key, locale = "en").to_string();
-        let title_ru = rust_i18n::t!(candidate.title_key, locale = "ru").to_string();
-        let desc_ru = rust_i18n::t!(candidate.desc_key, locale = "ru").to_string();
-
+        // 1. Add ID tokens (e.g. "disable_mouse_acceleration" -> ["disable", "mouse", "acceleration", "disable mouse acceleration"])
+        candidate_tokens.extend(extract_word_tokens(candidate.id));
         let id_spaced = candidate.id.replace('_', " ");
-        let keywords = get_tweak_keywords(candidate.id);
+        if !candidate_tokens.contains(&id_spaced) {
+            candidate_tokens.push(id_spaced.clone());
+        }
 
-        let score = score_candidate(
-            &clean_query,
-            &q_words,
-            candidate.id,
-            &id_spaced,
-            &title.to_lowercase(),
-            &title_en.to_lowercase(),
-            &title_ru.to_lowercase(),
-            &description.to_lowercase(),
-            &desc_en.to_lowercase(),
-            &desc_ru.to_lowercase(),
-            &category_name.to_lowercase(),
-            &category_en.to_lowercase(),
-            keywords,
-        );
+        // 2. Add tokens from titles across ALL available locales dynamically
+        for loc in rust_i18n::available_locales!() {
+            let title = rust_i18n::t!(candidate.title_key, locale = loc).to_string();
+            candidate_tokens.extend(extract_word_tokens(&title));
+            localized_titles.push(title.to_lowercase());
+
+            let desc = rust_i18n::t!(candidate.desc_key, locale = loc).to_string();
+            localized_descs.push(desc.to_lowercase());
+        }
+
+        let mut score = 0;
+
+        // Check exact match on candidate ID or ID with spaces
+        if clean_query == candidate.id || clean_query == id_spaced {
+            score = 3000;
+        }
+
+        // Check whole query against titles across all locales
+        for title_lower in &localized_titles {
+            if *title_lower == clean_query {
+                score = score.max(2800);
+            } else if title_lower.starts_with(&clean_query) {
+                let len_penalty = i32::try_from(title_lower.len()).unwrap_or(0);
+                score = score.max(2500 - len_penalty);
+            } else if title_lower.contains(&clean_query) {
+                let len_penalty = i32::try_from(title_lower.len()).unwrap_or(0);
+                score = score.max(2000 - len_penalty);
+            }
+        }
+
+        // Multi-word / token matching with Levenshtein distance up to 3
+        if score == 0 {
+            let mut all_words_matched = true;
+            let mut word_scores_sum = 0;
+
+            for qw in &q_words {
+                let mut best_word_score = None;
+                for tok in &candidate_tokens {
+                    if let Some(s) = score_token_match(qw, tok) {
+                        best_word_score = Some(best_word_score.map_or(s, |b: i32| b.max(s)));
+                    }
+                }
+
+                if let Some(ws) = best_word_score {
+                    word_scores_sum += ws;
+                } else {
+                    all_words_matched = false;
+                    break;
+                }
+            }
+
+            if all_words_matched && !q_words.is_empty() {
+                score = word_scores_sum;
+            }
+        }
+
+        // Fallback: search descriptions across all locales
+        if score == 0 {
+            for desc_lower in &localized_descs {
+                if desc_lower.contains(&clean_query) {
+                    score = 150;
+                    break;
+                }
+            }
+        }
 
         if score > 0 {
             scored_results.push((
                 score,
                 TweakSearchResult {
                     tweak_id: candidate.id,
-                    title,
-                    description,
-                    category_name,
+                    title: rust_i18n::t!(candidate.title_key).to_string(),
+                    description: rust_i18n::t!(candidate.desc_key).to_string(),
+                    category_name: candidate.route.title(),
                     route: candidate.route,
                     icon: candidate.icon,
                 },
