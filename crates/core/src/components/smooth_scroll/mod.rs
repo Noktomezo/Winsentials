@@ -39,7 +39,7 @@ impl SmoothScroll {
         margin: Pixels,
         window: &mut Window,
         cx: &mut App,
-    ) {
+    ) -> bool {
         let state = window.use_keyed_state((id, 0usize), cx, |_, _| SmoothScrollState::default());
         let (viewport_bounds, current_offset, max_offset) = {
             let s = state.read(cx);
@@ -51,7 +51,7 @@ impl SmoothScroll {
         };
 
         if viewport_bounds.size.height <= px(0.0) {
-            return;
+            return false;
         }
 
         let viewport_top = viewport_bounds.top();
@@ -60,7 +60,11 @@ impl SmoothScroll {
         let item_bottom = item_bounds.bottom();
 
         if item_top >= viewport_top + margin && item_bottom <= viewport_bottom - margin {
-            return;
+            return true;
+        }
+
+        if max_offset <= px(0.0) {
+            return true;
         }
 
         let content_y = item_top - viewport_top - current_offset;
@@ -71,6 +75,7 @@ impl SmoothScroll {
         if should_animate {
             schedule_animation(state, window);
         }
+        true
     }
 }
 
