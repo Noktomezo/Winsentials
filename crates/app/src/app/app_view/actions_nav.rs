@@ -34,15 +34,23 @@ impl AppView {
     ) {
         cx.set_global(crate::entities::tweaks::HighlightedTweak {
             tweak_id: Some(tweak_id),
+            needs_scroll: true,
         });
-        self.navigate_to(route, window, cx);
+        if self.current_route == route {
+            cx.notify();
+        } else {
+            self.navigate_to(route, window, cx);
+        }
 
         cx.spawn(async move |this, cx| {
             cx.background_executor()
                 .timer(std::time::Duration::from_millis(1500))
                 .await;
             this.update(cx, |_this, cx| {
-                cx.set_global(crate::entities::tweaks::HighlightedTweak { tweak_id: None });
+                cx.set_global(crate::entities::tweaks::HighlightedTweak {
+                    tweak_id: None,
+                    needs_scroll: false,
+                });
                 cx.notify();
             })
             .ok();

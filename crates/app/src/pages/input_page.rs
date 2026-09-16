@@ -278,7 +278,7 @@ impl RenderOnce for InputPage {
                 tooltip_handler(tooltip, window, cx);
             });
         }
-        tweak_items.push(repeat_card.into_any_element());
+        tweak_items.push(("keyboard_repeat", repeat_card.into_any_element()));
 
         let ctf_dropdown_name = "ctf_optimization";
         let current_ctf = self
@@ -382,7 +382,7 @@ impl RenderOnce for InputPage {
                 tooltip_handler(tooltip, window, cx);
             });
         }
-        tweak_items.push(ctf_card.into_any_element());
+        tweak_items.push(("ctf_optimization", ctf_card.into_any_element()));
 
         let snapkey_dropdown_name = "snapkey";
         let current_snapkey = self
@@ -482,8 +482,7 @@ impl RenderOnce for InputPage {
                 tooltip_handler(tooltip, window, cx);
             });
         }
-        tweak_items.push(snapkey_card.into_any_element());
-
-        render_tweak_page(route, tweak_items)
+        tweak_items.push(("snapkey", snapkey_card.into_any_element()));
+        render_tweak_page(route, tweak_items, cx)
     }
 }

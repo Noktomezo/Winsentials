@@ -324,7 +324,11 @@ impl RenderOnce for TweakCard {
         let theme = Theme::get(cx);
         let id_str = self.id;
         let is_applied = self.is_applied;
-        let is_highlighted = self.highlighted;
+        let is_highlighted = self.highlighted
+            || cx
+                .try_global::<crate::entities::tweaks::HighlightedTweak>()
+                .and_then(|h| h.tweak_id)
+                == Some(id_str);
         let on_toggle = self.on_toggle;
         let hover_state = window.use_keyed_state((id_str, 1usize), cx, |_, _| false);
         let hovered = *hover_state.read(cx);

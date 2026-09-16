@@ -1,13 +1,17 @@
-use std::sync::Arc;
 use std::time::Instant;
 
-use gpui::prelude::FluentBuilder;
 use gpui::{
-    AnyElement, App, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, Pixels,
-    RenderOnce, ScrollHandle, StatefulInteractiveElement, Styled, Window, div, point, px,
+    AnyElement, App, Bounds, Entity, InteractiveElement, IntoElement, MouseButton, ParentElement,
+    Pixels, RenderOnce, ScrollHandle, StatefulInteractiveElement, Styled, Window, div, point, px,
 };
 
 use crate::theme::Theme;
+
+#[cfg(test)]
+mod tests;
+mod virtual_list;
+
+pub use virtual_list::{SmoothVirtualList, VirtualItemRenderer};
 
 const SCROLL_DAMPING: f32 = 6.0;
 const WIDTH_DAMPING: f32 = 18.0;
@@ -28,54 +32,56 @@ impl SmoothScroll {
             child: child.into_any_element(),
         }
     }
-}
 
-type VirtualItemRenderer = Arc<dyn Fn(usize, &mut Window, &mut App) -> AnyElement>;
-
-#[derive(IntoElement)]
-pub struct SmoothVirtualList {
-    id: &'static str,
-    header: Option<AnyElement>,
-    total_items: usize,
-    item_height: Pixels,
-    gap: Pixels,
-    render_item: VirtualItemRenderer,
-}
-
-impl SmoothVirtualList {
-    #[must_use]
-    pub fn new(
+    pub fn scroll_bounds_into_view(
         id: &'static str,
-        total_items: usize,
-        item_height: Pixels,
-        gap: Pixels,
-        render_item: impl Fn(usize, &mut Window, &mut App) -> AnyElement + 'static,
-    ) -> Self {
-        Self {
-            id,
-            header: None,
-            total_items,
-            item_height,
-            gap,
-            render_item: Arc::new(render_item),
+        item_bounds: Bounds<Pixels>,
+        margin: Pixels,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        let state = window.use_keyed_state((id, 0usize), cx, |_, _| SmoothScrollState::default());
+        let (viewport_bounds, current_offset, max_offset) = {
+            let s = state.read(cx);
+            (
+                s.handle.bounds(),
+                s.handle.offset().y,
+                s.handle.max_offset().y,
+            )
+        };
+
+        if viewport_bounds.size.height <= px(0.0) {
+            return;
+        }
+
+        let viewport_top = viewport_bounds.top();
+        let viewport_bottom = viewport_bounds.bottom();
+        let item_top = item_bounds.top();
+        let item_bottom = item_bounds.bottom();
+
+        if item_top >= viewport_top + margin && item_bottom <= viewport_bottom - margin {
+            return;
+        }
+
+        let content_y = item_top - viewport_top - current_offset;
+        let target_y = -(content_y - margin).clamp(px(0.0), max_offset);
+
+        let reduce_motion = cx.reduce_motion();
+        let should_animate = state.update(cx, |s, _cx| s.scroll_to(target_y, reduce_motion));
+        if should_animate {
+            schedule_animation(state, window);
         }
     }
-
-    #[must_use]
-    pub fn header(mut self, header: impl IntoElement) -> Self {
-        self.header = Some(header.into_any_element());
-        self
-    }
 }
 
-struct SmoothScrollState {
-    handle: ScrollHandle,
-    target_y: Pixels,
-    thumb_width: Pixels,
-    hovered: bool,
-    dragging: Option<Pixels>,
-    animating: bool,
-    last_frame: Instant,
+pub struct SmoothScrollState {
+    pub handle: ScrollHandle,
+    pub target_y: Pixels,
+    pub thumb_width: Pixels,
+    pub hovered: bool,
+    pub dragging: Option<Pixels>,
+    pub animating: bool,
+    pub last_frame: Instant,
 }
 
 impl Default for SmoothScrollState {
@@ -93,13 +99,31 @@ impl Default for SmoothScrollState {
 }
 
 impl SmoothScrollState {
-    fn begin_animation(&mut self) -> bool {
+    pub fn begin_animation(&mut self) -> bool {
         if self.animating {
             false
         } else {
             self.animating = true;
             self.last_frame = Instant::now();
             true
+        }
+    }
+
+    pub fn scroll_to(&mut self, target_y: Pixels, reduce_motion: bool) -> bool {
+        let max_offset = self.handle.max_offset().y;
+        let target = target_y.clamp(-max_offset, px(0.0));
+        if (self.target_y - target).abs() < px(1.0)
+            && (self.handle.offset().y - target).abs() < px(1.0)
+        {
+            return false;
+        }
+        self.target_y = target;
+        if reduce_motion {
+            self.handle.set_offset(point(px(0.0), target));
+            self.animating = false;
+            false
+        } else {
+            self.begin_animation()
         }
     }
 
@@ -175,7 +199,7 @@ impl SmoothScrollState {
     }
 }
 
-fn scroll_target(base: Pixels, delta: Pixels, max_offset: Pixels) -> Option<Pixels> {
+pub(crate) fn scroll_target(base: Pixels, delta: Pixels, max_offset: Pixels) -> Option<Pixels> {
     if max_offset <= px(0.0) || delta == px(0.0) {
         return None;
     }
@@ -183,11 +207,11 @@ fn scroll_target(base: Pixels, delta: Pixels, max_offset: Pixels) -> Option<Pixe
     (target != base).then_some(target)
 }
 
-fn damping_factor(lambda: f32, delta_time: f32) -> f32 {
+pub(crate) fn damping_factor(lambda: f32, delta_time: f32) -> f32 {
     1.0 - (-lambda * delta_time).exp()
 }
 
-fn thumb_geometry(
+pub(crate) fn thumb_geometry(
     viewport_height: Pixels,
     max_offset: Pixels,
     offset: Pixels,
@@ -206,7 +230,7 @@ fn thumb_geometry(
     Some((travel * progress, thumb_height))
 }
 
-fn offset_from_thumb(
+pub(crate) fn offset_from_thumb(
     pointer_y: Pixels,
     grab_offset: Pixels,
     track_height: Pixels,
@@ -221,7 +245,7 @@ fn offset_from_thumb(
     }
 }
 
-fn schedule_animation(state: Entity<SmoothScrollState>, window: &Window) {
+pub(crate) fn schedule_animation(state: Entity<SmoothScrollState>, window: &Window) {
     window.on_next_frame(move |window, cx| {
         let keep_animating = state.update(cx, |state, cx| {
             let keep_animating = state.advance(Instant::now());
@@ -235,7 +259,7 @@ fn schedule_animation(state: Entity<SmoothScrollState>, window: &Window) {
 }
 
 #[allow(clippy::too_many_lines)]
-fn render_scroll_viewport(
+pub(crate) fn render_scroll_viewport(
     id: &'static str,
     content: AnyElement,
     window: &mut Window,
@@ -417,115 +441,5 @@ fn render_scroll_viewport(
 impl RenderOnce for SmoothScroll {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         render_scroll_viewport(self.id, self.child, window, cx)
-    }
-}
-
-impl RenderOnce for SmoothVirtualList {
-    #[allow(clippy::too_many_lines)]
-    fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let state =
-            window.use_keyed_state((self.id, 0usize), cx, |_, _| SmoothScrollState::default());
-        let handle = state.read(cx).handle.clone();
-
-        let offset_y = (-handle.offset().y).max(px(0.0));
-        let viewport_h = if handle.bounds().size.height > px(0.0) {
-            handle.bounds().size.height
-        } else {
-            window.viewport_size().height
-        };
-
-        let total_items = self.total_items;
-        let item_h = self.item_height;
-        let gap = self.gap;
-        let stride = item_h + gap;
-
-        let items_content = if total_items == 0 {
-            div().into_any_element()
-        } else {
-            #[allow(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                clippy::cast_precision_loss
-            )]
-            let first_visible = ((offset_y / stride).floor() as usize).min(total_items);
-            #[allow(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                clippy::cast_precision_loss
-            )]
-            let visible_count = ((viewport_h / stride).ceil() as usize).max(1) + 2;
-
-            let overscan = 6usize;
-            let start_idx = first_visible.saturating_sub(overscan);
-            let end_idx = (first_visible + visible_count + overscan).min(total_items);
-
-            #[allow(clippy::cast_precision_loss)]
-            let top_spacer = stride * start_idx as f32;
-            #[allow(clippy::cast_precision_loss)]
-            let bottom_spacer = stride * (total_items.saturating_sub(end_idx)) as f32;
-
-            let mut visible_elements = Vec::with_capacity(end_idx - start_idx);
-            for i in start_idx..end_idx {
-                visible_elements.push((self.render_item)(i, window, cx));
-            }
-
-            div()
-                .flex()
-                .flex_col()
-                .w_full()
-                .when(top_spacer > px(0.0), |this| {
-                    this.child(div().h(top_spacer).w_full().flex_none())
-                })
-                .child(
-                    div()
-                        .flex()
-                        .flex_col()
-                        .gap(gap)
-                        .w_full()
-                        .children(visible_elements),
-                )
-                .when(bottom_spacer > px(0.0), |this| {
-                    this.child(div().h(bottom_spacer).w_full().flex_none())
-                })
-                .into_any_element()
-        };
-
-        let content = div()
-            .flex()
-            .flex_col()
-            .gap(px(16.0))
-            .p(px(16.0))
-            .w_full()
-            .children(self.header)
-            .child(items_content)
-            .into_any_element();
-
-        render_scroll_viewport(self.id, content, window, cx)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn damping_and_thumb_geometry_stay_stable() {
-        let sixty_fps = damping_factor(SCROLL_DAMPING, 1.0 / 60.0);
-        assert!((sixty_fps - 0.095_162_57).abs() < 0.000_001);
-        assert!(thumb_geometry(px(100.0), px(0.0), px(0.0)).is_none());
-
-        let (top, height) = thumb_geometry(px(100.0), px(300.0), px(-150.0)).unwrap();
-        assert_eq!(height, px(32.0));
-        assert_eq!(top, px(30.0));
-        assert_eq!(
-            offset_from_thumb(px(45.0), px(15.0), px(92.0), px(32.0), px(300.0)),
-            px(-150.0)
-        );
-        assert_eq!(scroll_target(px(0.0), px(20.0), px(300.0)), None);
-        assert_eq!(scroll_target(px(-300.0), px(-20.0), px(300.0)), None);
-        assert_eq!(
-            scroll_target(px(0.0), px(-20.0), px(300.0)),
-            Some(px(-20.0))
-        );
     }
 }
