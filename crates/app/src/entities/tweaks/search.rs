@@ -24,6 +24,8 @@ pub const fn category_to_route(category: TweakCategory) -> AppRoute {
     }
 }
 
+pub const MAX_SEARCH_RESULTS: usize = 5;
+
 #[must_use]
 pub fn search_tweaks(query: &str, windows_build: u32) -> Vec<TweakSearchResult> {
     let clean_query = query.trim().to_lowercase();
@@ -78,9 +80,12 @@ pub fn search_tweaks(query: &str, windows_build: u32) -> Vec<TweakSearchResult> 
             ));
         }
     }
-
     scored_results.sort_by_key(|a| std::cmp::Reverse(a.0));
-    scored_results.into_iter().map(|(_, item)| item).collect()
+    scored_results
+        .into_iter()
+        .take(MAX_SEARCH_RESULTS)
+        .map(|(_, item)| item)
+        .collect()
 }
 
 #[cfg(test)]
@@ -101,6 +106,13 @@ mod tests {
         let results = search_tweaks("context", 22631);
         assert!(!results.is_empty());
         assert!(results.iter().any(|r| r.route == AppRoute::ContextMenu));
+        assert!(results.len() <= MAX_SEARCH_RESULTS);
+    }
+
+    #[test]
+    fn test_search_tweaks_limited_to_five_items() {
+        let results = search_tweaks("e", 22631);
+        assert_eq!(results.len(), MAX_SEARCH_RESULTS);
     }
 
     #[test]
