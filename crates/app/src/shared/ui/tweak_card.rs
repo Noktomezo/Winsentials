@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnimationExt, AnyElement, App, ElementId, Entity, FontWeight, InteractiveElement, IntoElement,
-    ParentElement, RenderOnce, Rgba, SharedString, SpringAnimation, SpringConfig,
+    Animation, AnimationExt, AnyElement, App, ElementId, Entity, FontWeight, InteractiveElement,
+    IntoElement, ParentElement, RenderOnce, Rgba, SharedString, SpringAnimation, SpringConfig,
     StatefulInteractiveElement, Styled, Window, div, px,
 };
 
@@ -282,28 +282,61 @@ pub fn render_tweak_card_shell(
         .child(header_row)
         .child(desc_row);
 
-    let target = if is_highlighted || hovered { 1.0 } else { 0.0 };
+    if is_highlighted {
+        let active_bg = theme.accent_blue.opacity(0.12);
+        let active_border = theme.accent_blue;
+        if reduce_motion {
+            return card
+                .bg(active_bg)
+                .border_color(active_border)
+                .into_any_element();
+        }
+
+        let base_bg = if hovered {
+            theme.input_bg.opacity(0.3)
+        } else {
+            theme.card_bg
+        };
+        let base_border = if hovered {
+            theme.accent_blue.opacity(0.5)
+        } else {
+            theme.card_border
+        };
+        let pulse_bg = theme.accent_blue.opacity(0.24);
+        let pulse_border = theme.accent_blue;
+
+        return card
+            .shadow_md()
+            .with_animation(
+                ElementId::Name(format!("{id}_highlight_pulse").into()),
+                Animation::new(std::time::Duration::from_millis(1350)),
+                move |card, delta| {
+                    let cycles = 3.0f32;
+                    let phase = delta * cycles * std::f32::consts::PI;
+                    let pulse_raw = phase.sin().powi(2);
+                    let decay = 1.0 - delta * 0.35;
+                    let pulse = (pulse_raw * decay).clamp(0.0, 1.0);
+
+                    card.bg(lerp_rgba(base_bg, pulse_bg, pulse))
+                        .border_color(lerp_rgba(base_border, pulse_border, pulse))
+                },
+            )
+            .into_any_element();
+    }
+
+    let target = if hovered { 1.0 } else { 0.0 };
     let spring = SpringAnimation::new(SpringConfig::new(260.0, 26.0, 1.0))
         .to(target)
         .with_epsilon(0.01);
     let card_bg = theme.card_bg;
-    let hover_bg = if is_highlighted {
-        theme.accent_blue.opacity(0.12)
-    } else {
-        theme.input_bg.opacity(0.3)
-    };
+    let hover_bg = theme.input_bg.opacity(0.3);
     let card_border = theme.card_border;
-    let hover_border = if is_highlighted {
-        theme.accent_blue
-    } else {
-        theme.accent_blue.opacity(0.5)
-    };
+    let hover_border = theme.accent_blue.opacity(0.5);
 
     if reduce_motion {
-        let active = is_highlighted || hovered;
         return card
-            .bg(if active { hover_bg } else { card_bg })
-            .border_color(if active { hover_border } else { card_border })
+            .bg(if hovered { hover_bg } else { card_bg })
+            .border_color(if hovered { hover_border } else { card_border })
             .into_any_element();
     }
 
