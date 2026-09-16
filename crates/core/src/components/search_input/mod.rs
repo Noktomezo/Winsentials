@@ -27,6 +27,7 @@ pub struct SearchInput {
     focused: bool,
     hovered: bool,
     selection: Option<(usize, usize)>,
+    max_length: Option<usize>,
     focus_handle: Option<FocusHandle>,
     icon: Option<SharedString>,
     on_change: Option<SearchChangeHandler>,
@@ -49,6 +50,7 @@ impl SearchInput {
             focused: false,
             hovered: false,
             selection: None,
+            max_length: None,
             focus_handle: None,
             icon: Some("icons/search.svg".into()),
             on_change: None,
@@ -103,6 +105,12 @@ impl SearchInput {
     }
 
     #[must_use]
+    pub fn max_length(mut self, max: impl Into<Option<usize>>) -> Self {
+        self.max_length = max.into();
+        self
+    }
+
+    #[must_use]
     pub fn track_focus(mut self, focus_handle: &FocusHandle) -> Self {
         self.focus_handle = Some(focus_handle.clone());
         self
@@ -152,6 +160,7 @@ impl RenderOnce for SearchInput {
         let is_focused = self.focused;
         let is_hovered = self.hovered;
         let current_sel = self.selection;
+        let max_length = self.max_length;
 
         let current_val = self.value.clone();
         let current_val_mouse = self.value.clone();
@@ -243,6 +252,7 @@ impl RenderOnce for SearchInput {
                 event,
                 &current_val,
                 current_sel,
+                max_length,
                 on_change_key.as_ref(),
                 on_sel_cb.as_ref(),
                 on_escape_cb.as_ref(),

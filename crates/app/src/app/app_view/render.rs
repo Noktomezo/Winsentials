@@ -316,6 +316,7 @@ impl Render for AppView {
             let input_el =
                 crate::shared::ui::SearchInput::new("app_input_modal_text", &modal.value)
                     .width(px(408.0))
+                    .max_length(max_len)
                     .placeholder(modal.placeholder.clone())
                     .focused(modal.focused)
                     .selection(modal.selection)

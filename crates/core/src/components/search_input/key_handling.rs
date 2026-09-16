@@ -50,6 +50,7 @@ pub fn handle_key_down(
     event: &KeyDownEvent,
     current_val: &str,
     current_sel: Option<(usize, usize)>,
+    max_length: Option<usize>,
     on_change_key: Option<&SearchChangeHandler>,
     on_sel_cb: Option<&SearchSelectionHandler>,
     on_escape_cb: Option<&SearchFocusHandler>,
@@ -117,16 +118,28 @@ pub fn handle_key_down(
             if let Some(text) = clip.text() {
                 let mut clean_text = text;
                 clean_text.retain(|c| c != '\r' && c != '\n');
-                let mut res = String::new();
-                res.extend(&chars[..sel_start]);
-                res.push_str(&clean_text);
-                res.extend(&chars[sel_end..]);
-                let new_cursor = sel_start + clean_text.chars().count();
-                if let Some(h) = on_sel_cb {
-                    h(Some((new_cursor, new_cursor)), window, cx);
-                }
-                if let Some(h) = on_change_key {
-                    h(res, window, cx);
+                let clean_count = clean_text.chars().count();
+                let available = if let Some(max) = max_length {
+                    let cur_without_sel = char_count - (sel_end - sel_start);
+                    max.saturating_sub(cur_without_sel)
+                } else {
+                    clean_count
+                };
+
+                if available > 0 {
+                    let paste_str: String = clean_text.chars().take(available).collect();
+                    let paste_len = paste_str.chars().count();
+                    let mut res = String::new();
+                    res.extend(&chars[..sel_start]);
+                    res.push_str(&paste_str);
+                    res.extend(&chars[sel_end..]);
+                    let new_cursor = sel_start + paste_len;
+                    if let Some(h) = on_sel_cb {
+                        h(Some((new_cursor, new_cursor)), window, cx);
+                    }
+                    if let Some(h) = on_change_key {
+                        h(res, window, cx);
+                    }
                 }
             }
         }
@@ -267,11 +280,19 @@ pub fn handle_key_down(
         });
 
         if let Some(text) = text_to_insert {
+            let insert_len = text.chars().count();
+            let new_char_count = char_count - (sel_end - sel_start) + insert_len;
+            if let Some(max) = max_length {
+                if new_char_count > max {
+                    return;
+                }
+            }
+
             let mut res = String::new();
             res.extend(&chars[..sel_start]);
             res.push_str(&text);
             res.extend(&chars[sel_end..]);
-            let new_cursor = sel_start + text.chars().count();
+            let new_cursor = sel_start + insert_len;
             if let Some(h) = on_sel_cb {
                 h(Some((new_cursor, new_cursor)), window, cx);
             }
