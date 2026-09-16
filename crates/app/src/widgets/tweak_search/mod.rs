@@ -1,8 +1,10 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use gpui::{
-    AnyElement, App, ElementId, InteractiveElement, IntoElement, KeyDownEvent, ParentElement,
-    RenderOnce, StatefulInteractiveElement, Styled, Window, div, px,
+    Animation, AnimationExt, AnyElement, App, ElementId, InteractiveElement, IntoElement,
+    KeyDownEvent, MouseButton, ParentElement, RenderOnce, StatefulInteractiveElement, Styled,
+    Window, deferred, div, ease_in_out, px,
 };
 
 use crate::entities::tweaks::{TweakSearchResult, search_tweaks};
@@ -16,6 +18,8 @@ pub use result_card::TweakResultCard;
 pub type TweakSearchSelectHandler =
     Arc<dyn Fn(TweakSearchResult, &mut Window, &mut App) + Send + Sync + 'static>;
 
+const SEARCH_WIDTH: f32 = 280.0;
+
 #[derive(Clone, Default)]
 pub struct TweakSearchState {
     pub query: String,
@@ -24,6 +28,35 @@ pub struct TweakSearchState {
     pub selection: Option<(usize, usize)>,
     pub selected_index: Option<usize>,
     pub hovered_index: Option<usize>,
+    pub is_closing: bool,
+    pub cached_results: Vec<TweakSearchResult>,
+}
+
+fn start_closing(state_entity: &gpui::Entity<TweakSearchState>, cx: &mut App) {
+    state_entity.update(cx, |s, cx| {
+        if s.is_closing {
+            return;
+        }
+        s.is_closing = true;
+        s.selected_index = None;
+        s.hovered_index = None;
+        cx.notify();
+
+        cx.spawn(async move |this, cx| {
+            cx.background_executor()
+                .timer(Duration::from_millis(140))
+                .await;
+            this.update(cx, |s, cx| {
+                if s.is_closing {
+                    s.is_closing = false;
+                    s.cached_results.clear();
+                    cx.notify();
+                }
+            })
+            .ok();
+        })
+        .detach();
+    });
 }
 
 #[derive(IntoElement)]
@@ -86,20 +119,38 @@ impl RenderOnce for TweakSearchWidget {
         let selected_index = state.selected_index;
         let hovered_index = state.hovered_index;
 
-        let results = if query.trim().is_empty() {
-            Vec::new()
+        let results = if !query.trim().is_empty() {
+            let current = search_tweaks(&query, self.windows_build);
+            state_entity.update(cx, |s, _| {
+                s.cached_results.clone_from(&current);
+            });
+            current
+        } else if state.is_closing {
+            state.cached_results.clone()
         } else {
-            search_tweaks(&query, self.windows_build)
+            Vec::new()
         };
-        let show_dropdown = focused && !query.trim().is_empty();
+
+        let is_open = focused && !query.trim().is_empty() && !state.is_closing;
+        let show_dropdown = is_open || state.is_closing;
 
         let state_for_change = state_entity.clone();
         let on_change = move |new_val: String, _window: &mut Window, cx: &mut App| {
-            state_for_change.update(cx, |s, cx| {
-                s.query = new_val;
-                s.selected_index = None;
-                cx.notify();
-            });
+            let was_open = !state_for_change.read(cx).query.trim().is_empty();
+            let will_be_empty = new_val.trim().is_empty();
+            if was_open && will_be_empty {
+                state_for_change.update(cx, |s, _| {
+                    s.query = new_val;
+                });
+                start_closing(&state_for_change, cx);
+            } else {
+                state_for_change.update(cx, |s, cx| {
+                    s.query = new_val;
+                    s.is_closing = false;
+                    s.selected_index = None;
+                    cx.notify();
+                });
+            }
         };
 
         let state_for_hover = state_entity.clone();
@@ -112,13 +163,24 @@ impl RenderOnce for TweakSearchWidget {
 
         let state_for_focus = state_entity.clone();
         let on_focus_change = move |is_focused: bool, _window: &mut Window, cx: &mut App| {
-            state_for_focus.update(cx, |s, cx| {
-                s.focused = is_focused;
-                if !is_focused {
-                    s.selected_index = None;
-                }
-                cx.notify();
-            });
+            let was_open = {
+                let s = state_for_focus.read(cx);
+                s.focused && !s.query.trim().is_empty()
+            };
+            if was_open && !is_focused {
+                state_for_focus.update(cx, |s, _| {
+                    s.focused = false;
+                });
+                start_closing(&state_for_focus, cx);
+            } else {
+                state_for_focus.update(cx, |s, cx| {
+                    s.focused = is_focused;
+                    if !is_focused {
+                        s.selected_index = None;
+                    }
+                    cx.notify();
+                });
+            }
         };
 
         let state_for_sel = state_entity.clone();
@@ -133,7 +195,11 @@ impl RenderOnce for TweakSearchWidget {
         let on_select_cb = self.on_select.clone();
         let state_for_submit = state_entity.clone();
         let results_for_submit = results.clone();
+        let is_closing_submit = state.is_closing;
         let on_submit = move |_submitted: String, window: &mut Window, cx: &mut App| {
+            if is_closing_submit {
+                return;
+            }
             if let Some(target) = selected_index
                 .and_then(|idx| results_for_submit.get(idx))
                 .or_else(|| results_for_submit.first())
@@ -142,6 +208,8 @@ impl RenderOnce for TweakSearchWidget {
                 state_for_submit.update(cx, |s, cx| {
                     s.query.clear();
                     s.focused = false;
+                    s.is_closing = false;
+                    s.cached_results.clear();
                     s.selected_index = None;
                     cx.notify();
                 });
@@ -157,7 +225,7 @@ impl RenderOnce for TweakSearchWidget {
 
         let search_input = SearchInput::new("dashboard_tweak_search_input", &query)
             .placeholder(rust_i18n::t!("dashboard.search_tweaks_placeholder").to_string())
-            .width(px(240.0))
+            .width(px(SEARCH_WIDTH))
             .focused(focused)
             .hovered(state.hovered)
             .selection(state.selection)
@@ -187,13 +255,19 @@ impl RenderOnce for TweakSearchWidget {
                     let is_hov = hovered_index == Some(idx);
                     let state_for_item_select = state_entity.clone();
                     let on_select_handler = self.on_select.clone();
+                    let is_closing = state.is_closing;
 
                     let state_for_item_hov = state_entity.clone();
                     let card = TweakResultCard::new(idx, result, is_sel, is_hov)
                         .on_select(move |res, window, cx| {
+                            if is_closing {
+                                return;
+                            }
                             state_for_item_select.update(cx, |s, cx| {
                                 s.query.clear();
                                 s.focused = false;
+                                s.is_closing = false;
+                                s.cached_results.clear();
                                 s.selected_index = None;
                                 cx.notify();
                             });
@@ -212,28 +286,66 @@ impl RenderOnce for TweakSearchWidget {
                 }
             }
 
-            Some(
-                div()
-                    .absolute()
-                    .top(px(40.0))
-                    .right(px(0.0))
-                    .w(px(360.0))
-                    .p(px(6.0))
-                    .rounded(px(10.0))
-                    .bg(theme.card_bg)
-                    .border_1()
-                    .border_color(theme.card_border)
-                    .shadow_lg()
-                    .child(list_col),
-            )
+            let mut box_el = div()
+                .id(ElementId::Name("tweak_search_dropdown_box".into()))
+                .absolute()
+                .top(px(40.0))
+                .left_0()
+                .w_full()
+                .p(px(6.0))
+                .rounded(px(10.0))
+                .bg(theme.card_bg)
+                .border_1()
+                .border_color(theme.card_border)
+                .shadow_lg()
+                .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
+                .on_mouse_down(MouseButton::Right, |_, _, cx| cx.stop_propagation())
+                .on_click(|_, _, cx| cx.stop_propagation());
+
+            let state_for_out = state_entity.clone();
+            box_el = box_el.on_mouse_down_out(move |_, _window, cx| {
+                start_closing(&state_for_out, cx);
+            });
+
+            let reduce_motion = cx.reduce_motion();
+            let animated_box: AnyElement = if reduce_motion {
+                box_el.child(list_col).into_any_element()
+            } else if state.is_closing {
+                box_el
+                    .child(list_col)
+                    .with_animation(
+                        ElementId::Name("tweak_search_dropdown_close".into()),
+                        Animation::new(Duration::from_millis(140)).with_easing(ease_in_out),
+                        move |menu, delta| {
+                            let offset_y = -delta * 4.0;
+                            menu.opacity(1.0 - delta).mt(px(offset_y))
+                        },
+                    )
+                    .into_any_element()
+            } else {
+                box_el
+                    .child(list_col)
+                    .with_animation(
+                        ElementId::Name("tweak_search_dropdown_open".into()),
+                        Animation::new(Duration::from_millis(160)).with_easing(ease_in_out),
+                        move |menu, delta| {
+                            let offset_y = (1.0 - delta) * -6.0;
+                            menu.opacity(delta).mt(px(offset_y))
+                        },
+                    )
+                    .into_any_element()
+            };
+
+            Some(animated_box)
         } else {
             None
         };
 
         let state_for_keydown = state_entity;
-        div()
+        let mut container = div()
             .id(ElementId::Name("tweak_search_container".into()))
             .relative()
+            .w(px(SEARCH_WIDTH))
             .on_key_down(move |event: &KeyDownEvent, _window, cx| {
                 let key = event.keystroke.key.as_str();
                 if key == "down" || key == "arrowdown" {
@@ -248,6 +360,7 @@ impl RenderOnce for TweakSearchWidget {
                         cx.notify();
                     });
                 } else if key == "escape" {
+                    start_closing(&state_for_keydown, cx);
                     state_for_keydown.update(cx, |s, cx| {
                         s.query.clear();
                         s.focused = false;
@@ -256,7 +369,12 @@ impl RenderOnce for TweakSearchWidget {
                     });
                 }
             })
-            .child(search_input)
-            .children(dropdown_element)
+            .child(search_input);
+
+        if let Some(dropdown) = dropdown_element {
+            container = container.child(deferred(dropdown).with_priority(100));
+        }
+
+        container
     }
 }

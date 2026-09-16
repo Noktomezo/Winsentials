@@ -73,19 +73,19 @@ fn render_result_chevron(
         .flex()
         .items_center()
         .justify_center()
-        .size(px(16.0))
+        .size(px(14.0))
         .flex_none()
         .with_spring(
             ElementId::Name(format!("tweak_res_chev_{tweak_id}").into()),
             spring,
             move |chev, val| {
                 let progress = val.clamp(0.0, 1.0);
-                let slide_x = progress * 4.0;
+                let slide_x = progress * 3.0;
                 let col = lerp_rgba(text_muted, text_primary, progress);
                 chev.child(
                     svg()
                         .path("icons/chevron-right.svg")
-                        .size(px(14.0))
+                        .size(px(13.0))
                         .text_color(col)
                         .with_transformation(Transformation::translate(point(px(slide_x), px(0.0))))
                         .flex_none(),
@@ -118,7 +118,7 @@ impl RenderOnce for TweakResultCard {
         let res_for_click = result.clone();
 
         let icon_box = div()
-            .size(px(32.0))
+            .size(px(28.0))
             .rounded(px(6.0))
             .bg(theme.input_bg)
             .border_1()
@@ -129,7 +129,7 @@ impl RenderOnce for TweakResultCard {
             .flex_none()
             .child(
                 Icon::new(result.icon)
-                    .size(px(16.0))
+                    .size(px(15.0))
                     .color(theme.accent_blue),
             );
 
@@ -137,14 +137,14 @@ impl RenderOnce for TweakResultCard {
             .flex()
             .flex_col()
             .justify_center()
-            .gap(px(2.0))
+            .gap(px(1.0))
             .flex_1()
             .min_w(px(0.0))
             .overflow_hidden()
             .child(
                 div()
-                    .text_size(px(13.0))
-                    .line_height(px(16.0))
+                    .text_size(px(12.5))
+                    .line_height(px(15.0))
                     .font_weight(FontWeight::SEMIBOLD)
                     .text_color(theme.text_primary)
                     .text_ellipsis()
@@ -155,7 +155,7 @@ impl RenderOnce for TweakResultCard {
             .child(
                 div()
                     .text_size(px(11.0))
-                    .line_height(px(14.0))
+                    .line_height(px(13.0))
                     .font_weight(FontWeight::NORMAL)
                     .text_color(theme.text_muted)
                     .text_ellipsis()
@@ -177,11 +177,11 @@ impl RenderOnce for TweakResultCard {
             .flex()
             .items_center()
             .justify_between()
-            .gap(px(10.0))
+            .gap(px(8.0))
             .rounded(px(8.0))
             .border_1()
-            .px(px(10.0))
-            .py(px(8.0))
+            .px(px(8.0))
+            .py(px(6.0))
             .w_full()
             .on_hover(move |&hov, window, cx| {
                 if let Some(ref h) = on_hover {
