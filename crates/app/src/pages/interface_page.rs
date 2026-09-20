@@ -57,6 +57,6 @@ impl RenderOnce for InterfacePage {
             self.on_hover_tooltip.as_ref(),
             cx,
         );
-        render_tweak_page(AppRoute::Interface, tweak_items)
+        render_tweak_page(AppRoute::Interface, tweak_items, cx)
     }
 }

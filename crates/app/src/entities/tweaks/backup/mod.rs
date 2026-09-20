@@ -78,4 +78,40 @@ mod tests {
         let deserialized: TweakBackup = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(backup, deserialized);
     }
+
+    #[test]
+    fn test_backup_calculate_diff() {
+        use crate::entities::tweaks::TweakStates;
+
+        let mut current_states = TweakStates::default();
+        let tweak1 = ALL_TWEAKS[0];
+        let tweak2 = ALL_TWEAKS[1];
+
+        current_states.set_state(tweak1.id, false);
+        current_states.set_state(tweak2.id, true);
+
+        // Identical desired states
+        let mut identical_states = HashMap::new();
+        identical_states.insert(tweak1.id.to_string(), false);
+        identical_states.insert(tweak2.id.to_string(), true);
+
+        let backup_same = TweakBackup::new("same", "Same", "now", 0, identical_states);
+        let diff = backup_same.calculate_diff(&current_states);
+        assert!(diff.is_empty());
+        assert_eq!(diff.to_enable, 0);
+        assert_eq!(diff.to_disable, 0);
+        assert_eq!(diff.total_changes(), 0);
+
+        // Opposing desired states
+        let mut changed_states = HashMap::new();
+        changed_states.insert(tweak1.id.to_string(), true);
+        changed_states.insert(tweak2.id.to_string(), false);
+
+        let backup_diff = TweakBackup::new("diff", "Diff", "now", 0, changed_states);
+        let diff = backup_diff.calculate_diff(&current_states);
+        assert!(!diff.is_empty());
+        assert_eq!(diff.to_enable, 1);
+        assert_eq!(diff.to_disable, 1);
+        assert_eq!(diff.total_changes(), 2);
+    }
 }

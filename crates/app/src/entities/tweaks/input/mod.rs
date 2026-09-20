@@ -7,9 +7,12 @@ pub mod snapkey;
 
 #[allow(unused_imports)]
 pub use csrss_priority::{is_csrss_priority_applied, set_csrss_priority};
-pub use ctf::{CtfOptimizationPreset, current_ctf_preset, set_ctf_preset};
+pub use ctf::{
+    CtfOptimizationPreset, ctf_preset_icon, ctf_preset_label, current_ctf_preset, set_ctf_preset,
+};
 pub use keyboard_repeat::{
-    KeyboardRepeatPreset, current_keyboard_repeat_preset, set_keyboard_repeat_preset,
+    KeyboardRepeatPreset, current_keyboard_repeat_preset, keyboard_repeat_preset_icon,
+    keyboard_repeat_preset_label, set_keyboard_repeat_preset,
 };
 #[allow(unused_imports)]
 pub use mouse_acceleration::{

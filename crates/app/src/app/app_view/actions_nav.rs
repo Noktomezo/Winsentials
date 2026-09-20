@@ -25,6 +25,39 @@ impl AppView {
         }
     }
 
+    pub fn navigate_to_tweak(
+        &mut self,
+        route: AppRoute,
+        tweak_id: &'static str,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        cx.set_global(crate::entities::tweaks::HighlightedTweak {
+            tweak_id: Some(tweak_id),
+            needs_scroll: true,
+        });
+        if self.current_route == route {
+            cx.notify();
+        } else {
+            self.navigate_to(route, window, cx);
+        }
+
+        cx.spawn(async move |this, cx| {
+            cx.background_executor()
+                .timer(std::time::Duration::from_millis(1500))
+                .await;
+            this.update(cx, |_this, cx| {
+                cx.set_global(crate::entities::tweaks::HighlightedTweak {
+                    tweak_id: None,
+                    needs_scroll: false,
+                });
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
     pub fn navigate_back(&mut self, _window: &mut Window, cx: &mut Context<Self>) {
         if let Some(prev) = self.history_back.pop() {
             self.history_forward.push(self.current_route);

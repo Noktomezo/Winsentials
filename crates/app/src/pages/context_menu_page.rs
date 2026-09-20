@@ -118,9 +118,16 @@ pub(crate) fn render_tweak_cards_for_category(
     on_toggle: Option<&TweakToggleHandler>,
     on_hover_tt: Option<&TooltipHoverHandler>,
     cx: &App,
-) -> Vec<AnyElement> {
+) -> Vec<(&'static str, AnyElement)> {
     let all_tweaks = get_all_tweaks();
-    let mut tweak_items: Vec<AnyElement> = Vec::new();
+    let highlighted_tweak_id = cx
+        .has_global::<crate::entities::tweaks::HighlightedTweak>()
+        .then(|| {
+            cx.global::<crate::entities::tweaks::HighlightedTweak>()
+                .tweak_id
+        })
+        .flatten();
+    let mut tweak_items: Vec<(&'static str, AnyElement)> = Vec::new();
 
     for tweak in all_tweaks {
         if tweak.category == category && tweak.is_supported(windows_build) {
@@ -132,6 +139,7 @@ pub(crate) fn render_tweak_cards_for_category(
                 (tweak.is_applied)()
             };
             let tweak_id = tweak.id;
+            let is_highlighted = highlighted_tweak_id == Some(tweak.id);
             let toggle_cb = on_toggle.cloned();
 
             let mut card = TweakCard::new(
@@ -142,6 +150,7 @@ pub(crate) fn render_tweak_cards_for_category(
                 is_applied,
             )
             .badges(badges)
+            .highlighted(is_highlighted)
             .on_toggle(move |new_val, window, cx| {
                 if let Some(ref h) = toggle_cb {
                     h(tweak_id, new_val, window, cx);
@@ -155,19 +164,62 @@ pub(crate) fn render_tweak_cards_for_category(
                 });
             }
 
-            tweak_items.push(card.into_any_element());
+            tweak_items.push((tweak.id, card.into_any_element()));
         }
     }
 
     tweak_items
 }
 
-pub(crate) fn render_tweak_page(route: AppRoute, tweak_items: Vec<AnyElement>) -> gpui::Div {
-    let tweak_grid = div()
-        .grid()
-        .grid_cols(1)
-        .gap(px(12.0))
-        .children(tweak_items);
+pub(crate) fn render_tweak_page(
+    route: AppRoute,
+    tweak_items: Vec<(&'static str, AnyElement)>,
+    cx: &App,
+) -> gpui::Div {
+    let mut elements = Vec::with_capacity(tweak_items.len());
+    let mut target_index = None;
+    let target_tweak = cx
+        .try_global::<crate::entities::tweaks::HighlightedTweak>()
+        .and_then(|h| if h.needs_scroll { h.tweak_id } else { None });
+
+    for (idx, (tweak_id, element)) in tweak_items.into_iter().enumerate() {
+        if target_tweak == Some(tweak_id) {
+            target_index = Some(idx);
+        }
+        elements.push(element);
+    }
+
+    let mut tweak_grid = div().grid().grid_cols(1).gap(px(12.0)).children(elements);
+
+    if let Some(idx) = target_index {
+        let route_id = route.id();
+        tweak_grid = tweak_grid.on_children_prepainted(move |bounds_vec, window, cx| {
+            let should_scroll = cx
+                .try_global::<crate::entities::tweaks::HighlightedTweak>()
+                .is_some_and(|h| h.needs_scroll);
+            if !should_scroll {
+                return;
+            }
+            let Some(&card_bounds) = bounds_vec.get(idx) else {
+                return;
+            };
+
+            let scrolled = crate::shared::ui::SmoothScroll::scroll_bounds_into_view(
+                route_id,
+                card_bounds,
+                px(24.0),
+                window,
+                cx,
+            );
+
+            if scrolled {
+                cx.set_global(crate::entities::tweaks::HighlightedTweak {
+                    tweak_id: target_tweak,
+                    needs_scroll: false,
+                });
+            }
+        });
+    }
 
     div()
         .flex()
@@ -190,6 +242,6 @@ impl RenderOnce for ContextMenuPage {
             self.on_hover_tooltip.as_ref(),
             cx,
         );
-        render_tweak_page(AppRoute::ContextMenu, tweak_items)
+        render_tweak_page(AppRoute::ContextMenu, tweak_items, cx)
     }
 }

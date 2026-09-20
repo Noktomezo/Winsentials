@@ -50,6 +50,7 @@ pub struct InputModalState {
     pub placeholder: SharedString,
     pub confirm_label: SharedString,
     pub cancel_label: SharedString,
+    pub max_length: Option<usize>,
     pub focused: bool,
     pub selection: Option<(usize, usize)>,
     pub closing: bool,

@@ -2,6 +2,7 @@
 pub mod dev_perf_monitor;
 pub mod sidebar;
 pub mod titlebar;
+pub mod tweak_search;
 pub mod window_controls;
 
 #[cfg(debug_assertions)]
@@ -11,3 +12,4 @@ pub use dev_perf_monitor::{DevPerfMonitor, DevPerfMonitorState};
 pub use sidebar::Sidebar;
 #[allow(unused_imports)]
 pub use titlebar::Titlebar;
+pub use tweak_search::TweakSearchWidget;

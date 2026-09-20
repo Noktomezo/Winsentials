@@ -57,6 +57,6 @@ impl RenderOnce for ExplorerPage {
             self.on_hover_tooltip.as_ref(),
             cx,
         );
-        render_tweak_page(AppRoute::Explorer, tweak_items)
+        render_tweak_page(AppRoute::Explorer, tweak_items, cx)
     }
 }

@@ -6,7 +6,7 @@ use gpui::{
     StatefulInteractiveElement, Styled, Window, div, px,
 };
 
-use crate::entities::tweaks::TweakBackup;
+use crate::entities::tweaks::{BackupDiff, TweakBackup};
 use crate::shared::theme::Theme;
 use crate::shared::ui::button::{Button, ButtonSize, ButtonVariant};
 use crate::shared::ui::icon::Icon;
@@ -17,11 +17,27 @@ pub type BackupHoverHandler =
     Arc<dyn Fn(SharedString, bool, &mut Window, &mut App) + Send + Sync + 'static>;
 pub type BackupActionHandler = Arc<dyn Fn(String, &mut Window, &mut App) + Send + Sync + 'static>;
 
+#[must_use]
+pub fn get_tweaks_label(count: usize) -> String {
+    let rem100 = count % 100;
+    let rem10 = count % 10;
+    if (11..=14).contains(&rem100) {
+        rust_i18n::t!("tools.backup_diff_tweak_many").to_string()
+    } else if rem10 == 1 {
+        rust_i18n::t!("tools.backup_diff_tweak_one").to_string()
+    } else if (2..=4).contains(&rem10) {
+        rust_i18n::t!("tools.backup_diff_tweak_few").to_string()
+    } else {
+        rust_i18n::t!("tools.backup_diff_tweak_many").to_string()
+    }
+}
+
 #[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 pub fn render_backup_card(
     backup: &TweakBackup,
     theme: &Theme,
     is_hovered: bool,
+    diff: BackupDiff,
     on_hover: Option<&BackupHoverHandler>,
     on_restore: Option<&BackupActionHandler>,
     on_rename: Option<&BackupActionHandler>,
@@ -51,12 +67,74 @@ pub fn render_backup_card(
     let on_rename_cb = on_rename.cloned();
     let on_delete_cb = on_delete.cloned();
 
-    let active = backup.active_count();
-    let total = backup.total_count();
-    let subtitle =
-        rust_i18n::t!("tools.backup_active_tweaks", active = active, total = total).to_string();
+    let subtitle_row = if diff.is_empty() {
+        div()
+            .flex()
+            .items_center()
+            .gap(px(4.0))
+            .text_size(px(11.5))
+            .line_height(px(14.0))
+            .text_color(theme.text_muted)
+            .child(rust_i18n::t!("tools.backup_diff_none").to_string())
+    } else {
+        let total_changes = diff.total_changes();
+        let tweaks_label = get_tweaks_label(total_changes);
 
-    let title_line = format!("{} • {}", backup.name, backup.created_at);
+        let mut row = div()
+            .flex()
+            .items_center()
+            .gap(px(4.0))
+            .text_size(px(11.5))
+            .line_height(px(14.0))
+            .child(
+                div()
+                    .text_color(theme.text_muted)
+                    .child(rust_i18n::t!("tools.backup_diff_restore_prefix").to_string()),
+            )
+            .child(
+                div()
+                    .font_weight(FontWeight::MEDIUM)
+                    .text_color(theme.accent_yellow)
+                    .child(total_changes.to_string()),
+            )
+            .child(div().text_color(theme.text_muted).child(tweaks_label));
+
+        if diff.to_enable > 0 {
+            row = row
+                .child(
+                    div()
+                        .text_color(theme.text_muted)
+                        .child(rust_i18n::t!("tools.backup_diff_enable_label").to_string()),
+                )
+                .child(
+                    div()
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(theme.accent_green)
+                        .child(diff.to_enable.to_string()),
+                );
+
+            if diff.to_disable > 0 {
+                row = row.child(div().text_color(theme.text_muted).ml(px(-4.0)).child(","));
+            }
+        }
+
+        if diff.to_disable > 0 {
+            row = row
+                .child(
+                    div()
+                        .text_color(theme.text_muted)
+                        .child(rust_i18n::t!("tools.backup_diff_disable_label").to_string()),
+                )
+                .child(
+                    div()
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(theme.accent_red)
+                        .child(diff.to_disable.to_string()),
+                );
+        }
+
+        row
+    };
 
     div()
         .id(ElementId::Name(format!("{card_id}_root").into()))
@@ -118,26 +196,35 @@ pub fn render_backup_card(
                         .min_w(px(0.0))
                         .child(
                             div()
-                                .text_size(px(13.0))
-                                .line_height(px(16.0))
-                                .font_weight(FontWeight::SEMIBOLD)
-                                .text_color(theme.text_primary)
-                                .text_ellipsis()
-                                .overflow_hidden()
-                                .whitespace_nowrap()
-                                .child(title_line),
+                                .flex()
+                                .items_center()
+                                .gap(px(6.0))
+                                .min_w(px(0.0))
+                                .child(
+                                    div()
+                                        .flex_shrink(1.0)
+                                        .min_w(px(0.0))
+                                        .text_size(px(13.0))
+                                        .line_height(px(16.0))
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .text_color(theme.text_primary)
+                                        .text_ellipsis()
+                                        .overflow_hidden()
+                                        .whitespace_nowrap()
+                                        .child(backup.name.clone()),
+                                )
+                                .child(
+                                    div()
+                                        .flex_none()
+                                        .text_size(px(11.5))
+                                        .line_height(px(16.0))
+                                        .font_weight(FontWeight::NORMAL)
+                                        .text_color(theme.text_muted)
+                                        .whitespace_nowrap()
+                                        .child(format!("({})", backup.created_at)),
+                                ),
                         )
-                        .child(
-                            div()
-                                .text_size(px(11.5))
-                                .line_height(px(14.0))
-                                .font_weight(FontWeight::NORMAL)
-                                .text_color(theme.text_muted)
-                                .text_ellipsis()
-                                .overflow_hidden()
-                                .whitespace_nowrap()
-                                .child(subtitle),
-                        ),
+                        .child(subtitle_row),
                 ),
         )
         .child(
@@ -186,4 +273,30 @@ pub fn render_backup_card(
                 ),
         )
         .into_any_element()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tweaks_pluralization() {
+        rust_i18n::set_locale("ru");
+        assert_eq!(get_tweaks_label(1), "твик:");
+        assert_eq!(get_tweaks_label(2), "твика:");
+        assert_eq!(get_tweaks_label(3), "твика:");
+        assert_eq!(get_tweaks_label(4), "твика:");
+        assert_eq!(get_tweaks_label(5), "твиков:");
+        assert_eq!(get_tweaks_label(11), "твиков:");
+        assert_eq!(get_tweaks_label(12), "твиков:");
+        assert_eq!(get_tweaks_label(14), "твиков:");
+        assert_eq!(get_tweaks_label(21), "твик:");
+        assert_eq!(get_tweaks_label(22), "твика:");
+        assert_eq!(get_tweaks_label(25), "твиков:");
+
+        rust_i18n::set_locale("en");
+        assert_eq!(get_tweaks_label(1), "tweak:");
+        assert_eq!(get_tweaks_label(2), "tweaks:");
+        assert_eq!(get_tweaks_label(5), "tweaks:");
+    }
 }

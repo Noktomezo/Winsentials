@@ -151,6 +151,7 @@ impl RenderOnce for BackupsPage {
                 )
                 .into_any_element()
         } else {
+            let current_states = cx.try_global::<crate::entities::tweaks::TweakStates>();
             div()
                 .flex()
                 .flex_col()
@@ -160,10 +161,14 @@ impl RenderOnce for BackupsPage {
                     let is_hovered = hovered_card
                         .as_ref()
                         .is_some_and(|id| id.as_ref() == card_id);
+                    let diff = current_states
+                        .map(|s| b.calculate_diff(s))
+                        .unwrap_or_default();
                     render_backup_card(
                         b,
                         &theme,
                         is_hovered,
+                        diff,
                         backup_hover.as_ref(),
                         on_restore.as_ref(),
                         on_rename.as_ref(),

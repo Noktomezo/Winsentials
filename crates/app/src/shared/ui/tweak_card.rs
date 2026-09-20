@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use gpui::{
-    AnimationExt, AnyElement, App, ElementId, Entity, FontWeight, InteractiveElement, IntoElement,
-    ParentElement, RenderOnce, Rgba, SharedString, SpringAnimation, SpringConfig,
+    Animation, AnimationExt, AnyElement, App, ElementId, Entity, FontWeight, InteractiveElement,
+    IntoElement, ParentElement, RenderOnce, Rgba, SharedString, SpringAnimation, SpringConfig,
     StatefulInteractiveElement, Styled, Window, div, px,
 };
 
@@ -121,6 +121,7 @@ pub struct TweakCard {
     description: SharedString,
     badges: Vec<TweakBadge>,
     is_applied: bool,
+    highlighted: bool,
     on_toggle: Option<TweakCardToggleHandler>,
     on_hover_tooltip: Option<TooltipHoverHandler>,
 }
@@ -141,6 +142,7 @@ impl TweakCard {
             description: description.into(),
             badges: Vec::new(),
             is_applied,
+            highlighted: false,
             on_toggle: None,
             on_hover_tooltip: None,
         }
@@ -156,6 +158,12 @@ impl TweakCard {
     #[must_use]
     pub fn badges(mut self, badges: Vec<TweakBadge>) -> Self {
         self.badges = badges;
+        self
+    }
+
+    #[must_use]
+    pub fn highlighted(mut self, highlighted: bool) -> Self {
+        self.highlighted = highlighted;
         self
     }
 
@@ -186,6 +194,7 @@ pub fn render_tweak_card_shell(
     action_element: impl IntoElement,
     hover_state: Entity<bool>,
     hovered: bool,
+    is_highlighted: bool,
     theme: &Theme,
     reduce_motion: bool,
 ) -> AnyElement {
@@ -273,8 +282,51 @@ pub fn render_tweak_card_shell(
         .child(header_row)
         .child(desc_row);
 
+    if is_highlighted {
+        let active_bg = theme.accent_blue.opacity(0.12);
+        let active_border = theme.accent_blue;
+        if reduce_motion {
+            return card
+                .bg(active_bg)
+                .border_color(active_border)
+                .into_any_element();
+        }
+
+        let base_bg = if hovered {
+            theme.input_bg.opacity(0.3)
+        } else {
+            theme.card_bg
+        };
+        let base_border = if hovered {
+            theme.accent_blue.opacity(0.5)
+        } else {
+            theme.card_border
+        };
+        let pulse_bg = theme.accent_blue.opacity(0.24);
+        let pulse_border = theme.accent_blue;
+
+        return card
+            .shadow_md()
+            .with_animation(
+                ElementId::Name(format!("{id}_highlight_pulse").into()),
+                Animation::new(std::time::Duration::from_millis(1350)),
+                move |card, delta| {
+                    let cycles = 3.0f32;
+                    let phase = delta * cycles * std::f32::consts::PI;
+                    let pulse_raw = phase.sin().powi(2);
+                    let decay = 1.0 - delta * 0.35;
+                    let pulse = (pulse_raw * decay).clamp(0.0, 1.0);
+
+                    card.bg(lerp_rgba(base_bg, pulse_bg, pulse))
+                        .border_color(lerp_rgba(base_border, pulse_border, pulse))
+                },
+            )
+            .into_any_element();
+    }
+
+    let target = if hovered { 1.0 } else { 0.0 };
     let spring = SpringAnimation::new(SpringConfig::new(260.0, 26.0, 1.0))
-        .to(if hovered { 1.0 } else { 0.0 })
+        .to(target)
         .with_epsilon(0.01);
     let card_bg = theme.card_bg;
     let hover_bg = theme.input_bg.opacity(0.3);
@@ -305,6 +357,11 @@ impl RenderOnce for TweakCard {
         let theme = Theme::get(cx);
         let id_str = self.id;
         let is_applied = self.is_applied;
+        let is_highlighted = self.highlighted
+            || cx
+                .try_global::<crate::entities::tweaks::HighlightedTweak>()
+                .and_then(|h| h.tweak_id)
+                == Some(id_str);
         let on_toggle = self.on_toggle;
         let hover_state = window.use_keyed_state((id_str, 1usize), cx, |_, _| false);
         let hovered = *hover_state.read(cx);
@@ -327,6 +384,7 @@ impl RenderOnce for TweakCard {
             switch_el,
             hover_state,
             hovered,
+            is_highlighted,
             &theme,
             cx.reduce_motion(),
         )
