@@ -1,10 +1,12 @@
 <div align="center">
   <img src="assets/app-thumbnail.png" alt="Winsentials Preview" width="100%" />
   <p align="center">
-    <a href="https://github.com/Noktomezo/Winsentials/releases"><picture><source media="(prefers-color-scheme: dark)" srcset=""><img alt="Release" src=""></picture></a>
-    <a href="https://github.com/Noktomezo/Winsentials/actions"><picture><source media="(prefers-color-scheme: dark)" srcset=""><img alt="CI" src=""></picture></a>
-    <a href="https://github.com/Noktomezo/Winsentials/stargazers"><picture><source media="(prefers-color-scheme: dark)" srcset=""><img alt="GitHub Stars" src=""></picture></a>
-    <a href="https://github.com/Noktomezo/Winsentials/commits/main"><picture><source media="(prefers-color-scheme: dark)" srcset=""><img alt="Last commit" src=""></picture></a>
+    <picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/stars/Noktomezo/Winsentials.svg?variant=secondary&amp;size=xs&amp;mode=dark"><img alt="GitHub Stars" src="https://www.shieldcn.dev/github/stars/Noktomezo/Winsentials.svg?variant=secondary&amp;size=xs&amp;mode=light"></picture>
+    <picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/last-commit/Noktomezo/Winsentials.svg?variant=secondary&amp;size=xs&amp;mode=dark"><img alt="Last commit" src="https://www.shieldcn.dev/github/last-commit/Noktomezo/Winsentials.svg?variant=secondary&amp;size=xs&amp;mode=light"></picture>
+    <picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/commits/Noktomezo/Winsentials.svg?variant=secondary&amp;size=xs&amp;mode=dark"><img alt="Commits" src="https://www.shieldcn.dev/github/commits/Noktomezo/Winsentials.svg?variant=secondary&amp;size=xs&amp;mode=light"></picture>
+    <picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/release/Noktomezo/Winsentials.svg?size=xs&amp;mode=dark"><img alt="Release" src="https://www.shieldcn.dev/github/release/Noktomezo/Winsentials.svg?size=xs&amp;mode=light"></picture>
+    <picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/ci/Noktomezo/Winsentials.svg?variant=secondary&amp;size=xs&amp;mode=dark"><img alt="CI" src="https://www.shieldcn.dev/github/ci/Noktomezo/Winsentials.svg?variant=secondary&amp;size=xs&amp;mode=light"></picture>
+    <picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/license/Noktomezo/Winsentials.svg?variant=ghost&amp;size=xs&amp;mode=dark"><img alt="License" src="https://www.shieldcn.dev/github/license/Noktomezo/Winsentials.svg?variant=ghost&amp;size=xs&amp;mode=light"></picture>
   </p>
 
   <p align="center">
