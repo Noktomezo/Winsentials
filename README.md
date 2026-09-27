@@ -1,10 +1,10 @@
 <div align="center">
   <img src="assets/app-thumbnail.png" alt="Winsentials Preview" width="100%" />
   <p align="center">
-    <a href="https://github.com/Noktomezo/Winsentials/releases"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/release/Noktomezo/Winsentials.svg?size=sm&amp;mode=dark&amp;theme=slate"><img alt="Release" src="https://www.shieldcn.dev/github/release/Noktomezo/Winsentials.svg?size=sm&amp;mode=light&amp;theme=slate"></picture></a>
-    <a href="https://github.com/Noktomezo/Winsentials/actions"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/ci/Noktomezo/Winsentials.svg?variant=secondary&amp;size=sm&amp;mode=dark&amp;theme=slate"><img alt="CI" src=""></picture></a>
-    <a href="https://github.com/Noktomezo/Winsentials/stargazers"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/stars/Noktomezo/Winsentials.svg?variant=secondary&amp;size=sm&amp;mode=dark&amp;theme=slate"><img alt="GitHub Stars" src="https://www.shieldcn.dev/github/stars/Noktomezo/Winsentials.svg?variant=secondary&amp;size=sm&amp;mode=light&amp;theme=slate"></picture></a>
-    <a href="https://github.com/Noktomezo/Winsentials/commits/main"><picture><source media="(prefers-color-scheme: dark)" srcset="https://www.shieldcn.dev/github/last-commit/Noktomezo/Winsentials.svg?variant=secondary&amp;size=sm&amp;mode=dark&amp;theme=slate"><img alt="Last commit" src=""></picture></a>
+    <a href="https://github.com/Noktomezo/Winsentials/releases"><picture><source media="(prefers-color-scheme: dark)" srcset=""><img alt="Release" src=""></picture></a>
+    <a href="https://github.com/Noktomezo/Winsentials/actions"><picture><source media="(prefers-color-scheme: dark)" srcset=""><img alt="CI" src=""></picture></a>
+    <a href="https://github.com/Noktomezo/Winsentials/stargazers"><picture><source media="(prefers-color-scheme: dark)" srcset=""><img alt="GitHub Stars" src=""></picture></a>
+    <a href="https://github.com/Noktomezo/Winsentials/commits/main"><picture><source media="(prefers-color-scheme: dark)" srcset=""><img alt="Last commit" src=""></picture></a>
   </p>
 
   <p align="center">
@@ -13,12 +13,13 @@
   </p>
 </div>
 
-## ⚡ Features Beside Tweaks
-
-📊 **Real-Time Telemetry** — Stepped history graphs and live metrics for CPU (per-core load), GPU (engines & VRAM), disk I/O, and network.<br/>
-🧹 **Disk Cleanup** — Fast scanner for crash dumps, temporary files, and system caches with accurate space reclamation.<br/>
-🚀 **Startup Manager** — Unified inspection and control of autoruns, background services, and scheduled tasks.<br/>
-🔄 **Integrated Auto-Updater** — Background release checks with in-toast download progress and seamless updates.
+## 📸 Preview Screenshots
+<div align="center" style="display: flex; flex-direction: row">
+  <img width="49%" alt="изображение" src="https://github.com/user-attachments/assets/4b7a90fe-ab65-4add-b8e5-3115f5205568" />
+  <img width="49%" alt="изображение" src="https://github.com/user-attachments/assets/d93988c9-3f05-4265-909e-02dc65a63eba" />
+  <img width="49%" alt="изображение" src="https://github.com/user-attachments/assets/dc0b0d90-4973-45cb-a5a0-ce61f6fc0743" />
+  <img width="49%" alt="изображение" src="https://github.com/user-attachments/assets/e02cc498-cc85-4c1a-8c38-dac83429705d" />
+</div>
 
 ## 📥 Installation
 
