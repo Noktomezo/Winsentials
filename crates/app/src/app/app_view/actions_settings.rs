@@ -114,8 +114,13 @@ impl AppView {
     ) {
         let all_tweaks = crate::entities::tweaks::get_all_tweaks();
         if let Some(tweak) = all_tweaks.iter().find(|t| t.id == tweak_id) {
-            let set_applied = tweak.set_applied;
-            let is_applied_fn = tweak.is_applied;
+            let crate::entities::tweaks::TweakKind::Toggle {
+                set_applied,
+                is_applied: is_applied_fn,
+            } = tweak.kind
+            else {
+                return;
+            };
             let restart = tweak.restart;
             let category = tweak.category;
 

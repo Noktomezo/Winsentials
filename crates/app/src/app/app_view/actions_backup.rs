@@ -67,7 +67,7 @@ impl AppView {
         } else {
             let mut map = HashMap::with_capacity(ALL_TWEAKS.len());
             for tweak in ALL_TWEAKS {
-                map.insert(tweak.id, (tweak.is_applied)());
+                map.insert(tweak.id, tweak.is_applied());
             }
             map
         };
@@ -257,20 +257,46 @@ impl AppView {
         };
 
         for tweak in ALL_TWEAKS {
-            if let Some(&desired) = backup.tweak_states.get(tweak.id) {
-                let current = current_states.is_applied(tweak);
-                if current != desired {
-                    let res = (tweak.set_applied)(desired);
-                    if res.is_ok() {
-                        current_states.set_state(tweak.id, desired);
-                        if matches!(
-                            tweak.category,
-                            TweakCategory::Explorer | TweakCategory::ContextMenu
-                        ) {
-                            needs_shell_refresh = true;
+            match tweak.kind {
+                crate::entities::tweaks::TweakKind::Toggle { set_applied, .. } => {
+                    if let Some(&desired) = backup.tweak_states.get(tweak.id) {
+                        let current = current_states.is_applied(tweak);
+                        if current != desired {
+                            if let Ok(()) = set_applied(desired) {
+                                current_states.set_state(tweak.id, desired);
+                                if matches!(
+                                    tweak.category,
+                                    TweakCategory::Explorer | TweakCategory::ContextMenu
+                                ) {
+                                    needs_shell_refresh = true;
+                                }
+                                if tweak.restart > max_restart {
+                                    max_restart = tweak.restart;
+                                }
+                            }
                         }
-                        if tweak.restart > max_restart {
-                            max_restart = tweak.restart;
+                    }
+                }
+                crate::entities::tweaks::TweakKind::Select {
+                    get_current,
+                    set_current,
+                    ..
+                } => {
+                    if let Some(desired_preset) = backup.dropdown_states.get(tweak.id) {
+                        let current_preset = get_current();
+                        if current_preset != desired_preset {
+                            if let Ok(()) = set_current(desired_preset) {
+                                if tweak.id == "snapkey" {
+                                    if let Some(preset) =
+                                        crate::entities::tweaks::input::SnapKeyPreset::from_id(
+                                            desired_preset,
+                                        )
+                                    {
+                                        self.config.snapkey = preset;
+                                        let _ = crate::entities::config::save_config(&self.config);
+                                    }
+                                }
+                            }
                         }
                     }
                 }

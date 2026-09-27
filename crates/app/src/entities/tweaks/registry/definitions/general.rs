@@ -9,9 +9,11 @@ use crate::entities::tweaks::explorer::{
     set_hide_network, set_open_to_this_pc,
 };
 use crate::entities::tweaks::input::{
-    is_csrss_priority_applied, is_disable_mouse_acceleration_applied,
-    is_raw_mouse_throttle_applied, set_csrss_priority, set_disable_mouse_acceleration,
-    set_raw_mouse_throttle,
+    CtfOptimizationPreset, KeyboardRepeatPreset, SnapKeyPreset, current_ctf_preset,
+    current_keyboard_repeat_preset, current_snapkey_preset, is_csrss_priority_applied,
+    is_disable_mouse_acceleration_applied, is_raw_mouse_throttle_applied, set_csrss_priority,
+    set_ctf_preset, set_disable_mouse_acceleration, set_keyboard_repeat_preset,
+    set_raw_mouse_throttle, set_snapkey_preset,
 };
 use crate::entities::tweaks::interface_tweak::{
     is_disable_jpeg_compression_applied, is_remove_shortcut_arrows_applied,
@@ -39,7 +41,37 @@ use crate::entities::tweaks::system::{
     is_disable_mpo_applied, is_gpu_tdr_delay_applied, set_disable_mpo, set_gpu_tdr_delay,
 };
 
-pub const GENERAL_TWEAKS: [TweakDefinition; 31] = [
+fn get_keyboard_repeat_preset() -> &'static str {
+    current_keyboard_repeat_preset().id()
+}
+
+fn set_keyboard_repeat_preset_str(val: &str) -> Result<(), String> {
+    let preset = KeyboardRepeatPreset::from_id(val)
+        .ok_or_else(|| format!("Unknown keyboard repeat preset: {val}"))?;
+    set_keyboard_repeat_preset(preset)
+}
+
+fn get_ctf_preset() -> &'static str {
+    current_ctf_preset().id()
+}
+
+fn set_ctf_preset_str(val: &str) -> Result<(), String> {
+    let preset =
+        CtfOptimizationPreset::from_id(val).ok_or_else(|| format!("Unknown CTF preset: {val}"))?;
+    set_ctf_preset(preset)
+}
+
+fn get_snapkey_preset() -> &'static str {
+    current_snapkey_preset().id()
+}
+
+fn set_snapkey_preset_str(val: &str) -> Result<(), String> {
+    let preset =
+        SnapKeyPreset::from_id(val).ok_or_else(|| format!("Unknown SnapKey preset: {val}"))?;
+    set_snapkey_preset(preset)
+}
+
+pub const GENERAL_TWEAKS: [TweakDefinition; 34] = [
     TweakDefinition::new(
         "classic_context_menu",
         TweakCategory::ContextMenu,
@@ -368,5 +400,35 @@ pub const GENERAL_TWEAKS: [TweakDefinition; 31] = [
     .with_side_effect(
         SideEffectLevel::Low,
         "tweaks.disable_network_power_saving_side_effect",
+    ),
+    TweakDefinition::new_select(
+        "keyboard_repeat",
+        TweakCategory::Input,
+        "icons/keyboard.svg",
+        "tweaks.keyboard_repeat_title",
+        "tweaks.keyboard_repeat_desc",
+        &["off", "standard", "balanced", "fast", "ultra"],
+        get_keyboard_repeat_preset,
+        set_keyboard_repeat_preset_str,
+    ),
+    TweakDefinition::new_select(
+        "ctf_optimization",
+        TweakCategory::Input,
+        "icons/type.svg",
+        "tweaks.ctf_optimization_title",
+        "tweaks.ctf_optimization_desc",
+        &["standard", "mild", "aggressive"],
+        get_ctf_preset,
+        set_ctf_preset_str,
+    ),
+    TweakDefinition::new_select(
+        "snapkey",
+        TweakCategory::Input,
+        "icons/crosshair-2.svg",
+        "tweaks.snapkey_title",
+        "tweaks.snapkey_desc",
+        &["off", "wasd", "arrow_keys", "esdf", "azerty"],
+        get_snapkey_preset,
+        set_snapkey_preset_str,
     ),
 ];

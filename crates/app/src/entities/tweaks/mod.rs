@@ -14,6 +14,6 @@ pub use backup::{BackupDiff, MAX_BACKUP_NAME_LEN, TweakBackup};
 #[allow(unused_imports)]
 pub use registry::{
     ALL_TWEAKS, HighlightedTweak, RestartRequirement, SideEffect, SideEffectLevel, TweakCategory,
-    TweakDefinition, TweakStates, count_applied_tweaks, get_all_tweaks,
+    TweakDefinition, TweakKind, TweakStates, count_applied_tweaks, get_all_tweaks,
 };
 pub use search::{TweakSearchResult, category_to_route, search_tweaks};

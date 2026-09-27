@@ -533,6 +533,7 @@
     "backup_diff_tweak_many": "твиков:",
     "backup_diff_enable_label": "включит",
     "backup_diff_disable_label": "выключит",
+    "backup_diff_presets_label": "изменит пресетов",
     "restore_backup": "Восстановить",
     "rename_backup": "Переименовать",
     "delete_backup": "Удалить",

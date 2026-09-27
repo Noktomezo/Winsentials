@@ -533,6 +533,7 @@
     "backup_diff_tweak_many": "tweaks:",
     "backup_diff_enable_label": "enable",
     "backup_diff_disable_label": "disable",
+    "backup_diff_presets_label": "change presets",
     "restore_backup": "Restore",
     "rename_backup": "Rename",
     "delete_backup": "Delete",

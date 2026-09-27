@@ -33,6 +33,31 @@ pub struct SideEffect {
     pub description_key: &'static str,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum TweakKind {
+    Toggle {
+        is_applied: fn() -> bool,
+        set_applied: fn(bool) -> Result<(), String>,
+    },
+    Select {
+        options: &'static [&'static str],
+        get_current: fn() -> &'static str,
+        set_current: fn(&str) -> Result<(), String>,
+    },
+}
+
+impl TweakKind {
+    #[must_use]
+    pub const fn is_toggle(&self) -> bool {
+        matches!(self, Self::Toggle { .. })
+    }
+
+    #[must_use]
+    pub const fn is_select(&self) -> bool {
+        matches!(self, Self::Select { .. })
+    }
+}
+
 #[derive(Clone, Copy)]
 #[allow(dead_code)]
 pub struct TweakDefinition {
@@ -46,8 +71,7 @@ pub struct TweakDefinition {
     pub custom_support: Option<fn() -> bool>,
     pub restart: RestartRequirement,
     pub side_effect: Option<SideEffect>,
-    pub is_applied: fn() -> bool,
-    pub set_applied: fn(bool) -> Result<(), String>,
+    pub kind: TweakKind,
 }
 
 impl TweakDefinition {
@@ -72,8 +96,77 @@ impl TweakDefinition {
             custom_support: None,
             restart: RestartRequirement::None,
             side_effect: None,
-            is_applied,
-            set_applied,
+            kind: TweakKind::Toggle {
+                is_applied,
+                set_applied,
+            },
+        }
+    }
+
+    #[must_use]
+    #[allow(clippy::too_many_arguments)]
+    pub const fn new_select(
+        id: &'static str,
+        category: TweakCategory,
+        icon: &'static str,
+        title_key: &'static str,
+        desc_key: &'static str,
+        options: &'static [&'static str],
+        get_current: fn() -> &'static str,
+        set_current: fn(&str) -> Result<(), String>,
+    ) -> Self {
+        Self {
+            id,
+            category,
+            icon,
+            title_key,
+            desc_key,
+            min_build: None,
+            max_build: None,
+            custom_support: None,
+            restart: RestartRequirement::None,
+            side_effect: None,
+            kind: TweakKind::Select {
+                options,
+                get_current,
+                set_current,
+            },
+        }
+    }
+
+    #[must_use]
+    pub fn is_applied(&self) -> bool {
+        match self.kind {
+            TweakKind::Toggle { is_applied, .. } => is_applied(),
+            TweakKind::Select { get_current, .. } => {
+                let curr = get_current();
+                curr != "off" && curr != "standard"
+            }
+        }
+    }
+
+    pub fn set_applied(&self, applied: bool) -> Result<(), String> {
+        match self.kind {
+            TweakKind::Toggle { set_applied, .. } => set_applied(applied),
+            TweakKind::Select { .. } => Err(format!("Cannot toggle select tweak '{}'", self.id)),
+        }
+    }
+
+    #[must_use]
+    pub fn get_select_value(&self) -> Option<&'static str> {
+        match self.kind {
+            TweakKind::Select { get_current, .. } => Some(get_current()),
+            TweakKind::Toggle { .. } => None,
+        }
+    }
+
+    pub fn set_select_value(&self, value: &str) -> Result<(), String> {
+        match self.kind {
+            TweakKind::Select { set_current, .. } => set_current(value),
+            TweakKind::Toggle { .. } => Err(format!(
+                "Cannot set select value on toggle tweak '{}'",
+                self.id
+            )),
         }
     }
 

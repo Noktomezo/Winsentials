@@ -275,4 +275,31 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn test_backup_diff_i18n_keys() {
+        for locale in ["ru", "en"] {
+            rust_i18n::set_locale(locale);
+            assert_ne!(
+                rust_i18n::t!("tools.backup_diff_none"),
+                "tools.backup_diff_none"
+            );
+            assert_ne!(
+                rust_i18n::t!("tools.backup_diff_restore_prefix"),
+                "tools.backup_diff_restore_prefix"
+            );
+            assert_ne!(
+                rust_i18n::t!("tools.backup_diff_enable_label"),
+                "tools.backup_diff_enable_label"
+            );
+            assert_ne!(
+                rust_i18n::t!("tools.backup_diff_disable_label"),
+                "tools.backup_diff_disable_label"
+            );
+            assert_ne!(
+                rust_i18n::t!("tools.backup_diff_presets_label"),
+                "tools.backup_diff_presets_label"
+            );
+        }
+    }
 }
