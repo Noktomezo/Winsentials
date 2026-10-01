@@ -81,15 +81,25 @@ pub fn create_backup_from_states(
     let (created_at, timestamp_epoch_secs) = format_local_time_now();
 
     let mut tweak_states = HashMap::with_capacity(ALL_TWEAKS.len());
+    let mut dropdown_states = HashMap::new();
+
     for tweak in ALL_TWEAKS {
-        let applied = current_states
-            .get(tweak.id)
-            .copied()
-            .unwrap_or_else(tweak.is_applied);
-        tweak_states.insert(tweak.id.to_string(), applied);
+        match tweak.kind {
+            crate::entities::tweaks::TweakKind::Toggle { .. } => {
+                let applied = current_states
+                    .get(tweak.id)
+                    .copied()
+                    .unwrap_or_else(|| tweak.is_applied());
+                tweak_states.insert(tweak.id.to_string(), applied);
+            }
+            crate::entities::tweaks::TweakKind::Select { get_current, .. } => {
+                dropdown_states.insert(tweak.id.to_string(), get_current().to_string());
+            }
+        }
     }
 
     TweakBackup::new(id, name, created_at, timestamp_epoch_secs, tweak_states)
+        .with_dropdown_states(dropdown_states)
 }
 
 pub fn delete_backup(id: &str, backups: &mut Vec<TweakBackup>) -> bool {

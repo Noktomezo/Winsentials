@@ -30,38 +30,6 @@ pub const fn category_to_route(category: TweakCategory) -> AppRoute {
 
 pub const MAX_SEARCH_RESULTS: usize = 5;
 
-pub struct DropdownTweakMeta {
-    pub id: &'static str,
-    pub route: AppRoute,
-    pub icon: &'static str,
-    pub title_key: &'static str,
-    pub desc_key: &'static str,
-}
-
-pub const DROPDOWN_TWEAKS: [DropdownTweakMeta; 3] = [
-    DropdownTweakMeta {
-        id: "keyboard_repeat",
-        route: AppRoute::Input,
-        icon: "icons/keyboard.svg",
-        title_key: "tweaks.keyboard_repeat_title",
-        desc_key: "tweaks.keyboard_repeat_desc",
-    },
-    DropdownTweakMeta {
-        id: "ctf_optimization",
-        route: AppRoute::Input,
-        icon: "icons/type.svg",
-        title_key: "tweaks.ctf_optimization_title",
-        desc_key: "tweaks.ctf_optimization_desc",
-    },
-    DropdownTweakMeta {
-        id: "snapkey",
-        route: AppRoute::Input,
-        icon: "icons/crosshair-2.svg",
-        title_key: "tweaks.snapkey_title",
-        desc_key: "tweaks.snapkey_desc",
-    },
-];
-
 struct SearchCandidate {
     id: &'static str,
     title_key: &'static str,
@@ -80,7 +48,7 @@ pub fn search_tweaks(query: &str, windows_build: u32) -> Vec<TweakSearchResult> 
 
     let mut candidates: Vec<SearchCandidate> = Vec::new();
 
-    // Standard binary tweaks from registry
+    // All tweaks (toggles and selects) from unified registry
     for tweak in get_all_tweaks() {
         if tweak.is_supported(windows_build) {
             candidates.push(SearchCandidate {
@@ -91,17 +59,6 @@ pub fn search_tweaks(query: &str, windows_build: u32) -> Vec<TweakSearchResult> 
                 icon: tweak.icon,
             });
         }
-    }
-
-    // Dropdown input tweaks (SnapKey, CTF, Keyboard Repeat)
-    for dt in &DROPDOWN_TWEAKS {
-        candidates.push(SearchCandidate {
-            id: dt.id,
-            title_key: dt.title_key,
-            desc_key: dt.desc_key,
-            route: dt.route,
-            icon: dt.icon,
-        });
     }
 
     let mut scored_results: Vec<(i32, TweakSearchResult)> = Vec::new();

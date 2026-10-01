@@ -21,6 +21,6 @@ pub use startup::{
 pub use system_info::SystemInfo;
 #[allow(unused_imports)]
 pub use tweaks::{
-    RestartRequirement, SideEffect, SideEffectLevel, TweakCategory, TweakDefinition,
+    RestartRequirement, SideEffect, SideEffectLevel, TweakCategory, TweakDefinition, TweakKind,
     count_applied_tweaks, get_all_tweaks,
 };

@@ -21,7 +21,7 @@ pub fn count_applied_tweaks(build: u32) -> (usize, usize) {
     for tweak in ALL_TWEAKS {
         if tweak.is_supported(build) {
             total_supported += 1;
-            if (tweak.is_applied)() {
+            if tweak.is_applied() {
                 applied += 1;
             }
         }
@@ -50,7 +50,7 @@ impl TweakStates {
     pub fn load_initial() -> Self {
         let mut states = HashMap::with_capacity(ALL_TWEAKS.len());
         for tweak in ALL_TWEAKS {
-            states.insert(tweak.id, (tweak.is_applied)());
+            states.insert(tweak.id, tweak.is_applied());
         }
         Self { states }
     }
@@ -60,7 +60,7 @@ impl TweakStates {
         self.states
             .get(tweak.id)
             .copied()
-            .unwrap_or_else(tweak.is_applied)
+            .unwrap_or_else(|| tweak.is_applied())
     }
 
     pub fn set_state(&mut self, tweak_id: &'static str, applied: bool) {

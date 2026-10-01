@@ -112,6 +112,57 @@ mod tests {
         assert!(!diff.is_empty());
         assert_eq!(diff.to_enable, 1);
         assert_eq!(diff.to_disable, 1);
+        assert_eq!(diff.to_change_presets, 0);
         assert_eq!(diff.total_changes(), 2);
+    }
+
+    #[test]
+    fn test_backup_calculate_diff_with_dropdowns() {
+        use crate::entities::tweaks::TweakStates;
+
+        let current_states = TweakStates::default();
+        let mut current_dropdowns = HashMap::new();
+        current_dropdowns.insert("keyboard_repeat".to_string(), "standard".to_string());
+        current_dropdowns.insert("ctf_optimization".to_string(), "standard".to_string());
+        current_dropdowns.insert("snapkey".to_string(), "off".to_string());
+
+        let mut desired_dropdowns = HashMap::new();
+        desired_dropdowns.insert("keyboard_repeat".to_string(), "fast".to_string());
+        desired_dropdowns.insert("ctf_optimization".to_string(), "standard".to_string());
+        desired_dropdowns.insert("snapkey".to_string(), "wasd".to_string());
+
+        let backup = TweakBackup::new("drop-1", "Dropdown Test", "now", 0, HashMap::new())
+            .with_dropdown_states(desired_dropdowns);
+
+        let diff = backup.calculate_diff_full(&current_states, &current_dropdowns);
+        assert!(!diff.is_empty());
+        assert_eq!(diff.to_enable, 0);
+        assert_eq!(diff.to_disable, 0);
+        assert_eq!(diff.to_change_presets, 2);
+        assert_eq!(diff.total_changes(), 2);
+    }
+
+    #[test]
+    fn test_backward_compatibility_deserialization() {
+        // Old JSON without dropdown_states field
+        let old_json = r#"{
+            "id": "old-1",
+            "name": "Legacy Backup",
+            "created_at": "10.09.2026, 12:00:00",
+            "timestamp_epoch_secs": 1700000000,
+            "tweak_states": {
+                "classic_context_menu": true
+            }
+        }"#;
+
+        let deserialized: TweakBackup =
+            serde_json::from_str(old_json).expect("deserialize old json");
+        assert_eq!(deserialized.id, "old-1");
+        assert_eq!(deserialized.name, "Legacy Backup");
+        assert_eq!(
+            deserialized.tweak_states.get("classic_context_menu"),
+            Some(&true)
+        );
+        assert!(deserialized.dropdown_states.is_empty());
     }
 }

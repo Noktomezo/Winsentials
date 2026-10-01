@@ -130,13 +130,14 @@ pub(crate) fn render_tweak_cards_for_category(
     let mut tweak_items: Vec<(&'static str, AnyElement)> = Vec::new();
 
     for tweak in all_tweaks {
-        if tweak.category == category && tweak.is_supported(windows_build) {
+        if tweak.category == category && tweak.kind.is_toggle() && tweak.is_supported(windows_build)
+        {
             let badges = build_tweak_badges(tweak, theme);
             let is_applied = if cx.has_global::<crate::entities::tweaks::TweakStates>() {
                 cx.global::<crate::entities::tweaks::TweakStates>()
                     .is_applied(tweak)
             } else {
-                (tweak.is_applied)()
+                tweak.is_applied()
             };
             let tweak_id = tweak.id;
             let is_highlighted = highlighted_tweak_id == Some(tweak.id);

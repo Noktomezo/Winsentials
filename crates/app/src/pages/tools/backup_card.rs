@@ -113,7 +113,7 @@ pub fn render_backup_card(
                         .child(diff.to_enable.to_string()),
                 );
 
-            if diff.to_disable > 0 {
+            if diff.to_disable > 0 || diff.to_change_presets > 0 {
                 row = row.child(div().text_color(theme.text_muted).ml(px(-4.0)).child(","));
             }
         }
@@ -130,6 +130,25 @@ pub fn render_backup_card(
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(theme.accent_red)
                         .child(diff.to_disable.to_string()),
+                );
+
+            if diff.to_change_presets > 0 {
+                row = row.child(div().text_color(theme.text_muted).ml(px(-4.0)).child(","));
+            }
+        }
+
+        if diff.to_change_presets > 0 {
+            row = row
+                .child(
+                    div()
+                        .text_color(theme.text_muted)
+                        .child(rust_i18n::t!("tools.backup_diff_presets_label").to_string()),
+                )
+                .child(
+                    div()
+                        .font_weight(FontWeight::MEDIUM)
+                        .text_color(theme.accent_blue)
+                        .child(diff.to_change_presets.to_string()),
                 );
         }
 

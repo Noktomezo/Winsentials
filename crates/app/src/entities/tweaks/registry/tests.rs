@@ -93,10 +93,16 @@ fn input_tweaks_are_registered() {
         .filter(|tweak| tweak.category == TweakCategory::Input)
         .collect();
 
-    assert_eq!(input.len(), 3);
+    assert_eq!(input.len(), 6);
     assert_eq!(input[0].id, "disable_mouse_acceleration");
     assert_eq!(input[1].id, "csrss_priority");
     assert_eq!(input[2].id, "raw_mouse_throttle");
+    assert_eq!(input[3].id, "keyboard_repeat");
+    assert_eq!(input[4].id, "ctf_optimization");
+    assert_eq!(input[5].id, "snapkey");
+    assert!(input[3].kind.is_select());
+    assert!(input[4].kind.is_select());
+    assert!(input[5].kind.is_select());
 }
 
 #[test]
